@@ -8,9 +8,11 @@ import { swaggerDocument } from "./shared/utils/swagger";
 import { env } from "./config/env";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
+import { requestLogger } from "./middleware/request-logger.middleware";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
+  private readonly currentEnv = env.NODE_ENV;
   readonly instance: Express;
 
   constructor() {
@@ -22,6 +24,9 @@ export class App {
   }
 
   private configureMiddlewares(): void {
+    if (this.currentEnv !== "production") {
+      this.instance.use(requestLogger);
+    }
     this.instance.use(helmet());
     applyCors(this.instance);
     this.instance.use(express.json({ limit: "1mb" }));

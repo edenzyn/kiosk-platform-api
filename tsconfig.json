@@ -1,10 +1,11 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "commonjs",
+    "module": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2022"],
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
@@ -12,10 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "noUnusedLocals": true,
-    "baseUrl": "./src",
-    "paths": {
-      "@/*": ["*"]
-    }
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

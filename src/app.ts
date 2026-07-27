@@ -42,18 +42,11 @@ export class App {
 
   private configureRoutes(): void {
     this.instance.get(`${this.API_PREFIX_V1}/health`, (_request, response) => {
-      const memoryUsage = process.memoryUsage();
       response.json({
         status: "ok",
-        service: "kiosk-platform-api",
+        service: "kiosk-platform-api-v1",
         environment: env.NODE_ENV,
-        uptime: process.uptime(),
-        memory: {
-          rss: `${Math.round(memoryUsage.rss / 1024 / 1024)} MB`,
-          heapTotal: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)} MB`,
-          heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)} MB`,
-          external: `${Math.round(memoryUsage.external / 1024 / 1024)} MB`,
-        },
+        uptime: `${(process.uptime() / 60).toFixed(2)} minutes`,
         nodeVersion: process.version,
         timestamp: new Date().toISOString(),
       });

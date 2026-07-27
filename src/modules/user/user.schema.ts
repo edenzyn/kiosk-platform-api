@@ -9,11 +9,12 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { organizations } from "../organization/organization.schema";
+import { branches } from "../branch/branch.schema";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").references((): AnyPgColumn => organizations.id),
-  branchId: uuid("branch_id"), // TODO: Add .references(() => branches.id) once created
+  branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   mobile: varchar("mobile", { length: 20 }).notNull().unique(),

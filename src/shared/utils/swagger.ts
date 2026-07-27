@@ -5,7 +5,14 @@ export const swaggerDocument = {
   info: {
     title: "Kiosk Platform API",
     version: "1.0.0",
+    description:
+      "Modular Kiosk Platform API providing authentication, tenant management, and kiosk operations.",
   },
+  servers: [
+    {
+      url: "/api/v1",
+    },
+  ],
   paths: {
     ...authSwaggerPaths,
   },

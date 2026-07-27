@@ -22,7 +22,8 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "201": {
-          description: "User successfully registered (Returns user info without tokens)",
+          description:
+            "User successfully registered (Returns user info without tokens)",
         },
         "409": {
           description: "Email or mobile already registered",
@@ -42,7 +43,10 @@ export const authSwaggerPaths: Record<string, unknown> = {
               type: "object",
               required: ["identifier", "password"],
               properties: {
-                identifier: { type: "string", description: "Email address or Mobile number" },
+                identifier: {
+                  type: "string",
+                  description: "Email address or Mobile number",
+                },
                 password: { type: "string" },
               },
             },
@@ -51,7 +55,8 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Successfully authenticated (Returns user info and JWT tokens)",
+          description:
+            "Successfully authenticated (Returns user info and JWT tokens)",
         },
         "401": {
           description: "Invalid credentials",

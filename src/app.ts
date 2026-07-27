@@ -10,7 +10,7 @@ import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 
 export class App {
-  private readonly API_PREFIX_V1 = env.API_PREFIX_V1;
+  private readonly apiV1Prefix = env.API_PREFIX_V1;
   readonly instance: Express;
 
   constructor() {
@@ -30,18 +30,18 @@ export class App {
   }
 
   private configureSwagger(): void {
-    this.instance.get(`${this.API_PREFIX_V1}/api-docs.json`, (_req, res) => {
+    this.instance.get(`${this.apiV1Prefix}/api-docs.json`, (_req, res) => {
       res.json(swaggerDocument);
     });
     this.instance.use(
-      `${this.API_PREFIX_V1}/docs`,
+      `${this.apiV1Prefix}/docs`,
       swaggerUi.serve,
       swaggerUi.setup(swaggerDocument),
     );
   }
 
   private configureRoutes(): void {
-    this.instance.get(`${this.API_PREFIX_V1}/health`, (_request, response) => {
+    this.instance.get(`${this.apiV1Prefix}/health`, (_request, response) => {
       response.json({
         status: "ok",
         service: "kiosk-platform-api-v1",
@@ -52,7 +52,7 @@ export class App {
       });
     });
 
-    this.instance.use(`${this.API_PREFIX_V1}/auth`, authRoutes);
+    this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
   }
 
   private configureErrorHandling(): void {

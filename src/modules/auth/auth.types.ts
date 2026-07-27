@@ -1,6 +1,17 @@
-export interface AuthModuleStatus {
-  module: "auth";
-  status: "available";
+import type { UserEntity } from "../user/user.schema";
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface LoginUserResponseDto {
+  user: Omit<UserEntity, "password">;
+  tokens: AuthTokens;
+}
+
+export interface RegisterUserResponseDto {
+  user: Omit<UserEntity, "password">;
 }
 
 export interface LoginInput {

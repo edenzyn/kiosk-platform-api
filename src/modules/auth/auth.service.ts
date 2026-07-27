@@ -1,15 +1,102 @@
 import type { AuthRepository } from "./auth.repository";
-import type { AuthModuleStatus } from "./auth.types";
+import type {
+  LoginUserResponseDto,
+  RegisterUserResponseDto,
+} from "./auth.types";
+import type {
+  LoginUserRequestDto,
+  RegisterUserRequestDto,
+} from "./auth.validator";
+import { generateToken } from "../../shared/utils/jwt.util";
+import {
+  hashPassword,
+  comparePassword,
+} from "../../shared/utils/password.util";
+import { UserType } from "../../shared/enums/UserType";
+import { AppError } from "../../shared/errors/app-error";
+import type jwt from "jsonwebtoken";
+import { env } from "../../config/env";
 
 export class AuthService {
   constructor(private readonly authRepository: AuthRepository) {}
 
-  getStatus(): AuthModuleStatus {
-    void this.authRepository;
-  
-    return {
-      module: "auth",
-      status: "available",
-    };
+  private _generateAuthTokens(userId: string) {
+    const accessToken = generateToken({ sub: userId }, env.JWT_ACCESS_SECRET, {
+      expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+    });
+    const refreshToken = generateToken(
+      { sub: userId },
+      env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+    return { accessToken, refreshToken };
+  }
+
+  async register(
+    dto: RegisterUserRequestDto,
+  ): Promise<RegisterUserResponseDto> {
+    const existingUserByEmail = await this.authRepository.findByEmail(
+      dto.email,
+    );
+    if (existingUserByEmail) {
+      throw new AppError("Email is already registered", {
+        statusCode: 409,
+        code: "EMAIL_EXISTS",
+      });
+    }
+
+    const existingUserByMobile = await this.authRepository.findByMobile(
+      dto.mobile,
+    );
+    if (existingUserByMobile) {
+      throw new AppError("Mobile is already registered", {
+        statusCode: 409,
+        code: "MOBILE_EXISTS",
+      });
+    }
+
+    const passwordHash = await hashPassword(dto.password);
+
+    const user = await this.authRepository.create({
+      name: dto.name,
+      email: dto.email,
+      mobile: dto.mobile,
+      password: passwordHash,
+      userType: UserType.NORMAL,
+    });
+
+    const { password, ...userWithoutPassword } = user;
+
+    return { user: userWithoutPassword };
+  }
+
+  async login(dto: LoginUserRequestDto): Promise<LoginUserResponseDto> {
+    const isEmail = dto.identifier.includes("@");
+
+    const user = isEmail
+      ? await this.authRepository.findByEmail(dto.identifier.toLowerCase())
+      : await this.authRepository.findByMobile(dto.identifier);
+
+    if (!user) {
+      throw new AppError("Invalid email or password", {
+        statusCode: 401,
+        code: "INVALID_CREDENTIALS",
+      });
+    }
+
+    const isMatch = await comparePassword(dto.password, user.password);
+    if (!isMatch) {
+      throw new AppError("Invalid email or password", {
+        statusCode: 401,
+        code: "INVALID_CREDENTIALS",
+      });
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    const tokens = this._generateAuthTokens(user.id);
+
+    return { user: userWithoutPassword, tokens };
   }
 }

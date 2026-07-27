@@ -39,7 +39,7 @@ export class App {
       res.json(swaggerDocument);
     });
     this.instance.use(
-      `${this.apiV1Prefix}/docs`,
+      `${this.apiV1Prefix}/api-docs`,
       swaggerUi.serve,
       swaggerUi.setup(swaggerDocument),
     );

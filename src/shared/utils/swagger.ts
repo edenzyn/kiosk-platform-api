@@ -1,4 +1,5 @@
 import { authSwaggerPaths } from "../../modules/auth/auth.swagger";
+import { organizationSwaggerPaths } from "../../modules/organization/organization.swagger";
 
 export const swaggerDocument = {
   openapi: "3.1.0",
@@ -15,5 +16,6 @@ export const swaggerDocument = {
   ],
   paths: {
     ...authSwaggerPaths,
+    ...organizationSwaggerPaths,
   },
 };

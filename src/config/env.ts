@@ -10,7 +10,7 @@ const EnvSchema = z.object({
   DATABASE_SSL_MODE: z
     .enum(["disable", "require", "verify-full"])
     .default("disable"),
-  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_ACCESS_SECRET: z.string().min(6),
   JWT_REFRESH_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),

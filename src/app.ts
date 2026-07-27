@@ -4,12 +4,15 @@ import { errorHandler } from "./middleware/error.middleware";
 import { notFoundHandler } from "./middleware/not-found.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import authRoutes from "./modules/auth/auth.routes";
+import organizationRoutes from "./modules/organization/organization.routes";
 import { swaggerDocument } from "./shared/utils/swagger";
 import { env } from "./config/env";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { requestLogger } from "./middleware/request-logger.middleware";
 import cookieParser from "cookie-parser";
+import { authMiddleware } from "./middleware/auth.middleware";
+import { generateToken } from "./shared/utils/jwt.helper";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
@@ -34,6 +37,7 @@ export class App {
     this.instance.use(express.json({ limit: "1mb" }));
     this.instance.use(express.urlencoded({ extended: false, limit: "1mb" }));
     this.instance.use(rateLimitMiddleware);
+    this.instance.use(`${this.apiV1Prefix}/pvt`, authMiddleware);
   }
 
   private configureSwagger(): void {
@@ -60,10 +64,25 @@ export class App {
     });
 
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
+
+    // Private routes
+    this.instance.use(
+      `${this.apiV1Prefix}/pvt/organizations`,
+      organizationRoutes,
+    );
   }
 
   private configureErrorHandling(): void {
     this.instance.use(notFoundHandler);
     this.instance.use(errorHandler);
+    console.log(
+      generateToken(
+        { id: "204bc939-3d9a-460e-96cb-1d1faa4b30a6" },
+        process.env.JWT_ACCESS_SECRET!,
+        {
+          expiresIn: "100y",
+        },
+      ),
+    );
   }
 }

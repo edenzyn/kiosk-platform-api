@@ -6,7 +6,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import { permissions } from "./permission.schema";
-import { users } from "../user/user.schema";
+import { users } from "../../user/user.schema";
 
 export const permissionsMapper = pgTable("permissions_mapper", {
   id: uuid("id").defaultRandom().primaryKey(),

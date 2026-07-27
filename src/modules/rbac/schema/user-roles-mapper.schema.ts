@@ -5,7 +5,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { roles } from "./role.schema";
-import { users } from "../user/user.schema";
+import { users } from "../../user/user.schema";
 
 export const userRolesMapper = pgTable("user_roles_mapper", {
   id: uuid("id").defaultRandom().primaryKey(),

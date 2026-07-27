@@ -56,7 +56,15 @@ export const authSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Successfully authenticated (Returns user info and JWT tokens)",
+            "Successfully authenticated (Returns user info and sets JWT cookies)",
+          headers: {
+            "Set-Cookie": {
+              description: "x-access-token (accessible to client scripts) and x-refresh-token (HttpOnly)",
+              schema: {
+                type: "string"
+              }
+            }
+          }
         },
         "401": {
           description: "Invalid credentials",

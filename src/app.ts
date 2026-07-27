@@ -9,6 +9,7 @@ import { env } from "./config/env";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { requestLogger } from "./middleware/request-logger.middleware";
+import cookieParser from "cookie-parser";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
@@ -29,6 +30,7 @@ export class App {
     }
     this.instance.use(helmet());
     applyCors(this.instance);
+    this.instance.use(cookieParser());
     this.instance.use(express.json({ limit: "1mb" }));
     this.instance.use(express.urlencoded({ extended: false, limit: "1mb" }));
     this.instance.use(rateLimitMiddleware);

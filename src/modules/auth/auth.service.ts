@@ -1,17 +1,17 @@
 import type { AuthRepository } from "./auth.repository";
 import type {
-  LoginUserResponseDto,
+  LoginResult,
   RegisterUserResponseDto,
 } from "./auth.types";
 import type {
   LoginUserRequestDto,
   RegisterUserRequestDto,
 } from "./auth.validator";
-import { generateToken } from "../../shared/utils/jwt.util";
+import { generateToken } from "../../shared/utils/jwt.helper";
 import {
   hashPassword,
   comparePassword,
-} from "../../shared/utils/password.util";
+} from "../../shared/utils/password.helper";
 import { UserType } from "../../shared/enums/UserType";
 import { AppError } from "../../shared/errors/app-error";
 import type jwt from "jsonwebtoken";
@@ -72,7 +72,7 @@ export class AuthService {
     return { user: userWithoutPassword };
   }
 
-  async login(dto: LoginUserRequestDto): Promise<LoginUserResponseDto> {
+  async login(dto: LoginUserRequestDto): Promise<LoginResult> {
     const isEmail = dto.identifier.includes("@");
 
     const user = isEmail
@@ -100,3 +100,4 @@ export class AuthService {
     return { user: userWithoutPassword, tokens };
   }
 }
+

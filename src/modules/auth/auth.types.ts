@@ -5,9 +5,13 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
-export interface LoginUserResponseDto {
+export interface LoginResult {
   user: Omit<UserEntity, "password">;
   tokens: AuthTokens;
+}
+
+export interface LoginUserResponseDto {
+  user: Omit<UserEntity, "password">;
 }
 
 export interface RegisterUserResponseDto {

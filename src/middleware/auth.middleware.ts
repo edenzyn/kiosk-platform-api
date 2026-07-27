@@ -5,6 +5,7 @@ import { AppError } from "../shared/errors/app-error";
 import { SecurityTokenEnums } from "../shared/enums/core/SecurityTokenType";
 import type jwt from "jsonwebtoken";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
+import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
 
 declare global {
   namespace Express {
@@ -36,7 +37,7 @@ export function authMiddleware(
     if (!token) {
       throw new AppError("Authentication token is missing", {
         statusCode: 401,
-        code: "UNAUTHORIZED",
+        code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
@@ -51,7 +52,7 @@ export function authMiddleware(
     if (!userId) {
       throw new AppError("Invalid token payload", {
         statusCode: 401,
-        code: "UNAUTHORIZED",
+        code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
@@ -61,7 +62,7 @@ export function authMiddleware(
     next(
       new AppError("Invalid or expired token", {
         statusCode: 401,
-        code: "UNAUTHORIZED",
+        code: ErrorCodes.UNAUTHORIZED,
       }),
     );
   }

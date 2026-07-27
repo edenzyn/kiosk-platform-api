@@ -24,8 +24,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "db:drop": "drizzle-kit drop"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "awilix": "^13.0.5",

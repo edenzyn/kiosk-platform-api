@@ -47,7 +47,13 @@ export class App {
     this.instance.use(
       `${this.apiV1Prefix}/api-docs`,
       swaggerUi.serve,
-      swaggerUi.setup(swaggerDocument),
+      swaggerUi.setup(swaggerDocument, {
+        customSiteTitle: "Kiosk Platform API Documentation",
+        swaggerOptions: {
+          persistAuthorization: true,
+          displayRequestDuration: true,
+        },
+      }),
     );
   }
 

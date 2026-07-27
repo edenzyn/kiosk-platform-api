@@ -14,6 +14,7 @@ export const swaggerDocument = {
       url: "/api/v1",
     },
   ],
+  tags: [],
   paths: {
     ...authSwaggerPaths,
     ...organizationSwaggerPaths,

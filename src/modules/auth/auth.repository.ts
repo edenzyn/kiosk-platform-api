@@ -1,11 +1,15 @@
 import { eq } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { users, type NewUser, type User } from "./auth.schema";
+import {
+  users,
+  type CreateUserEntity,
+  type UserEntity,
+} from "../user/user.schema";
 
 export class AuthRepository {
   constructor(private readonly database: Database) {}
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  async findByEmail(email: string): Promise<UserEntity | undefined> {
     const [user] = await this.database.client
       .select()
       .from(users)
@@ -14,7 +18,7 @@ export class AuthRepository {
     return user;
   }
 
-  async create(user: NewUser): Promise<User> {
+  async create(user: CreateUserEntity): Promise<UserEntity> {
     const [created] = await this.database.client
       .insert(users)
       .values(user)

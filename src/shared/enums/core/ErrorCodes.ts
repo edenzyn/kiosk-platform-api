@@ -1,3 +1,4 @@
 export enum ErrorCodes {
   UNAUTHORIZED = "UNAUTHORIZED",
+  VALIDATION_ERROR = "VALIDATION_ERROR",
 }

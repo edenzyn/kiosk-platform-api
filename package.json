@@ -27,6 +27,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "awesome-phonenumber": "^7.8.0",
     "awilix": "^13.0.5",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",

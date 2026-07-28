@@ -28,7 +28,6 @@ export class OrganizationService {
     if (existingOrg) {
       throw new AppError("Organization name already exists", {
         statusCode: 409,
-        code: "ORG_EXISTS",
       });
     }
 
@@ -48,7 +47,6 @@ export class OrganizationService {
     if (!organization) {
       throw new AppError("Organization not found", {
         statusCode: 404,
-        code: "ORG_NOT_FOUND",
       });
     }
     return { organization };
@@ -67,7 +65,6 @@ export class OrganizationService {
     if (!existingOrg) {
       throw new AppError("Organization not found", {
         statusCode: 404,
-        code: "ORG_NOT_FOUND",
       });
     }
 
@@ -78,7 +75,6 @@ export class OrganizationService {
       if (nameConflict) {
         throw new AppError("Organization name already exists", {
           statusCode: 409,
-          code: "ORG_EXISTS",
         });
       }
     }
@@ -98,7 +94,6 @@ export class OrganizationService {
     if (!existingOrg) {
       throw new AppError("Organization not found", {
         statusCode: 404,
-        code: "ORG_NOT_FOUND",
       });
     }
 

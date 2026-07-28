@@ -1,8 +1,5 @@
 import type { AuthRepository } from "./auth.repository";
-import type {
-  LoginResult,
-  RegisterUserResponseDto,
-} from "./auth.types";
+import type { LoginResult, RegisterUserResponseDto } from "./auth.types";
 import type {
   LoginUserRequestDto,
   RegisterUserRequestDto,
@@ -12,7 +9,7 @@ import {
   hashPassword,
   comparePassword,
 } from "../../shared/utils/password.helper";
-import { UserType } from "../../shared/enums/UserType";
+import { UserTypeEnums } from "../../shared/enums/UserTypeEnums";
 import { AppError } from "../../shared/errors/app-error";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
@@ -43,7 +40,6 @@ export class AuthService {
     if (existingUserByEmail) {
       throw new AppError("Email is already registered", {
         statusCode: 409,
-        code: "EMAIL_EXISTS",
       });
     }
 
@@ -53,7 +49,6 @@ export class AuthService {
     if (existingUserByMobile) {
       throw new AppError("Mobile is already registered", {
         statusCode: 409,
-        code: "MOBILE_EXISTS",
       });
     }
 
@@ -64,7 +59,7 @@ export class AuthService {
       email: dto.email,
       mobile: dto.mobile,
       password: passwordHash,
-      userType: UserType.NORMAL,
+      userType: UserTypeEnums.NORMAL,
     });
 
     const { password, ...userWithoutPassword } = user;
@@ -82,7 +77,6 @@ export class AuthService {
     if (!user) {
       throw new AppError("Invalid email or password", {
         statusCode: 401,
-        code: "INVALID_CREDENTIALS",
       });
     }
 
@@ -90,7 +84,6 @@ export class AuthService {
     if (!isMatch) {
       throw new AppError("Invalid email or password", {
         statusCode: 401,
-        code: "INVALID_CREDENTIALS",
       });
     }
 
@@ -100,4 +93,3 @@ export class AuthService {
     return { user: userWithoutPassword, tokens };
   }
 }
-

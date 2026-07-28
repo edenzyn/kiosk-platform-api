@@ -1,11 +1,15 @@
 import { z } from "zod";
+import validateAndParseMobile from "../../shared/validators/phone.validator";
+import validatePassword from "../../shared/validators/password.validator";
+import { VALIDATION_CONSTANTS } from "../../shared/constants/validation.constants";
 
 export class AuthValidator {
   static readonly login = z
     .object({
       identifier: z
-        .string()
+        .string({ message: "Email or Mobile is required" })
         .trim()
+        .min(1, "Email or Mobile is required")
         .superRefine((val, ctx) => {
           if (val.includes("@")) {
             if (!z.string().email().safeParse(val).success) {
@@ -15,32 +19,66 @@ export class AuthValidator {
               });
             }
           } else {
-            if (!/^\d{10,20}$/.test(val)) {
+            if (!validateAndParseMobile(val)) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: "Mobile number must contain 10-20 digits only",
+                message: "Please enter a valid mobile number",
               });
             }
           }
         }),
-      password: z.string().min(8).max(72),
+      password: z
+        .string({ message: "Password is required" })
+        .min(
+          VALIDATION_CONSTANTS.PASSWORD_MIN_LENGTH,
+          `Password must be at least ${VALIDATION_CONSTANTS.PASSWORD_MIN_LENGTH} characters`,
+        )
+        .max(
+          VALIDATION_CONSTANTS.PASSWORD_MAX_LENGTH,
+          `Password cannot exceed ${VALIDATION_CONSTANTS.PASSWORD_MAX_LENGTH} characters`,
+        )
+        .refine(
+          validatePassword,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+        ),
     })
     .strict();
 
   static readonly register = z
     .object({
-      name: z.string().trim().min(2).max(100),
+      name: z
+        .string({ message: "Name is required" })
+        .trim()
+        .min(
+          VALIDATION_CONSTANTS.USERS_NAME_MIN_LENGTH,
+          `Name must be at least ${VALIDATION_CONSTANTS.USERS_NAME_MIN_LENGTH} characters`,
+        )
+        .max(
+          VALIDATION_CONSTANTS.USERS_NAME_MAX_LENGTH,
+          `Name cannot exceed ${VALIDATION_CONSTANTS.USERS_NAME_MAX_LENGTH} characters`,
+        ),
       email: z
-        .string()
-        .email()
+        .string({ message: "Email is required" })
+        .email("Please enter a valid email address")
         .transform((email) => email.toLowerCase()),
       mobile: z
-        .string()
+        .string({ message: "Mobile number is required" })
         .trim()
-        .regex(/^\d+$/, "Mobile number must contain only digits")
-        .min(10)
-        .max(20),
-      password: z.string().min(8).max(72),
+        .refine(validateAndParseMobile, "Please enter a valid mobile number"),
+      password: z
+        .string({ message: "Password is required" })
+        .min(
+          VALIDATION_CONSTANTS.PASSWORD_MIN_LENGTH,
+          `Password must be at least ${VALIDATION_CONSTANTS.PASSWORD_MIN_LENGTH} characters`,
+        )
+        .max(
+          VALIDATION_CONSTANTS.PASSWORD_MAX_LENGTH,
+          `Password cannot exceed ${VALIDATION_CONSTANTS.PASSWORD_MAX_LENGTH} characters`,
+        )
+        .refine(
+          validatePassword,
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+        ),
     })
     .strict();
 }

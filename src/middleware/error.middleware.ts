@@ -3,6 +3,7 @@ import { ZodError } from "zod";
 import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
 import { logger } from "../shared/utils/logger";
+import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
@@ -10,18 +11,17 @@ export const errorHandler: ErrorRequestHandler = (
   response,
   _next,
 ): void => {
+  if (env.NODE_ENV === "development") console.log(error);
   const normalized =
     error instanceof ZodError
       ? new AppError("Request validation failed", {
           statusCode: 400,
-          code: "VALIDATION_ERROR",
+          code: ErrorCodes.VALIDATION_ERROR,
           details: error.flatten(),
-          cause: error,
         })
       : error instanceof AppError
         ? error
         : new AppError("An unexpected error occurred", {
-            cause: error,
             isOperational: false,
           });
 
@@ -42,10 +42,9 @@ export const errorHandler: ErrorRequestHandler = (
       ...(normalized.details !== undefined && {
         details: normalized.details,
       }),
-      ...(env.NODE_ENV !== "production" &&
-        !normalized.isOperational && {
-          cause: error instanceof Error ? error.message : String(error),
-        }),
+      ...(env.NODE_ENV !== "production" && {
+        cause: error instanceof Error ? error.message : String(error),
+      }),
     },
   });
 };

@@ -7,9 +7,11 @@ export const notFoundHandler: RequestHandler = (
   next: NextFunction,
 ): void => {
   next(
-    new AppError(`Route ${request.method} ${request.originalUrl} was not found`, {
-      statusCode: 404,
-      code: "ROUTE_NOT_FOUND",
-    }),
+    new AppError(
+      `Route ${request.method} ${request.originalUrl} was not found`,
+      {
+        statusCode: 404,
+      },
+    ),
   );
 };

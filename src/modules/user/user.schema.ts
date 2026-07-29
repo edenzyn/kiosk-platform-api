@@ -17,7 +17,7 @@ export const users = pgTable("users", {
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
-  mobile: varchar("mobile", { length: 20 }).notNull().unique(),
+  mobile: varchar("mobile", { length: 20 }).unique(),
   password: varchar("password", { length: 255 }).notNull(),
   userType: integer("user_type").notNull(),
   isActive: boolean("is_active").default(true).notNull(),

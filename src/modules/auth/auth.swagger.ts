@@ -9,11 +9,10 @@ export const authSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name", "email", "mobile", "password"],
+              required: ["name", "email", "password"],
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 email: { type: "string", format: "email" },
-                mobile: { type: "string", minLength: 10, maxLength: 20 },
                 password: { type: "string", minLength: 8, maxLength: 72 },
               },
             },
@@ -26,7 +25,7 @@ export const authSwaggerPaths: Record<string, unknown> = {
             "User successfully registered (Returns user info without tokens)",
         },
         "409": {
-          description: "Email or mobile already registered",
+          description: "Email already registered",
         },
       },
     },
@@ -34,18 +33,18 @@ export const authSwaggerPaths: Record<string, unknown> = {
   "/auth/login": {
     post: {
       tags: ["Auth"],
-      summary: "Login with email or mobile",
+      summary: "Login with email",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["identifier", "password"],
+              required: ["email", "password"],
               properties: {
-                identifier: {
+                email: {
                   type: "string",
-                  description: "Email address or Mobile number",
+                  description: "Email address",
                 },
                 password: { type: "string" },
               },

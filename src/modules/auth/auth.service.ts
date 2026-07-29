@@ -43,21 +43,11 @@ export class AuthService {
       });
     }
 
-    const existingUserByMobile = await this.authRepository.findByMobile(
-      dto.mobile,
-    );
-    if (existingUserByMobile) {
-      throw new AppError("Mobile is already registered", {
-        statusCode: 409,
-      });
-    }
-
     const passwordHash = await hashPassword(dto.password);
 
     const user = await this.authRepository.create({
       name: dto.name,
       email: dto.email,
-      mobile: dto.mobile,
       password: passwordHash,
       userType: UserTypeEnums.NORMAL,
     });
@@ -68,11 +58,7 @@ export class AuthService {
   }
 
   async login(dto: LoginUserRequestDto): Promise<LoginResult> {
-    const isEmail = dto.identifier.includes("@");
-
-    const user = isEmail
-      ? await this.authRepository.findByEmail(dto.identifier.toLowerCase())
-      : await this.authRepository.findByMobile(dto.identifier);
+    const user = await this.authRepository.findByEmail(dto.email);
 
     if (!user) {
       throw new AppError("Invalid email or password", {

@@ -1,32 +1,14 @@
 import { z } from "zod";
-import validateAndParseMobile from "../../shared/validators/phone.validator";
 import validatePassword from "../../shared/validators/password.validator";
 import { VALIDATION_CONSTANTS } from "../../shared/constants/validation.constants";
 
 export class AuthValidator {
   static readonly login = z
     .object({
-      identifier: z
-        .string({ message: "Email or Mobile is required" })
-        .trim()
-        .min(1, "Email or Mobile is required")
-        .superRefine((val, ctx) => {
-          if (val.includes("@")) {
-            if (!z.string().email().safeParse(val).success) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Invalid email address",
-              });
-            }
-          } else {
-            if (!validateAndParseMobile(val)) {
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Please enter a valid mobile number",
-              });
-            }
-          }
-        }),
+      email: z
+        .string({ message: "Email is required" })
+        .email("Invalid email address")
+        .transform((val) => val.toLowerCase()),
       password: z
         .string({ message: "Password is required" })
         .min(
@@ -61,10 +43,6 @@ export class AuthValidator {
         .string({ message: "Email is required" })
         .email("Please enter a valid email address")
         .transform((email) => email.toLowerCase()),
-      mobile: z
-        .string({ message: "Mobile number is required" })
-        .trim()
-        .refine(validateAndParseMobile, "Please enter a valid mobile number"),
       password: z
         .string({ message: "Password is required" })
         .min(

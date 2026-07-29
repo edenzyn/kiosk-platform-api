@@ -4,6 +4,7 @@ import { AuthValidator } from "./auth.validator";
 import { setCookie } from "../../shared/utils/cookie.helper";
 import { env } from "../../config/env";
 import { SecurityTokenEnums } from "../../shared/enums/core/SecurityTokenType";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import ms from "ms";
 
 export class AuthController {
@@ -15,7 +16,7 @@ export class AuthController {
       stripUnknown: true,
     });
     const result = await this.authService.register(data);
-    res.status(201).json(result);
+    res.status(HttpStatusCodes.CREATED).json(result);
   };
 
   login = async (req: Request, res: Response): Promise<void> => {

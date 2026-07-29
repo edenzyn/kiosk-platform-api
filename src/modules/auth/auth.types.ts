@@ -10,19 +10,21 @@ export interface LoginResult {
   tokens: AuthTokens;
 }
 
-export interface LoginUserResponseDto {
-  user: Omit<UserEntity, "password">;
-}
-
-export interface RegisterUserResponseDto {
-  user: Omit<UserEntity, "password">;
-}
-
+// --- Login ---
 export interface LoginUserRequestDto {
   email: string;
   password: string;
 }
 
+export interface LoginUserResponseDto {
+  user: Omit<UserEntity, "password">;
+}
+
+// --- Register ---
 export interface RegisterUserRequestDto extends LoginUserRequestDto {
   name: string;
+}
+
+export interface RegisterUserResponseDto {
+  user: Omit<UserEntity, "password">;
 }

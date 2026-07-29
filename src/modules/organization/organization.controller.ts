@@ -1,40 +1,52 @@
 import type { Request, Response } from "express";
 import type { OrganizationService } from "./organization.service";
 import { OrganizationValidator } from "./organization.validator";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 
 export class OrganizationController {
   constructor(private readonly organizationService: OrganizationService) {}
 
   create = async (req: Request, res: Response): Promise<void> => {
-    const dto = OrganizationValidator.create.parse(req.body);
-    const result = await this.organizationService.create(dto, req.user);
-    res.status(201).json(result);
+    const data = await OrganizationValidator.create.validate(req.body, {
+      stripUnknown: true,
+    });
+    const result = await this.organizationService.create(data, req.user);
+    res.status(HttpStatusCodes.CREATED).json(result);
   };
 
   getById = async (req: Request, res: Response): Promise<void> => {
-    const dto = OrganizationValidator.getById.parse(req.params);
-    const result = await this.organizationService.getById(dto);
+    const data = await OrganizationValidator.getById.validate(req.params, {
+      stripUnknown: true,
+    });
+    const result = await this.organizationService.getById(data);
     res.json(result);
   };
 
   list = async (req: Request, res: Response): Promise<void> => {
-    OrganizationValidator.list.parse(req.query);
-    const result = await this.organizationService.list();
+    const data = await OrganizationValidator.list.validate(req.query, {
+      stripUnknown: true,
+    });
+    const result = await this.organizationService.list(data);
     res.json(result);
   };
 
   update = async (req: Request, res: Response): Promise<void> => {
-    const dto = OrganizationValidator.update.parse({
-      ...req.params,
-      ...req.body,
-    });
-    const result = await this.organizationService.update(dto, req.user);
+    const data = await OrganizationValidator.update.validate(
+      {
+        ...req.params,
+        ...req.body,
+      },
+      { stripUnknown: true },
+    );
+    const result = await this.organizationService.update(data, req.user);
     res.json(result);
   };
 
   delete = async (req: Request, res: Response): Promise<void> => {
-    const dto = OrganizationValidator.delete.parse(req.params);
-    const result = await this.organizationService.delete(dto);
+    const data = await OrganizationValidator.delete.validate(req.params, {
+      stripUnknown: true,
+    });
+    const result = await this.organizationService.delete(data);
     res.json(result);
   };
 }

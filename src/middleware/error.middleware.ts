@@ -4,6 +4,7 @@ import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
 import { logger } from "../shared/utils/logger";
 import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
+import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
@@ -15,7 +16,7 @@ export const errorHandler: ErrorRequestHandler = (
   const normalized =
     error instanceof ValidationError
       ? new AppError("Request validation failed", {
-          statusCode: 400,
+          statusCode: HttpStatusCodes.BAD_REQUEST,
           code: ErrorCodes.VALIDATION_ERROR,
           details: error.inner.reduce((acc, err) => {
             if (err.path) acc[err.path] = err.message;
@@ -32,7 +33,7 @@ export const errorHandler: ErrorRequestHandler = (
     err: error,
     code: normalized.code,
   };
-  if (normalized.statusCode >= 500) {
+  if (normalized.statusCode >= HttpStatusCodes.INTERNAL_SERVER_ERROR) {
     logger.error(normalized.message, context);
   } else {
     logger.warn(normalized.message, context);

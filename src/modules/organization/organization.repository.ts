@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import {
   organizations,
@@ -37,8 +37,14 @@ export class OrganizationRepository {
     return organization;
   }
 
-  async findAll(): Promise<OrganizationEntity[]> {
-    return this.database.client.select().from(organizations);
+  async findAll(filters?: { orgIds?: string[] }): Promise<OrganizationEntity[]> {
+    let query = this.database.client.select().from(organizations).$dynamic();
+    
+    if (filters?.orgIds && filters.orgIds.length > 0) {
+      query = query.where(inArray(organizations.id, filters.orgIds));
+    }
+    
+    return query;
   }
 
   async update(

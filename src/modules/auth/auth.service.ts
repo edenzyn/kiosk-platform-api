@@ -12,6 +12,7 @@ import {
 } from "../../shared/utils/password.helper";
 import { UserTypeEnums } from "../../shared/enums/UserTypeEnums";
 import { AppError } from "../../shared/errors/app-error";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 
@@ -40,7 +41,7 @@ export class AuthService {
     );
     if (existingUserByEmail) {
       throw new AppError("Email is already registered", {
-        statusCode: 409,
+        statusCode: HttpStatusCodes.CONFLICT,
       });
     }
 
@@ -63,14 +64,14 @@ export class AuthService {
 
     if (!user) {
       throw new AppError("Invalid email or password", {
-        statusCode: 401,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
       });
     }
 
     const isMatch = await comparePassword(dto.password, user.password);
     if (!isMatch) {
       throw new AppError("Invalid email or password", {
-        statusCode: 401,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
       });
     }
 

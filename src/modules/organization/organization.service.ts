@@ -5,14 +5,14 @@ import type {
   ListOrganizationResponseDto,
   UpdateOrganizationResponseDto,
   DeleteOrganizationResponseDto,
-} from "./organization.types";
-import type {
   CreateOrganizationRequestDto,
   GetOrganizationRequestDto,
+  ListOrganizationRequestDto,
   UpdateOrganizationRequestDto,
   DeleteOrganizationRequestDto,
-} from "./organization.validator";
+} from "./organization.types";
 import { AppError } from "../../shared/errors/app-error";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 
 export class OrganizationService {
@@ -27,7 +27,7 @@ export class OrganizationService {
     const existingOrg = await this.organizationRepository.findByName(dto.name);
     if (existingOrg) {
       throw new AppError("Organization name already exists", {
-        statusCode: 409,
+        statusCode: HttpStatusCodes.CONFLICT,
       });
     }
 
@@ -46,14 +46,19 @@ export class OrganizationService {
     const organization = await this.organizationRepository.findById(dto.id);
     if (!organization) {
       throw new AppError("Organization not found", {
-        statusCode: 404,
+        statusCode: HttpStatusCodes.NOT_FOUND,
       });
     }
     return { organization };
   }
 
-  async list(): Promise<ListOrganizationResponseDto> {
-    const organizations = await this.organizationRepository.findAll();
+  async list(
+    dto: ListOrganizationRequestDto,
+  ): Promise<ListOrganizationResponseDto> {
+    const filters = {
+      orgIds: dto.orgIds,
+    };
+    const organizations = await this.organizationRepository.findAll(filters);
     return { organizations };
   }
 
@@ -64,7 +69,7 @@ export class OrganizationService {
     const existingOrg = await this.organizationRepository.findById(dto.id);
     if (!existingOrg) {
       throw new AppError("Organization not found", {
-        statusCode: 404,
+        statusCode: HttpStatusCodes.NOT_FOUND,
       });
     }
 
@@ -74,7 +79,7 @@ export class OrganizationService {
       );
       if (nameConflict) {
         throw new AppError("Organization name already exists", {
-          statusCode: 409,
+          statusCode: HttpStatusCodes.CONFLICT,
         });
       }
     }
@@ -93,7 +98,7 @@ export class OrganizationService {
     const existingOrg = await this.organizationRepository.findById(dto.id);
     if (!existingOrg) {
       throw new AppError("Organization not found", {
-        statusCode: 404,
+        statusCode: HttpStatusCodes.NOT_FOUND,
       });
     }
 

@@ -1,47 +1,26 @@
-import { z } from "zod";
+import * as Yup from "yup";
+import { stringToArray } from "../../shared/validators/yup.transformer";
 
 export class OrganizationValidator {
-  static readonly create = z
-    .object({
-      name: z.string().trim().min(2).max(255),
-    })
-    .strict();
+  static readonly create = Yup.object({
+    name: Yup.string().trim().min(2).max(255).required(),
+  }).noUnknown();
 
-  static readonly getById = z
-    .object({
-      id: z.string().uuid({ message: "Invalid organization ID" }),
-    })
-    .strict();
+  static readonly getById = Yup.object({
+    id: Yup.string().uuid("Invalid organization ID").required(),
+  }).noUnknown();
 
-  static readonly list = z.object({}).strict(); // Empty for now, but can add pagination/filtering later
+  static readonly list = Yup.object({
+    orgIds: stringToArray().of(Yup.string().uuid("Invalid organization ID").required()).optional(),
+  }).noUnknown();
 
-  static readonly update = z
-    .object({
-      id: z.string().uuid({ message: "Invalid organization ID" }),
-      name: z.string().trim().min(2).max(255).optional(),
-      isActive: z.boolean().optional(),
-    })
-    .strict();
+  static readonly update = Yup.object({
+    id: Yup.string().uuid("Invalid organization ID").required(),
+    name: Yup.string().trim().min(2).max(255),
+    isActive: Yup.boolean(),
+  }).noUnknown();
 
-  static readonly delete = z
-    .object({
-      id: z.string().uuid({ message: "Invalid organization ID" }),
-    })
-    .strict();
+  static readonly delete = Yup.object({
+    id: Yup.string().uuid("Invalid organization ID").required(),
+  }).noUnknown();
 }
-
-export type CreateOrganizationRequestDto = z.infer<
-  typeof OrganizationValidator.create
->;
-export type GetOrganizationRequestDto = z.infer<
-  typeof OrganizationValidator.getById
->;
-export type ListOrganizationRequestDto = z.infer<
-  typeof OrganizationValidator.list
->;
-export type UpdateOrganizationRequestDto = z.infer<
-  typeof OrganizationValidator.update
->;
-export type DeleteOrganizationRequestDto = z.infer<
-  typeof OrganizationValidator.delete
->;

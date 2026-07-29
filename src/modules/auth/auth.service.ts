@@ -63,14 +63,14 @@ export class AuthService {
     const user = await this.authRepository.findByEmail(dto.email);
 
     if (!user) {
-      throw new AppError("Invalid email or password", {
+      throw new AppError("Invalid Credentials", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
       });
     }
 
     const isMatch = await comparePassword(dto.password, user.password);
     if (!isMatch) {
-      throw new AppError("Invalid email or password", {
+      throw new AppError("Invalid Credentials", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
       });
     }

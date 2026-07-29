@@ -1,4 +1,4 @@
 export enum UserPermissions {
-  PLATFORM_READ = "platform:read",
-  PLATFORM_WRITE = "platform:write",
+  ALL_READ = "all:read",
+  ALL_WRITE = "all:write",
 }

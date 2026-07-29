@@ -12,16 +12,16 @@ export async function runRbacSeeds() {
 
   console.log("Seeding RBAC...");
 
-  // 1. Create Platform Write permission
+  // 1. Create ALL_WRITE permission
   const [platformWritePermission] = await db
     .insert(permissions)
     .values({
-      key: UserPermissions.PLATFORM_WRITE,
+      key: UserPermissions.ALL_WRITE,
       // orgId and branchId are null by default because we made them nullable
     })
     .returning();
 
-  console.log("Created permission: platform:write");
+  console.log("Created permission: all:write");
 
   // 2. Create Platform Owner Role
   const [platformOwnerRole] = await db
@@ -42,7 +42,7 @@ export async function runRbacSeeds() {
     permissionId: platformWritePermission?.id!,
   });
 
-  console.log("Mapped platform:write to Platform Owner role");
+  console.log("Mapped all:write to Platform Owner role");
 
   // 4. Map a demo user ID (assuming standard uuid for demo)
   const demoUserId = "7d36cbd5-d5b0-4e15-89de-d911c7ab04fd"; // Hardcoded from your app.ts console.log token payload earlier, or arbitrary

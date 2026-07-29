@@ -3,10 +3,10 @@ import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type {
-  CreateRoleDto,
-  CreatePermissionDto,
-  CreatePermissionMapperDto,
-  CreateUserRoleMapperDto,
+  CreateRoleRequestDto,
+  CreatePermissionRequestDto,
+  CreatePermissionMapperRequestDto,
+  CreateUserRoleMapperRequestDto,
 } from "./rbac.types";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 
@@ -20,10 +20,10 @@ export class RbacController {
     });
 
     const role = await this.rbacService.createRole(
-      data as CreateRoleDto,
+      data as Omit<CreateRoleRequestDto, "createdBy">,
       req.user as UserTokenDto,
     );
-    res.status(HttpStatusCodes.CREATED).json(role);
+    res.status(HttpStatusCodes.CREATED).json({ role });
   };
 
   createPermission = async (req: Request, res: Response): Promise<void> => {
@@ -33,10 +33,10 @@ export class RbacController {
     });
 
     const permission = await this.rbacService.createPermission(
-      data as Omit<CreatePermissionDto, "createdBy">,
+      data as Omit<CreatePermissionRequestDto, "createdBy">,
       req.user as UserTokenDto,
     );
-    res.status(HttpStatusCodes.CREATED).json(permission);
+    res.status(HttpStatusCodes.CREATED).json({ permission });
   };
 
   createPermissionMapper = async (
@@ -49,10 +49,10 @@ export class RbacController {
     });
 
     const mapper = await this.rbacService.createPermissionMapper(
-      data as Omit<CreatePermissionMapperDto, "createdBy">,
+      data as Omit<CreatePermissionMapperRequestDto, "createdBy">,
       req.user as UserTokenDto,
     );
-    res.status(HttpStatusCodes.CREATED).json(mapper);
+    res.status(HttpStatusCodes.CREATED).json({ mapper });
   };
 
   createUserRoleMapper = async (req: Request, res: Response): Promise<void> => {
@@ -62,9 +62,9 @@ export class RbacController {
     });
 
     const mapper = await this.rbacService.createUserRoleMapper(
-      data as Omit<CreateUserRoleMapperDto, "createdBy">,
+      data as Omit<CreateUserRoleMapperRequestDto, "createdBy">,
       req.user as UserTokenDto,
     );
-    res.status(HttpStatusCodes.CREATED).json(mapper);
+    res.status(HttpStatusCodes.CREATED).json({ mapper });
   };
 }

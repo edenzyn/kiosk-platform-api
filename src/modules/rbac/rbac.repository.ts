@@ -1,5 +1,7 @@
+import { eq, and, or, isNull } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { PermissionStatusEnum } from "../../shared/enums/rbac/permission-status.enum";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
   permissions,
@@ -14,16 +16,17 @@ import {
   type UserRoleMapperEntity,
 } from "./schemas/user-roles-mapper.schema";
 import type {
-  CreateRoleDto,
-  CreatePermissionDto,
-  CreatePermissionMapperDto,
-  CreateUserRoleMapperDto,
+  CreateRoleRequestDto,
+  CreatePermissionRequestDto,
+  CreatePermissionMapperRequestDto,
+  CreateUserRoleMapperRequestDto,
+  GetUserPermissionsRequestDto,
 } from "./rbac.types";
 
 export class RbacRepository {
   constructor(private readonly database: Database) {}
 
-  async createRole(data: CreateRoleDto): Promise<RoleEntity> {
+  async createRole(data: CreateRoleRequestDto): Promise<RoleEntity> {
     const [role] = await this.database.client
       .insert(roles)
       .values({
@@ -38,14 +41,15 @@ export class RbacRepository {
     return role;
   }
 
-  async createPermission(data: CreatePermissionDto): Promise<PermissionEntity> {
+  async createPermission(
+    data: CreatePermissionRequestDto,
+  ): Promise<PermissionEntity> {
     const [permission] = await this.database.client
       .insert(permissions)
       .values({
         key: data.key,
         organizationId: data.organizationId ?? null,
         branchId: data.branchId ?? null,
-        status: data.status ?? PermissionStatusEnum.ENABLED,
         createdBy: data.createdBy,
       })
       .returning();
@@ -54,7 +58,7 @@ export class RbacRepository {
   }
 
   async createPermissionMapper(
-    data: CreatePermissionMapperDto,
+    data: CreatePermissionMapperRequestDto,
   ): Promise<PermissionMapperEntity> {
     const [mapper] = await this.database.client
       .insert(permissionsMapper)
@@ -70,7 +74,7 @@ export class RbacRepository {
   }
 
   async createUserRoleMapper(
-    data: CreateUserRoleMapperDto,
+    data: CreateUserRoleMapperRequestDto,
   ): Promise<UserRoleMapperEntity> {
     const [mapper] = await this.database.client
       .insert(userRolesMapper)
@@ -82,5 +86,69 @@ export class RbacRepository {
       .returning();
     if (!mapper) throw new Error("Failed to create user role mapper");
     return mapper;
+  }
+
+  async getUserPermissions(
+    data: GetUserPermissionsRequestDto,
+  ): Promise<Set<string>> {
+    const orgCondition = data.organizationId
+      ? or(
+          eq(permissions.organizationId, data.organizationId),
+          isNull(permissions.organizationId),
+        )
+      : isNull(permissions.organizationId);
+
+    const branchCondition = data.branchId
+      ? or(
+          eq(permissions.branchId, data.branchId),
+          isNull(permissions.branchId),
+        )
+      : isNull(permissions.branchId);
+
+    const directPerms = await this.database.client
+      .select({ key: permissions.key })
+      .from(permissions)
+      .innerJoin(
+        permissionsMapper,
+        eq(permissions.id, permissionsMapper.permissionId),
+      )
+      .where(
+        and(
+          eq(permissionsMapper.entityType, PermissionEntityType.USER),
+          eq(permissionsMapper.entityId, data.userId),
+          eq(permissions.status, PermissionStatusEnum.ENABLED),
+          orgCondition,
+          branchCondition,
+        ),
+      );
+
+    const rolePerms = await this.database.client
+      .select({ key: permissions.key })
+      .from(permissions)
+      .innerJoin(
+        permissionsMapper,
+        eq(permissions.id, permissionsMapper.permissionId),
+      )
+      .innerJoin(
+        userRolesMapper,
+        eq(userRolesMapper.roleId, permissionsMapper.entityId),
+      )
+      .innerJoin(roles, eq(roles.id, userRolesMapper.roleId))
+      .where(
+        and(
+          eq(permissionsMapper.entityType, PermissionEntityType.ROLE),
+          eq(userRolesMapper.userId, data.userId),
+          eq(permissions.status, PermissionStatusEnum.ENABLED),
+          eq(roles.isActive, true),
+          orgCondition,
+          branchCondition,
+        ),
+      );
+
+    const allPerms = new Set<string>();
+    directPerms.forEach((p) => allPerms.add(p.key));
+    rolePerms.forEach((p) => allPerms.add(p.key));
+
+    return allPerms;
   }
 }

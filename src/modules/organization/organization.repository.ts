@@ -21,49 +21,25 @@ export class OrganizationRepository {
     return organization;
   }
 
-  async findById(id: string): Promise<OrganizationEntity | undefined> {
-    const [organization] = await this.database.client
-      .select()
-      .from(organizations)
-      .where(eq(organizations.id, id));
-    return organization;
-  }
-
   async findByName(name: string): Promise<OrganizationEntity | undefined> {
     const [organization] = await this.database.client
       .select()
       .from(organizations)
-      .where(eq(organizations.name, name));
+      .where(eq(organizations.name, name))
+      .limit(1);
+
     return organization;
   }
 
-  async findAll(filters?: { orgIds?: string[] }): Promise<OrganizationEntity[]> {
+  async findAll(filters?: {
+    orgIds?: string[];
+  }): Promise<OrganizationEntity[]> {
     let query = this.database.client.select().from(organizations).$dynamic();
-    
+
     if (filters?.orgIds && filters.orgIds.length > 0) {
       query = query.where(inArray(organizations.id, filters.orgIds));
     }
-    
+
     return query;
-  }
-
-  async update(
-    id: string,
-    data: Partial<CreateOrganizationEntity>,
-  ): Promise<OrganizationEntity | undefined> {
-    const [organization] = await this.database.client
-      .update(organizations)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(organizations.id, id))
-      .returning();
-    return organization;
-  }
-
-  async delete(id: string): Promise<boolean> {
-    const [deleted] = await this.database.client
-      .delete(organizations)
-      .where(eq(organizations.id, id))
-      .returning({ id: organizations.id });
-    return !!deleted;
   }
 }

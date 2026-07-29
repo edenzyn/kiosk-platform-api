@@ -5,6 +5,7 @@ import { notFoundHandler } from "./middleware/not-found.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import organizationRoutes from "./modules/organization/organization.routes";
+import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
 import { swaggerDocument } from "./shared/utils/swagger";
@@ -80,6 +81,7 @@ export class App {
       `${this.apiV1Prefix}/pvt/organizations`,
       organizationRoutes,
     );
+    this.instance.use(`${this.apiV1Prefix}/pvt/branches`, branchRoutes);
   }
 
   private configureErrorHandling(): void {

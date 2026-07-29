@@ -6,6 +6,8 @@ import { env } from "../../config/env";
 import { SecurityTokenEnums } from "../../shared/enums/core/SecurityTokenType";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import ms from "ms";
+import { ErrorCodes } from "../../shared/enums/core/ErrorCodes";
+import { AppError } from "../../shared/errors/app-error";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -25,6 +27,35 @@ export class AuthController {
       stripUnknown: true,
     });
     const result = await this.authService.login(data);
+
+    setCookie(
+      res,
+      SecurityTokenEnums.ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
+    res.json({ user: result.user });
+  };
+
+  refresh = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
+
+    if (!refreshToken) {
+      throw new AppError("No refresh token provided", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    const result = await this.authService.refresh(refreshToken);
 
     setCookie(
       res,

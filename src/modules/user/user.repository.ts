@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { users, CreateUserEntity, UserEntity } from "../user/user.schema";
 
-export class AuthRepository {
+export class UserRepository {
   constructor(
     private readonly database: Database,
     private readonly userSchema: typeof users,
@@ -22,6 +22,15 @@ export class AuthRepository {
       .select()
       .from(this.userSchema)
       .where(eq(this.userSchema.mobile, mobile))
+      .limit(1);
+    return user;
+  }
+
+  async findById(id: string): Promise<UserEntity | undefined> {
+    const [user] = await this.database.client
+      .select()
+      .from(this.userSchema)
+      .where(eq(this.userSchema.id, id))
       .limit(1);
     return user;
   }

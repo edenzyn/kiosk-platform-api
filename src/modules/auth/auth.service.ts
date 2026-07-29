@@ -1,23 +1,24 @@
-import type { AuthRepository } from "./auth.repository";
+import type { UserRepository } from "../user/user.repository";
 import type {
   LoginResult,
   RegisterUserResponseDto,
   LoginUserRequestDto,
   RegisterUserRequestDto,
 } from "./auth.types";
-import { generateToken } from "../../shared/utils/jwt.helper";
+import { generateToken, verifyToken } from "../../shared/utils/jwt.helper";
 import {
   hashPassword,
   comparePassword,
 } from "../../shared/utils/password.helper";
 import { UserTypeEnums } from "../../shared/enums/UserTypeEnums";
 import { AppError } from "../../shared/errors/app-error";
+import { ErrorCodes } from "../../shared/enums/core/ErrorCodes";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 
 export class AuthService {
-  constructor(private readonly authRepository: AuthRepository) {}
+  constructor(private readonly userRepository: UserRepository) {}
 
   private _generateAuthTokens(userId: string) {
     const accessToken = generateToken({ sub: userId }, env.JWT_ACCESS_SECRET, {
@@ -36,7 +37,7 @@ export class AuthService {
   async register(
     dto: RegisterUserRequestDto,
   ): Promise<RegisterUserResponseDto> {
-    const existingUserByEmail = await this.authRepository.findByEmail(
+    const existingUserByEmail = await this.userRepository.findByEmail(
       dto.email,
     );
     if (existingUserByEmail) {
@@ -47,7 +48,7 @@ export class AuthService {
 
     const passwordHash = await hashPassword(dto.password);
 
-    const user = await this.authRepository.create({
+    const user = await this.userRepository.create({
       name: dto.name,
       email: dto.email,
       password: passwordHash,
@@ -60,7 +61,7 @@ export class AuthService {
   }
 
   async login(dto: LoginUserRequestDto): Promise<LoginResult> {
-    const user = await this.authRepository.findByEmail(dto.email);
+    const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
       throw new AppError("Invalid Credentials", {
@@ -79,5 +80,32 @@ export class AuthService {
     const tokens = this._generateAuthTokens(user.id);
 
     return { user: userWithoutPassword, tokens };
+  }
+
+  async refresh(refreshToken: string): Promise<LoginResult> {
+    try {
+      const decoded = verifyToken<{ sub: string }>(
+        refreshToken,
+        env.JWT_REFRESH_SECRET,
+      );
+
+      const user = await this.userRepository.findById(decoded.sub);
+      if (!user) {
+        throw new AppError("Invalid or expired refresh token", {
+          statusCode: HttpStatusCodes.UNAUTHORIZED,
+          code: ErrorCodes.UNAUTHORIZED,
+        });
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      const tokens = this._generateAuthTokens(user.id);
+
+      return { user: userWithoutPassword, tokens };
+    } catch (error) {
+      throw new AppError("Invalid or expired refresh token", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
   }
 }

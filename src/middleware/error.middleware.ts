@@ -18,10 +18,13 @@ export const errorHandler: ErrorRequestHandler = (
       ? new AppError("Request validation failed", {
           statusCode: HttpStatusCodes.BAD_REQUEST,
           code: ErrorCodes.VALIDATION_ERROR,
-          details: error.inner.reduce((acc, err) => {
-            if (err.path) acc[err.path] = err.message;
-            return acc;
-          }, {} as Record<string, string>),
+          details: error.inner.reduce(
+            (acc, err) => {
+              if (err.path) acc[err.path] = err.message;
+              return acc;
+            },
+            {} as Record<string, string>,
+          ),
         })
       : error instanceof AppError
         ? error

@@ -10,19 +10,35 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   register = async (req: Request, res: Response): Promise<void> => {
-    const dto = AuthValidator.register.parse(req.body);
-    const result = await this.authService.register(dto);
+    const data = await AuthValidator.register.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.register(data);
     res.status(201).json(result);
   };
 
   login = async (req: Request, res: Response): Promise<void> => {
-    const dto = AuthValidator.login.parse(req.body);
-    const result = await this.authService.login(dto);
-    
-    setCookie(res, SecurityTokenEnums.ACCESS_TOKEN, result.tokens.accessToken, ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue), { httpOnly: false });
-    setCookie(res, SecurityTokenEnums.REFRESH_TOKEN, result.tokens.refreshToken, ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue));
+    const data = await AuthValidator.login.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.login(data);
 
-    
+    setCookie(
+      res,
+      SecurityTokenEnums.ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
     res.json({ user: result.user });
   };
 }

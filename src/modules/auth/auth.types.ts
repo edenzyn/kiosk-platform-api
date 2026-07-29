@@ -18,11 +18,11 @@ export interface RegisterUserResponseDto {
   user: Omit<UserEntity, "password">;
 }
 
-export interface LoginInput {
+export interface LoginUserRequestDto {
   email: string;
   password: string;
 }
 
-export interface RegisterInput extends LoginInput {
+export interface RegisterUserRequestDto extends LoginUserRequestDto {
   name: string;
 }

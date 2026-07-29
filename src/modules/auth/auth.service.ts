@@ -1,9 +1,10 @@
 import type { AuthRepository } from "./auth.repository";
-import type { LoginResult, RegisterUserResponseDto } from "./auth.types";
 import type {
+  LoginResult,
+  RegisterUserResponseDto,
   LoginUserRequestDto,
   RegisterUserRequestDto,
-} from "./auth.validator";
+} from "./auth.types";
 import { generateToken } from "../../shared/utils/jwt.helper";
 import {
   hashPassword,

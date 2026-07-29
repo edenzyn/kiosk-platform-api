@@ -1,5 +1,5 @@
 import type { ErrorRequestHandler } from "express";
-import { ZodError } from "zod";
+import { ValidationError } from "yup";
 import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
 import { logger } from "../shared/utils/logger";
@@ -13,11 +13,14 @@ export const errorHandler: ErrorRequestHandler = (
 ): void => {
   if (env.NODE_ENV === "development") console.log(error);
   const normalized =
-    error instanceof ZodError
+    error instanceof ValidationError
       ? new AppError("Request validation failed", {
           statusCode: 400,
           code: ErrorCodes.VALIDATION_ERROR,
-          details: error.flatten(),
+          details: error.inner.reduce((acc, err) => {
+            if (err.path) acc[err.path] = err.message;
+            return acc;
+          }, {} as Record<string, string>),
         })
       : error instanceof AppError
         ? error

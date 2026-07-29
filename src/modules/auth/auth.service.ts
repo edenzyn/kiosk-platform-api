@@ -20,12 +20,12 @@ import { env } from "../../config/env";
 export class AuthService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  private _generateAuthTokens(userId: string) {
-    const accessToken = generateToken({ sub: userId }, env.JWT_ACCESS_SECRET, {
+  private _generateAuthTokens(id: string) {
+    const accessToken = generateToken({ user: { id } }, env.JWT_ACCESS_SECRET, {
       expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],
     });
     const refreshToken = generateToken(
-      { sub: userId },
+      { user: { id } },
       env.JWT_REFRESH_SECRET,
       {
         expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
@@ -84,12 +84,19 @@ export class AuthService {
 
   async refresh(refreshToken: string): Promise<LoginResult> {
     try {
-      const decoded = verifyToken<{ sub: string }>(
+      const decoded = verifyToken<{ user?: { id: string } }>(
         refreshToken,
         env.JWT_REFRESH_SECRET,
       );
 
-      const user = await this.userRepository.findById(decoded.sub);
+      if (!decoded.user?.id) {
+        throw new AppError("Invalid or expired refresh token", {
+          statusCode: HttpStatusCodes.UNAUTHORIZED,
+          code: ErrorCodes.UNAUTHORIZED,
+        });
+      }
+
+      const user = await this.userRepository.findById(decoded.user.id);
       if (!user) {
         throw new AppError("Invalid or expired refresh token", {
           statusCode: HttpStatusCodes.UNAUTHORIZED,
@@ -98,9 +105,19 @@ export class AuthService {
       }
 
       const { password, ...userWithoutPassword } = user;
-      const tokens = this._generateAuthTokens(user.id);
 
-      return { user: userWithoutPassword, tokens };
+      const accessToken = generateToken(
+        { user: { id: user.id } },
+        env.JWT_ACCESS_SECRET,
+        {
+          expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+        },
+      );
+
+      return {
+        user: userWithoutPassword,
+        tokens: { accessToken, refreshToken },
+      };
     } catch (error) {
       throw new AppError("Invalid or expired refresh token", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,

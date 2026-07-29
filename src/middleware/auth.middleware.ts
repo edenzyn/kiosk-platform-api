@@ -6,6 +6,7 @@ import { SecurityTokenEnums } from "../shared/enums/core/SecurityTokenType";
 import type jwt from "jsonwebtoken";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
+import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 
 declare global {
   namespace Express {
@@ -22,46 +23,40 @@ export function authMiddleware(
 ): void {
   try {
     let token: string | undefined;
-
     if (req.cookies && req.cookies[SecurityTokenEnums.ACCESS_TOKEN]) {
       token = req.cookies[SecurityTokenEnums.ACCESS_TOKEN];
-      console.log("from cookie");
     } else if (
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer ")
     ) {
       token = req.headers.authorization.split(" ")[1];
-      console.log("from header");
     }
 
     if (!token) {
       throw new AppError("Authentication token is missing", {
-        statusCode: 401,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
-    const decoded = verifyToken<jwt.JwtPayload & { id?: string }>(
+    const decoded = verifyToken<jwt.JwtPayload & { user?: UserTokenDto }>(
       token,
       env.JWT_ACCESS_SECRET,
     );
-    console.log({ decoded });
 
-    const userId = decoded.id;
-
-    if (!userId) {
+    if (!decoded?.user?.id) {
       throw new AppError("Invalid token payload", {
-        statusCode: 401,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
-    req.user = { id: userId };
+    req.user = decoded?.user;
     next();
   } catch (error) {
     next(
       new AppError("Invalid or expired token", {
-        statusCode: 401,
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       }),
     );

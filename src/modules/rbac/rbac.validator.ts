@@ -1,5 +1,5 @@
 import * as yup from "yup";
-import { PermissionEntityType } from "../../shared/enums/rbac/PermissionEnums";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 
 export const RbacValidator = {
   createRole: yup.object({

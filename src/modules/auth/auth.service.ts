@@ -10,9 +10,9 @@ import {
   hashPassword,
   comparePassword,
 } from "../../shared/utils/password.helper";
-import { UserTypeEnums } from "../../shared/enums/UserTypeEnums";
+import { UserTypeEnums } from "../../shared/enums/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/ErrorCodes";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";

@@ -1,7 +1,7 @@
 import type { UserRepository } from "./user.repository";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/ErrorCodes";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 
 export class UserService {

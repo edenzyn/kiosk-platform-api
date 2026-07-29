@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { organizations } from "../../organization/organization.schema";
 import { branches } from "../../branch/branch.schema";
-import { PermissionStatusEnum } from "../../../shared/enums/rbac/PermissionEnums";
+import { PermissionStatusEnum } from "../../../shared/enums/rbac/permission-status.enum";
 import { users } from "../../user/user.schema";
 
 export const permissions = pgTable("permissions", {

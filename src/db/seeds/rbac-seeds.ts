@@ -1,9 +1,10 @@
 import { initDatabase } from "../../config/db";
-import { PermissionEntityType } from "../../shared/enums/rbac/PermissionEnums";
 import { permissions } from "../../modules/rbac/schemas/permission.schema";
 import { permissionsMapper } from "../../modules/rbac/schemas/role-permission-mapper.schema";
 import { roles } from "../../modules/rbac/schemas/role.schema";
 import { userRolesMapper } from "../../modules/rbac/schemas/user-roles-mapper.schema";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 
 export async function runRbacSeeds() {
   const dbConfig = initDatabase();
@@ -15,7 +16,7 @@ export async function runRbacSeeds() {
   const [platformWritePermission] = await db
     .insert(permissions)
     .values({
-      key: "platform:write",
+      key: UserPermissions.PLATFORM_WRITE,
       // orgId and branchId are null by default because we made them nullable
     })
     .returning();
@@ -44,7 +45,7 @@ export async function runRbacSeeds() {
   console.log("Mapped platform:write to Platform Owner role");
 
   // 4. Map a demo user ID (assuming standard uuid for demo)
-  const demoUserId = "204bc939-3d9a-460e-96cb-1d1faa4b30a6"; // Hardcoded from your app.ts console.log token payload earlier, or arbitrary
+  const demoUserId = "7d36cbd5-d5b0-4e15-89de-d911c7ab04fd"; // Hardcoded from your app.ts console.log token payload earlier, or arbitrary
 
   await db.insert(userRolesMapper).values({
     userId: demoUserId,

@@ -2,11 +2,11 @@ import type { Request, Response, NextFunction } from "express";
 import { verifyToken } from "../shared/utils/jwt.helper";
 import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
-import { SecurityTokenEnums } from "../shared/enums/core/SecurityTokenType";
 import type jwt from "jsonwebtoken";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
-import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
+import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 
 declare global {
   namespace Express {

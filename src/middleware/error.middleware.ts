@@ -3,8 +3,8 @@ import { ValidationError } from "yup";
 import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
 import { logger } from "../shared/utils/logger";
-import { ErrorCodes } from "../shared/enums/core/ErrorCodes";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,

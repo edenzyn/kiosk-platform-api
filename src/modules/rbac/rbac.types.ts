@@ -1,4 +1,5 @@
-import { PermissionEntityType, PermissionStatusEnum } from "../../shared/enums/rbac/PermissionEnums";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { PermissionStatusEnum } from "../../shared/enums/rbac/permission-status.enum";
 
 export interface CreateRoleDto {
   organizationId?: string | null;

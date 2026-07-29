@@ -1,14 +1,23 @@
 import type { Database } from "../../config/db";
-import { PermissionStatusEnum } from "../../shared/enums/rbac/PermissionEnums";
+import { PermissionStatusEnum } from "../../shared/enums/rbac/permission-status.enum";
 import { roles, type RoleEntity } from "./schemas/role.schema";
-import { permissions, type PermissionEntity } from "./schemas/permission.schema";
-import { permissionsMapper, type PermissionMapperEntity } from "./schemas/role-permission-mapper.schema";
-import { userRolesMapper, type UserRoleMapperEntity } from "./schemas/user-roles-mapper.schema";
-import type { 
-  CreateRoleDto, 
-  CreatePermissionDto, 
-  CreatePermissionMapperDto, 
-  CreateUserRoleMapperDto 
+import {
+  permissions,
+  type PermissionEntity,
+} from "./schemas/permission.schema";
+import {
+  permissionsMapper,
+  type PermissionMapperEntity,
+} from "./schemas/role-permission-mapper.schema";
+import {
+  userRolesMapper,
+  type UserRoleMapperEntity,
+} from "./schemas/user-roles-mapper.schema";
+import type {
+  CreateRoleDto,
+  CreatePermissionDto,
+  CreatePermissionMapperDto,
+  CreateUserRoleMapperDto,
 } from "./rbac.types";
 
 export class RbacRepository {
@@ -44,7 +53,9 @@ export class RbacRepository {
     return permission;
   }
 
-  async createPermissionMapper(data: CreatePermissionMapperDto): Promise<PermissionMapperEntity> {
+  async createPermissionMapper(
+    data: CreatePermissionMapperDto,
+  ): Promise<PermissionMapperEntity> {
     const [mapper] = await this.database.client
       .insert(permissionsMapper)
       .values({
@@ -58,7 +69,9 @@ export class RbacRepository {
     return mapper;
   }
 
-  async createUserRoleMapper(data: CreateUserRoleMapperDto): Promise<UserRoleMapperEntity> {
+  async createUserRoleMapper(
+    data: CreateUserRoleMapperDto,
+  ): Promise<UserRoleMapperEntity> {
     const [mapper] = await this.database.client
       .insert(userRolesMapper)
       .values({

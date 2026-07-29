@@ -14,10 +14,8 @@ import { users } from "../../user/user.schema";
 export const roles = pgTable("roles", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id")
-    .notNull()
     .references((): AnyPgColumn => organizations.id),
   branchId: uuid("branch_id")
-    .notNull()
     .references((): AnyPgColumn => branches.id),
   name: varchar("name", { length: 255 }),
   description: text("description"),

@@ -3,6 +3,7 @@ import { initDatabase } from "./db";
 import { AuthContainer } from "../modules/auth/auth.container";
 import { UserContainer } from "../modules/user/user.container";
 import { OrganizationContainer } from "../modules/organization/organization.container";
+import { RbacContainer } from "../modules/rbac/rbac.container";
 
 export const container = createContainer({
   injectionMode: InjectionMode.CLASSIC,
@@ -16,3 +17,4 @@ container.register({
 UserContainer.register(container);
 AuthContainer.register(container);
 OrganizationContainer.register(container);
+RbacContainer.register(container);

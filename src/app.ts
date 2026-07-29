@@ -5,6 +5,7 @@ import { notFoundHandler } from "./middleware/not-found.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import organizationRoutes from "./modules/organization/organization.routes";
+import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
 import { swaggerDocument } from "./shared/utils/swagger";
 import { env } from "./config/env";
@@ -74,6 +75,7 @@ export class App {
 
     // Private routes
     this.instance.use(`${this.apiV1Prefix}/pvt/users`, userRoutes);
+    this.instance.use(`${this.apiV1Prefix}/pvt/rbac`, rbacRoutes);
     this.instance.use(
       `${this.apiV1Prefix}/pvt/organizations`,
       organizationRoutes,

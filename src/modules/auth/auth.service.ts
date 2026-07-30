@@ -20,12 +20,25 @@ import { env } from "../../config/env";
 export class AuthService {
   constructor(private readonly userRepository: UserRepository) {}
 
-  private _generateAuthTokens(id: string) {
-    const accessToken = generateToken({ user: { id } }, env.JWT_ACCESS_SECRET, {
-      expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-    });
+  private _generateAuthTokens(
+    id: string,
+    organizationId?: string | null,
+    branchId?: string | null,
+  ) {
+    const userPayload = {
+      id,
+      ...(organizationId && { organizationId }),
+      ...(branchId && { branchId }),
+    };
+    const accessToken = generateToken(
+      { user: userPayload },
+      env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
     const refreshToken = generateToken(
-      { user: { id } },
+      { user: userPayload },
       env.JWT_REFRESH_SECRET,
       {
         expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
@@ -77,7 +90,11 @@ export class AuthService {
     }
 
     const { password, ...userWithoutPassword } = user;
-    const tokens = this._generateAuthTokens(user.id);
+    const tokens = this._generateAuthTokens(
+      user.id,
+      user.organizationId,
+      user.branchId,
+    );
 
     return { user: userWithoutPassword, tokens };
   }
@@ -107,7 +124,13 @@ export class AuthService {
       const { password, ...userWithoutPassword } = user;
 
       const accessToken = generateToken(
-        { user: { id: user.id } },
+        {
+          user: {
+            id: user.id,
+            ...(user.organizationId && { organizationId: user.organizationId }),
+            ...(user.branchId && { branchId: user.branchId }),
+          },
+        },
         env.JWT_ACCESS_SECRET,
         {
           expiresIn: env.JWT_ACCESS_EXPIRES_IN as jwt.SignOptions["expiresIn"],

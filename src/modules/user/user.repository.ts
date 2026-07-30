@@ -1,6 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { users, CreateUserEntity, UserEntity } from "../user/user.schema";
+import { organizations } from "../organization/organization.schema";
+import { branches } from "../branch/branch.schema";
 
 export class UserRepository {
   constructor(
@@ -45,5 +47,57 @@ export class UserRepository {
       throw new Error("Failed to create user");
     }
     return created;
+  }
+
+  async findByTenant(
+    organizationId?: string,
+    branchId?: string,
+  ): Promise<any[]> {
+    let condition;
+    if (organizationId && branchId) {
+      condition = and(
+        eq(this.userSchema.organizationId, organizationId),
+        eq(this.userSchema.branchId, branchId),
+      );
+    } else if (organizationId) {
+      condition = eq(this.userSchema.organizationId, organizationId);
+    } else if (branchId) {
+      condition = eq(this.userSchema.branchId, branchId);
+    }
+
+    const query = this.database.client
+      .select({
+        id: this.userSchema.id,
+        organizationId: this.userSchema.organizationId,
+        branchId: this.userSchema.branchId,
+        name: this.userSchema.name,
+        email: this.userSchema.email,
+        mobile: this.userSchema.mobile,
+        userType: this.userSchema.userType,
+        isActive: this.userSchema.isActive,
+        createdAt: this.userSchema.createdAt,
+        updatedAt: this.userSchema.updatedAt,
+        createdBy: this.userSchema.createdBy,
+        updatedBy: this.userSchema.updatedBy,
+        organization: {
+          id: organizations.id,
+          name: organizations.name,
+        },
+        branch: {
+          id: branches.id,
+          name: branches.name,
+        },
+      })
+      .from(this.userSchema)
+      .leftJoin(
+        organizations,
+        eq(this.userSchema.organizationId, organizations.id),
+      )
+      .leftJoin(branches, eq(this.userSchema.branchId, branches.id));
+
+    if (condition) {
+      return query.where(condition);
+    }
+    return query;
   }
 }

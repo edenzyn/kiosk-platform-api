@@ -8,7 +8,13 @@ const rbacController = container.resolve<RbacController>("rbacController");
 
 router.post("/roles", asyncHandler(rbacController.createRole));
 router.post("/permissions", asyncHandler(rbacController.createPermission));
-router.post("/permission-mappers", asyncHandler(rbacController.createPermissionMapper));
-router.post("/user-role-mappers", asyncHandler(rbacController.createUserRoleMapper));
+router.post(
+  "/permission-mappers",
+  asyncHandler(rbacController.createPermissionMapper),
+);
+router.post(
+  "/user-role-mappers",
+  asyncHandler(rbacController.createUserRoleMapper),
+);
 
 export default router;

@@ -5,6 +5,10 @@ import { roles } from "../../modules/rbac/schemas/role.schema";
 import { userRolesMapper } from "../../modules/rbac/schemas/user-roles-mapper.schema";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import { organizations } from "../../modules/organization/organization.schema";
+import { users } from "../../modules/user/user.schema";
+import { UserTypeEnums } from "../../shared/enums/user-type.enum";
+import bcrypt from "bcrypt";
 
 export async function runRbacSeeds() {
   const dbConfig = initDatabase();
@@ -12,49 +16,85 @@ export async function runRbacSeeds() {
 
   console.log("Seeding RBAC...");
 
-  // 1. Create ALL_WRITE permission
-  const [platformWritePermission] = await db
-    .insert(permissions)
+  // 1. Create Organization
+  const [demoOrg] = await db
+    .insert(organizations)
     .values({
-      key: UserPermissions.ALL_WRITE,
-      // new schema doesn't have orgId or branchId on permissions
-      description: "Super admin role for platform owners",
+      name: "Demo Organization",
     })
     .returning();
 
-  console.log("Created permission: all:write");
+  console.log(`Created Organization: ${demoOrg.id}`);
 
-  // 2. Create Platform Owner Role
-  const [platformOwnerRole] = await db
+  // 2. Create User
+  const passwordHash = await bcrypt.hash("Pass@123", 12);
+  const [demoUser] = await db
+    .insert(users)
+    .values({
+      name: "Org Admin User",
+      email: "admin@org.com",
+      password: passwordHash,
+      userType: UserTypeEnums.NORMAL, // Using the normal user type, RBAC handles permissions
+      organizationId: demoOrg.id,
+    })
+    .returning();
+
+  console.log(`Created User: ${demoUser.id}`);
+
+  // 3. Create Permissions
+  const [readPerm, writePerm] = await db
+    .insert(permissions)
+    .values([
+      {
+        key: UserPermissions.ORGANIZATION_READ,
+        description: "Read organization details",
+      },
+      {
+        key: UserPermissions.ORGANIZATION_WRITE,
+        description: "Write organization details",
+      },
+    ])
+    .returning();
+
+  console.log("Created permissions: organization:read, organization:write");
+
+  // 4. Create Role and link to Organization
+  const [orgAdminRole] = await db
     .insert(roles)
     .values({
-      name: "Platform Owner",
-      description: "Super admin role for platform owners",
-      // orgId and branchId are null
+      name: "Organization Admin",
+      description: "Admin role for the organization",
+      organizationId: demoOrg.id,
     })
     .returning();
 
-  console.log("Created role: Platform Owner");
+  console.log(`Created Role: ${orgAdminRole.id} for Organization`);
 
-  // 3. Map permission to Platform Owner role
-  await db.insert(permissionsMapper).values({
-    entityType: PermissionEntityType.ROLE,
-    entityId: platformOwnerRole?.id!,
-    permissionId: platformWritePermission?.id!,
-    organizationId: "00000000-0000-0000-0000-000000000000", // Dummy UUID since it's NOT NULL
-  });
+  // 5. Map permissions to Role
+  await db.insert(permissionsMapper).values([
+    {
+      entityType: PermissionEntityType.ROLE,
+      entityId: orgAdminRole.id,
+      permissionId: readPerm.id,
+      organizationId: demoOrg.id,
+    },
+    {
+      entityType: PermissionEntityType.ROLE,
+      entityId: orgAdminRole.id,
+      permissionId: writePerm.id,
+      organizationId: demoOrg.id,
+    },
+  ]);
 
-  console.log("Mapped all:write to Platform Owner role");
+  console.log("Mapped permissions to Role");
 
-  // 4. Map a demo user ID (assuming standard uuid for demo)
-  const demoUserId = "7d36cbd5-d5b0-4e15-89de-d911c7ab04fd"; // Hardcoded from your app.ts console.log token payload earlier, or arbitrary
-
+  // 6. Map Role to User
   await db.insert(userRolesMapper).values({
-    userId: demoUserId,
-    roleId: platformOwnerRole?.id!,
+    userId: demoUser.id,
+    roleId: orgAdminRole.id,
   });
 
-  console.log(`Assigned Platform Owner role to demo user: ${demoUserId}`);
+  console.log("Mapped Role to User");
 
   await dbConfig.close();
 }

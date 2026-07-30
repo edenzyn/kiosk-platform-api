@@ -1,20 +1,19 @@
 import type { Request, Response } from "express";
 import type { UserService } from "./user.service";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   checkAuth = async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
-      throw new AppError("Authentication required", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-        code: ErrorCodes.UNAUTHORIZED,
-      });
-    }
-    const result = await this.userService.checkAuth(req.user);
+    const userTokenData = req.user as UserTokenDto;
+    const result = await this.userService.checkAuth(userTokenData);
+    res.json(result);
+  };
+
+  getUsers = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const result = await this.userService.getUsers(userTokenData);
     res.json(result);
   };
 }

@@ -1,5 +1,5 @@
 {
-  "id": "327970ec-5553-4a23-abf4-2eb2d07c000e",
+  "id": "ba806846-c53a-449c-898a-f820de06efc2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -201,8 +201,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.permissions": {
-      "name": "permissions",
+    "public.permission_mapper": {
+      "name": "permission_mapper",
       "schema": "",
       "columns": {
         "id": {
@@ -212,11 +212,23 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "key": {
-          "name": "key",
-          "type": "varchar(255)",
+        "entity_type": {
+          "name": "entity_type",
+          "type": "smallint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permission_id": {
+          "name": "permission_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
         },
         "organization_id": {
           "name": "organization_id",
@@ -229,13 +241,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 1
         },
         "created_at": {
           "name": "created_at",
@@ -266,9 +271,22 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "permissions_organization_id_organizations_id_fk": {
-          "name": "permissions_organization_id_organizations_id_fk",
-          "tableFrom": "permissions",
+        "permission_mapper_permission_id_permissions_id_fk": {
+          "name": "permission_mapper_permission_id_permissions_id_fk",
+          "tableFrom": "permission_mapper",
+          "tableTo": "permissions",
+          "columnsFrom": [
+            "permission_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "permission_mapper_organization_id_organizations_id_fk": {
+          "name": "permission_mapper_organization_id_organizations_id_fk",
+          "tableFrom": "permission_mapper",
           "tableTo": "organizations",
           "columnsFrom": [
             "organization_id"
@@ -279,9 +297,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "permissions_branch_id_branches_id_fk": {
-          "name": "permissions_branch_id_branches_id_fk",
-          "tableFrom": "permissions",
+        "permission_mapper_branch_id_branches_id_fk": {
+          "name": "permission_mapper_branch_id_branches_id_fk",
+          "tableFrom": "permission_mapper",
           "tableTo": "branches",
           "columnsFrom": [
             "branch_id"
@@ -292,6 +310,98 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "permission_mapper_created_by_users_id_fk": {
+          "name": "permission_mapper_created_by_users_id_fk",
+          "tableFrom": "permission_mapper",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "permission_mapper_updated_by_users_id_fk": {
+          "name": "permission_mapper_updated_by_users_id_fk",
+          "tableFrom": "permission_mapper",
+          "tableTo": "users",
+          "columnsFrom": [
+            "updated_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.permissions": {
+      "name": "permissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "key": {
+          "name": "key",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_by": {
+          "name": "updated_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
         "permissions_created_by_users_id_fk": {
           "name": "permissions_created_by_users_id_fk",
           "tableFrom": "permissions",
@@ -329,84 +439,6 @@
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.permissions_mapper": {
-      "name": "permissions_mapper",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "permission_id": {
-          "name": "permission_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "permissions_mapper_permission_id_permissions_id_fk": {
-          "name": "permissions_mapper_permission_id_permissions_id_fk",
-          "tableFrom": "permissions_mapper",
-          "tableTo": "permissions",
-          "columnsFrom": [
-            "permission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "permissions_mapper_created_by_users_id_fk": {
-          "name": "permissions_mapper_created_by_users_id_fk",
-          "tableFrom": "permissions_mapper",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

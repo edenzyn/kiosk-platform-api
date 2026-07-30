@@ -1,6 +1,5 @@
 import { eq, and, or, isNull } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { PermissionStatusEnum } from "../../shared/enums/rbac/permission-status.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
@@ -8,9 +7,9 @@ import {
   type PermissionEntity,
 } from "./schemas/permission.schema";
 import {
-  permissionsMapper,
+  permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
-} from "./schemas/role-permission-mapper.schema";
+} from "./schemas/permission-mapper.schema";
 import {
   userRolesMapper,
   type UserRoleMapperEntity,
@@ -48,8 +47,7 @@ export class RbacRepository {
       .insert(permissions)
       .values({
         key: data.key,
-        organizationId: data.organizationId ?? null,
-        branchId: data.branchId ?? null,
+        description: data.description ?? null,
         createdBy: data.createdBy,
       })
       .returning();
@@ -66,6 +64,8 @@ export class RbacRepository {
         entityType: data.entityType,
         entityId: data.entityId,
         permissionId: data.permissionId,
+        organizationId: data.organizationId ?? null,
+        branchId: data.branchId ?? null,
         createdBy: data.createdBy,
       })
       .returning();
@@ -93,17 +93,17 @@ export class RbacRepository {
   ): Promise<Set<string>> {
     const orgCondition = data.organizationId
       ? or(
-          eq(permissions.organizationId, data.organizationId),
-          isNull(permissions.organizationId),
+          eq(permissionsMapper.organizationId, data.organizationId),
+          isNull(permissionsMapper.organizationId),
         )
-      : isNull(permissions.organizationId);
+      : isNull(permissionsMapper.organizationId);
 
     const branchCondition = data.branchId
       ? or(
-          eq(permissions.branchId, data.branchId),
-          isNull(permissions.branchId),
+          eq(permissionsMapper.branchId, data.branchId),
+          isNull(permissionsMapper.branchId),
         )
-      : isNull(permissions.branchId);
+      : isNull(permissionsMapper.branchId);
 
     const directPerms = await this.database.client
       .select({ key: permissions.key })
@@ -116,7 +116,7 @@ export class RbacRepository {
         and(
           eq(permissionsMapper.entityType, PermissionEntityType.USER),
           eq(permissionsMapper.entityId, data.userId),
-          eq(permissions.status, PermissionStatusEnum.ENABLED),
+          eq(permissions.isActive, true),
           orgCondition,
           branchCondition,
         ),
@@ -138,7 +138,7 @@ export class RbacRepository {
         and(
           eq(permissionsMapper.entityType, PermissionEntityType.ROLE),
           eq(userRolesMapper.userId, data.userId),
-          eq(permissions.status, PermissionStatusEnum.ENABLED),
+          eq(permissions.isActive, true),
           eq(roles.isActive, true),
           orgCondition,
           branchCondition,

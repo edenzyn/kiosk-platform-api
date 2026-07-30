@@ -5,29 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1785334190227,
-      "tag": "0000_first",
+      "when": 1785388710222,
+      "tag": "0000_first-changes-dev",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1785334455042,
-      "tag": "0001_not-null-updates",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1785334598132,
-      "tag": "0002_drop-role-isactive",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1785334834331,
-      "tag": "0003_readd-role-isactive",
+      "when": 1785388791712,
+      "tag": "0001_added-isactive-on-permissions-mapper",
       "breakpoints": true
     }
   ]

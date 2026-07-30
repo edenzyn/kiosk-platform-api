@@ -1,8 +1,7 @@
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
-import { PermissionStatusEnum } from "../../shared/enums/rbac/permission-status.enum";
 import type { RoleEntity } from "./schemas/role.schema";
 import type { PermissionEntity } from "./schemas/permission.schema";
-import type { PermissionMapperEntity } from "./schemas/role-permission-mapper.schema";
+import type { PermissionMapperEntity } from "./schemas/permission-mapper.schema";
 import type { UserRoleMapperEntity } from "./schemas/user-roles-mapper.schema";
 
 export interface CreateRoleRequestDto {
@@ -15,9 +14,7 @@ export interface CreateRoleRequestDto {
 
 export interface CreatePermissionRequestDto {
   key: string;
-  organizationId?: string | null;
-  branchId?: string | null;
-  status?: PermissionStatusEnum;
+  description?: string | null;
   createdBy: string;
 }
 
@@ -25,6 +22,8 @@ export interface CreatePermissionMapperRequestDto {
   entityType: PermissionEntityType;
   entityId: string;
   permissionId: string;
+  organizationId?: string | null;
+  branchId?: string | null;
   createdBy: string;
 }
 

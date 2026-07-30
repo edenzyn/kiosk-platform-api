@@ -1,6 +1,6 @@
 import { initDatabase } from "../../config/db";
 import { permissions } from "../../modules/rbac/schemas/permission.schema";
-import { permissionsMapper } from "../../modules/rbac/schemas/role-permission-mapper.schema";
+import { permissionMapper as permissionsMapper } from "../../modules/rbac/schemas/permission-mapper.schema";
 import { roles } from "../../modules/rbac/schemas/role.schema";
 import { userRolesMapper } from "../../modules/rbac/schemas/user-roles-mapper.schema";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
@@ -17,7 +17,8 @@ export async function runRbacSeeds() {
     .insert(permissions)
     .values({
       key: UserPermissions.ALL_WRITE,
-      // orgId and branchId are null by default because we made them nullable
+      // new schema doesn't have orgId or branchId on permissions
+      description: "Super admin role for platform owners",
     })
     .returning();
 
@@ -40,6 +41,7 @@ export async function runRbacSeeds() {
     entityType: PermissionEntityType.ROLE,
     entityId: platformOwnerRole?.id!,
     permissionId: platformWritePermission?.id!,
+    organizationId: "00000000-0000-0000-0000-000000000000", // Dummy UUID since it's NOT NULL
   });
 
   console.log("Mapped all:write to Platform Owner role");

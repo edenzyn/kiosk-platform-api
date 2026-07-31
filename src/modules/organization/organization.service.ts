@@ -1,10 +1,8 @@
 import type { OrganizationRepository } from "./organization.repository";
-import type {
-  CreateOrganizationResponseDto,
-    ListOrganizationResponseDto,
-  CreateOrganizationRequestDto,
-    ListOrganizationRequestDto,
-} from "./organization.types";
+import type { CreateOrganizationRequestDto } from "./dtos/create-organization-request.dto";
+import type { CreateOrganizationResponseDto } from "./dtos/create-organization-response.dto";
+import type { ListOrganizationRequestDto } from "./dtos/list-organization-request.dto";
+import type { ListOrganizationResponseDto } from "./dtos/list-organization-response.dto";
 import { AppError } from "../../shared/errors/app-error";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";

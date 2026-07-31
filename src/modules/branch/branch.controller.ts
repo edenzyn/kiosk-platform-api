@@ -3,7 +3,7 @@ import type { BranchService } from "./branch.service";
 import { BranchValidator } from "./branch.validator";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { CreateBranchRequestDto } from "./branch.types";
+import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
 
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}

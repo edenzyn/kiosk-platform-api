@@ -2,12 +2,10 @@ import type { Request, Response } from "express";
 import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type {
-  CreateRoleRequestDto,
-  CreatePermissionRequestDto,
-  CreatePermissionMapperRequestDto,
-  CreateUserRoleMapperRequestDto,
-} from "./rbac.types";
+import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
+import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
+import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 
 export class RbacController {

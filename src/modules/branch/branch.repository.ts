@@ -1,9 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { branches, type BranchEntity } from "./branch.schema";
-import type {
-  CreateBranchRequestDto,
-} from "./branch.types";
+import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
 
 export class BranchRepository {
   constructor(private readonly database: Database) {}

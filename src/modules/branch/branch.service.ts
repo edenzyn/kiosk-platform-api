@@ -1,6 +1,6 @@
 import type { BranchRepository } from "./branch.repository";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { CreateBranchRequestDto } from "./branch.types";
+import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
 import { AppError } from "../../shared/errors/app-error";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 

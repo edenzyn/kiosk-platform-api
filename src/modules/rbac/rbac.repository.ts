@@ -14,13 +14,11 @@ import {
   userRolesMapper,
   type UserRoleMapperEntity,
 } from "./schemas/user-roles-mapper.schema";
-import type {
-  CreateRoleRequestDto,
-  CreatePermissionRequestDto,
-  CreatePermissionMapperRequestDto,
-  CreateUserRoleMapperRequestDto,
-  GetUserPermissionsRequestDto,
-} from "./rbac.types";
+import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
+import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
+import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 
 export class RbacRepository {
   constructor(private readonly database: Database) {}

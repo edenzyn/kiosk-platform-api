@@ -15,7 +15,6 @@ function bootstrap(): void {
 
   let isShuttingDown = false;
   const shutdown = (signal: NodeJS.Signals): void => {
-    console.log("check test");
     if (isShuttingDown) return;
     isShuttingDown = true;
     logger.log(`Received ${signal}; shutting down`);

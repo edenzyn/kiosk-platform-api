@@ -1,4 +1,4 @@
 export enum SecurityTokenEnums {
-  ACCESS_TOKEN = "__Host-acs",
-  REFRESH_TOKEN = "__Host-ref",
+  ACCESS_TOKEN = "ur_acs",
+  REFRESH_TOKEN = "ur_ref",
 }

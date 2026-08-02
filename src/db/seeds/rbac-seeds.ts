@@ -23,6 +23,7 @@ export async function runRbacSeeds() {
       name: "Demo Organization",
     })
     .returning();
+  if (!demoOrg) throw new Error("Failed to create demoOrg");
 
   console.log(`Created Organization: ${demoOrg.id}`);
 
@@ -38,6 +39,7 @@ export async function runRbacSeeds() {
       organizationId: demoOrg.id,
     })
     .returning();
+  if (!demoUser) throw new Error("Failed to create demoUser");
 
   console.log(`Created User: ${demoUser.id}`);
 
@@ -55,6 +57,7 @@ export async function runRbacSeeds() {
       },
     ])
     .returning();
+  if (!readPerm || !writePerm) throw new Error("Failed to create permissions");
 
   console.log("Created permissions: organization:read, organization:write");
 
@@ -67,6 +70,7 @@ export async function runRbacSeeds() {
       organizationId: demoOrg.id,
     })
     .returning();
+  if (!orgAdminRole) throw new Error("Failed to create orgAdminRole");
 
   console.log(`Created Role: ${orgAdminRole.id} for Organization`);
 

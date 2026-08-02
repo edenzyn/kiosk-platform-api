@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { AuthService } from "./auth.service";
 import { AuthValidator } from "./auth.validator";
-import { setCookie } from "../../shared/utils/cookie.helper";
+import { clearCookie, setCookie } from "../../shared/utils/cookie.helper";
 import { env } from "../../config/env";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -72,5 +72,14 @@ export class AuthController {
     );
 
     res.json({ user: result.user });
+  };
+
+  logout = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
+    if (refreshToken) await this.authService.logout(refreshToken);
+
+    clearCookie(res, SecurityTokenEnums.ACCESS_TOKEN);
+    clearCookie(res, SecurityTokenEnums.REFRESH_TOKEN);
+    res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 }

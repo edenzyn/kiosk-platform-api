@@ -71,4 +71,29 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/auth/refresh": {
+    post: {
+      tags: ["Auth"],
+      summary: "Rotate the refresh token and issue new authentication tokens",
+      responses: {
+        "200": {
+          description: "Token rotation succeeded and replacement cookies were set",
+        },
+        "401": {
+          description: "Refresh token is missing, expired, revoked, or already used",
+        },
+      },
+    },
+  },
+  "/auth/logout": {
+    post: {
+      tags: ["Auth"],
+      summary: "Revoke the current refresh-token session",
+      responses: {
+        "204": {
+          description: "Session revoked and authentication cookies cleared",
+        },
+      },
+    },
+  },
 };

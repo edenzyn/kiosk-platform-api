@@ -1,21 +1,20 @@
+import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
+import helmet from "helmet";
+import swaggerUi from "swagger-ui-express";
+import { env } from "./config/env";
+import { authMiddleware } from "./middleware/auth.middleware";
 import { applyCors } from "./middleware/cors.middleware";
 import { errorHandler } from "./middleware/error.middleware";
 import { notFoundHandler } from "./middleware/not-found.middleware";
 import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
+import { requestLogger } from "./middleware/request-logger.middleware";
 import authRoutes from "./modules/auth/auth.routes";
-import organizationRoutes from "./modules/organization/organization.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
+import organizationRoutes from "./modules/organization/organization.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
 import { swaggerDocument } from "./shared/utils/swagger";
-import { env } from "./config/env";
-import helmet from "helmet";
-import swaggerUi from "swagger-ui-express";
-import { requestLogger } from "./middleware/request-logger.middleware";
-import cookieParser from "cookie-parser";
-import { authMiddleware } from "./middleware/auth.middleware";
-import { generateToken } from "./shared/utils/jwt.helper";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
@@ -44,6 +43,7 @@ export class App {
   }
 
   private configureSwagger(): void {
+    if (this.currentEnv === "production") return;
     this.instance.get(`${this.apiV1Prefix}/api-docs.json`, (_req, res) => {
       res.json(swaggerDocument);
     });
@@ -87,14 +87,5 @@ export class App {
   private configureErrorHandling(): void {
     this.instance.use(notFoundHandler);
     this.instance.use(errorHandler);
-    console.log(
-      generateToken(
-        { id: "204bc939-3d9a-460e-96cb-1d1faa4b30a6" },
-        process.env.JWT_ACCESS_SECRET!,
-        {
-          expiresIn: "100y",
-        },
-      ),
-    );
   }
 }

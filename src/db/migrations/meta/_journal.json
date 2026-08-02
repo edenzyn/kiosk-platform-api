@@ -15,6 +15,13 @@
       "when": 1785388791712,
       "tag": "0001_added-isactive-on-permissions-mapper",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785653414570,
+      "tag": "0002_added-refresh-tokens-table",
+      "breakpoints": true
     }
   ]
 }

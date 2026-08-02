@@ -30,6 +30,7 @@ export class AuthService {
     id: string,
     organizationId?: string | null,
     branchId?: string | null,
+    customRefreshExp?: number,
   ): { accessToken: string; refreshToken: string; refreshTokenId: string } {
     const userPayload = {
       id,
@@ -44,14 +45,27 @@ export class AuthService {
       },
     );
     const refreshTokenId = randomUUID();
+
+    const refreshTokenOptions: jwt.SignOptions = {
+      jwtid: refreshTokenId,
+    };
+
+    if (customRefreshExp) {
+      const remainingSeconds = Math.max(
+        0,
+        customRefreshExp - Math.floor(Date.now() / 1000),
+      );
+      refreshTokenOptions.expiresIn = remainingSeconds;
+    } else {
+      refreshTokenOptions.expiresIn = env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"];
+    }
+
     const refreshToken = generateToken(
       { user: userPayload },
       env.JWT_REFRESH_SECRET,
-      {
-        expiresIn: env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-        jwtid: refreshTokenId,
-      },
+      refreshTokenOptions,
     );
+
     return { accessToken, refreshToken, refreshTokenId };
   }
 
@@ -64,7 +78,7 @@ export class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
-  async register(
+  async registerUser(
     dto: RegisterUserRequestDto,
   ): Promise<RegisterUserResponseDto> {
     const existingUserByEmail = await this.userRepository.findByEmail(
@@ -90,7 +104,7 @@ export class AuthService {
     return { user: userWithoutPassword };
   }
 
-  async login(dto: LoginUserRequestDto): Promise<LoginResult> {
+  async loginUser(dto: LoginUserRequestDto): Promise<LoginResult> {
     const user = await this.userRepository.findByEmail(dto.email);
 
     if (!user) {
@@ -128,7 +142,7 @@ export class AuthService {
     return { user: userWithoutPassword, tokens };
   }
 
-  async refresh(refreshToken: string): Promise<LoginResult> {
+  async refreshUserToken(refreshToken: string): Promise<LoginResult> {
     try {
       const decoded = verifyToken<RefreshTokenPayload>(
         refreshToken,
@@ -152,10 +166,15 @@ export class AuthService {
 
       const { password, ...userWithoutPassword } = user;
 
+      const customRefreshExp = env.JWT_REFRESH_SLIDING_ENABLED
+        ? undefined
+        : decoded.exp;
+
       const generatedTokens = this._generateAuthTokens(
         user.id,
         user.organizationId,
         user.branchId,
+        customRefreshExp,
       );
 
       const rotated = await this.authRepository.rotateRefreshToken(
@@ -188,7 +207,7 @@ export class AuthService {
     }
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logoutUser(refreshToken: string): Promise<void> {
     try {
       const decoded = verifyToken<RefreshTokenPayload>(
         refreshToken,

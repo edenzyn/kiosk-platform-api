@@ -14,6 +14,7 @@ const EnvSchema = Yup.object({
   JWT_REFRESH_SECRET: Yup.string().required().min(32),
   JWT_ACCESS_EXPIRES_IN: Yup.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: Yup.string().default("7d"),
+  JWT_REFRESH_SLIDING_ENABLED: Yup.boolean().default(true),
   BCRYPT_ROUNDS: Yup.number().integer().min(10).max(15).default(12),
   API_PREFIX_V1: Yup.string().default("/api/v1"),
   CORS_ORIGIN_1: Yup.string().required().min(1),

@@ -12,21 +12,21 @@ import { AppError } from "../../shared/errors/app-error";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  register = async (req: Request, res: Response): Promise<void> => {
+  registerUser = async (req: Request, res: Response): Promise<void> => {
     const data = await AuthValidator.register.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.register(data);
+    const result = await this.authService.registerUser(data);
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
-  login = async (req: Request, res: Response): Promise<void> => {
+  loginUser = async (req: Request, res: Response): Promise<void> => {
     const data = await AuthValidator.login.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.login(data);
+    const result = await this.authService.loginUser(data);
 
     setCookie(
       res,
@@ -45,7 +45,7 @@ export class AuthController {
     res.json({ user: result.user });
   };
 
-  refresh = async (req: Request, res: Response): Promise<void> => {
+  refreshUserToken = async (req: Request, res: Response): Promise<void> => {
     const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
 
     if (!refreshToken) {
@@ -55,7 +55,7 @@ export class AuthController {
       });
     }
 
-    const result = await this.authService.refresh(refreshToken);
+    const result = await this.authService.refreshUserToken(refreshToken);
 
     setCookie(
       res,
@@ -74,9 +74,9 @@ export class AuthController {
     res.json({ user: result.user });
   };
 
-  logout = async (req: Request, res: Response): Promise<void> => {
+  logoutUser = async (req: Request, res: Response): Promise<void> => {
     const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
-    if (refreshToken) await this.authService.logout(refreshToken);
+    if (refreshToken) await this.authService.logoutUser(refreshToken);
 
     clearCookie(res, SecurityTokenEnums.ACCESS_TOKEN);
     clearCookie(res, SecurityTokenEnums.REFRESH_TOKEN);

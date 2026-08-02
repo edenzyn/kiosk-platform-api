@@ -3,17 +3,14 @@ import { randomUUID } from "node:crypto";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { UserTypeEnums } from "../../shared/enums/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { compareHashedData, hashData } from "../../shared/utils/bcrypt.helper";
+import { compareHashedData } from "../../shared/utils/bcrypt.helper";
 import { hashSha256 } from "../../shared/utils/crypto.helper";
 import { generateToken, verifyToken } from "../../shared/utils/jwt.helper";
 import type { UserRepository } from "../user/user.repository";
 import type { AuthRepository } from "./auth.repository";
 import type { LoginResult } from "./dtos/login-result.dto";
 import type { LoginUserRequestDto } from "./dtos/login-user-request.dto";
-import type { RegisterUserRequestDto } from "./dtos/register-user-request.dto";
-import type { RegisterUserResponseDto } from "./dtos/register-user-response.dto";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
   user?: { id: string };
@@ -78,31 +75,6 @@ export class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
-  async registerUser(
-    dto: RegisterUserRequestDto,
-  ): Promise<RegisterUserResponseDto> {
-    const existingUserByEmail = await this.userRepository.findByEmail(
-      dto.email,
-    );
-    if (existingUserByEmail) {
-      throw new AppError("Email is already registered", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
-    }
-
-    const passwordHash = await hashData(dto.password);
-
-    const user = await this.userRepository.create({
-      name: dto.name,
-      email: dto.email,
-      password: passwordHash,
-      userType: UserTypeEnums.NORMAL,
-    });
-
-    const { password, ...userWithoutPassword } = user;
-
-    return { user: userWithoutPassword };
-  }
 
   async loginUser(dto: LoginUserRequestDto): Promise<LoginResult> {
     const user = await this.userRepository.findByEmail(dto.email);

@@ -12,15 +12,6 @@ import { AuthValidator } from "./auth.validator";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  registerUser = async (req: Request, res: Response): Promise<void> => {
-    const data = await AuthValidator.register.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
-    const result = await this.authService.registerUser(data);
-    res.status(HttpStatusCodes.CREATED).json(result);
-  };
-
   loginUser = async (req: Request, res: Response): Promise<void> => {
     const data = await AuthValidator.login.validate(req.body, {
       abortEarly: false,

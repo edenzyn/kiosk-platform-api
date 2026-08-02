@@ -1,13 +1,13 @@
 import type { Request, Response } from "express";
+import ms from "ms";
+import { env } from "../../config/env";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
+import { AppError } from "../../shared/errors/app-error";
+import { clearCookie, setCookie } from "../../shared/utils/cookie.helper";
 import type { AuthService } from "./auth.service";
 import { AuthValidator } from "./auth.validator";
-import { clearCookie, setCookie } from "../../shared/utils/cookie.helper";
-import { env } from "../../config/env";
-import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import ms from "ms";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../shared/errors/app-error";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

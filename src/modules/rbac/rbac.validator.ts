@@ -9,12 +9,6 @@ export const RbacValidator = {
     description: yup.string().max(1000).nullable().optional(),
   }),
 
-  createPermission: yup.object({
-    key: yup.string().max(255).required("Key is required"),
-    organizationId: yup.string().uuid().nullable().optional(),
-    branchId: yup.string().uuid().nullable().optional(),
-  }),
-
   createPermissionMapper: yup.object({
     entityType: yup
       .number()
@@ -33,7 +27,19 @@ export const RbacValidator = {
     roleId: yup.string().uuid().required("Role ID is required"),
   }),
 
-  getRoles: yup.object({
+  getRolesByTenant: yup.object({
     search: yup.string().max(255).optional(),
+  }),
+
+  getPermissionsByTenant: yup.object({
+    entityId: yup.string().uuid().required("Entity ID is required"),
+    entityType: yup
+      .number()
+      .oneOf(
+        Object.values(PermissionEntityType).filter(
+          (v): v is number => typeof v === "number",
+        ),
+      )
+      .required("Entity type is required"),
   }),
 };

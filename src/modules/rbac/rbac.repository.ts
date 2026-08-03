@@ -2,18 +2,17 @@ import { sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
-import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
 import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
 import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
 import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
 import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
 import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
 } from "./schemas/permission-mapper.schema";
 import {
-  permissions,
   type PermissionEntity,
 } from "./schemas/permission.schema";
 import { roles, type RoleEntity } from "./schemas/role.schema";
@@ -38,21 +37,6 @@ export class RbacRepository {
       .returning();
     if (!role) throw new Error("Failed to create role");
     return role;
-  }
-
-  async createPermission(
-    data: CreatePermissionRequestDto,
-  ): Promise<PermissionEntity> {
-    const [permission] = await this.database.client
-      .insert(permissions)
-      .values({
-        key: data.key,
-        description: data.description ?? null,
-        createdBy: data.createdBy,
-      })
-      .returning();
-    if (!permission) throw new Error("Failed to create permission");
-    return permission;
   }
 
   async createPermissionMapper(
@@ -105,7 +89,7 @@ export class RbacRepository {
     return new Set(result.rows.map((row) => row.key));
   }
 
-  async getRoles(
+  async getRolesByTenant(
     queryDto: GetRolesRequestDto,
     userToken: UserTokenDto,
   ): Promise<GetRolesResponseDto[]> {
@@ -115,6 +99,22 @@ export class RbacRepository {
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
       sql`SELECT * FROM fn_get_roles_by_tenant(${searchVal}, ${orgIdVal}, ${branchIdVal})`,
+    );
+
+    return queryResult.rows;
+  }
+
+  async getPermissionsByTenant(
+    queryDto: GetPermissionsByTenantRequestDto,
+    userToken: UserTokenDto,
+  ): Promise<PermissionEntity[]> {
+    const entityIdVal = queryDto.entityId;
+    const entityTypeVal = queryDto.entityType;
+    const orgIdVal = userToken.organizationId || null;
+    const branchIdVal = userToken.branchId || null;
+
+    const queryResult = await this.database.client.execute<PermissionEntity>(
+      sql`SELECT * FROM fn_get_permissions_by_tenant(${entityIdVal}, ${entityTypeVal}, ${orgIdVal}, ${branchIdVal})`,
     );
 
     return queryResult.rows;

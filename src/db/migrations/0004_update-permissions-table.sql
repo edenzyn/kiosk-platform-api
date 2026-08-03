@@ -1,0 +1,1 @@
+ALTER TABLE "permissions" ADD COLUMN "scope" smallint DEFAULT 2 NOT NULL;

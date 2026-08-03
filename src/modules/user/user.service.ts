@@ -21,7 +21,7 @@ export class UserService {
     return { user: userWithoutPassword };
   }
 
-  async getUsers(
+  async getUsersByTenant(
     queryDto: GetUsersRequestDto,
     userToken: UserTokenDto,
   ): Promise<GetUsersResponseDto> {

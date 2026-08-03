@@ -1,10 +1,10 @@
 import {
-  type AnyPgColumn,
-  pgTable,
   boolean,
+  pgTable,
   timestamp,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { users } from "../../user/user.schema";
 

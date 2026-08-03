@@ -48,18 +48,18 @@ export async function runRbacSeeds() {
     .insert(permissions)
     .values([
       {
-        key: UserPermissions.ORGANIZATION_READ,
-        description: "Read organization details",
+        key: UserPermissions.ORGANIZATION_ALL_READ,
+        description: "Read all organization details",
       },
       {
-        key: UserPermissions.ORGANIZATION_WRITE,
-        description: "Write organization details",
+        key: UserPermissions.ORGANIZATION_ALL_WRITE,
+        description: "Write all organization details",
       },
     ])
     .returning();
   if (!readPerm || !writePerm) throw new Error("Failed to create permissions");
 
-  console.log("Created permissions: organization:read, organization:write");
+  console.log("Created permissions: organization:all-read, organization:all-write");
 
   // 4. Create Role and link to Organization
   const [orgAdminRole] = await db

@@ -29,6 +29,27 @@
       "when": 1785741172527,
       "tag": "0003_update-roles-table",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785751878784,
+      "tag": "0004_update-permissions-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785752116098,
+      "tag": "0005_update-permissions-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785757064773,
+      "tag": "0006_update-permissions-table",
+      "breakpoints": true
     }
   ]
 }

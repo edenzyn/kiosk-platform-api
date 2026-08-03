@@ -9,7 +9,8 @@ export const RbacValidator = {
     description: yup.string().max(1000).nullable().optional(),
   }),
 
-  createPermissionMapper: yup.object({
+  assignPermission: yup.object({
+    permissionId: yup.string().uuid().required("Permission ID is required"),
     entityType: yup
       .number()
       .oneOf(
@@ -19,7 +20,20 @@ export const RbacValidator = {
       )
       .required("Entity type is required"),
     entityId: yup.string().uuid().required("Entity ID is required"),
+    scope: yup.number().optional().nullable(),
+  }),
+
+  removePermission: yup.object({
     permissionId: yup.string().uuid().required("Permission ID is required"),
+    entityType: yup
+      .number()
+      .oneOf(
+        Object.values(PermissionEntityType).filter(
+          (v): v is number => typeof v === "number",
+        ),
+      )
+      .required("Entity type is required"),
+    entityId: yup.string().uuid().required("Entity ID is required"),
   }),
 
   createUserRoleMapper: yup.object({

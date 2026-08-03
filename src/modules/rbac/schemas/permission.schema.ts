@@ -1,6 +1,7 @@
 import {
   boolean,
   pgTable,
+  smallint,
   timestamp,
   uuid,
   varchar,
@@ -12,6 +13,7 @@ export const permissions = pgTable("permissions", {
   id: uuid("id").defaultRandom().primaryKey(),
   key: varchar("key", { length: 255 }).unique().notNull(),
   description: varchar("description", { length: 255 }),
+  scope: smallint("scope").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

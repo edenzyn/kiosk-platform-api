@@ -1,26 +1,24 @@
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
 import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
+import type { PermissionEntityWithAssigned } from "./dtos/get-permissions-by-tenant-response.dto";
 import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
 import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
 import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
 } from "./schemas/permission-mapper.schema";
-import {
-  type PermissionEntity,
-} from "./schemas/permission.schema";
+
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
   userRolesMapper,
   type UserRoleMapperEntity,
 } from "./schemas/user-roles-mapper.schema";
-
 export class RbacRepository {
   constructor(private readonly database: Database) {}
 
@@ -39,22 +37,72 @@ export class RbacRepository {
     return role;
   }
 
-  async createPermissionMapper(
-    data: CreatePermissionMapperRequestDto,
-  ): Promise<PermissionMapperEntity> {
+  async getPermissionMapper(
+    permissionId: string,
+    entityType: number,
+    entityId: string,
+  ): Promise<PermissionMapperEntity | null> {
     const [mapper] = await this.database.client
+      .select()
+      .from(permissionsMapper)
+      .where(
+        and(
+          eq(permissionsMapper.permissionId, permissionId),
+          eq(permissionsMapper.entityType, entityType),
+          eq(permissionsMapper.entityId, entityId),
+        ),
+      );
+    return mapper || null;
+  }
+
+  async createPermissionMapper(data: {
+    permissionId: string;
+    entityType: number;
+    entityId: string;
+    organizationId: string | null;
+    branchId: string | null;
+    createdBy: string;
+  }): Promise<PermissionMapperEntity> {
+    const [inserted] = await this.database.client
       .insert(permissionsMapper)
       .values({
         entityType: data.entityType,
         entityId: data.entityId,
         permissionId: data.permissionId,
-        organizationId: data.organizationId ?? null,
-        branchId: data.branchId ?? null,
+        organizationId: data.organizationId,
+        branchId: data.branchId,
+        isActive: true,
         createdBy: data.createdBy,
       })
       .returning();
-    if (!mapper) throw new Error("Failed to create permission mapper");
-    return mapper;
+    if (!inserted) throw new Error("Failed to create permission mapper");
+    return inserted;
+  }
+
+  async updatePermissionMapperStatus(
+    mapperId: string,
+    isActive: boolean,
+    updatedBy: string,
+  ): Promise<PermissionMapperEntity> {
+    const [updated] = await this.database.client
+      .update(permissionsMapper)
+      .set({
+        isActive,
+        updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(permissionsMapper.id, mapperId))
+      .returning();
+    if (!updated) throw new Error("Failed to update permission mapper status");
+    return updated;
+  }
+
+  async getRoleById(id: string): Promise<RoleEntity | null> {
+    const [role] = await this.database.client
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id));
+    return role || null;
   }
 
   async createUserRoleMapper(
@@ -75,25 +123,21 @@ export class RbacRepository {
   async getUserPermissionKeys(
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
-    const orgIdVal = data.organizationId ?? null;
-    const branchIdVal = data.branchId ?? null;
+    const orgIdVal = data.organizationId || null;
+    const branchIdVal = data.branchId || null;
 
-    const result = await this.database.client.execute<{ key: string }>(
-      sql`SELECT * FROM fn_get_user_permission_keys_by_tenant(
-      ${data.userId},
-      ${orgIdVal},
-      ${branchIdVal}
-    )`,
+    const queryResult = await this.database.client.execute<{ key: string }>(
+      sql`SELECT key FROM fn_get_user_permission_keys_by_tenant(${data.userId}, ${orgIdVal}, ${branchIdVal})`,
     );
 
-    return new Set(result.rows.map((row) => row.key));
+    return new Set(queryResult.rows.map((row) => row.key));
   }
 
   async getRolesByTenant(
     queryDto: GetRolesRequestDto,
     userToken: UserTokenDto,
   ): Promise<GetRolesResponseDto[]> {
-    const searchVal = queryDto.search || null;
+    const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
     const orgIdVal = userToken.organizationId || null;
     const branchIdVal = userToken.branchId || null;
 
@@ -104,18 +148,22 @@ export class RbacRepository {
     return queryResult.rows;
   }
 
-  async getPermissionsByTenant(
+  async getPermissionsByScopeAndTenant(
     queryDto: GetPermissionsByTenantRequestDto,
     userToken: UserTokenDto,
-  ): Promise<PermissionEntity[]> {
+  ): Promise<PermissionEntityWithAssigned[]> {
     const entityIdVal = queryDto.entityId;
     const entityTypeVal = queryDto.entityType;
     const orgIdVal = userToken.organizationId || null;
     const branchIdVal = userToken.branchId || null;
+    const scopeVal = branchIdVal
+      ? PermissionScope.BRANCH
+      : PermissionScope.ORGANIZATION;
 
-    const queryResult = await this.database.client.execute<PermissionEntity>(
-      sql`SELECT * FROM fn_get_permissions_by_tenant(${entityIdVal}, ${entityTypeVal}, ${orgIdVal}, ${branchIdVal})`,
-    );
+    const queryResult =
+      await this.database.client.execute<PermissionEntityWithAssigned>(
+        sql`SELECT * FROM fn_get_permissions_by_scope_and_tenant(${entityIdVal}, ${entityTypeVal}, ${orgIdVal}, ${branchIdVal}, ${scopeVal})`,
+      );
 
     return queryResult.rows;
   }

@@ -5,6 +5,7 @@ import { roles } from "../../modules/rbac/schemas/role.schema";
 import { userRolesMapper } from "../../modules/rbac/schemas/user-roles-mapper.schema";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import { organizations } from "../../modules/organization/organization.schema";
 import { users } from "../../modules/user/user.schema";
 import { UserTypeEnums } from "../../shared/enums/user-type.enum";
@@ -50,10 +51,12 @@ export async function runRbacSeeds() {
       {
         key: UserPermissions.ORGANIZATION_ALL_READ,
         description: "Read all organization details",
+        scope: PermissionScope.ORGANIZATION,
       },
       {
         key: UserPermissions.ORGANIZATION_ALL_WRITE,
         description: "Write all organization details",
+        scope: PermissionScope.ORGANIZATION,
       },
     ])
     .returning();

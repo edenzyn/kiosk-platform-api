@@ -50,6 +50,13 @@
       "when": 1785757064773,
       "tag": "0006_update-permissions-table",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785760582544,
+      "tag": "0007_update-permissions-table",
+      "breakpoints": true
     }
   ]
 }

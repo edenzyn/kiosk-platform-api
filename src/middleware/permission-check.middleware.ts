@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from "express";
-import { RbacService } from "../modules/rbac/rbac.service";
+import { NextFunction, Request, Response } from "express";
 import { container } from "../config/container";
+import { RbacService } from "../modules/rbac/rbac.service";
+import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../shared/enums/rbac/user-permission.enum";
 import { AppError } from "../shared/errors/app-error";
-import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 
 const isReadAction = (permission: string): boolean =>
   permission.endsWith(":read");
@@ -34,22 +34,25 @@ export const permissionCheck = (
         });
       }
 
-      const userPermissionsSet = await rbacService.getUserPermissions({
+      const userPermissions = await rbacService.getUserPermissionKeys({
         userId,
         organizationId,
         branchId,
       });
-      const userPermissions = Array.from(userPermissionsSet);
 
       const hasPermission = permissionsToCheck.some((perm) => {
-        if (userPermissions.includes(UserPermissions.ALL_WRITE)) return true;
+        if (userPermissions.has(UserPermissions.ALL_WRITE)) {
+          return true;
+        }
+
         if (
           isReadAction(perm) &&
-          userPermissions.includes(UserPermissions.ALL_READ)
+          userPermissions.has(UserPermissions.ALL_READ)
         ) {
           return true;
         }
-        return userPermissions.includes(perm);
+
+        return userPermissions.has(perm);
       });
 
       if (!hasPermission) {

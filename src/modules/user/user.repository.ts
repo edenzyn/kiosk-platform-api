@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, ilike } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { users, CreateUserEntity, UserEntity } from "../user/user.schema";
 import { organizations } from "../organization/organization.schema";
@@ -52,18 +52,31 @@ export class UserRepository {
   async findByTenant(
     organizationId?: string,
     branchId?: string,
+    search?: string,
   ): Promise<any[]> {
-    let condition;
+    const conditions = [];
+
     if (organizationId && branchId) {
-      condition = and(
+      conditions.push(
         eq(this.userSchema.organizationId, organizationId),
         eq(this.userSchema.branchId, branchId),
       );
     } else if (organizationId) {
-      condition = eq(this.userSchema.organizationId, organizationId);
+      conditions.push(eq(this.userSchema.organizationId, organizationId));
     } else if (branchId) {
-      condition = eq(this.userSchema.branchId, branchId);
+      conditions.push(eq(this.userSchema.branchId, branchId));
     }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(this.userSchema.name, `%${search}%`),
+          ilike(this.userSchema.email, `%${search}%`),
+        ),
+      );
+    }
+
+    const condition = conditions.length > 0 ? and(...conditions) : undefined;
 
     const query = this.database.client
       .select({

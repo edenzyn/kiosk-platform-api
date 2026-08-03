@@ -4,6 +4,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { GetUsersResponseDto } from "./dtos/get-users-response.dto";
+import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
 
 export class UserService {
   constructor(private readonly userRepository: UserRepository) {}
@@ -20,10 +21,14 @@ export class UserService {
     return { user: userWithoutPassword };
   }
 
-  async getUsers(tokenUser: UserTokenDto): Promise<GetUsersResponseDto> {
+  async getUsers(
+    queryDto: GetUsersRequestDto,
+    userToken: UserTokenDto,
+  ): Promise<GetUsersResponseDto> {
     const users = await this.userRepository.findByTenant(
-      tokenUser.organizationId,
-      tokenUser.branchId,
+      userToken.organizationId,
+      userToken.branchId,
+      queryDto.search,
     );
 
     return { users };

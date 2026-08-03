@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import type { UserService } from "./user.service";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
 
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -13,7 +14,10 @@ export class UserController {
 
   getUsers = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
-    const result = await this.userService.getUsers(userTokenData);
+    const queryDto: GetUsersRequestDto = {
+      search: req.query.search as string | undefined,
+    };
+    const result = await this.userService.getUsers(queryDto, userTokenData);
     res.json(result);
   };
 }

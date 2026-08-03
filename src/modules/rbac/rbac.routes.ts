@@ -6,7 +6,10 @@ import asyncHandler from "express-async-handler";
 const router = Router();
 const rbacController = container.resolve<RbacController>("rbacController");
 
-router.post("/roles", asyncHandler(rbacController.createRole));
+router
+  .route("/roles")
+  .post(asyncHandler(rbacController.createRole))
+  .get(asyncHandler(rbacController.getRoles));
 router.post("/permissions", asyncHandler(rbacController.createPermission));
 router.post(
   "/permission-mappers",

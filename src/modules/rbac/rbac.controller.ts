@@ -1,12 +1,13 @@
 import type { Request, Response } from "express";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
+import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
-import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 
 export class RbacController {
   constructor(private readonly rbacService: RbacService) {}
@@ -64,5 +65,18 @@ export class RbacController {
       req.user as UserTokenDto,
     );
     res.status(HttpStatusCodes.CREATED).json({ mapper });
+  };
+
+  getRoles = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.getRoles.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const roles = await this.rbacService.getRoles(
+      data as GetRolesRequestDto,
+      req.user as UserTokenDto,
+    );
+    res.status(HttpStatusCodes.OK).json({ roles });
   };
 }

@@ -1,24 +1,26 @@
-import { eq, and, or, isNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
-import { roles, type RoleEntity } from "./schemas/role.schema";
-import {
-  permissions,
-  type PermissionEntity,
-} from "./schemas/permission.schema";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
+import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
+import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
 } from "./schemas/permission-mapper.schema";
 import {
+  permissions,
+  type PermissionEntity,
+} from "./schemas/permission.schema";
+import { roles, type RoleEntity } from "./schemas/role.schema";
+import {
   userRolesMapper,
   type UserRoleMapperEntity,
 } from "./schemas/user-roles-mapper.schema";
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
-import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 
 export class RbacRepository {
   constructor(private readonly database: Database) {}
@@ -86,67 +88,35 @@ export class RbacRepository {
     return mapper;
   }
 
-  async getUserPermissions(
+  async getUserPermissionKeys(
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
-    const orgCondition = data.organizationId
-      ? or(
-          eq(permissionsMapper.organizationId, data.organizationId),
-          isNull(permissionsMapper.organizationId),
-        )
-      : isNull(permissionsMapper.organizationId);
+    const orgIdVal = data.organizationId ?? null;
+    const branchIdVal = data.branchId ?? null;
 
-    const branchCondition = data.branchId
-      ? or(
-          eq(permissionsMapper.branchId, data.branchId),
-          isNull(permissionsMapper.branchId),
-        )
-      : isNull(permissionsMapper.branchId);
+    const result = await this.database.client.execute<{ key: string }>(
+      sql`SELECT * FROM fn_get_user_permission_keys_by_tenant(
+      ${data.userId},
+      ${orgIdVal},
+      ${branchIdVal}
+    )`,
+    );
 
-    const directPerms = await this.database.client
-      .select({ key: permissions.key })
-      .from(permissions)
-      .innerJoin(
-        permissionsMapper,
-        eq(permissions.id, permissionsMapper.permissionId),
-      )
-      .where(
-        and(
-          eq(permissionsMapper.entityType, PermissionEntityType.USER),
-          eq(permissionsMapper.entityId, data.userId),
-          eq(permissions.isActive, true),
-          orgCondition,
-          branchCondition,
-        ),
-      );
+    return new Set(result.rows.map((row) => row.key));
+  }
 
-    const rolePerms = await this.database.client
-      .select({ key: permissions.key })
-      .from(permissions)
-      .innerJoin(
-        permissionsMapper,
-        eq(permissions.id, permissionsMapper.permissionId),
-      )
-      .innerJoin(
-        userRolesMapper,
-        eq(userRolesMapper.roleId, permissionsMapper.entityId),
-      )
-      .innerJoin(roles, eq(roles.id, userRolesMapper.roleId))
-      .where(
-        and(
-          eq(permissionsMapper.entityType, PermissionEntityType.ROLE),
-          eq(userRolesMapper.userId, data.userId),
-          eq(permissions.isActive, true),
-          eq(roles.isActive, true),
-          orgCondition,
-          branchCondition,
-        ),
-      );
+  async getRoles(
+    queryDto: GetRolesRequestDto,
+    userToken: UserTokenDto,
+  ): Promise<GetRolesResponseDto[]> {
+    const searchVal = queryDto.search || null;
+    const orgIdVal = userToken.organizationId || null;
+    const branchIdVal = userToken.branchId || null;
 
-    const allPerms = new Set<string>();
-    directPerms.forEach((p) => allPerms.add(p.key));
-    rolePerms.forEach((p) => allPerms.add(p.key));
+    const queryResult = await this.database.client.execute<GetRolesResponseDto>(
+      sql`SELECT * FROM fn_get_roles_by_tenant(${searchVal}, ${orgIdVal}, ${branchIdVal})`,
+    );
 
-    return allPerms;
+    return queryResult.rows;
   }
 }

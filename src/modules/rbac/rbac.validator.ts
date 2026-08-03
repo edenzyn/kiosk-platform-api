@@ -32,4 +32,8 @@ export const RbacValidator = {
     userId: yup.string().uuid().required("User ID is required"),
     roleId: yup.string().uuid().required("Role ID is required"),
   }),
+
+  getRoles: yup.object({
+    search: yup.string().max(255).optional(),
+  }),
 };

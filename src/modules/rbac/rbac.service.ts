@@ -1,9 +1,11 @@
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
-import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { CreatePermissionMapperRequestDto } from "./dtos/create-permission-mapper-request.dto";
+import type { CreatePermissionRequestDto } from "./dtos/create-permission-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
+import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
+import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import type { RbacRepository } from "./rbac.repository";
 
 export class RbacService {
@@ -46,9 +48,16 @@ export class RbacService {
     });
   }
 
-  async getUserPermissions(
+  async getUserPermissionKeys(
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
-    return this.rbacRepository.getUserPermissions(data);
+    return this.rbacRepository.getUserPermissionKeys(data);
+  }
+
+  async getRoles(
+    queryDto: GetRolesRequestDto,
+    user: UserTokenDto,
+  ): Promise<GetRolesResponseDto[]> {
+    return this.rbacRepository.getRoles(queryDto, user);
   }
 }

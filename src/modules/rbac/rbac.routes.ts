@@ -3,10 +3,14 @@ import asyncHandler from "express-async-handler";
 import { container } from "../../config/container";
 import { permissionCheck } from "../../middleware/permission-check.middleware";
 import {
-  ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_ROLES,
-  ORG_BRANCH_TOP_SCOPED_WRITE_ROLES,
+  ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
+  ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
+  PERMISSION_MANAGE_PERMISSIONS,
+  PERMISSION_READ_PERMISSIONS,
+  ROLE_CREATE_PERMISSIONS,
+  ROLE_READ_PERMISSIONS,
+  ROLE_UPDATE_PERMISSIONS,
 } from "../../shared/constants/user-permission.constants";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { RbacController } from "./rbac.controller";
 
 const router = Router();
@@ -16,15 +20,15 @@ router
   .route("/roles")
   .post(
     permissionCheck([
-      UserPermissions.ROLE_CREATE,
-      ...ORG_BRANCH_TOP_SCOPED_WRITE_ROLES,
+      ...ROLE_CREATE_PERMISSIONS,
+      ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.createRole),
   )
   .get(
     permissionCheck([
-      UserPermissions.ROLE_READ,
-      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_ROLES,
+      ...ROLE_READ_PERMISSIONS,
+      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.getRolesByTenant),
   );
@@ -33,8 +37,8 @@ router
   .route("/permissions")
   .get(
     permissionCheck([
-      UserPermissions.PERMISSION_READ,
-      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_ROLES,
+      ...PERMISSION_READ_PERMISSIONS,
+      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.getPermissionsByScopeAndTenant),
   );
@@ -42,8 +46,8 @@ router
 router.put(
   "/permissions/:permissionId",
   permissionCheck([
-    UserPermissions.PERMISSION_ASSIGN,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_ROLES,
+    ...PERMISSION_MANAGE_PERMISSIONS,
+    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   ]),
   asyncHandler(rbacController.assignPermission),
 );
@@ -51,8 +55,8 @@ router.put(
 router.patch(
   "/permissions/:permissionId",
   permissionCheck([
-    UserPermissions.PERMISSION_ASSIGN,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_ROLES,
+    ...PERMISSION_MANAGE_PERMISSIONS,
+    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   ]),
   asyncHandler(rbacController.removePermission),
 );
@@ -60,8 +64,8 @@ router.patch(
 router.post(
   "/user-role-mappers",
   permissionCheck([
-    UserPermissions.ROLE_UPDATE,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_ROLES,
+    ...ROLE_UPDATE_PERMISSIONS,
+    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   ]),
   asyncHandler(rbacController.createUserRoleMapper),
 );

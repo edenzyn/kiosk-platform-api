@@ -9,14 +9,15 @@ RETURNS TABLE (
   id UUID,
   key VARCHAR(255),
   description VARCHAR(255),
+  scope SMALLINT,
+  "isPrivileged" BOOLEAN,
   "isActive" BOOLEAN,
   "createdAt" TIMESTAMPTZ,
   "updatedAt" TIMESTAMPTZ,
   "createdBy" UUID,
   "updatedBy" UUID,
   assigned BOOLEAN,
-  "assignedVia" SMALLINT,  -- actual entity_type from permission_mapper: 1 = user, 2 = role, NULL = not assigned
-  "isReadOnly" BOOLEAN     -- true when assigned via a different entity type (e.g. inherited via role for a user)
+  "isViaRole" BOOLEAN      -- true when assigned via role
 ) AS $$
 BEGIN
   IF p_entity_type = 1 THEN
@@ -48,25 +49,26 @@ BEGIN
       p.id,
       p.key,
       p.description,
+      p.scope,
+      (p.is_privileged = true AND p.scope = p_scope) AS "isPrivileged",
       p.is_active    AS "isActive",
       p.created_at   AS "createdAt",
       p.updated_at   AS "updatedAt",
       p.created_by   AS "createdBy",
       p.updated_by   AS "updatedBy",
       (da.permission_id IS NOT NULL OR ri.permission_id IS NOT NULL) AS assigned,
-      CASE
-        WHEN da.permission_id IS NOT NULL THEN SMALLINT '1'  -- directly assigned to user
-        WHEN ri.permission_id IS NOT NULL THEN SMALLINT '2'  -- inherited via role
-        ELSE NULL
-      END AS "assignedVia",
-      -- isReadOnly when the only assignment is through a role (not directly on the user)
-      (da.permission_id IS NULL AND ri.permission_id IS NOT NULL) AS "isReadOnly"
+      (da.permission_id IS NULL AND ri.permission_id IS NOT NULL) AS "isViaRole"
     FROM permissions p
     LEFT JOIN direct_assigned da ON da.permission_id = p.id
     LEFT JOIN role_inherited  ri ON ri.permission_id = p.id
     WHERE
       p.is_active = true
-      AND (p.scope = p_scope OR p.scope = 5);
+      AND (
+        p.scope = p_scope
+        OR p.scope = 5 -- COMMON
+        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
+        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
+      );
 
   ELSIF p_entity_type = 2 THEN
     -- Role context: only direct assignment, no role_inherited needed.
@@ -85,22 +87,25 @@ BEGIN
       p.id,
       p.key,
       p.description,
+      p.scope,
+      (p.is_privileged = true AND p.scope = p_scope) AS "isPrivileged",
       p.is_active    AS "isActive",
       p.created_at   AS "createdAt",
       p.updated_at   AS "updatedAt",
       p.created_by   AS "createdBy",
       p.updated_by   AS "updatedBy",
       (da.permission_id IS NOT NULL)  AS assigned,
-      CASE
-        WHEN da.permission_id IS NOT NULL THEN SMALLINT '2'
-        ELSE NULL
-      END AS "assignedVia",
-      FALSE AS "isReadOnly"  -- roles always own their assignments directly
+      FALSE AS "isViaRole"
     FROM permissions p
     LEFT JOIN direct_assigned da ON da.permission_id = p.id
     WHERE
       p.is_active = true
-      AND (p.scope = p_scope OR p.scope = 5);
+      AND (
+        p.scope = p_scope
+        OR p.scope = 5 -- COMMON
+        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
+        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
+      );
   END IF;
 END;
 $$ LANGUAGE plpgsql;

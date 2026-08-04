@@ -1,100 +1,98 @@
-import { and, eq } from "drizzle-orm";
+import fs from "fs";
+import path from "path";
+import { sql } from "drizzle-orm";
 import { initDatabase } from "../../config/db";
 import { permissions } from "../../modules/rbac/schemas/permission.schema";
-import { roles } from "../../modules/rbac/schemas/role.schema";
-import { permissionMapper } from "../../modules/rbac/schemas/permission-mapper.schema";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 
-export async function runMapRolePermissions() {
+function getScopeForKey(key: string): PermissionScope {
+  if (key.startsWith("all:")) {
+    return PermissionScope.PLATFORM;
+  }
+  if (key.startsWith("organization:")) {
+    return PermissionScope.ORGANIZATION;
+  }
+  if (key.startsWith("branch:")) {
+    return PermissionScope.BRANCH;
+  }
+  return PermissionScope.ORGANIZATION;
+}
+
+function formatDescription(key: string): string {
+  return key
+    .split(":")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+const PRIVILEGED_KEYS = new Set<string>([
+  UserPermissions.ALL_READ,
+  UserPermissions.ALL_WRITE,
+  UserPermissions.ORGANIZATION_ALL_READ,
+  UserPermissions.ORGANIZATION_ALL_WRITE,
+  UserPermissions.BRANCH_ALL_READ,
+  UserPermissions.BRANCH_ALL_WRITE,
+]);
+
+export async function runSeedPermissions() {
   const dbConfig = initDatabase();
   const db = dbConfig.client;
 
-  console.log("Mapping permissions to role...");
+  console.log("Ensuring permissions table schema has is_privileged column...");
+  await db.execute(
+    sql`ALTER TABLE permissions ADD COLUMN IF NOT EXISTS is_privileged boolean DEFAULT false NOT NULL;`
+  );
 
-  const targetRoleId = "35dace8b-6d43-45b8-8687-c72bfc0be59a";
-  const [targetRole] = await db
-    .select()
-    .from(roles)
-    .where(eq(roles.id, targetRoleId));
+  console.log("Updating SQL function fn_get_permissions_by_scope_and_tenant...");
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_permissions_by_scope_and_tenant(UUID, SMALLINT, UUID, UUID, SMALLINT);`
+  );
 
-  if (!targetRole) {
-    console.warn(`Target role with ID ${targetRoleId} not found in the database.`);
-  } else {
-    console.log(`Found target role: ${targetRole.name} (Org ID: ${targetRole.organizationId})`);
+  const sqlFilePath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_permissions_by_scope_and_tenant.sql"
+  );
+  const sqlContent = fs.readFileSync(sqlFilePath, "utf-8");
+  await db.execute(sql.raw(sqlContent));
 
-    const [readPerm] = await db
-      .select()
-      .from(permissions)
-      .where(eq(permissions.key, UserPermissions.ORGANIZATION_ALL_READ));
+  console.log("Seeding all permissions from UserPermissions enum...");
 
-    const [writePerm] = await db
-      .select()
-      .from(permissions)
-      .where(eq(permissions.key, UserPermissions.ORGANIZATION_ALL_WRITE));
+  const allPermissionKeys = Object.values(UserPermissions);
 
-    if (!readPerm || !writePerm) {
-      throw new Error("Could not find organization:all-read or organization:all-write permissions in db");
-    }
+  const permissionValues = allPermissionKeys.map((key) => ({
+    key,
+    description: formatDescription(key),
+    scope: getScopeForKey(key),
+    isPrivileged: PRIVILEGED_KEYS.has(key),
+    isActive: true,
+  }));
 
-    // Map organization:all-read
-    const [existingReadMap] = await db
-      .select()
-      .from(permissionMapper)
-      .where(
-        and(
-          eq(permissionMapper.entityType, PermissionEntityType.ROLE),
-          eq(permissionMapper.entityId, targetRole.id),
-          eq(permissionMapper.permissionId, readPerm.id)
-        )
-      );
+  console.log(`Found ${permissionValues.length} permissions to seed.`);
 
-    if (!existingReadMap) {
-      await db.insert(permissionMapper).values({
-        entityType: PermissionEntityType.ROLE,
-        entityId: targetRole.id,
-        permissionId: readPerm.id,
-        organizationId: targetRole.organizationId,
-        branchId: targetRole.branchId,
+  for (const perm of permissionValues) {
+    await db
+      .insert(permissions)
+      .values(perm)
+      .onConflictDoUpdate({
+        target: permissions.key,
+        set: {
+          scope: sql`EXCLUDED.scope`,
+          description: sql`EXCLUDED.description`,
+          isPrivileged: sql`EXCLUDED.is_privileged`,
+          updatedAt: new Date(),
+        },
       });
-      console.log(`Mapped organization:all-read to role: ${targetRole.name}`);
-    } else {
-      console.log(`Permission organization:all-read is already mapped to role: ${targetRole.name}`);
-    }
-
-    // Map organization:all-write
-    const [existingWriteMap] = await db
-      .select()
-      .from(permissionMapper)
-      .where(
-        and(
-          eq(permissionMapper.entityType, PermissionEntityType.ROLE),
-          eq(permissionMapper.entityId, targetRole.id),
-          eq(permissionMapper.permissionId, writePerm.id)
-        )
-      );
-
-    if (!existingWriteMap) {
-      await db.insert(permissionMapper).values({
-        entityType: PermissionEntityType.ROLE,
-        entityId: targetRole.id,
-        permissionId: writePerm.id,
-        organizationId: targetRole.organizationId,
-        branchId: targetRole.branchId,
-      });
-      console.log(`Mapped organization:all-write to role: ${targetRole.name}`);
-    } else {
-      console.log(`Permission organization:all-write is already mapped to role: ${targetRole.name}`);
-    }
   }
 
-  console.log("Role mapping completed successfully!");
+  console.log("Permissions seeded successfully!");
   await dbConfig.close();
 }
 
-runMapRolePermissions()
+runSeedPermissions()
   .catch((err) => {
-    console.error("Error mapping role permissions:", err);
+    console.error("Error seeding permissions:", err);
     process.exit(1);
   })
   .finally(() => process.exit(0));
+

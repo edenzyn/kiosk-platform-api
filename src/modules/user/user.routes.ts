@@ -3,10 +3,10 @@ import asyncHandler from "express-async-handler";
 import { container } from "../../config/container";
 import { permissionCheck } from "../../middleware/permission-check.middleware";
 import {
-  BRANCH_TOP_SCOPED_ROLES,
-  ORGANIZATION_TOP_ROLES,
+  BRANCH_TOP_SCOPED_PERMISSIONS,
+  ORGANIZATION_TOP_PERMISSIONS,
+  USER_READ_PERMISSIONS,
 } from "../../shared/constants/user-permission.constants";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { UserController } from "./user.controller";
 
 const router = Router();
@@ -16,9 +16,9 @@ router.get("/me", asyncHandler(userController.checkAuth));
 router.get(
   "/",
   permissionCheck([
-    UserPermissions.USER_READ,
-    ...ORGANIZATION_TOP_ROLES,
-    ...BRANCH_TOP_SCOPED_ROLES,
+    ...USER_READ_PERMISSIONS,
+    ...ORGANIZATION_TOP_PERMISSIONS,
+    ...BRANCH_TOP_SCOPED_PERMISSIONS,
   ]),
   asyncHandler(userController.getUsersByTenant),
 );

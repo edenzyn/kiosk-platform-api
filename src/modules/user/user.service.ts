@@ -5,9 +5,13 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { GetUsersResponseDto } from "./dtos/get-users-response.dto";
 import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
+import type { RbacRepository } from "../rbac/rbac.repository";
 
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly rbacRepository: RbacRepository,
+  ) {}
 
   async checkAuth(tokenUser: UserTokenDto) {
     const user = await this.userRepository.findById(tokenUser.id);
@@ -18,7 +22,17 @@ export class UserService {
       });
     }
     const { password, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword };
+
+    const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
+      userId: tokenUser.id,
+      organizationId: tokenUser.organizationId,
+      branchId: tokenUser.branchId,
+    });
+
+    return {
+      user: userWithoutPassword,
+      permissions: [...permissionKeys],
+    };
   }
 
   async getUsersByTenant(

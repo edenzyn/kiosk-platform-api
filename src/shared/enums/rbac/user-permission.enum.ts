@@ -1,60 +1,57 @@
 export enum UserPermissions {
   // ======================================================
-  // Platform Level
-  // Grants unrestricted access across the entire platform.
-  // Intended only for Platform/Super Administrators.
+  // Global (Platform)
+  // Used only by the platform roles.
   // ======================================================
   ALL_READ = "all:read",
   ALL_WRITE = "all:write",
 
   // ======================================================
-  // Organization Scope
-  // Grants full access within the authenticated user's
-  // organization. Does NOT allow creating or deleting
-  // organizations.
+  // Organization
   // ======================================================
-  ORGANIZATION_ALL_READ = "organization:all-read",
-  ORGANIZATION_ALL_WRITE = "organization:all-write",
+  ORGANIZATION_ALL_READ = "organization:all:read",
+  ORGANIZATION_ALL_WRITE = "organization:all:write",
+
+  ORGANIZATION_READ = "organization:read",
+  ORGANIZATION_UPDATE = "organization:update",
+
+  ORGANIZATION_BRANCH_READ = "organization:branch:read",
+  ORGANIZATION_BRANCH_CREATE = "organization:branch:create",
+  ORGANIZATION_BRANCH_UPDATE = "organization:branch:update",
+  ORGANIZATION_BRANCH_DELETE = "organization:branch:delete",
+
+  ORGANIZATION_USER_READ = "organization:user:read",
+  ORGANIZATION_USER_CREATE = "organization:user:create",
+  ORGANIZATION_USER_UPDATE = "organization:user:update",
+  ORGANIZATION_USER_DELETE = "organization:user:delete",
+
+  ORGANIZATION_ROLE_READ = "organization:role:read",
+  ORGANIZATION_ROLE_CREATE = "organization:role:create",
+  ORGANIZATION_ROLE_UPDATE = "organization:role:update",
+  ORGANIZATION_ROLE_DELETE = "organization:role:delete",
+
+  ORGANIZATION_PERMISSION_READ = "organization:permission:read",
+  ORGANIZATION_PERMISSION_MANAGE = "organization:permission:manage",
 
   // ======================================================
-  // Branch Administration
-  // Organization-level permissions used to create or
-  // delete branches within the current organization.
+  // Branch
   // ======================================================
-  BRANCH_CREATE = "branch:create",
-  BRANCH_DELETE = "branch:delete",
+  BRANCH_ALL_READ = "branch:all:read",
+  BRANCH_ALL_WRITE = "branch:all:write",
 
-  // ======================================================
-  // Branch Scope
-  // Grants full access within the authenticated user's
-  // assigned branch. Does NOT allow creating or deleting
-  // branches.
-  // ======================================================
-  BRANCH_ALL_READ = "branch:all-read",
-  BRANCH_ALL_WRITE = "branch:all-write",
+  BRANCH_READ = "branch:read",
+  BRANCH_UPDATE = "branch:update",
 
-  // ======================================================
-  // User Management
-  // ======================================================
-  USER_READ = "user:read",
-  USER_CREATE = "user:create",
-  USER_UPDATE = "user:update",
-  USER_DELETE = "user:delete",
+  BRANCH_USER_READ = "branch:user:read",
+  BRANCH_USER_CREATE = "branch:user:create",
+  BRANCH_USER_UPDATE = "branch:user:update",
+  BRANCH_USER_DELETE = "branch:user:delete",
 
-  // ======================================================
-  // Role Management
-  // ======================================================
-  ROLE_READ = "role:read",
-  ROLE_CREATE = "role:create",
-  ROLE_UPDATE = "role:update",
-  ROLE_DELETE = "role:delete",
+  BRANCH_ROLE_READ = "branch:role:read",
+  BRANCH_ROLE_CREATE = "branch:role:create",
+  BRANCH_ROLE_UPDATE = "branch:role:update",
+  BRANCH_ROLE_DELETE = "branch:role:delete",
 
-  // ======================================================
-  // Permission Management
-  // Read available permissions and assign/revoke them
-  // from users or roles. Permission definitions themselves
-  // are system-managed.
-  // ======================================================
-  PERMISSION_READ = "permission:read",
-  PERMISSION_ASSIGN = "permission:assign",
+  BRANCH_PERMISSION_READ = "branch:permission:read",
+  BRANCH_PERMISSION_MANAGE = "branch:permission:manage",
 }

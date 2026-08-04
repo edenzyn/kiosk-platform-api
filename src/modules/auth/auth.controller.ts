@@ -40,7 +40,7 @@ export class AuthController {
     const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
 
     if (!refreshToken) {
-      throw new AppError("No refresh token provided", {
+      throw new AppError("Your session has expired. Please sign in again.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });

@@ -1,12 +1,12 @@
-import type { Request, Response, NextFunction } from "express";
-import { verifyToken } from "../shared/utils/jwt.helper";
-import { env } from "../config/env";
-import { AppError } from "../shared/errors/app-error";
+import type { NextFunction, Request, Response } from "express";
 import type jwt from "jsonwebtoken";
-import type { UserTokenDto } from "../shared/dtos/user-token.dto";
+import { env } from "../config/env";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
-import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
+import type { UserTokenDto } from "../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
+import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
+import { AppError } from "../shared/errors/app-error";
+import { verifyToken } from "../shared/utils/jwt.helper";
 
 declare global {
   namespace Express {
@@ -33,7 +33,7 @@ export function authMiddleware(
     }
 
     if (!token) {
-      throw new AppError("Authentication token is missing", {
+      throw new AppError("Your session has expired. Please sign in again.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
@@ -45,7 +45,7 @@ export function authMiddleware(
     );
 
     if (!decoded?.user?.id) {
-      throw new AppError("Invalid token payload", {
+      throw new AppError("Your session has expired. Please sign in again.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
@@ -55,9 +55,10 @@ export function authMiddleware(
     next();
   } catch (error) {
     next(
-      new AppError("Invalid or expired token", {
+      new AppError("Your session has expired. Please sign in again.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
+        details: error,
       }),
     );
   }

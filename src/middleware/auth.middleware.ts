@@ -33,7 +33,7 @@ export function authMiddleware(
     }
 
     if (!token) {
-      throw new AppError("Your session has expired. Please sign in again.", {
+      throw new AppError("Invalid Session.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
@@ -45,7 +45,7 @@ export function authMiddleware(
     );
 
     if (!decoded?.user?.id) {
-      throw new AppError("Your session has expired. Please sign in again.", {
+      throw new AppError("Invalid Session.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
@@ -55,7 +55,7 @@ export function authMiddleware(
     next();
   } catch (error) {
     next(
-      new AppError("Your session has expired. Please sign in again.", {
+      new AppError("Invalid Session.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
         details: error,

@@ -1,10 +1,10 @@
 import type { ErrorRequestHandler } from "express";
 import { ValidationError } from "yup";
 import { env } from "../config/env";
-import { AppError } from "../shared/errors/app-error";
-import { logger } from "../shared/utils/logger";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
+import { AppError } from "../shared/errors/app-error";
+import { logger } from "../shared/utils/logger";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,

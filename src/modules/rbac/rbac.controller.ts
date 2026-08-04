@@ -3,8 +3,8 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
 import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
+import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
 
@@ -22,6 +22,22 @@ export class RbacController {
       req.user as UserTokenDto,
     );
     res.status(HttpStatusCodes.CREATED).json({ role });
+  };
+
+  updateRole = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.updateRole.validate(
+      { ...req.body, roleId: req.params.roleId },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const role = await this.rbacService.updateRole(
+      data,
+      req.user as UserTokenDto,
+    );
+    res.status(HttpStatusCodes.OK).json({ role });
   };
 
   assignPermission = async (req: Request, res: Response): Promise<void> => {
@@ -67,7 +83,6 @@ export class RbacController {
     res.status(HttpStatusCodes.OK).json({ mapper });
   };
 
-
   createUserRoleMapper = async (req: Request, res: Response): Promise<void> => {
     const data = await RbacValidator.createUserRoleMapper.validate(req.body, {
       abortEarly: false,
@@ -94,11 +109,17 @@ export class RbacController {
     res.status(HttpStatusCodes.OK).json({ roles });
   };
 
-  getPermissionsByScopeAndTenant = async (req: Request, res: Response): Promise<void> => {
-    const data = await RbacValidator.getPermissionsByTenant.validate(req.query, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+  getPermissionsByScopeAndTenant = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await RbacValidator.getPermissionsByTenant.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
 
     const result = await this.rbacService.getPermissionsByScopeAndTenant(
       data as GetPermissionsByTenantRequestDto,

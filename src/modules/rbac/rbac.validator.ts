@@ -7,6 +7,8 @@ export const RbacValidator = {
     branchId: yup.string().uuid().nullable().optional(),
     name: yup.string().max(255).required("Name is required"),
     description: yup.string().max(1000).nullable().optional(),
+    rank: yup.number().integer().optional(),
+    permissions: yup.array().of(yup.string().uuid().required()).optional(),
   }),
 
   assignPermission: yup.object({
@@ -46,7 +48,7 @@ export const RbacValidator = {
   }),
 
   getPermissionsByTenant: yup.object({
-    entityId: yup.string().uuid().required("Entity ID is required"),
+    entityId: yup.string().uuid().nullable().optional(),
     entityType: yup
       .number()
       .oneOf(
@@ -54,6 +56,15 @@ export const RbacValidator = {
           (v): v is number => typeof v === "number",
         ),
       )
-      .required("Entity type is required"),
+      .nullable()
+      .optional(),
+    isPrivilegedPermissionsIncluded: yup.boolean().optional().default(true),
+  }),
+
+  updateRole: yup.object({
+    roleId: yup.string().uuid().required("Role ID is required"),
+    name: yup.string().trim().optional(),
+    description: yup.string().optional(),
+    rank: yup.number().min(1, "Rank must be at least 1").max(100).optional(),
   }),
 };

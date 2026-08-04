@@ -33,6 +33,15 @@ router
     asyncHandler(rbacController.getRolesByTenant),
   );
 
+router.put(
+  "/roles/:roleId",
+  permissionCheck([
+    ...ROLE_UPDATE_PERMISSIONS,
+    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
+  ]),
+  asyncHandler(rbacController.updateRole),
+);
+
 router
   .route("/permissions")
   .get(

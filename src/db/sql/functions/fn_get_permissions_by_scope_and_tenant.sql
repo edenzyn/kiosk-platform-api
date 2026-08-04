@@ -3,7 +3,8 @@ CREATE OR REPLACE FUNCTION fn_get_permissions_by_scope_and_tenant(
   p_entity_type SMALLINT,
   p_organization_id UUID,
   p_branch_id UUID,
-  p_scope SMALLINT
+  p_scope SMALLINT,
+  p_is_privileged_included BOOLEAN DEFAULT true
 )
 RETURNS TABLE (
   id UUID,
@@ -68,6 +69,10 @@ BEGIN
         OR p.scope = 5 -- COMMON
         OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
         OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
+      )
+      AND (
+        p_is_privileged_included IS NOT FALSE
+        OR NOT (p.is_privileged = true AND p.scope = p_scope)
       );
 
   ELSIF p_entity_type = 2 THEN
@@ -105,6 +110,40 @@ BEGIN
         OR p.scope = 5 -- COMMON
         OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
         OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
+      )
+      AND (
+        p_is_privileged_included IS NOT FALSE
+        OR NOT (p.is_privileged = true AND p.scope = p_scope)
+      );
+
+  ELSE
+    -- General context (entityId and entityType are NULL): list all permissions for scope without assignment status.
+    RETURN QUERY
+    SELECT
+      p.id,
+      p.key,
+      p.description,
+      p.scope,
+      (p.is_privileged = true AND p.scope = p_scope) AS "isPrivileged",
+      p.is_active    AS "isActive",
+      p.created_at   AS "createdAt",
+      p.updated_at   AS "updatedAt",
+      p.created_by   AS "createdBy",
+      p.updated_by   AS "updatedBy",
+      FALSE AS assigned,
+      FALSE AS "isViaRole"
+    FROM permissions p
+    WHERE
+      p.is_active = true
+      AND (
+        p.scope = p_scope
+        OR p.scope = 5 -- COMMON
+        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
+        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
+      )
+      AND (
+        p_is_privileged_included IS NOT FALSE
+        OR NOT (p.is_privileged = true AND p.scope = p_scope)
       );
   END IF;
 END;

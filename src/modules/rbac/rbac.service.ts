@@ -14,6 +14,7 @@ import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
 import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import type { RemovePermissionRequestDto } from "./dtos/remove-permission-request.dto";
 import type { RemovePermissionResponseDto } from "./dtos/remove-permission-response.dto";
+import type { UpdateRoleRequestDto } from "./dtos/update-role-request.dto";
 import type { RbacRepository } from "./rbac.repository";
 
 export class RbacService {
@@ -26,7 +27,40 @@ export class RbacService {
     data: Omit<CreateRoleRequestDto, "createdBy">,
     user: UserTokenDto,
   ) {
-    return this.rbacRepository.createRole({ ...data, createdBy: user.id });
+    const role = await this.rbacRepository.createRole({
+      organizationId: data.organizationId || user.organizationId || null,
+      branchId: data.branchId || user.branchId || null,
+      name: data.name,
+      description: data.description,
+      rank: data.rank,
+      createdBy: user.id,
+    });
+
+    if (data.permissions && data.permissions.length > 0) {
+      for (const permissionId of data.permissions) {
+        await this.assignPermission(
+          {
+            permissionId,
+            entityType: PermissionEntityType.ROLE,
+            entityId: role.id,
+          },
+          user,
+        );
+      }
+    }
+
+    return role;
+  }
+
+  async updateRole(data: UpdateRoleRequestDto, user: UserTokenDto) {
+    const updatedRole = await this.rbacRepository.updateRole(data.roleId, {
+      name: data.name,
+      description: data.description,
+      rank: data.rank,
+      updatedBy: user.id,
+    });
+
+    return updatedRole;
   }
 
   async assignPermission(

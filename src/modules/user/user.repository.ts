@@ -1,8 +1,9 @@
-import { eq, and, or, ilike } from "drizzle-orm";
+import { and, eq, ilike, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import type { users, CreateUserEntity, UserEntity } from "../user/user.schema";
-import { organizations } from "../organization/organization.schema";
 import { branches } from "../branch/branch.schema";
+import { organizations } from "../organization/organization.schema";
+import type { CreateUserEntity, UserEntity, users } from "../user/user.schema";
+import { UserResponseDto } from "./dtos/get-users-response.dto";
 
 export class UserRepository {
   constructor(
@@ -53,7 +54,7 @@ export class UserRepository {
     organizationId?: string,
     branchId?: string,
     search?: string,
-  ): Promise<any[]> {
+  ): Promise<UserResponseDto[]> {
     const conditions = [];
 
     if (organizationId && branchId) {

@@ -30,11 +30,41 @@ export class RbacRepository {
         branchId: data.branchId ?? null,
         name: data.name,
         description: data.description ?? null,
+        rank: data.rank,
         createdBy: data.createdBy,
       })
       .returning();
     if (!role) throw new Error("Failed to create role");
     return role;
+  }
+
+  async updateRole(
+    roleId: string,
+    data: {
+      name?: string;
+      description?: string;
+      rank?: number;
+      updatedBy: string;
+    },
+  ): Promise<RoleEntity> {
+    const fieldsToUpdate: Record<string, unknown> = {
+      updatedBy: data.updatedBy,
+    };
+    if (data.name !== undefined) fieldsToUpdate.name = data.name;
+    if (data.description !== undefined) fieldsToUpdate.description = data.description;
+    if (data.rank !== undefined) fieldsToUpdate.rank = data.rank;
+
+    const [updatedRole] = await this.database.client
+      .update(roles)
+      .set(fieldsToUpdate)
+      .where(and(eq(roles.id, roleId), eq(roles.isActive, true)))
+      .returning();
+
+    if (!updatedRole) {
+      throw new Error("Role not found or inactive");
+    }
+
+    return updatedRole;
   }
 
   async getPermissionMapper(
@@ -152,17 +182,19 @@ export class RbacRepository {
     queryDto: GetPermissionsByTenantRequestDto,
     userToken: UserTokenDto,
   ): Promise<PermissionEntityWithAssigned[]> {
-    const entityIdVal = queryDto.entityId;
-    const entityTypeVal = queryDto.entityType;
+    const entityIdVal = queryDto.entityId || null;
+    const entityTypeVal = queryDto.entityType || null;
     const orgIdVal = userToken.organizationId || null;
     const branchIdVal = userToken.branchId || null;
     const scopeVal = branchIdVal
       ? PermissionScope.BRANCH
       : PermissionScope.ORGANIZATION;
+    const isPrivilegedIncludedVal =
+      queryDto.isPrivilegedPermissionsIncluded ?? true;
 
     const queryResult =
       await this.database.client.execute<PermissionEntityWithAssigned>(
-        sql`SELECT * FROM fn_get_permissions_by_scope_and_tenant(${entityIdVal}, ${entityTypeVal}, ${orgIdVal}, ${branchIdVal}, ${scopeVal})`,
+        sql`SELECT * FROM fn_get_permissions_by_scope_and_tenant(${entityIdVal}, ${entityTypeVal}, ${orgIdVal}, ${branchIdVal}, ${scopeVal}, ${isPrivilegedIncludedVal})`,
       );
 
     return queryResult.rows;

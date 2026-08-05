@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { container } from "../config/container";
+import { env } from "../config/env";
 import { RbacService } from "../modules/rbac/rbac.service";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
@@ -16,7 +17,6 @@ export const permissionCheck = (
   const permissionsToCheck = Array.isArray(requiredPermission)
     ? requiredPermission
     : [requiredPermission];
-
   return async (
     req: Request,
     _res: Response,
@@ -39,6 +39,12 @@ export const permissionCheck = (
         organizationId,
         branchId,
       });
+
+      if (env.NODE_ENV === "development")
+        console.log({
+          "REQUIRED PERMISSIONS": requiredPermission,
+          "PERMISSION USER HAVE": userPermissions,
+        });
 
       const hasPermission = permissionsToCheck.some((perm) => {
         if (userPermissions.has(UserPermissions.ALL_WRITE)) {

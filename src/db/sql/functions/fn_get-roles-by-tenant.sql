@@ -70,6 +70,9 @@ BEGIN
     r.created_at,
     r.updated_at,
     r.created_by,
-    r.updated_by;
+    r.updated_by
+  ORDER BY
+    r.rank ASC,
+    r.created_at ASC;
 END;
 $$ LANGUAGE plpgsql;

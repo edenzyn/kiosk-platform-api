@@ -18,19 +18,19 @@ const rbacController = container.resolve<RbacController>("rbacController");
 
 router
   .route("/roles")
-  .post(
-    permissionCheck([
-      ...ROLE_CREATE_PERMISSIONS,
-      ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-    ]),
-    asyncHandler(rbacController.createRole),
-  )
   .get(
     permissionCheck([
       ...ROLE_READ_PERMISSIONS,
       ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.getRolesByTenant),
+  )
+  .post(
+    permissionCheck([
+      ...ROLE_CREATE_PERMISSIONS,
+      ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
+    ]),
+    asyncHandler(rbacController.createRole),
   );
 
 router.put(

@@ -1,4 +1,4 @@
-import type { UserEntity } from "../../user/user.schema";
+import type { UserEntity } from "../../user/schemas/user.schema";
 import type { AuthTokens } from "./auth-tokens.dto";
 
 export interface LoginResult {

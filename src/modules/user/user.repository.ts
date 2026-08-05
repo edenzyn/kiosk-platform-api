@@ -1,21 +1,24 @@
 import { and, eq, ilike, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { UserInvitationStatusEnum } from "../../shared/enums/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
-import type { CreateUserEntity, UserEntity, users } from "../user/user.schema";
+import {
+  CreateUserInvitationEntity,
+  UserInvitationEntity,
+  userInvitations,
+} from "./schemas/user-invitations.schema";
+import { CreateUserEntity, UserEntity, users } from "./schemas/user.schema";
 import { UserResponseDto } from "./dtos/get-users-response.dto";
 
 export class UserRepository {
-  constructor(
-    private readonly database: Database,
-    private readonly userSchema: typeof users,
-  ) {}
+  constructor(private readonly database: Database) {}
 
   async findByEmail(email: string): Promise<UserEntity | undefined> {
     const [user] = await this.database.client
       .select()
-      .from(this.userSchema)
-      .where(eq(this.userSchema.email, email))
+      .from(users)
+      .where(eq(users.email, email))
       .limit(1);
     return user;
   }
@@ -23,8 +26,8 @@ export class UserRepository {
   async findByMobile(mobile: string): Promise<UserEntity | undefined> {
     const [user] = await this.database.client
       .select()
-      .from(this.userSchema)
-      .where(eq(this.userSchema.mobile, mobile))
+      .from(users)
+      .where(eq(users.mobile, mobile))
       .limit(1);
     return user;
   }
@@ -32,15 +35,15 @@ export class UserRepository {
   async findById(id: string): Promise<UserEntity | undefined> {
     const [user] = await this.database.client
       .select()
-      .from(this.userSchema)
-      .where(eq(this.userSchema.id, id))
+      .from(users)
+      .where(eq(users.id, id))
       .limit(1);
     return user;
   }
 
   async create(user: CreateUserEntity): Promise<UserEntity> {
     const [created] = await this.database.client
-      .insert(this.userSchema)
+      .insert(users)
       .values(user)
       .returning();
 
@@ -59,20 +62,20 @@ export class UserRepository {
 
     if (organizationId && branchId) {
       conditions.push(
-        eq(this.userSchema.organizationId, organizationId),
-        eq(this.userSchema.branchId, branchId),
+        eq(users.organizationId, organizationId),
+        eq(users.branchId, branchId),
       );
     } else if (organizationId) {
-      conditions.push(eq(this.userSchema.organizationId, organizationId));
+      conditions.push(eq(users.organizationId, organizationId));
     } else if (branchId) {
-      conditions.push(eq(this.userSchema.branchId, branchId));
+      conditions.push(eq(users.branchId, branchId));
     }
 
     if (search) {
       conditions.push(
         or(
-          ilike(this.userSchema.name, `%${search}%`),
-          ilike(this.userSchema.email, `%${search}%`),
+          ilike(users.name, `%${search}%`),
+          ilike(users.email, `%${search}%`),
         ),
       );
     }
@@ -81,18 +84,18 @@ export class UserRepository {
 
     const query = this.database.client
       .select({
-        id: this.userSchema.id,
-        organizationId: this.userSchema.organizationId,
-        branchId: this.userSchema.branchId,
-        name: this.userSchema.name,
-        email: this.userSchema.email,
-        mobile: this.userSchema.mobile,
-        userType: this.userSchema.userType,
-        isActive: this.userSchema.isActive,
-        createdAt: this.userSchema.createdAt,
-        updatedAt: this.userSchema.updatedAt,
-        createdBy: this.userSchema.createdBy,
-        updatedBy: this.userSchema.updatedBy,
+        id: users.id,
+        organizationId: users.organizationId,
+        branchId: users.branchId,
+        name: users.name,
+        email: users.email,
+        mobile: users.mobile,
+        userType: users.userType,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        createdBy: users.createdBy,
+        updatedBy: users.updatedBy,
         organization: {
           id: organizations.id,
           name: organizations.name,
@@ -102,16 +105,72 @@ export class UserRepository {
           name: branches.name,
         },
       })
-      .from(this.userSchema)
-      .leftJoin(
-        organizations,
-        eq(this.userSchema.organizationId, organizations.id),
-      )
-      .leftJoin(branches, eq(this.userSchema.branchId, branches.id));
+      .from(users)
+      .leftJoin(organizations, eq(users.organizationId, organizations.id))
+      .leftJoin(branches, eq(users.branchId, branches.id));
 
     if (condition) {
       return query.where(condition);
     }
     return query;
+  }
+
+  async createInvitation(
+    invitation: CreateUserInvitationEntity,
+  ): Promise<UserInvitationEntity> {
+    const [created] = await this.database.client
+      .insert(userInvitations)
+      .values(invitation)
+      .returning();
+
+    if (!created) {
+      throw new Error("Failed to create invitation");
+    }
+    return created;
+  }
+
+  async findInvitationByToken(
+    token: string,
+  ): Promise<UserInvitationEntity | undefined> {
+    const [invitation] = await this.database.client
+      .select()
+      .from(userInvitations)
+      .where(eq(userInvitations.token, token))
+      .limit(1);
+    return invitation;
+  }
+
+  async findPendingInvitationByEmail(
+    email: string,
+  ): Promise<UserInvitationEntity | undefined> {
+    const [invitation] = await this.database.client
+      .select()
+      .from(userInvitations)
+      .where(
+        and(
+          eq(userInvitations.email, email),
+          eq(userInvitations.status, UserInvitationStatusEnum.PENDING),
+        ),
+      )
+      .limit(1);
+    return invitation;
+  }
+
+  async updateInvitationStatus(
+    id: string,
+    status: number,
+    updatedBy?: string,
+  ): Promise<UserInvitationEntity | undefined> {
+    const [updated] = await this.database.client
+      .update(userInvitations)
+      .set({
+        status,
+        updatedBy: updatedBy || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(userInvitations.id, id))
+      .returning();
+
+    return updated;
   }
 }

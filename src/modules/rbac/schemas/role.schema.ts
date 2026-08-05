@@ -10,7 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/branch.schema";
 import { organizations } from "../../organization/organization.schema";
-import { users } from "../../user/user.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const roles = pgTable("roles", {
   id: uuid("id").defaultRandom().primaryKey(),

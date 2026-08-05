@@ -8,7 +8,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { organizations } from "../../organization/organization.schema";
 import { branches } from "../../branch/branch.schema";
-import { users } from "../../user/user.schema";
+import { users } from "../../user/schemas/user.schema";
 import { permissions } from "./permission.schema";
 
 export const permissionMapper = pgTable("permission_mapper", {

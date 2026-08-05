@@ -7,7 +7,7 @@ import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import { organizations } from "../../modules/organization/organization.schema";
-import { users } from "../../modules/user/user.schema";
+import { users } from "../../modules/user/schemas/user.schema";
 import { UserTypeEnums } from "../../shared/enums/user-type.enum";
 import bcrypt from "bcrypt";
 

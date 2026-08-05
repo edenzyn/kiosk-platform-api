@@ -7,7 +7,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { users } from "../../user/user.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const permissions = pgTable("permissions", {
   id: uuid("id").defaultRandom().primaryKey(),

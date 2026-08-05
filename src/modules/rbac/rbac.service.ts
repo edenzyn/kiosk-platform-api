@@ -1,6 +1,7 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { UserRepository } from "../user/user.repository";
 import type { AssignPermissionRequestDto } from "./dtos/assign-permission-request.dto";
@@ -16,6 +17,7 @@ import type { RemovePermissionRequestDto } from "./dtos/remove-permission-reques
 import type { RemovePermissionResponseDto } from "./dtos/remove-permission-response.dto";
 import type { UpdateRoleRequestDto } from "./dtos/update-role-request.dto";
 import type { RbacRepository } from "./rbac.repository";
+import type { RoleEntity } from "./schemas/role.schema";
 
 export class RbacService {
   constructor(
@@ -23,10 +25,44 @@ export class RbacService {
     private readonly userRepository: UserRepository,
   ) {}
 
+  private async _getUsersTopRankedRole(
+    userId: string,
+  ): Promise<RoleEntity | null> {
+    return await this.rbacRepository.getUsersTopRankedRole(userId);
+  }
+
+  private async _getUserTopPermissionScope(
+    user: UserTokenDto,
+  ): Promise<number> {
+    const topRole = await this._getUsersTopRankedRole(user.id);
+    if (topRole) {
+      if (!topRole.organizationId && !topRole.branchId) {
+        return PermissionScope.PLATFORM;
+      }
+      if (topRole.organizationId && !topRole.branchId) {
+        return PermissionScope.ORGANIZATION;
+      }
+      if (topRole.branchId) {
+        return PermissionScope.BRANCH;
+      }
+    }
+    if (user.branchId) return PermissionScope.BRANCH;
+    if (user.organizationId) return PermissionScope.ORGANIZATION;
+    return PermissionScope.PLATFORM;
+  }
+
   async createRole(
     data: Omit<CreateRoleRequestDto, "createdBy">,
     user: UserTokenDto,
   ) {
+    const userTopRole = await this._getUsersTopRankedRole(user.id);
+    if (userTopRole && data.rank <= userTopRole.rank) {
+      throw new AppError(
+        "Cannot create a role with equal or higher rank than your top role",
+        { statusCode: HttpStatusCodes.FORBIDDEN },
+      );
+    }
+
     const role = await this.rbacRepository.createRole({
       organizationId: data.organizationId || user.organizationId || null,
       branchId: data.branchId || user.branchId || null,
@@ -53,6 +89,30 @@ export class RbacService {
   }
 
   async updateRole(data: UpdateRoleRequestDto, user: UserTokenDto) {
+    const targetRole = await this.rbacRepository.getRoleById(data.roleId);
+    if (!targetRole) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const userTopRole = await this._getUsersTopRankedRole(user.id);
+    if (userTopRole) {
+      if (targetRole.rank <= userTopRole.rank) {
+        throw new AppError(
+          "Cannot update a role with equal or higher rank than your top role",
+          { statusCode: HttpStatusCodes.FORBIDDEN },
+        );
+      }
+
+      if (data.rank !== undefined && data.rank <= userTopRole.rank) {
+        throw new AppError(
+          "Cannot assign a rank equal to or higher than your top role",
+          { statusCode: HttpStatusCodes.FORBIDDEN },
+        );
+      }
+    }
+
     const updatedRole = await this.rbacRepository.updateRole(data.roleId, {
       name: data.name,
       description: data.description,
@@ -67,6 +127,25 @@ export class RbacService {
     data: Omit<AssignPermissionRequestDto, "createdBy">,
     user: UserTokenDto,
   ): Promise<AssignPermissionResponseDto> {
+    const permission = await this.rbacRepository.getPermissionById(
+      data.permissionId,
+    );
+    if (!permission) {
+      throw new AppError("Permission not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (permission.isPrivileged) {
+      const topScope = await this._getUserTopPermissionScope(user);
+      if (permission.scope === topScope) {
+        throw new AppError(
+          "Cannot assign privileged permissions of your own scope level",
+          { statusCode: HttpStatusCodes.FORBIDDEN },
+        );
+      }
+    }
+
     const existing = await this.rbacRepository.getPermissionMapper(
       data.permissionId,
       data.entityType,
@@ -115,6 +194,25 @@ export class RbacService {
     data: Omit<RemovePermissionRequestDto, "updatedBy">,
     user: UserTokenDto,
   ): Promise<RemovePermissionResponseDto> {
+    const permission = await this.rbacRepository.getPermissionById(
+      data.permissionId,
+    );
+    if (!permission) {
+      throw new AppError("Permission not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (permission.isPrivileged) {
+      const topScope = await this._getUserTopPermissionScope(user);
+      if (permission.scope === topScope) {
+        throw new AppError(
+          "Cannot remove privileged permissions of your own scope level",
+          { statusCode: HttpStatusCodes.FORBIDDEN },
+        );
+      }
+    }
+
     const existing = await this.rbacRepository.getPermissionMapper(
       data.permissionId,
       data.entityType,

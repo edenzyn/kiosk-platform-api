@@ -10,6 +10,10 @@ import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
 import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import {
+  permissions,
+  type PermissionEntity,
+} from "./schemas/permission.schema";
+import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
 } from "./schemas/permission-mapper.schema";
@@ -198,5 +202,39 @@ export class RbacRepository {
       );
 
     return queryResult.rows;
+  }
+
+  async getUsersTopRankedRole(userId: string): Promise<RoleEntity | null> {
+    const [topRole] = await this.database.client
+      .select({
+        id: roles.id,
+        organizationId: roles.organizationId,
+        branchId: roles.branchId,
+        name: roles.name,
+        description: roles.description,
+        rank: roles.rank,
+        isSystem: roles.isSystem,
+        isActive: roles.isActive,
+        createdAt: roles.createdAt,
+        updatedAt: roles.updatedAt,
+        createdBy: roles.createdBy,
+        updatedBy: roles.updatedBy,
+      })
+      .from(userRolesMapper)
+      .innerJoin(roles, eq(userRolesMapper.roleId, roles.id))
+      .where(and(eq(userRolesMapper.userId, userId), eq(roles.isActive, true)))
+      .orderBy(roles.rank)
+      .limit(1);
+
+    return topRole || null;
+  }
+
+  async getPermissionById(id: string): Promise<PermissionEntity | null> {
+    const [permission] = await this.database.client
+      .select()
+      .from(permissions)
+      .where(eq(permissions.id, id));
+
+    return permission || null;
   }
 }

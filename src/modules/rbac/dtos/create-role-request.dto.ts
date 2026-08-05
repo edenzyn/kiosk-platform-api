@@ -3,7 +3,7 @@ export interface CreateRoleRequestDto {
   branchId?: string | null;
   name: string;
   description?: string | null;
-  rank?: number;
+  rank: number;
   permissions?: string[];
   createdBy?: string;
 }

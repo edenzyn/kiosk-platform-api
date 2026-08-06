@@ -14,6 +14,7 @@ export enum UserPermissions {
 
   ORGANIZATION_READ = "organization:read",
   ORGANIZATION_UPDATE = "organization:update",
+  ORGANIZATION_BASIC = "organization:basic",
 
   ORGANIZATION_BRANCH_READ = "organization:branch:read",
   ORGANIZATION_BRANCH_WRITE = "organization:branch:write",
@@ -36,6 +37,7 @@ export enum UserPermissions {
 
   BRANCH_READ = "branch:read",
   BRANCH_UPDATE = "branch:update",
+  BRANCH_BASIC = "branch:basic",
 
   BRANCH_USER_READ = "branch:user:read",
   BRANCH_USER_INVITE = "branch:user:invite",

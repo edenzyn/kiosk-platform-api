@@ -3,12 +3,16 @@ import { randomUUID } from "node:crypto";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { compareHashedData } from "../../shared/utils/bcrypt.helper";
+import { compareHashedData, hashData } from "../../shared/utils/bcrypt.helper";
 import { hashSha256 } from "../../shared/utils/crypto.helper";
 import { generateToken, verifyToken } from "../../shared/utils/jwt.helper";
+import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserRepository } from "../user/user.repository";
 import type { AuthRepository } from "./auth.repository";
+import type { AcceptInvitationRequestDto } from "./dtos/accept-invitation-request.dto";
 import type { LoginResult } from "./dtos/login-result.dto";
 import type { LoginUserRequestDto } from "./dtos/login-user-request.dto";
 
@@ -21,6 +25,7 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly authRepository: AuthRepository,
+    private readonly rbacRepository: RbacRepository,
   ) {}
 
   private _generateAuthTokens(
@@ -54,7 +59,8 @@ export class AuthService {
       );
       refreshTokenOptions.expiresIn = remainingSeconds;
     } else {
-      refreshTokenOptions.expiresIn = env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"];
+      refreshTokenOptions.expiresIn =
+        env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"];
     }
 
     const refreshToken = generateToken(
@@ -74,7 +80,6 @@ export class AuthService {
     if (!decoded.exp) throw new Error("Refresh token has no expiry");
     return new Date(decoded.exp * 1000);
   }
-
 
   async loginUser(dto: LoginUserRequestDto): Promise<LoginResult> {
     const user = await this.userRepository.findByEmail(dto.email);
@@ -194,5 +199,117 @@ export class AuthService {
     } catch {
       // Logout is intentionally idempotent, including for expired tokens.
     }
+  }
+
+  async acceptInvitation(
+    dto: AcceptInvitationRequestDto,
+  ): Promise<LoginResult> {
+    try {
+      verifyToken(dto.token, env.JWT_INVITE_USER_SECRET);
+    } catch (error) {
+      throw new AppError("Invalid or expired invitation.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const invitation = await this.userRepository.findInvitationByToken(
+      dto.token,
+    );
+    if (!invitation) {
+      throw new AppError("Invitation not found.", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.PENDING) {
+      if (invitation.status === UserInvitationStatusEnum.ACCEPTED) {
+        throw new AppError("This invitation has already been accepted.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      if (invitation.status === UserInvitationStatusEnum.REVOKED) {
+        throw new AppError("This invitation has been revoked.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      if (invitation.status === UserInvitationStatusEnum.EXPIRED) {
+        throw new AppError("This invitation has expired.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      throw new AppError("This invitation is no longer valid.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      await this.userRepository.updateInvitationStatus(
+        invitation.id,
+        UserInvitationStatusEnum.EXPIRED,
+        invitation.id,
+      );
+      throw new AppError("Invitation has expired.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const existingUser = await this.userRepository.findByEmail(
+      invitation.email,
+    );
+    if (existingUser) {
+      throw new AppError("Email already registered", {
+        statusCode: HttpStatusCodes.CONFLICT,
+      });
+    }
+
+    const hashedPassword = await hashData(dto.password);
+
+    const createdUser = await this.userRepository.create({
+      name: dto.name,
+      email: invitation.email,
+      password: hashedPassword,
+      organizationId: invitation.organizationId,
+      branchId: invitation.branchId,
+      userType: UserTypeEnums.NORMAL,
+    });
+
+    if (invitation.roleIds && invitation.roleIds.length > 0) {
+      for (const roleId of invitation.roleIds) {
+        await this.rbacRepository.createUserRoleMapper({
+          userId: createdUser.id,
+          roleId: roleId,
+          createdBy: createdUser.id,
+        });
+      }
+    }
+
+    await this.userRepository.updateInvitationStatus(
+      invitation.id,
+      UserInvitationStatusEnum.ACCEPTED,
+      createdUser.id,
+    );
+
+    const tokens = this._generateAuthTokens(
+      createdUser.id,
+      createdUser.organizationId,
+      createdUser.branchId,
+    );
+
+    await this.authRepository.createRefreshToken({
+      id: tokens.refreshTokenId,
+      userId: createdUser.id,
+      tokenHash: hashSha256(tokens.refreshToken),
+      expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
+    });
+
+    const { password, ...userWithoutPassword } = createdUser;
+
+    return {
+      user: userWithoutPassword,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
+    };
   }
 }

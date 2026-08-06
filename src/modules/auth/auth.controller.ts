@@ -73,4 +73,28 @@ export class AuthController {
     clearCookie(res, SecurityTokenEnums.REFRESH_TOKEN);
     res.status(HttpStatusCodes.NO_CONTENT).send();
   };
+
+  acceptInvitation = async (req: Request, res: Response): Promise<void> => {
+    const data = await AuthValidator.acceptInvitation.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.acceptInvitation(data);
+
+    setCookie(
+      res,
+      SecurityTokenEnums.ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
+    res.json({ user: result.user });
+  };
 }

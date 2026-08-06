@@ -21,9 +21,7 @@ const EnvSchema = Yup.object({
   API_PREFIX_V1: Yup.string().default("/api/v1"),
   CORS_ORIGIN_1: Yup.string().required().min(1),
   CORS_ORIGIN_2: Yup.string(),
-  FRONTEND_BASE_URL: Yup.string().default(
-    process.env.CORS_ORIGIN_1 || "http://localhost:5173",
-  ),
+  FRONTEND_BASE_URL: Yup.string().default("http://localhost:5000"),
   RATE_LIMIT_WINDOW_MINUTES: Yup.number().integer().positive().default(1),
   RATE_LIMIT_MAX_REQUESTS: Yup.number().integer().positive().default(100),
   SMTP_HOST: Yup.string().default("smtp.gmail.com"),

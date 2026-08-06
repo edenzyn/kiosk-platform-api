@@ -6,7 +6,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { UserInvitationStatusEnum } from "../../../shared/enums/user-invitation-status.enum";
+import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../../branch/branch.schema";
 import { organizations } from "../../organization/organization.schema";
 import { users } from "./user.schema";
@@ -21,9 +21,7 @@ export const userInvitations = pgTable("user_invitations", {
   roleIds: uuid("role_ids").array().default([]).notNull(),
   token: varchar("token", { length: 255 }).notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  status: integer("status")
-    .default(UserInvitationStatusEnum.PENDING)
-    .notNull(),
+  status: integer("status").default(UserInvitationStatusEnum.PENDING).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

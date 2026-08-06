@@ -1,15 +1,15 @@
 import { and, eq, ilike, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { UserInvitationStatusEnum } from "../../shared/enums/user-invitation-status.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
+import { UserResponseDto } from "./dtos/get-users-response.dto";
 import {
   CreateUserInvitationEntity,
   UserInvitationEntity,
   userInvitations,
 } from "./schemas/user-invitations.schema";
 import { CreateUserEntity, UserEntity, users } from "./schemas/user.schema";
-import { UserResponseDto } from "./dtos/get-users-response.dto";
 
 export class UserRepository {
   constructor(private readonly database: Database) {}
@@ -73,10 +73,7 @@ export class UserRepository {
 
     if (search) {
       conditions.push(
-        or(
-          ilike(users.name, `%${search}%`),
-          ilike(users.email, `%${search}%`),
-        ),
+        or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
       );
     }
 
@@ -159,7 +156,7 @@ export class UserRepository {
   async updateInvitationStatus(
     id: string,
     status: number,
-    updatedBy?: string,
+    updatedBy: string,
   ): Promise<UserInvitationEntity | undefined> {
     const [updated] = await this.database.client
       .update(userInvitations)
@@ -172,5 +169,42 @@ export class UserRepository {
       .returning();
 
     return updated;
+  }
+
+  async findInvitationsByTenant(
+    organizationId?: string,
+    branchId?: string,
+  ): Promise<UserInvitationEntity[]> {
+    const conditions = [];
+
+    if (organizationId && branchId) {
+      conditions.push(
+        eq(userInvitations.organizationId, organizationId),
+        eq(userInvitations.branchId, branchId),
+      );
+    } else if (organizationId) {
+      conditions.push(eq(userInvitations.organizationId, organizationId));
+    } else if (branchId) {
+      conditions.push(eq(userInvitations.branchId, branchId));
+    }
+
+    const condition = conditions.length > 0 ? and(...conditions) : undefined;
+    const query = this.database.client.select().from(userInvitations);
+
+    if (condition) {
+      return query.where(condition);
+    }
+    return query;
+  }
+
+  async findInvitationById(
+    id: string,
+  ): Promise<UserInvitationEntity | undefined> {
+    const [invitation] = await this.database.client
+      .select()
+      .from(userInvitations)
+      .where(eq(userInvitations.id, id))
+      .limit(1);
+    return invitation;
   }
 }

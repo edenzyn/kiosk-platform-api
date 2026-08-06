@@ -16,19 +16,14 @@ export enum UserPermissions {
   ORGANIZATION_UPDATE = "organization:update",
 
   ORGANIZATION_BRANCH_READ = "organization:branch:read",
-  ORGANIZATION_BRANCH_CREATE = "organization:branch:create",
-  ORGANIZATION_BRANCH_UPDATE = "organization:branch:update",
-  ORGANIZATION_BRANCH_DELETE = "organization:branch:delete",
+  ORGANIZATION_BRANCH_WRITE = "organization:branch:write",
 
   ORGANIZATION_USER_READ = "organization:user:read",
-  ORGANIZATION_USER_CREATE = "organization:user:create",
-  ORGANIZATION_USER_UPDATE = "organization:user:update",
-  ORGANIZATION_USER_DELETE = "organization:user:delete",
+  ORGANIZATION_USER_INVITE = "organization:user:invite",
+  ORGANIZATION_USER_MANAGE = "organization:user:manage",
 
   ORGANIZATION_ROLE_READ = "organization:role:read",
-  ORGANIZATION_ROLE_CREATE = "organization:role:create",
-  ORGANIZATION_ROLE_UPDATE = "organization:role:update",
-  ORGANIZATION_ROLE_DELETE = "organization:role:delete",
+  ORGANIZATION_ROLE_WRITE = "organization:role:write",
 
   ORGANIZATION_PERMISSION_READ = "organization:permission:read",
   ORGANIZATION_PERMISSION_MANAGE = "organization:permission:manage",
@@ -43,14 +38,11 @@ export enum UserPermissions {
   BRANCH_UPDATE = "branch:update",
 
   BRANCH_USER_READ = "branch:user:read",
-  BRANCH_USER_CREATE = "branch:user:create",
-  BRANCH_USER_UPDATE = "branch:user:update",
-  BRANCH_USER_DELETE = "branch:user:delete",
+  BRANCH_USER_INVITE = "branch:user:invite",
+  BRANCH_USER_MANAGE = "branch:user:manage",
 
   BRANCH_ROLE_READ = "branch:role:read",
-  BRANCH_ROLE_CREATE = "branch:role:create",
-  BRANCH_ROLE_UPDATE = "branch:role:update",
-  BRANCH_ROLE_DELETE = "branch:role:delete",
+  BRANCH_ROLE_WRITE = "branch:role:write",
 
   BRANCH_PERMISSION_READ = "branch:permission:read",
   BRANCH_PERMISSION_MANAGE = "branch:permission:manage",

@@ -7,9 +7,8 @@ import {
   ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   PERMISSION_MANAGE_PERMISSIONS,
   PERMISSION_READ_PERMISSIONS,
-  ROLE_CREATE_PERMISSIONS,
   ROLE_READ_PERMISSIONS,
-  ROLE_UPDATE_PERMISSIONS,
+  ROLE_WRITE_PERMISSIONS,
 } from "../../shared/constants/user-permission.constants";
 import type { RbacController } from "./rbac.controller";
 
@@ -27,7 +26,7 @@ router
   )
   .post(
     permissionCheck([
-      ...ROLE_CREATE_PERMISSIONS,
+      ...ROLE_WRITE_PERMISSIONS,
       ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.createRole),
@@ -36,7 +35,7 @@ router
 router.put(
   "/roles/:roleId",
   permissionCheck([
-    ...ROLE_UPDATE_PERMISSIONS,
+    ...ROLE_WRITE_PERMISSIONS,
     ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   ]),
   asyncHandler(rbacController.updateRole),
@@ -73,7 +72,7 @@ router.patch(
 router.post(
   "/user-role-mappers",
   permissionCheck([
-    ...ROLE_UPDATE_PERMISSIONS,
+    ...ROLE_WRITE_PERMISSIONS,
     ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   ]),
   asyncHandler(rbacController.createUserRoleMapper),

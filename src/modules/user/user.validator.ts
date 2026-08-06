@@ -10,4 +10,10 @@ export class UserValidator {
     ),
     roles: stringToArray().of(Yup.string().required()).default([]),
   }).noUnknown();
+
+  static revokeInvitation = Yup.object({
+    id: Yup.string()
+      .uuid("Invalid invitation ID format")
+      .required("Invitation ID is required"),
+  }).noUnknown();
 }

@@ -33,19 +33,14 @@ export const USER_READ_PERMISSIONS = [
   UserPermissions.BRANCH_USER_READ,
 ];
 
-export const USER_CREATE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_USER_CREATE,
-  UserPermissions.BRANCH_USER_CREATE,
+export const USER_INVITE_PERMISSIONS = [
+  UserPermissions.ORGANIZATION_USER_INVITE,
+  UserPermissions.BRANCH_USER_INVITE,
 ];
 
-export const USER_UPDATE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_USER_UPDATE,
-  UserPermissions.BRANCH_USER_UPDATE,
-];
-
-export const USER_DELETE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_USER_DELETE,
-  UserPermissions.BRANCH_USER_DELETE,
+export const USER_MANAGE_PERMISSIONS = [
+  UserPermissions.ORGANIZATION_USER_MANAGE,
+  UserPermissions.BRANCH_USER_MANAGE,
 ];
 
 //----------------------
@@ -56,19 +51,9 @@ export const ROLE_READ_PERMISSIONS = [
   UserPermissions.BRANCH_ROLE_READ,
 ];
 
-export const ROLE_CREATE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_ROLE_CREATE,
-  UserPermissions.BRANCH_ROLE_CREATE,
-];
-
-export const ROLE_UPDATE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_ROLE_UPDATE,
-  UserPermissions.BRANCH_ROLE_UPDATE,
-];
-
-export const ROLE_DELETE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_ROLE_DELETE,
-  UserPermissions.BRANCH_ROLE_DELETE,
+export const ROLE_WRITE_PERMISSIONS = [
+  UserPermissions.ORGANIZATION_ROLE_WRITE,
+  UserPermissions.BRANCH_ROLE_WRITE,
 ];
 
 //----------------------

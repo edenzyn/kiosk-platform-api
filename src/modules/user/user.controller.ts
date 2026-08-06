@@ -35,4 +35,26 @@ export class UserController {
     const result = await this.userService.inviteUser(data, userTokenData);
     res.status(HttpStatusCodes.CREATED).json(result);
   };
+
+  getInvitationsByTenant = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const result = await this.userService.getInvitationsByTenant(userTokenData);
+    res.json(result);
+  };
+
+  revokeInvitation = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.revokeInvitation.validate(
+      { id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.userService.revokeInvitation(
+      data.id,
+      userTokenData,
+    );
+    res.json(result);
+  };
 }

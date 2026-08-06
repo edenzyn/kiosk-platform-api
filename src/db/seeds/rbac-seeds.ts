@@ -1,15 +1,15 @@
+import bcrypt from "bcrypt";
 import { initDatabase } from "../../config/db";
-import { permissions } from "../../modules/rbac/schemas/permission.schema";
+import { organizations } from "../../modules/organization/organization.schema";
 import { permissionMapper as permissionsMapper } from "../../modules/rbac/schemas/permission-mapper.schema";
+import { permissions } from "../../modules/rbac/schemas/permission.schema";
 import { roles } from "../../modules/rbac/schemas/role.schema";
 import { userRolesMapper } from "../../modules/rbac/schemas/user-roles-mapper.schema";
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
-import { organizations } from "../../modules/organization/organization.schema";
 import { users } from "../../modules/user/schemas/user.schema";
-import { UserTypeEnums } from "../../shared/enums/user-type.enum";
-import bcrypt from "bcrypt";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 
 export async function runRbacSeeds() {
   const dbConfig = initDatabase();
@@ -62,7 +62,9 @@ export async function runRbacSeeds() {
     .returning();
   if (!readPerm || !writePerm) throw new Error("Failed to create permissions");
 
-  console.log("Created permissions: organization:all-read, organization:all-write");
+  console.log(
+    "Created permissions: organization:all-read, organization:all-write",
+  );
 
   // 4. Create Role and link to Organization
   const [orgAdminRole] = await db

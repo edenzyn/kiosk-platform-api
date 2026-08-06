@@ -1,10 +1,10 @@
+import { sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
-import { sql } from "drizzle-orm";
 import { initDatabase } from "../../config/db";
 import { permissions } from "../../modules/rbac/schemas/permission.schema";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 
 function getScopeForKey(key: string): PermissionScope {
   if (key.startsWith("all:")) {
@@ -41,17 +41,19 @@ export async function runSeedPermissions() {
 
   console.log("Ensuring permissions table schema has is_privileged column...");
   await db.execute(
-    sql`ALTER TABLE permissions ADD COLUMN IF NOT EXISTS is_privileged boolean DEFAULT false NOT NULL;`
+    sql`ALTER TABLE permissions ADD COLUMN IF NOT EXISTS is_privileged boolean DEFAULT false NOT NULL;`,
   );
 
-  console.log("Updating SQL function fn_get_permissions_by_scope_and_tenant...");
+  console.log(
+    "Updating SQL function fn_get_permissions_by_scope_and_tenant...",
+  );
   await db.execute(
-    sql`DROP FUNCTION IF EXISTS fn_get_permissions_by_scope_and_tenant(UUID, SMALLINT, UUID, UUID, SMALLINT);`
+    sql`DROP FUNCTION IF EXISTS fn_get_permissions_by_scope_and_tenant(UUID, SMALLINT, UUID, UUID, SMALLINT);`,
   );
 
   const sqlFilePath = path.join(
     __dirname,
-    "../sql/functions/fn_get_permissions_by_scope_and_tenant.sql"
+    "../sql/functions/fn_get_permissions_by_scope_and_tenant.sql",
   );
   const sqlContent = fs.readFileSync(sqlFilePath, "utf-8");
   await db.execute(sql.raw(sqlContent));
@@ -95,4 +97,3 @@ runSeedPermissions()
     process.exit(1);
   })
   .finally(() => process.exit(0));
-

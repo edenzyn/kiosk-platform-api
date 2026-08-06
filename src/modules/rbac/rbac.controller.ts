@@ -96,13 +96,16 @@ export class RbacController {
     res.status(HttpStatusCodes.CREATED).json({ mapper });
   };
 
-  getRolesByTenant = async (req: Request, res: Response): Promise<void> => {
+  getRolesByTenantAndScope = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const data = await RbacValidator.getRolesByTenant.validate(req.query, {
       abortEarly: false,
       stripUnknown: true,
     });
 
-    const roles = await this.rbacService.getRolesByTenant(
+    const roles = await this.rbacService.getRolesByTenantAndScope(
       data as GetRolesRequestDto,
       req.user as UserTokenDto,
     );
@@ -121,7 +124,7 @@ export class RbacController {
       },
     );
 
-    const result = await this.rbacService.getPermissionsByScopeAndTenant(
+    const result = await this.rbacService.getPermissionsByTenant(
       data as GetPermissionsByTenantRequestDto,
       req.user as UserTokenDto,
     );

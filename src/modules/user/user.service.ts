@@ -47,7 +47,7 @@ export class UserService {
     };
   }
 
-  async getUsersByTenant(
+  async getUsersByTenantAndScope(
     queryDto: GetUsersRequestDto,
     userToken: UserTokenDto,
   ): Promise<GetUsersResponseDto> {

@@ -14,12 +14,15 @@ export class UserController {
     res.json(result);
   };
 
-  getUsersByTenant = async (req: Request, res: Response): Promise<void> => {
+  getUsersByTenantAndScope = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
     const queryDto: GetUsersRequestDto = {
       search: req.query.search as string | undefined,
     };
-    const result = await this.userService.getUsersByTenant(
+    const result = await this.userService.getUsersByTenantAndScope(
       queryDto,
       userTokenData,
     );

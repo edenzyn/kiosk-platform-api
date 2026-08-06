@@ -6,7 +6,7 @@ import {
   BRANCH_TOP_SCOPED_PERMISSIONS,
   ORGANIZATION_TOP_PERMISSIONS,
   USER_INVITE_PERMISSIONS,
-  USER_READ_PERMISSIONS,
+  USER_READ_MANAGE_PERMISSIONS,
 } from "../../shared/constants/user-permission.constants";
 import type { UserController } from "./user.controller";
 
@@ -17,11 +17,11 @@ router.get("/me", asyncHandler(userController.checkAuth));
 router.get(
   "/",
   permissionCheck([
-    ...USER_READ_PERMISSIONS,
+    ...USER_READ_MANAGE_PERMISSIONS,
     ...ORGANIZATION_TOP_PERMISSIONS,
     ...BRANCH_TOP_SCOPED_PERMISSIONS,
   ]),
-  asyncHandler(userController.getUsersByTenant),
+  asyncHandler(userController.getUsersByTenantAndScope),
 );
 router.post(
   "/invite",
@@ -36,7 +36,6 @@ router.post(
 router.get(
   "/invitations",
   permissionCheck([
-    ...USER_READ_PERMISSIONS,
     ...USER_INVITE_PERMISSIONS,
     ...ORGANIZATION_TOP_PERMISSIONS,
     ...BRANCH_TOP_SCOPED_PERMISSIONS,

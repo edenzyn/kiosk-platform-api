@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION fn_get_roles_by_tenant(
+CREATE OR REPLACE FUNCTION fn_get_roles_by_tenant_and_scope(
   p_search TEXT,
   p_organization_id UUID,
   p_branch_id UUID
@@ -42,6 +42,14 @@ BEGIN
     AND (
       (
         p_branch_id IS NOT NULL
+        AND p_organization_id IS NOT NULL
+        AND r.branch_id = p_branch_id
+        AND r.organization_id = p_organization_id
+      )
+      OR
+      (
+        p_branch_id IS NOT NULL
+        AND p_organization_id IS NULL
         AND r.branch_id = p_branch_id
       )
       OR
@@ -49,6 +57,7 @@ BEGIN
         p_branch_id IS NULL
         AND p_organization_id IS NOT NULL
         AND r.organization_id = p_organization_id
+        AND r.branch_id IS NULL
       )
       OR
       (

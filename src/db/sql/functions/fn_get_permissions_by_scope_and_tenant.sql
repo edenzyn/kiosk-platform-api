@@ -64,12 +64,7 @@ BEGIN
     LEFT JOIN role_inherited  ri ON ri.permission_id = p.id
     WHERE
       p.is_active = true
-      AND (
-        p.scope = p_scope
-        OR p.scope = 5 -- COMMON
-        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
-        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
-      )
+      AND p.scope = p_scope
       AND (
         p_is_privileged_included IS NOT FALSE
         OR NOT (p.is_privileged = true AND p.scope = p_scope)
@@ -105,12 +100,7 @@ BEGIN
     LEFT JOIN direct_assigned da ON da.permission_id = p.id
     WHERE
       p.is_active = true
-      AND (
-        p.scope = p_scope
-        OR p.scope = 5 -- COMMON
-        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
-        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
-      )
+      AND p.scope = p_scope
       AND (
         p_is_privileged_included IS NOT FALSE
         OR NOT (p.is_privileged = true AND p.scope = p_scope)
@@ -135,12 +125,7 @@ BEGIN
     FROM permissions p
     WHERE
       p.is_active = true
-      AND (
-        p.scope = p_scope
-        OR p.scope = 5 -- COMMON
-        OR (p_scope = 2 AND p.scope = 3) -- ORG scope shows ORG, BRANCH, and COMMON
-        OR (p_scope = 1 AND p.scope IN (2, 3, 4)) -- PLATFORM scope shows ALL
-      )
+      AND p.scope = p_scope
       AND (
         p_is_privileged_included IS NOT FALSE
         OR NOT (p.is_privileged = true AND p.scope = p_scope)

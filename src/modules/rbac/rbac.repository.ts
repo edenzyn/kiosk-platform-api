@@ -10,13 +10,13 @@ import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
 import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
 import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
 import {
-  permissions,
-  type PermissionEntity,
-} from "./schemas/permission.schema";
-import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
 } from "./schemas/permission-mapper.schema";
+import {
+  permissions,
+  type PermissionEntity,
+} from "./schemas/permission.schema";
 
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
@@ -55,7 +55,8 @@ export class RbacRepository {
       updatedBy: data.updatedBy,
     };
     if (data.name !== undefined) fieldsToUpdate.name = data.name;
-    if (data.description !== undefined) fieldsToUpdate.description = data.description;
+    if (data.description !== undefined)
+      fieldsToUpdate.description = data.description;
     if (data.rank !== undefined) fieldsToUpdate.rank = data.rank;
 
     const [updatedRole] = await this.database.client
@@ -167,7 +168,7 @@ export class RbacRepository {
     return new Set(queryResult.rows.map((row) => row.key));
   }
 
-  async getRolesByTenant(
+  async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
     userToken: UserTokenDto,
   ): Promise<GetRolesResponseDto[]> {
@@ -176,13 +177,13 @@ export class RbacRepository {
     const branchIdVal = userToken.branchId || null;
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
-      sql`SELECT * FROM fn_get_roles_by_tenant(${searchVal}, ${orgIdVal}, ${branchIdVal})`,
+      sql`SELECT * FROM fn_get_roles_by_tenant_and_scope(${searchVal}, ${orgIdVal}, ${branchIdVal})`,
     );
 
     return queryResult.rows;
   }
 
-  async getPermissionsByScopeAndTenant(
+  async getPermissionsByTenant(
     queryDto: GetPermissionsByTenantRequestDto,
     userToken: UserTokenDto,
   ): Promise<PermissionEntityWithAssigned[]> {

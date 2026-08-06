@@ -43,6 +43,11 @@ export const USER_MANAGE_PERMISSIONS = [
   UserPermissions.BRANCH_USER_MANAGE,
 ];
 
+export const USER_READ_MANAGE_PERMISSIONS = [
+  ...USER_READ_PERMISSIONS,
+  ...USER_MANAGE_PERMISSIONS,
+];
+
 //----------------------
 // Role Module Constants
 //----------------------
@@ -56,6 +61,11 @@ export const ROLE_WRITE_PERMISSIONS = [
   UserPermissions.BRANCH_ROLE_WRITE,
 ];
 
+export const ROLE_READ_WRITE_PERMISSIONS = [
+  ...ROLE_READ_PERMISSIONS,
+  ...ROLE_WRITE_PERMISSIONS,
+];
+
 //----------------------
 // Permission Module Constants
 //----------------------
@@ -67,4 +77,9 @@ export const PERMISSION_READ_PERMISSIONS = [
 export const PERMISSION_MANAGE_PERMISSIONS = [
   UserPermissions.ORGANIZATION_PERMISSION_MANAGE,
   UserPermissions.BRANCH_PERMISSION_MANAGE,
+];
+
+export const PERMISSION_READ_MANAGE_PERMISSIONS = [
+  ...PERMISSION_READ_PERMISSIONS,
+  ...PERMISSION_MANAGE_PERMISSIONS,
 ];

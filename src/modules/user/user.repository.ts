@@ -1,4 +1,4 @@
-import { and, eq, ilike, or } from "drizzle-orm";
+import { and, eq, ilike, isNull, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
@@ -66,9 +66,10 @@ export class UserRepository {
         eq(users.branchId, branchId),
       );
     } else if (organizationId) {
-      conditions.push(eq(users.organizationId, organizationId));
-    } else if (branchId) {
-      conditions.push(eq(users.branchId, branchId));
+      conditions.push(
+        eq(users.organizationId, organizationId),
+        isNull(users.branchId),
+      );
     }
 
     if (search) {

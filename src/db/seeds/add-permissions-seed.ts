@@ -50,13 +50,41 @@ export async function runSeedPermissions() {
   await db.execute(
     sql`DROP FUNCTION IF EXISTS fn_get_permissions_by_scope_and_tenant(UUID, SMALLINT, UUID, UUID, SMALLINT);`,
   );
-
   const sqlFilePath = path.join(
     __dirname,
     "../sql/functions/fn_get_permissions_by_scope_and_tenant.sql",
   );
   const sqlContent = fs.readFileSync(sqlFilePath, "utf-8");
   await db.execute(sql.raw(sqlContent));
+
+  console.log(
+    "Updating SQL function fn_get_user_permission_keys_by_tenant...",
+  );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_user_permission_keys_by_tenant(UUID, UUID, UUID);`,
+  );
+  const userPermsSqlPath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_user_permission_keys_by_tenant.sql",
+  );
+  const userPermsSql = fs.readFileSync(userPermsSqlPath, "utf-8");
+  await db.execute(sql.raw(userPermsSql));
+
+  console.log(
+    "Updating SQL function fn_get_roles_by_tenant_and_scope...",
+  );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_roles_by_tenant(TEXT, UUID, UUID);`,
+  );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_roles_by_tenant_and_scope(TEXT, UUID, UUID);`,
+  );
+  const rolesSqlPath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_roles_by_tenant_and_scope.sql",
+  );
+  const rolesSql = fs.readFileSync(rolesSqlPath, "utf-8");
+  await db.execute(sql.raw(rolesSql));
 
   console.log("Seeding all permissions from UserPermissions enum...");
 

@@ -250,19 +250,21 @@ export class RbacService {
     return this.rbacRepository.getUserPermissionKeys(data);
   }
 
-  async getRolesByTenant(
+  async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
     user: UserTokenDto,
   ): Promise<GetRolesResponseDto[]> {
-    return this.rbacRepository.getRolesByTenant(queryDto, user);
+    return this.rbacRepository.getRolesByTenantAndScope(queryDto, user);
   }
 
-  async getPermissionsByScopeAndTenant(
+  async getPermissionsByTenant(
     queryDto: GetPermissionsByTenantRequestDto,
     user: UserTokenDto,
   ): Promise<GetPermissionsByTenantResponseDto> {
-    const permissions =
-      await this.rbacRepository.getPermissionsByScopeAndTenant(queryDto, user);
+    const permissions = await this.rbacRepository.getPermissionsByTenant(
+      queryDto,
+      user,
+    );
     return { permissions };
   }
 }

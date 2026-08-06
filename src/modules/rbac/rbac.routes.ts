@@ -6,23 +6,25 @@ import {
   ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
   ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
   PERMISSION_MANAGE_PERMISSIONS,
-  PERMISSION_READ_PERMISSIONS,
-  ROLE_READ_PERMISSIONS,
+  PERMISSION_READ_MANAGE_PERMISSIONS,
+  ROLE_READ_WRITE_PERMISSIONS,
   ROLE_WRITE_PERMISSIONS,
 } from "../../shared/constants/user-permission.constants";
 import type { RbacController } from "./rbac.controller";
 
 const router = Router();
 const rbacController = container.resolve<RbacController>("rbacController");
-
+// ------------------
+//  ROLES
+// ------------------
 router
   .route("/roles")
   .get(
     permissionCheck([
-      ...ROLE_READ_PERMISSIONS,
+      ...ROLE_READ_WRITE_PERMISSIONS,
       ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
     ]),
-    asyncHandler(rbacController.getRolesByTenant),
+    asyncHandler(rbacController.getRolesByTenantAndScope),
   )
   .post(
     permissionCheck([
@@ -41,11 +43,14 @@ router.put(
   asyncHandler(rbacController.updateRole),
 );
 
+// ------------------
+//  PERMISSIONS
+// ------------------
 router
   .route("/permissions")
   .get(
     permissionCheck([
-      ...PERMISSION_READ_PERMISSIONS,
+      ...PERMISSION_READ_MANAGE_PERMISSIONS,
       ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
     ]),
     asyncHandler(rbacController.getPermissionsByScopeAndTenant),
@@ -69,6 +74,9 @@ router.patch(
   asyncHandler(rbacController.removePermission),
 );
 
+// ------------------
+//  USER ROLE MAPPERS
+// ------------------
 router.post(
   "/user-role-mappers",
   permissionCheck([

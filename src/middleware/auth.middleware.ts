@@ -2,18 +2,13 @@ import type { NextFunction, Request, Response } from "express";
 import type jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import type { UserRequestScope } from "../shared/dtos/user-request-scope.dto";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import { AppError } from "../shared/errors/app-error";
 import { verifyToken } from "../shared/utils/jwt.helper";
-
-export interface UserRequestScope {
-  scope?: string;
-  organizationId?: string;
-  branchId?: string;
-}
 
 declare global {
   namespace Express {

@@ -1,4 +1,4 @@
 export enum UserScopeTypeEnums {
-  ORGANIZATION = "organization",
-  BRANCH = "branch",
+  ORGANIZATION = 1,
+  BRANCH = 2,
 }

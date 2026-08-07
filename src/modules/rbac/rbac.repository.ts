@@ -1,7 +1,9 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import type { UserRequestScope } from "../../shared/dtos/user-request-scope.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
+import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
 import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
 import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
@@ -171,10 +173,24 @@ export class RbacRepository {
   async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
     userToken: UserTokenDto,
+    userScope?: UserRequestScope,
   ): Promise<GetRolesResponseDto[]> {
     const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
-    const orgIdVal = userToken.organizationId || null;
-    const branchIdVal = userToken.branchId || null;
+
+    let orgIdVal = userToken.organizationId || null;
+    let branchIdVal = userToken.branchId || null;
+
+    if (userScope?.scope) {
+      const scopeType = Number(userScope.scope);
+
+      if (scopeType === UserScopeTypeEnums.ORGANIZATION) {
+        orgIdVal = userScope.organizationId || null;
+        branchIdVal = null;
+      } else if (scopeType === UserScopeTypeEnums.BRANCH) {
+        branchIdVal = userScope.branchId || null;
+        orgIdVal = userScope.organizationId || userToken.organizationId || null;
+      }
+    }
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
       sql`SELECT * FROM fn_get_roles_by_tenant_and_scope(${searchVal}, ${orgIdVal}, ${branchIdVal})`,

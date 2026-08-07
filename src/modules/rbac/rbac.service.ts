@@ -1,4 +1,5 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { UserRequestScope } from "../../shared/dtos/user-request-scope.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
@@ -253,8 +254,13 @@ export class RbacService {
   async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
     user: UserTokenDto,
+    userScope?: UserRequestScope,
   ): Promise<GetRolesResponseDto[]> {
-    return this.rbacRepository.getRolesByTenantAndScope(queryDto, user);
+    return this.rbacRepository.getRolesByTenantAndScope(
+      queryDto,
+      user,
+      userScope,
+    );
   }
 
   async getPermissionsByTenant(

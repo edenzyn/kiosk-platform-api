@@ -1,5 +1,5 @@
 export enum CustomRequestHeaders {
-  SCOPE = "X-Scope",
-  ORGANIZATION_ID = "X-Organization-Id",
-  BRANCH_ID = "X-Branch-Id",
+  SCOPE = "X-S",
+  ORGANIZATION_ID = "X-O-Id",
+  BRANCH_ID = "X-B-Id",
 }

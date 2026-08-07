@@ -1,13 +1,12 @@
 import { Router } from "express";
 import asyncHandler from "express-async-handler";
 import { container } from "../../config/container";
-import { permissionCheck } from "../../middleware/permission-check.middleware";
+import { accessMiddleware } from "../../middleware/access.middleware";
 import {
-  BRANCH_TOP_SCOPED_PERMISSIONS,
-  ORGANIZATION_TOP_PERMISSIONS,
-  USER_INVITE_PERMISSIONS,
-  USER_READ_MANAGE_PERMISSIONS,
+  BRANCH_USER_READ_MANAGE_PERMISSIONS,
+  ORGANIZATION_USER_READ_MANAGE_PERMS,
 } from "../../shared/constants/user-permission.constants";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { UserController } from "./user.controller";
 
 const router = Router();
@@ -16,40 +15,36 @@ const userController = container.resolve<UserController>("userController");
 router.get("/me", asyncHandler(userController.checkAuth));
 router.get(
   "/",
-  permissionCheck([
-    ...USER_READ_MANAGE_PERMISSIONS,
-    ...ORGANIZATION_TOP_PERMISSIONS,
-    ...BRANCH_TOP_SCOPED_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: ORGANIZATION_USER_READ_MANAGE_PERMS,
+    branch: BRANCH_USER_READ_MANAGE_PERMISSIONS,
+  }),
   asyncHandler(userController.getUsersByTenantAndScope),
 );
 router.post(
   "/invite",
-  permissionCheck([
-    ...USER_INVITE_PERMISSIONS,
-    ...ORGANIZATION_TOP_PERMISSIONS,
-    ...BRANCH_TOP_SCOPED_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_USER_INVITE],
+    branch: [UserPermissions.BRANCH_USER_INVITE],
+  }),
   asyncHandler(userController.inviteUser),
 );
 
 router.get(
   "/invitations",
-  permissionCheck([
-    ...USER_INVITE_PERMISSIONS,
-    ...ORGANIZATION_TOP_PERMISSIONS,
-    ...BRANCH_TOP_SCOPED_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_USER_INVITE],
+    branch: [UserPermissions.BRANCH_USER_INVITE],
+  }),
   asyncHandler(userController.getInvitationsByTenant),
 );
 
 router.post(
   "/invitations/:id/revoke",
-  permissionCheck([
-    ...USER_INVITE_PERMISSIONS,
-    ...ORGANIZATION_TOP_PERMISSIONS,
-    ...BRANCH_TOP_SCOPED_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_USER_INVITE],
+    branch: [UserPermissions.BRANCH_USER_INVITE],
+  }),
   asyncHandler(userController.revokeInvitation),
 );
 

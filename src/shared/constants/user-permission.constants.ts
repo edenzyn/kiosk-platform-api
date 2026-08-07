@@ -28,58 +28,38 @@ export const ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS = [
 //----------------------
 // User Module Constants
 //----------------------
-export const USER_READ_PERMISSIONS = [
+export const ORGANIZATION_USER_READ_MANAGE_PERMS = [
   UserPermissions.ORGANIZATION_USER_READ,
-  UserPermissions.BRANCH_USER_READ,
-];
-
-export const USER_INVITE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_USER_INVITE,
-  UserPermissions.BRANCH_USER_INVITE,
-];
-
-export const USER_MANAGE_PERMISSIONS = [
   UserPermissions.ORGANIZATION_USER_MANAGE,
-  UserPermissions.BRANCH_USER_MANAGE,
 ];
 
-export const USER_READ_MANAGE_PERMISSIONS = [
-  ...USER_READ_PERMISSIONS,
-  ...USER_MANAGE_PERMISSIONS,
+export const BRANCH_USER_READ_MANAGE_PERMISSIONS = [
+  UserPermissions.BRANCH_USER_READ,
+  UserPermissions.BRANCH_USER_MANAGE,
 ];
 
 //----------------------
 // Role Module Constants
 //----------------------
-export const ROLE_READ_PERMISSIONS = [
+export const ORGANIZATION_ROLE_READ_WRITE_PERMS = [
   UserPermissions.ORGANIZATION_ROLE_READ,
-  UserPermissions.BRANCH_ROLE_READ,
-];
-
-export const ROLE_WRITE_PERMISSIONS = [
   UserPermissions.ORGANIZATION_ROLE_WRITE,
-  UserPermissions.BRANCH_ROLE_WRITE,
 ];
 
-export const ROLE_READ_WRITE_PERMISSIONS = [
-  ...ROLE_READ_PERMISSIONS,
-  ...ROLE_WRITE_PERMISSIONS,
+export const BRANCH_ROLE_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_ROLE_READ,
+  UserPermissions.BRANCH_ROLE_WRITE,
 ];
 
 //----------------------
 // Permission Module Constants
 //----------------------
-export const PERMISSION_READ_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_PERMISSION_READ,
+export const BRANCH_PERMISSION_READ_MANAGE_PERMS = [
   UserPermissions.BRANCH_PERMISSION_READ,
-];
-
-export const PERMISSION_MANAGE_PERMISSIONS = [
-  UserPermissions.ORGANIZATION_PERMISSION_MANAGE,
   UserPermissions.BRANCH_PERMISSION_MANAGE,
 ];
 
-export const PERMISSION_READ_MANAGE_PERMISSIONS = [
-  ...PERMISSION_READ_PERMISSIONS,
-  ...PERMISSION_MANAGE_PERMISSIONS,
+export const ORGANIZATION_PERMISSION_READ_MANAGE_PERMS = [
+  UserPermissions.ORGANIZATION_PERMISSION_READ,
+  UserPermissions.ORGANIZATION_PERMISSION_MANAGE,
 ];

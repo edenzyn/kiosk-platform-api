@@ -1,15 +1,14 @@
 import { Router } from "express";
 import asyncHandler from "express-async-handler";
 import { container } from "../../config/container";
-import { permissionCheck } from "../../middleware/permission-check.middleware";
+import { accessMiddleware } from "../../middleware/access.middleware";
 import {
-  ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
-  ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-  PERMISSION_MANAGE_PERMISSIONS,
-  PERMISSION_READ_MANAGE_PERMISSIONS,
-  ROLE_READ_WRITE_PERMISSIONS,
-  ROLE_WRITE_PERMISSIONS,
+  BRANCH_PERMISSION_READ_MANAGE_PERMS,
+  BRANCH_ROLE_READ_WRITE_PERMS,
+  ORGANIZATION_PERMISSION_READ_MANAGE_PERMS,
+  ORGANIZATION_ROLE_READ_WRITE_PERMS,
 } from "../../shared/constants/user-permission.constants";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { RbacController } from "./rbac.controller";
 
 const router = Router();
@@ -20,57 +19,55 @@ const rbacController = container.resolve<RbacController>("rbacController");
 router
   .route("/roles")
   .get(
-    permissionCheck([
-      ...ROLE_READ_WRITE_PERMISSIONS,
-      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
-    ]),
+    accessMiddleware({
+      organization: ORGANIZATION_ROLE_READ_WRITE_PERMS,
+      branch: BRANCH_ROLE_READ_WRITE_PERMS,
+    }),
     asyncHandler(rbacController.getRolesByTenantAndScope),
   )
   .post(
-    permissionCheck([
-      ...ROLE_WRITE_PERMISSIONS,
-      ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-    ]),
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+      branch: [UserPermissions.BRANCH_ROLE_WRITE],
+    }),
     asyncHandler(rbacController.createRole),
   );
 
 router.put(
   "/roles/:roleId",
-  permissionCheck([
-    ...ROLE_WRITE_PERMISSIONS,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
   asyncHandler(rbacController.updateRole),
 );
 
 // ------------------
 //  PERMISSIONS
 // ------------------
-router
-  .route("/permissions")
-  .get(
-    permissionCheck([
-      ...PERMISSION_READ_MANAGE_PERMISSIONS,
-      ...ORG_BRANCH_TOP_SCOPED_READ_AND_WRITE_PERMISSIONS,
-    ]),
-    asyncHandler(rbacController.getPermissionsByScopeAndTenant),
-  );
+router.route("/permissions").get(
+  accessMiddleware({
+    organization: ORGANIZATION_PERMISSION_READ_MANAGE_PERMS,
+    branch: BRANCH_PERMISSION_READ_MANAGE_PERMS,
+  }),
+  asyncHandler(rbacController.getPermissionsByScopeAndTenant),
+);
 
 router.put(
   "/permissions/:permissionId",
-  permissionCheck([
-    ...PERMISSION_MANAGE_PERMISSIONS,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
+    branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
+  }),
   asyncHandler(rbacController.assignPermission),
 );
 
 router.patch(
   "/permissions/:permissionId",
-  permissionCheck([
-    ...PERMISSION_MANAGE_PERMISSIONS,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
+    branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
+  }),
   asyncHandler(rbacController.removePermission),
 );
 
@@ -79,10 +76,10 @@ router.patch(
 // ------------------
 router.post(
   "/user-role-mappers",
-  permissionCheck([
-    ...ROLE_WRITE_PERMISSIONS,
-    ...ORG_BRANCH_TOP_SCOPED_WRITE_PERMISSIONS,
-  ]),
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
   asyncHandler(rbacController.createUserRoleMapper),
 );
 

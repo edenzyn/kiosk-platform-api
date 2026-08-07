@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
@@ -35,76 +36,54 @@ export class UserService {
     private readonly branchRepository: BranchRepository,
   ) {}
 
-async getPermissionsAndScopes(
-  userId: string,
-  organizationId: string | null,
-  branchId: string | null,
-  userScope: UserScopeTypeEnums,
-): Promise<{
-  permissions: UserPermissions[];
-  availableScopes: UserScope[];
-}> {
-  const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
-    userId,
-    organizationId,
-    branchId,
-  });
-
-  const availableScopes: UserScope[] = [];
-
-  if (!organizationId) {
-    return {
-      permissions: Array.from(permissionKeys) as UserPermissions[],
-      availableScopes,
-    };
-  }
-
-  const organization = await this.organizationRepository.findById(
-    organizationId,
-  );
-
-  if (!organization) {
-    return {
-      permissions: Array.from(permissionKeys) as UserPermissions[],
-      availableScopes,
-    };
-  }
-
-  // ======================================================
-  // Organization User
-  // ======================================================
-  if (userScope === UserScopeTypeEnums.ORGANIZATION) {
-    availableScopes.push({
-      id: organization.id,
-      name: organization.name,
-      type: UserScopeTypeEnums.ORGANIZATION,
-      createdAt: null,
+  async getPermissionsAndScopes(
+    userId: string,
+    organizationId: string | null,
+    branchId: string | null,
+    userScope: UserScopeTypeEnums,
+  ): Promise<{
+    permissions: UserPermissions[];
+    availableScopes: UserScope[];
+  }> {
+    const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
+      userId,
+      organizationId,
+      branchId,
     });
 
-    const branches = await this.branchRepository.findAll(organizationId);
+    const availableScopes: UserScope[] = [];
 
-    for (const branch of branches) {
-      availableScopes.push({
-        id: branch.id,
-        name: branch.name as string,
-        type: UserScopeTypeEnums.BRANCH,
-        createdAt: branch.createdAt,
-      });
+    if (!organizationId) {
+      return {
+        permissions: Array.from(permissionKeys) as UserPermissions[],
+        availableScopes,
+      };
     }
-  }
 
-  // ======================================================
-  // Branch User
-  // ======================================================
-  else {
-    if (branchId) {
-      const branches = await this.branchRepository.findAll(undefined, [
-        branchId,
-      ]);
+    const organization =
+      await this.organizationRepository.findById(organizationId);
 
-      const branch = branches[0];
+    if (!organization) {
+      return {
+        permissions: Array.from(permissionKeys) as UserPermissions[],
+        availableScopes,
+      };
+    }
 
-      if (branch) {
+    // ======================================================
+    // Organization User
+    // ======================================================
+    if (userScope === UserScopeTypeEnums.ORGANIZATION) {
+      availableScopes.push({
+        id: organization.id,
+        name: organization.name,
+        type: UserScopeTypeEnums.ORGANIZATION,
+        createdAt: null,
+      });
+
+      const branches = await this.branchRepository.findAll(organizationId);
+
+      for (const branch of branches) {
         availableScopes.push({
           id: branch.id,
           name: branch.name as string,
@@ -113,51 +92,72 @@ async getPermissionsAndScopes(
         });
       }
     }
+
+    // ======================================================
+    // Branch User
+    // ======================================================
+    else {
+      if (branchId) {
+        const branches = await this.branchRepository.findAll(undefined, [
+          branchId,
+        ]);
+
+        const branch = branches[0];
+
+        if (branch) {
+          availableScopes.push({
+            id: branch.id,
+            name: branch.name as string,
+            type: UserScopeTypeEnums.BRANCH,
+            createdAt: branch.createdAt,
+          });
+        }
+      }
+    }
+
+    return {
+      permissions: Array.from(permissionKeys) as UserPermissions[],
+      availableScopes,
+    };
   }
 
-  return {
-    permissions: Array.from(permissionKeys) as UserPermissions[],
-    availableScopes,
-  };
-}
+  async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
+    const user = await this.userRepository.findById(tokenUser.id);
 
-async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
-  const user = await this.userRepository.findById(tokenUser.id);
+    if (!user) {
+      throw new AppError("User not found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
 
-  if (!user) {
-    throw new AppError("User not found", {
-      statusCode: HttpStatusCodes.UNAUTHORIZED,
-      code: ErrorCodes.UNAUTHORIZED,
-    });
+    const { password, ...userWithoutPassword } = user;
+
+    const userScope = user.branchId
+      ? UserScopeTypeEnums.BRANCH
+      : UserScopeTypeEnums.ORGANIZATION;
+
+    const { permissions, availableScopes } = await this.getPermissionsAndScopes(
+      user.id,
+      user.organizationId,
+      user.branchId,
+      userScope,
+    );
+
+    return {
+      user: userWithoutPassword,
+      permissions,
+      availableScopes,
+    };
   }
-
-  const { password, ...userWithoutPassword } = user;
-
-  const userScope = user.branchId
-    ? UserScopeTypeEnums.BRANCH
-    : UserScopeTypeEnums.ORGANIZATION;
-
-  const { permissions, availableScopes } = await this.getPermissionsAndScopes(
-    user.id,
-    user.organizationId,
-    user.branchId,
-    userScope,
-  );
-
-  return {
-    user: userWithoutPassword,
-    permissions,
-    availableScopes,
-  };
-}
 
   async getUsersByTenantAndScope(
     queryDto: GetUsersRequestDto,
-    userToken: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<GetUsersResponseDto> {
     const users = await this.userRepository.findByTenant(
-      userToken.organizationId,
-      userToken.branchId,
+      effectiveTenant.organizationId,
+      effectiveTenant.branchId || undefined,
       queryDto.search,
     );
 
@@ -167,6 +167,7 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
   async inviteUser(
     dto: InviteUserRequestDto,
     userToken: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<InviteUserResponseDto> {
     const existingUser = await this.userRepository.findByEmail(dto.email);
     if (existingUser) {
@@ -179,8 +180,8 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
     const token = generateToken(
       {
         email: dto.email,
-        organizationId: userToken.organizationId,
-        branchId: userToken.branchId,
+        organizationId: effectiveTenant.organizationId,
+        branchId: effectiveTenant.branchId,
       },
       env.JWT_INVITE_USER_SECRET,
       {
@@ -192,8 +193,8 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
 
     await this.userRepository.createInvitation({
       email: dto.email,
-      organizationId: userToken.organizationId ?? null,
-      branchId: userToken.branchId ?? null,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId,
       roleIds: dto.roles || [],
       token,
       expiresAt,
@@ -221,11 +222,11 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
   }
 
   async getInvitationsByTenant(
-    userToken: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<GetInvitationsResponseDto> {
     const invitations = await this.userRepository.findInvitationsByTenant(
-      userToken.organizationId,
-      userToken.branchId,
+      effectiveTenant.organizationId,
+      effectiveTenant.branchId || undefined,
     );
     return { invitations };
   }
@@ -233,6 +234,7 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
   async revokeInvitation(
     id: string,
     userToken: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<RevokeInvitationResponseDto> {
     const invitation = await this.userRepository.findInvitationById(id);
     if (!invitation) {
@@ -243,10 +245,11 @@ async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
     }
 
     const isOrgMatch =
-      !userToken.organizationId ||
-      invitation.organizationId === userToken.organizationId;
+      !effectiveTenant.organizationId ||
+      invitation.organizationId === effectiveTenant.organizationId;
     const isBranchMatch =
-      !userToken.branchId || invitation.branchId === userToken.branchId;
+      !effectiveTenant.branchId ||
+      invitation.branchId === effectiveTenant.branchId;
 
     if (!isOrgMatch || !isBranchMatch) {
       throw new AppError("Forbidden to access this invitation", {

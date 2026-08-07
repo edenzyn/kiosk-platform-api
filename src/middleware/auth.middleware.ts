@@ -4,17 +4,19 @@ import { env } from "../config/env";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import type { UserRequestScope } from "../shared/dtos/user-request-scope.dto";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
-import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import { AppError } from "../shared/errors/app-error";
 import { verifyToken } from "../shared/utils/jwt.helper";
+
+import type { EffectiveTenant } from "../shared/dtos/effective-tenant.dto";
 
 declare global {
   namespace Express {
     interface Request {
       user?: UserTokenDto;
       userScope?: UserRequestScope;
+      effectiveTenant?: EffectiveTenant;
     }
   }
 }
@@ -41,12 +43,6 @@ export function authMiddleware(
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
-
-    req.userScope = {
-      scope: req.get(CustomRequestHeaders.SCOPE),
-      organizationId: req.get(CustomRequestHeaders.ORGANIZATION_ID),
-      branchId: req.get(CustomRequestHeaders.BRANCH_ID),
-    };
 
     const decoded = verifyToken<jwt.JwtPayload & { user?: UserTokenDto }>(
       token,

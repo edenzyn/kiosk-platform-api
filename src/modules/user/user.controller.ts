@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
 import type { UserService } from "./user.service";
 import { UserValidator } from "./user.validator";
@@ -18,24 +19,29 @@ export class UserController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const userTokenData = req.user as UserTokenDto;
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
     const queryDto: GetUsersRequestDto = {
       search: req.query.search as string | undefined,
     };
     const result = await this.userService.getUsersByTenantAndScope(
       queryDto,
-      userTokenData,
+      effectiveTenant,
     );
     res.json(result);
   };
 
   inviteUser = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
     const data = await UserValidator.inviteUser.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.userService.inviteUser(data, userTokenData);
+    const result = await this.userService.inviteUser(
+      data,
+      userTokenData,
+      effectiveTenant,
+    );
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
@@ -43,13 +49,16 @@ export class UserController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const userTokenData = req.user as UserTokenDto;
-    const result = await this.userService.getInvitationsByTenant(userTokenData);
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const result = await this.userService.getInvitationsByTenant(
+      effectiveTenant,
+    );
     res.json(result);
   };
 
   revokeInvitation = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
     const data = await UserValidator.revokeInvitation.validate(
       { id: req.params.id },
       { abortEarly: false, stripUnknown: true },
@@ -57,6 +66,7 @@ export class UserController {
     const result = await this.userService.revokeInvitation(
       data.id,
       userTokenData,
+      effectiveTenant,
     );
     res.json(result);
   };

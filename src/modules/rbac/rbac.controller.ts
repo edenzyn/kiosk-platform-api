@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { UserRequestScope } from "../../shared/dtos/user-request-scope.dto";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
 import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
@@ -108,8 +108,7 @@ export class RbacController {
 
     const roles = await this.rbacService.getRolesByTenantAndScope(
       data as GetRolesRequestDto,
-      req.user as UserTokenDto,
-      req.userScope as UserRequestScope,
+      req.effectiveTenant as EffectiveTenant,
     );
     res.status(HttpStatusCodes.OK).json({ roles });
   };
@@ -128,7 +127,7 @@ export class RbacController {
 
     const result = await this.rbacService.getPermissionsByTenant(
       data as GetPermissionsByTenantRequestDto,
-      req.user as UserTokenDto,
+      req.effectiveTenant as EffectiveTenant,
     );
     res.status(HttpStatusCodes.OK).json(result);
   };

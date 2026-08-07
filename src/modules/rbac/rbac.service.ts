@@ -1,5 +1,5 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { UserRequestScope } from "../../shared/dtos/user-request-scope.dto";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
@@ -253,23 +253,21 @@ export class RbacService {
 
   async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
-    user: UserTokenDto,
-    userScope?: UserRequestScope,
+    effectiveTenant: EffectiveTenant,
   ): Promise<GetRolesResponseDto[]> {
     return this.rbacRepository.getRolesByTenantAndScope(
       queryDto,
-      user,
-      userScope,
+      effectiveTenant,
     );
   }
 
   async getPermissionsByTenant(
     queryDto: GetPermissionsByTenantRequestDto,
-    user: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<GetPermissionsByTenantResponseDto> {
     const permissions = await this.rbacRepository.getPermissionsByTenant(
       queryDto,
-      user,
+      effectiveTenant,
     );
     return { permissions };
   }

@@ -1,8 +1,8 @@
 import { Router } from "express";
 import asyncHandler from "express-async-handler";
 import { container } from "../../config/container";
-import { permissionCheck } from "../../middleware/permission-check.middleware";
-import { ORGANIZATION_TOP_PERMISSIONS } from "../../shared/constants/user-permission.constants";
+import { accessMiddleware } from "../../middleware/access.middleware";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { OrganizationController } from "./organization.controller";
 
 const router = Router();
@@ -13,7 +13,12 @@ const organizationController = container.resolve<OrganizationController>(
 router
   .route("/")
   .get(
-    permissionCheck([...ORGANIZATION_TOP_PERMISSIONS]),
+    accessMiddleware({
+      organization: [
+        UserPermissions.ORGANIZATION_ALL_WRITE,
+        UserPermissions.ORGANIZATION_ALL_READ,
+      ],
+    }),
     asyncHandler(organizationController.list),
   );
 

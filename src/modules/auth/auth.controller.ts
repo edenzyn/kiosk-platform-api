@@ -33,7 +33,11 @@ export class AuthController {
       ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
     );
 
-    res.json({ user: result.user });
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+      availableScopes: result.availableScopes,
+    });
   };
 
   refreshUserToken = async (req: Request, res: Response): Promise<void> => {
@@ -62,7 +66,11 @@ export class AuthController {
       ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
     );
 
-    res.json({ user: result.user });
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+      availableScopes: result.availableScopes,
+    });
   };
 
   logoutUser = async (req: Request, res: Response): Promise<void> => {
@@ -95,6 +103,10 @@ export class AuthController {
       ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
     );
 
-    res.json({ user: result.user });
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+      availableScopes: result.availableScopes,
+    });
   };
 }

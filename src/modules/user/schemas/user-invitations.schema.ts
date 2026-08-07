@@ -1,6 +1,7 @@
 import {
   integer,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -19,7 +20,7 @@ export const userInvitations = pgTable("user_invitations", {
   ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   roleIds: uuid("role_ids").array().default([]).notNull(),
-  token: varchar("token", { length: 255 }).notNull().unique(),
+  token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   status: integer("status").default(UserInvitationStatusEnum.PENDING).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

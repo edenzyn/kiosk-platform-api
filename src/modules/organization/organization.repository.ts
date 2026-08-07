@@ -21,6 +21,16 @@ export class OrganizationRepository {
     return organization;
   }
 
+  async findById(id: string): Promise<OrganizationEntity | undefined> {
+    const [organization] = await this.database.client
+      .select()
+      .from(organizations)
+      .where(eq(organizations.id, id))
+      .limit(1);
+
+    return organization;
+  }
+
   async findByName(name: string): Promise<OrganizationEntity | undefined> {
     const [organization] = await this.database.client
       .select()

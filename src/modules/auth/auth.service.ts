@@ -4,6 +4,7 @@ import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { compareHashedData, hashData } from "../../shared/utils/bcrypt.helper";
@@ -11,6 +12,7 @@ import { hashSha256 } from "../../shared/utils/crypto.helper";
 import { generateToken, verifyToken } from "../../shared/utils/jwt.helper";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserRepository } from "../user/user.repository";
+import type { UserService } from "../user/user.service";
 import type { AuthRepository } from "./auth.repository";
 import type { AcceptInvitationRequestDto } from "./dtos/accept-invitation-request.dto";
 import type { LoginResult } from "./dtos/login-result.dto";
@@ -26,6 +28,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly authRepository: AuthRepository,
     private readonly rbacRepository: RbacRepository,
+    private readonly userService: UserService,
   ) {}
 
   private _generateAuthTokens(
@@ -116,7 +119,18 @@ export class AuthService {
       refreshToken: generatedTokens.refreshToken,
     };
 
-    return { user: userWithoutPassword, tokens };
+    const userScope = user.branchId
+      ? UserScopeTypeEnums.BRANCH
+      : UserScopeTypeEnums.ORGANIZATION;
+
+    const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
+      user.id,
+      user.organizationId,
+      user.branchId,
+      userScope,
+    );
+
+    return { user: userWithoutPassword, tokens, permissions, availableScopes };
   }
 
   async refreshUserToken(refreshToken: string): Promise<LoginResult> {
@@ -169,12 +183,25 @@ export class AuthService {
         throw new Error("Refresh token was already used or revoked");
       }
 
+      const userScope = user.branchId
+        ? UserScopeTypeEnums.BRANCH
+        : UserScopeTypeEnums.ORGANIZATION;
+
+      const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
+        user.id,
+        user.organizationId,
+        user.branchId,
+        userScope,
+      );
+
       return {
         user: userWithoutPassword,
         tokens: {
           accessToken: generatedTokens.accessToken,
           refreshToken: generatedTokens.refreshToken,
         },
+        permissions,
+        availableScopes,
       };
     } catch (error) {
       throw new AppError("Invalid or expired refresh token", {
@@ -304,12 +331,25 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = createdUser;
 
+    const userScope = createdUser.branchId
+      ? UserScopeTypeEnums.BRANCH
+      : UserScopeTypeEnums.ORGANIZATION;
+
+    const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
+      createdUser.id,
+      createdUser.organizationId,
+      createdUser.branchId,
+      userScope,
+    );
+
     return {
       user: userWithoutPassword,
       tokens: {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       },
+      permissions,
+      availableScopes,
     };
   }
 }

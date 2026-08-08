@@ -13,6 +13,5 @@ export interface CreateBranchRequestDto {
   timezone: string;
   latitude?: number | null;
   longitude?: number | null;
-  taxId?: string | null;
   createdBy: string;
 }

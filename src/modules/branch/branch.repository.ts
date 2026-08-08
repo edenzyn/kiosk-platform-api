@@ -24,7 +24,6 @@ export class BranchRepository {
         timezone: data.timezone,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
-        taxId: data.taxId ?? null,
         createdBy: data.createdBy,
       })
       .returning();

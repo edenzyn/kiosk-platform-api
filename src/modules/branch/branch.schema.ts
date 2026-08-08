@@ -1,5 +1,4 @@
 import {
-  type AnyPgColumn,
   boolean,
   doublePrecision,
   pgTable,
@@ -7,6 +6,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { organizations } from "../organization/organization.schema";
 import { users } from "../user/schemas/user.schema";
@@ -34,9 +34,6 @@ export const branches = pgTable("branches", {
   timezone: varchar("timezone", { length: 100 }).notNull(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
-
-  // Tax & Business (Optional)
-  taxId: varchar("tax_id", { length: 100 }),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

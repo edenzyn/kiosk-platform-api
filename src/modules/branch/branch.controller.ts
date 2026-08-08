@@ -10,13 +10,16 @@ export class BranchController {
   constructor(private readonly branchService: BranchService) {}
 
   create = async (req: Request, res: Response): Promise<void> => {
-    const data = await BranchValidator.create.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+    const data = await BranchValidator.create.validate(
+      { ...req.body, ...req.effectiveTenant },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
 
     const branch = await this.branchService.createBranch(
-      data as Omit<CreateBranchRequestDto, "createdBy">,
+      data as CreateBranchRequestDto,
       req.user as UserTokenDto,
       req.effectiveTenant as EffectiveTenant,
     );
@@ -24,10 +27,13 @@ export class BranchController {
   };
 
   getBranches = async (req: Request, res: Response): Promise<void> => {
-    const queryDto = await BranchValidator.getBranchesQuery.validate(req.query, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+    const queryDto = await BranchValidator.getBranchesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
     const result = await this.branchService.getBranches(
       req.effectiveTenant as EffectiveTenant,
       queryDto.page,

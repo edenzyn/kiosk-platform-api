@@ -1,6 +1,6 @@
 import * as yup from "yup";
-import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import validateMobileNumber from "../../shared/validators/phone.validator";
 
 export const BranchValidator = {
@@ -27,7 +27,6 @@ export const BranchValidator = {
     timezone: yup.string().max(100).required("Timezone is required"),
     latitude: yup.number().nullable().optional(),
     longitude: yup.number().nullable().optional(),
-    taxId: yup.string().max(100).nullable().optional(),
   }),
   getBranchesQuery: paginationQuerySchema.noUnknown(),
 };

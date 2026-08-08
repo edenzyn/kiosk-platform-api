@@ -1,10 +1,9 @@
-import type { BranchRepository } from "./branch.repository";
-import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
-import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
-import { AppError } from "../../shared/errors/app-error";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { AppError } from "../../shared/errors/app-error";
+import type { BranchRepository } from "./branch.repository";
+import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
 
 export class BranchService {
   constructor(private readonly branchRepository: BranchRepository) {}
@@ -14,7 +13,7 @@ export class BranchService {
     user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ) {
-    if (effectiveTenant.organizationId !== data.organizationId) {
+    if (effectiveTenant.organizationId !== user.organizationId) {
       throw new AppError("Cannot create branch for a different organization", {
         statusCode: HttpStatusCodes.FORBIDDEN,
       });

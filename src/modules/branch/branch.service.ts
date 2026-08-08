@@ -2,11 +2,15 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { AppError } from "../../shared/errors/app-error";
+import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
 import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
 
 export class BranchService {
-  constructor(private readonly branchRepository: BranchRepository) {}
+  constructor(
+    private readonly branchRepository: BranchRepository,
+    private readonly rbacRepository: RbacRepository,
+  ) {}
 
   async createBranch(
     data: Omit<CreateBranchRequestDto, "createdBy">,
@@ -19,10 +23,18 @@ export class BranchService {
       });
     }
 
-    return this.branchRepository.create({
+    const branch = await this.branchRepository.create({
       ...data,
       createdBy: user.id,
     });
+
+    await this.rbacRepository.createDefaultBranchRoles(
+      branch.id,
+      branch.organizationId,
+      user.id,
+    );
+
+    return branch;
   }
 
   async getBranches(

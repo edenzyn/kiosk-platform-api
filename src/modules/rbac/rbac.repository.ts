@@ -1,5 +1,6 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 
@@ -19,6 +20,7 @@ import {
   type PermissionEntity,
 } from "./schemas/permission.schema";
 
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
   userRolesMapper,
@@ -240,5 +242,65 @@ export class RbacRepository {
       .where(eq(permissions.id, id));
 
     return permission || null;
+  }
+
+  async getPermissionsByKeys(keys: string[]): Promise<PermissionEntity[]> {
+    if (keys.length === 0) return [];
+    return await this.database.client
+      .select()
+      .from(permissions)
+      .where(inArray(permissions.key, keys));
+  }
+
+  async createDefaultBranchRoles(
+    branchId: string,
+    organizationId: string,
+    createdBy: string,
+  ): Promise<void> {
+    const allKeys = Array.from(
+      new Set(DEFAULT_BRANCH_ROLES.flatMap((role) => role.permissions)),
+    );
+
+    const dbPermissions = await this.getPermissionsByKeys(allKeys);
+    const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
+
+    for (const defaultRole of DEFAULT_BRANCH_ROLES) {
+      const [role] = await this.database.client
+        .insert(roles)
+        .values({
+          organizationId,
+          branchId,
+          name: defaultRole.name,
+          description: `Default branch ${defaultRole.name.toLowerCase()} role`,
+          rank: defaultRole.rank,
+          isSystem: defaultRole.isSystem ?? false,
+          createdBy,
+        })
+        .returning();
+
+      if (!role) continue;
+
+      const permissionMappersToInsert = defaultRole.permissions
+        .map((pKey) => {
+          const permissionId = keyToIdMap.get(pKey);
+          if (!permissionId) return null;
+          return {
+            entityType: PermissionEntityType.ROLE,
+            entityId: role.id,
+            permissionId,
+            organizationId,
+            branchId,
+            isActive: true,
+            createdBy,
+          };
+        })
+        .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
+
+      if (permissionMappersToInsert.length > 0) {
+        await this.database.client
+          .insert(permissionsMapper)
+          .values(permissionMappersToInsert);
+      }
+    }
   }
 }

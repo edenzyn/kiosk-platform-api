@@ -54,12 +54,12 @@ export const BRANCH_ROLE_READ_WRITE_PERMS = [
 //----------------------
 // Permission Module Constants
 //----------------------
-export const BRANCH_PERMISSION_READ_MANAGE_PERMS = [
-  UserPermissions.BRANCH_PERMISSION_READ,
-  UserPermissions.BRANCH_PERMISSION_MANAGE,
-];
-
 export const ORGANIZATION_PERMISSION_READ_MANAGE_PERMS = [
   UserPermissions.ORGANIZATION_PERMISSION_READ,
   UserPermissions.ORGANIZATION_PERMISSION_MANAGE,
+];
+
+export const BRANCH_PERMISSION_READ_MANAGE_PERMS = [
+  UserPermissions.BRANCH_PERMISSION_READ,
+  UserPermissions.BRANCH_PERMISSION_MANAGE,
 ];

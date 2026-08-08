@@ -1,4 +1,4 @@
-import { and, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, count, eq, ilike, isNull, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
@@ -57,7 +57,9 @@ export class UserRepository {
     organizationId?: string,
     branchId?: string,
     search?: string,
-  ): Promise<UserResponseDto[]> {
+    page?: number,
+    limit?: number,
+  ): Promise<{ users: UserResponseDto[]; total: number }> {
     const conditions = [];
 
     if (organizationId && branchId) {
@@ -80,7 +82,17 @@ export class UserRepository {
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const query = this.database.client
+    // Count query
+    const countQuery = this.database.client
+      .select({ count: count() })
+      .from(users);
+    const [countResult] = condition
+      ? await countQuery.where(condition)
+      : await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    // Select query
+    let query = this.database.client
       .select({
         id: users.id,
         organizationId: users.organizationId,
@@ -105,12 +117,19 @@ export class UserRepository {
       })
       .from(users)
       .leftJoin(organizations, eq(users.organizationId, organizations.id))
-      .leftJoin(branches, eq(users.branchId, branches.id));
+      .leftJoin(branches, eq(users.branchId, branches.id))
+      .$dynamic();
 
     if (condition) {
-      return query.where(condition);
+      query = query.where(condition);
     }
-    return query;
+
+    if (page && limit) {
+      query = query.limit(limit).offset((page - 1) * limit);
+    }
+
+    const rows = await query;
+    return { users: rows as UserResponseDto[], total };
   }
 
   async createInvitation(
@@ -175,7 +194,9 @@ export class UserRepository {
   async findInvitationsByTenant(
     organizationId?: string,
     branchId?: string,
-  ): Promise<UserInvitationEntity[]> {
+    page?: number,
+    limit?: number,
+  ): Promise<{ invitations: UserInvitationEntity[]; total: number }> {
     const conditions = [];
 
     if (organizationId && branchId) {
@@ -193,12 +214,29 @@ export class UserRepository {
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
-    const query = this.database.client.select().from(userInvitations);
+
+    // Count query
+    const countQuery = this.database.client
+      .select({ count: count() })
+      .from(userInvitations);
+    const [countResult] = condition
+      ? await countQuery.where(condition)
+      : await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    // Select query
+    let query = this.database.client.select().from(userInvitations).$dynamic();
 
     if (condition) {
-      return query.where(condition);
+      query = query.where(condition);
     }
-    return query;
+
+    if (page && limit) {
+      query = query.limit(limit).offset((page - 1) * limit);
+    }
+
+    const rows = await query;
+    return { invitations: rows, total };
   }
 
   async findInvitationById(

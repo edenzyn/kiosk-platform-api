@@ -1,6 +1,7 @@
 import * as Yup from "yup";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
 export class UserValidator {
   static inviteUser = Yup.object({
@@ -16,4 +17,10 @@ export class UserValidator {
       .uuid("Invalid invitation ID format")
       .required("Invitation ID is required"),
   }).noUnknown();
+
+  static getUsersQuery = paginationQuerySchema.shape({
+    search: Yup.string().optional().trim(),
+  }).noUnknown();
+
+  static getInvitationsQuery = paginationQuerySchema.noUnknown();
 }

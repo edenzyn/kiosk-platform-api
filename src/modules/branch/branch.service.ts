@@ -26,7 +26,11 @@ export class BranchService {
     });
   }
 
-  async listBranches(effectiveTenant: EffectiveTenant) {
+  async getBranches(
+    effectiveTenant: EffectiveTenant,
+    page: number = 1,
+    limit: number = 10,
+  ) {
     const orgIdFilter = effectiveTenant.organizationId;
 
     let branchIdsFilter: string[] | undefined = undefined;
@@ -34,6 +38,19 @@ export class BranchService {
       branchIdsFilter = [effectiveTenant.branchId];
     }
 
-    return this.branchRepository.findAll(orgIdFilter, branchIdsFilter);
+    const { branches, total } = await this.branchRepository.getBranches(
+      orgIdFilter,
+      branchIdsFilter,
+      page,
+      limit,
+    );
+
+    return {
+      branches,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

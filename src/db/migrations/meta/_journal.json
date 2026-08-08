@@ -64,6 +64,13 @@
       "when": 1786083068805,
       "tag": "0008_update-user-invitations-table",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786215290053,
+      "tag": "0009_update-branches-table",
+      "breakpoints": true
     }
   ]
 }

@@ -82,7 +82,8 @@ export class UserService {
         createdAt: null,
       });
 
-      const branches = await this.branchRepository.findAll(organizationId);
+      const { branches } =
+        await this.branchRepository.getBranches(organizationId);
 
       for (const branch of branches) {
         availableScopes.push({
@@ -99,9 +100,10 @@ export class UserService {
     // ======================================================
     else {
       if (branchId) {
-        const branches = await this.branchRepository.findAll(undefined, [
-          branchId,
-        ]);
+        const { branches } = await this.branchRepository.getBranches(
+          undefined,
+          [branchId],
+        );
 
         const branch = branches[0];
 
@@ -154,13 +156,23 @@ export class UserService {
     queryDto: GetUsersRequestDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetUsersResponseDto> {
-    const users = await this.userRepository.findByTenant(
+    const page = queryDto.page;
+    const limit = queryDto.limit;
+    const { users, total } = await this.userRepository.findByTenant(
       effectiveTenant.organizationId,
       effectiveTenant.branchId || undefined,
       queryDto.search,
+      page,
+      limit,
     );
 
-    return { users };
+    return {
+      users,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async inviteUser(
@@ -222,12 +234,23 @@ export class UserService {
 
   async getInvitationsByTenant(
     effectiveTenant: EffectiveTenant,
+    page: number = 1,
+    limit: number = 10,
   ): Promise<GetInvitationsResponseDto> {
-    const invitations = await this.userRepository.findInvitationsByTenant(
-      effectiveTenant.organizationId,
-      effectiveTenant.branchId || undefined,
-    );
-    return { invitations };
+    const { invitations, total } =
+      await this.userRepository.findInvitationsByTenant(
+        effectiveTenant.organizationId,
+        effectiveTenant.branchId || undefined,
+        page,
+        limit,
+      );
+    return {
+      invitations,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async revokeInvitation(

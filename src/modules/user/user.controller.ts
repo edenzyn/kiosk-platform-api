@@ -2,7 +2,6 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
-import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
 import type { UserService } from "./user.service";
 import { UserValidator } from "./user.validator";
 
@@ -20,9 +19,10 @@ export class UserController {
     res: Response,
   ): Promise<void> => {
     const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-    const queryDto: GetUsersRequestDto = {
-      search: req.query.search as string | undefined,
-    };
+    const queryDto = await UserValidator.getUsersQuery.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
     const result = await this.userService.getUsersByTenantAndScope(
       queryDto,
       effectiveTenant,
@@ -50,8 +50,14 @@ export class UserController {
     res: Response,
   ): Promise<void> => {
     const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const queryDto = await UserValidator.getInvitationsQuery.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
     const result = await this.userService.getInvitationsByTenant(
       effectiveTenant,
+      queryDto.page,
+      queryDto.limit,
     );
     res.json(result);
   };

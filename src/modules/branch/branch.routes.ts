@@ -26,7 +26,7 @@ branchRouter.get(
     organization: [UserPermissions.ORGANIZATION_ALL_WRITE],
     branch: [UserPermissions.BRANCH_ALL_READ, UserPermissions.BRANCH_ALL_WRITE],
   }),
-  branchController.list,
+  branchController.getBranches,
 );
 
 export { branchRouter };

@@ -23,10 +23,16 @@ export class BranchController {
     res.status(HttpStatusCodes.CREATED).json({ branch });
   };
 
-  list = async (req: Request, res: Response): Promise<void> => {
-    const branches = await this.branchService.listBranches(
+  getBranches = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await BranchValidator.getBranchesQuery.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.branchService.getBranches(
       req.effectiveTenant as EffectiveTenant,
+      queryDto.page,
+      queryDto.limit,
     );
-    res.status(HttpStatusCodes.OK).json({ branches });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 }

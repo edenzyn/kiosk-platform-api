@@ -19,4 +19,8 @@ export interface UserResponseDto {
 
 export interface GetUsersResponseDto {
   users: UserResponseDto[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

@@ -16,6 +16,7 @@ BEGIN
     pm.entity_type = 1 -- PermissionEntityType.USER
     AND pm.entity_id = p_user_id
     AND p.is_active = true
+    AND pm.is_active = true
     AND (
       (p_organization_id IS NOT NULL AND (pm.organization_id = p_organization_id OR pm.organization_id IS NULL))
       OR (p_organization_id IS NULL AND pm.organization_id IS NULL)
@@ -37,6 +38,7 @@ BEGIN
     pm.entity_type = 2 -- PermissionEntityType.ROLE
     AND urm.user_id = p_user_id
     AND p.is_active = true
+    AND pm.is_active = true
     AND r.is_active = true
     AND (
       (p_organization_id IS NOT NULL AND (pm.organization_id = p_organization_id OR pm.organization_id IS NULL))

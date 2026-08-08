@@ -21,6 +21,7 @@ export class RbacController {
     const role = await this.rbacService.createRole(
       data as Omit<CreateRoleRequestDto, "createdBy">,
       req.user as UserTokenDto,
+      req.effectiveTenant as EffectiveTenant,
     );
     res.status(HttpStatusCodes.CREATED).json({ role });
   };
@@ -58,6 +59,7 @@ export class RbacController {
         scope: data.scope,
       },
       req.user as UserTokenDto,
+      req.effectiveTenant as EffectiveTenant,
     );
 
     res.status(HttpStatusCodes.OK).json({ mapper });

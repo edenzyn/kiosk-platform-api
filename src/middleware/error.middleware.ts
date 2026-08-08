@@ -4,7 +4,7 @@ import { env } from "../config/env";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
-import { logger } from "../shared/utils/logger";
+import { logger } from "../shared/utils/core/logger";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,

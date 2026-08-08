@@ -1,5 +1,5 @@
-import type { Response, CookieOptions } from "express";
-import { env } from "../../config/env";
+import type { CookieOptions, Response } from "express";
+import { env } from "../../../config/env";
 
 const defaultOptions: CookieOptions = {
   httpOnly: true,
@@ -8,7 +8,13 @@ const defaultOptions: CookieOptions = {
   path: "/",
 };
 
-export function setCookie(res: Response, key: string, value: string, maxAge: number, options?: Partial<CookieOptions>): void {
+export function setCookie(
+  res: Response,
+  key: string,
+  value: string,
+  maxAge: number,
+  options?: Partial<CookieOptions>,
+): void {
   res.cookie(key, value, {
     ...defaultOptions,
     maxAge,

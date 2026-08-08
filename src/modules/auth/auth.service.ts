@@ -4,12 +4,15 @@ import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
-import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { compareHashedData, hashData } from "../../shared/utils/bcrypt.helper";
-import { hashSha256 } from "../../shared/utils/crypto.helper";
-import { generateToken, verifyToken } from "../../shared/utils/jwt.helper";
+import { getUserScope } from "../../shared/utils/user/user-scope.helper";
+import {
+  compareHashedData,
+  hashData,
+} from "../../shared/utils/core/bcrypt.helper";
+import { hashSha256 } from "../../shared/utils/core/crypto.helper";
+import { generateToken, verifyToken } from "../../shared/utils/core/jwt.helper";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserRepository } from "../user/user.repository";
 import type { UserService } from "../user/user.service";
@@ -119,16 +122,15 @@ export class AuthService {
       refreshToken: generatedTokens.refreshToken,
     };
 
-    const userScope = user.branchId
-      ? UserScopeTypeEnums.BRANCH
-      : UserScopeTypeEnums.ORGANIZATION;
+    const userScope = getUserScope(user);
 
-    const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
-      user.id,
-      user.organizationId,
-      user.branchId,
-      userScope,
-    );
+    const { permissions, availableScopes } =
+      await this.userService.getPermissionsAndScopes(
+        user.id,
+        user.organizationId,
+        user.branchId,
+        userScope,
+      );
 
     return { user: userWithoutPassword, tokens, permissions, availableScopes };
   }
@@ -183,16 +185,15 @@ export class AuthService {
         throw new Error("Refresh token was already used or revoked");
       }
 
-      const userScope = user.branchId
-        ? UserScopeTypeEnums.BRANCH
-        : UserScopeTypeEnums.ORGANIZATION;
+      const userScope = getUserScope(user);
 
-      const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
-        user.id,
-        user.organizationId,
-        user.branchId,
-        userScope,
-      );
+      const { permissions, availableScopes } =
+        await this.userService.getPermissionsAndScopes(
+          user.id,
+          user.organizationId,
+          user.branchId,
+          userScope,
+        );
 
       return {
         user: userWithoutPassword,
@@ -331,16 +332,15 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = createdUser;
 
-    const userScope = createdUser.branchId
-      ? UserScopeTypeEnums.BRANCH
-      : UserScopeTypeEnums.ORGANIZATION;
+    const userScope = getUserScope(createdUser);
 
-    const { permissions, availableScopes } = await this.userService.getPermissionsAndScopes(
-      createdUser.id,
-      createdUser.organizationId,
-      createdUser.branchId,
-      userScope,
-    );
+    const { permissions, availableScopes } =
+      await this.userService.getPermissionsAndScopes(
+        createdUser.id,
+        createdUser.organizationId,
+        createdUser.branchId,
+        userScope,
+      );
 
     return {
       user: userWithoutPassword,

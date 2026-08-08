@@ -3,7 +3,7 @@ import { App } from "./app";
 import { container } from "./config/container";
 import type { Database } from "./config/db";
 import { env } from "./config/env";
-import { logger } from "./shared/utils/logger";
+import { logger } from "./shared/utils/core/logger";
 
 function bootstrap(): void {
   const app = new App();

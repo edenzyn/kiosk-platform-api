@@ -79,6 +79,9 @@ export async function runSeedPermissions() {
   await db.execute(
     sql`DROP FUNCTION IF EXISTS fn_get_roles_by_tenant_and_scope(TEXT, UUID, UUID);`,
   );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_roles_by_tenant_and_scope(TEXT, UUID, UUID, BOOLEAN);`,
+  );
   const rolesSqlPath = path.join(
     __dirname,
     "../sql/functions/fn_get_roles_by_tenant_and_scope.sql",

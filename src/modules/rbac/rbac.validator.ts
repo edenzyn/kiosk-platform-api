@@ -45,6 +45,7 @@ export const RbacValidator = {
 
   getRolesByTenant: yup.object({
     search: yup.string().max(255).optional(),
+    sys: yup.boolean().optional().default(true),
   }),
 
   getPermissionsByTenant: yup.object({

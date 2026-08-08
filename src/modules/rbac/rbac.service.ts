@@ -3,7 +3,9 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
+import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { UserRepository } from "../user/user.repository";
 import type { AssignPermissionRequestDto } from "./dtos/assign-permission-request.dto";
 import type { AssignPermissionResponseDto } from "./dtos/assign-permission-response.dto";
@@ -55,9 +57,14 @@ export class RbacService {
   async createRole(
     data: Omit<CreateRoleRequestDto, "createdBy">,
     user: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ) {
+    const isBranchRole = Boolean(data.branchId || effectiveTenant.branchId);
+    const isOrgUser = getUserScope(user) === UserScopeTypeEnums.ORGANIZATION;
+    const isBypassed = isOrgUser && isBranchRole;
+
     const userTopRole = await this._getUsersTopRankedRole(user.id);
-    if (userTopRole && data.rank <= userTopRole.rank) {
+    if (!isBypassed && userTopRole && data.rank <= userTopRole.rank) {
       throw new AppError(
         "Cannot create a role with equal or higher rank than your top role",
         { statusCode: HttpStatusCodes.FORBIDDEN },
@@ -65,8 +72,9 @@ export class RbacService {
     }
 
     const role = await this.rbacRepository.createRole({
-      organizationId: data.organizationId || user.organizationId || null,
-      branchId: data.branchId || user.branchId || null,
+      organizationId:
+        data.organizationId || effectiveTenant.organizationId || null,
+      branchId: data.branchId || effectiveTenant.branchId || null,
       name: data.name,
       description: data.description,
       rank: data.rank,
@@ -82,6 +90,7 @@ export class RbacService {
             entityId: role.id,
           },
           user,
+          effectiveTenant,
         );
       }
     }
@@ -97,8 +106,12 @@ export class RbacService {
       });
     }
 
+    const isBranchRole = Boolean(targetRole.branchId);
+    const isOrgUser = getUserScope(user) === UserScopeTypeEnums.ORGANIZATION;
+    const isBypassed = isOrgUser && isBranchRole;
+
     const userTopRole = await this._getUsersTopRankedRole(user.id);
-    if (userTopRole) {
+    if (!isBypassed && userTopRole) {
       if (targetRole.rank <= userTopRole.rank) {
         throw new AppError(
           "Cannot update a role with equal or higher rank than your top role",
@@ -127,6 +140,7 @@ export class RbacService {
   async assignPermission(
     data: Omit<AssignPermissionRequestDto, "createdBy">,
     user: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
   ): Promise<AssignPermissionResponseDto> {
     const permission = await this.rbacRepository.getPermissionById(
       data.permissionId,
@@ -162,8 +176,8 @@ export class RbacService {
       return { mapper };
     }
 
-    let organizationId: string | null = user.organizationId || null;
-    let branchId: string | null = user?.branchId || null;
+    let organizationId: string | null = effectiveTenant.organizationId || null;
+    let branchId: string | null = effectiveTenant.branchId || null;
 
     if (data.entityType === PermissionEntityType.ROLE) {
       const role = await this.rbacRepository.getRoleById(data.entityId);

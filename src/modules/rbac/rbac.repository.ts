@@ -177,9 +177,10 @@ export class RbacRepository {
 
     const orgIdVal = effectiveTenant.organizationId;
     const branchIdVal = effectiveTenant.branchId;
+    const includeSystemRolesVal = queryDto.sys;
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
-      sql`SELECT * FROM fn_get_roles_by_tenant_and_scope(${searchVal}, ${orgIdVal}, ${branchIdVal})`,
+      sql`SELECT * FROM fn_get_roles_by_tenant_and_scope(${searchVal}, ${orgIdVal}, ${branchIdVal}, ${includeSystemRolesVal})`,
     );
 
     return queryResult.rows;

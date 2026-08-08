@@ -11,7 +11,8 @@ import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum
 import { AppError } from "../../shared/errors/app-error";
 import type { MailService } from "../../shared/services/mail/mail.service";
 import { getInviteUserTemplate } from "../../shared/services/mail/templates/invite-user.template";
-import { generateToken } from "../../shared/utils/jwt.helper";
+import { generateToken } from "../../shared/utils/core/jwt.helper";
+import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
@@ -133,9 +134,7 @@ export class UserService {
 
     const { password, ...userWithoutPassword } = user;
 
-    const userScope = user.branchId
-      ? UserScopeTypeEnums.BRANCH
-      : UserScopeTypeEnums.ORGANIZATION;
+    const userScope = getUserScope(user);
 
     const { permissions, availableScopes } = await this.getPermissionsAndScopes(
       user.id,
@@ -247,11 +246,8 @@ export class UserService {
     const isOrgMatch =
       !effectiveTenant.organizationId ||
       invitation.organizationId === effectiveTenant.organizationId;
-    const isBranchMatch =
-      !effectiveTenant.branchId ||
-      invitation.branchId === effectiveTenant.branchId;
 
-    if (!isOrgMatch || !isBranchMatch) {
+    if (!isOrgMatch) {
       throw new AppError("Forbidden to access this invitation", {
         statusCode: HttpStatusCodes.FORBIDDEN,
         code: ErrorCodes.FORBIDDEN,

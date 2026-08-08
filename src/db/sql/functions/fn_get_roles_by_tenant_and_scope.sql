@@ -1,7 +1,8 @@
 CREATE OR REPLACE FUNCTION fn_get_roles_by_tenant_and_scope(
   p_search TEXT,
   p_organization_id UUID,
-  p_branch_id UUID
+  p_branch_id UUID,
+  p_include_system_roles BOOLEAN DEFAULT true
 )
 RETURNS TABLE (
   id UUID,
@@ -39,6 +40,7 @@ BEGIN
     ON r.id = urm.role_id
   WHERE
     (p_search IS NULL OR r.name ILIKE '%' || p_search || '%')
+    AND (p_include_system_roles = true OR r.is_system = false)
     AND (
       (
         p_branch_id IS NOT NULL

@@ -14,7 +14,7 @@ import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import organizationRoutes from "./modules/organization/organization.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
-import { swaggerDocument } from "./shared/utils/swagger";
+import { swaggerDocument } from "./shared/utils/core/swagger";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;

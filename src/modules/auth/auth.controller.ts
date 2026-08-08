@@ -5,7 +5,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { clearCookie, setCookie } from "../../shared/utils/cookie.helper";
+import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
 import type { AuthService } from "./auth.service";
 import { AuthValidator } from "./auth.validator";
 

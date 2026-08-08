@@ -110,6 +110,7 @@ export class RbacController {
 
     const roles = await this.rbacService.getRolesByTenantAndScope(
       data as GetRolesRequestDto,
+      req.user as UserTokenDto,
       req.effectiveTenant as EffectiveTenant,
     );
     res.status(HttpStatusCodes.OK).json({ roles });

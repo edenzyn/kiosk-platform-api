@@ -174,12 +174,13 @@ export class RbacRepository {
   async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
     effectiveTenant: EffectiveTenant,
+    includeSystemRoles: boolean,
   ): Promise<GetRolesResponseDto[]> {
     const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
 
     const orgIdVal = effectiveTenant.organizationId;
     const branchIdVal = effectiveTenant.branchId;
-    const includeSystemRolesVal = queryDto.sys;
+    const includeSystemRolesVal = includeSystemRoles || queryDto.sys;
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
       sql`SELECT * FROM fn_get_roles_by_tenant_and_scope(${searchVal}, ${orgIdVal}, ${branchIdVal}, ${includeSystemRolesVal})`,

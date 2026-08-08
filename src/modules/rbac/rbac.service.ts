@@ -267,11 +267,13 @@ export class RbacService {
 
   async getRolesByTenantAndScope(
     queryDto: GetRolesRequestDto,
+    user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetRolesResponseDto[]> {
     return this.rbacRepository.getRolesByTenantAndScope(
       queryDto,
       effectiveTenant,
+      getUserScope(user) === UserScopeTypeEnums.ORGANIZATION,
     );
   }
 

@@ -184,7 +184,10 @@ export class UserRepository {
         eq(userInvitations.branchId, branchId),
       );
     } else if (organizationId) {
-      conditions.push(eq(userInvitations.organizationId, organizationId));
+      conditions.push(
+        eq(userInvitations.organizationId, organizationId),
+        isNull(userInvitations.branchId),
+      );
     } else if (branchId) {
       conditions.push(eq(userInvitations.branchId, branchId));
     }

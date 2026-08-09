@@ -58,6 +58,9 @@ export class UserController {
       effectiveTenant,
       queryDto.page,
       queryDto.limit,
+      queryDto.search,
+      queryDto.sortBy,
+      queryDto.sortOrder,
     );
     res.json(result);
   };

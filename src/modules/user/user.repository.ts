@@ -1,5 +1,16 @@
-import { and, count, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  isNull,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
@@ -60,6 +71,8 @@ export class UserRepository {
     search?: string,
     page?: number,
     limit?: number,
+    sortBy?: string,
+    sortOrder?: SortingOrderEnum,
   ): Promise<{ users: UserResponseDto[]; total: number }> {
     const conditions: (SQL | undefined)[] = [];
 
@@ -123,6 +136,21 @@ export class UserRepository {
 
     if (condition) {
       query = query.where(condition);
+    }
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
+      if (sortBy === "name") {
+        query = query.orderBy(orderFn(users.name));
+      } else if (sortBy === "userType") {
+        query = query.orderBy(orderFn(users.userType));
+      } else if (sortBy === "isActive") {
+        query = query.orderBy(orderFn(users.isActive));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(users.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(users.createdAt));
     }
 
     if (page && limit) {
@@ -197,6 +225,9 @@ export class UserRepository {
     branchId?: string,
     page?: number,
     limit?: number,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: SortingOrderEnum,
   ): Promise<{ invitations: UserInvitationEntity[]; total: number }> {
     const conditions = [];
 
@@ -212,6 +243,10 @@ export class UserRepository {
       );
     } else if (branchId) {
       conditions.push(eq(userInvitations.branchId, branchId));
+    }
+
+    if (search) {
+      conditions.push(ilike(userInvitations.email, `%${search}%`));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
@@ -230,6 +265,21 @@ export class UserRepository {
 
     if (condition) {
       query = query.where(condition);
+    }
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
+      if (sortBy === "email") {
+        query = query.orderBy(orderFn(userInvitations.email));
+      } else if (sortBy === "status") {
+        query = query.orderBy(orderFn(userInvitations.status));
+      } else if (sortBy === "expiresAt") {
+        query = query.orderBy(orderFn(userInvitations.expiresAt));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(userInvitations.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(userInvitations.createdAt));
     }
 
     if (page && limit) {

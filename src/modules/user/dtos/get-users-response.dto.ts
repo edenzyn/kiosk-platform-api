@@ -17,6 +17,13 @@ export interface UserResponseDto {
     id: string;
     name: string | null;
   } | null;
+  topRole?: {
+    id: string;
+    name: string;
+    description: string | null;
+    rank: number;
+    isSystem: boolean;
+  } | null;
 }
 
 export interface GetUsersResponseDto {

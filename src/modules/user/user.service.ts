@@ -5,6 +5,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
@@ -146,7 +147,6 @@ export class UserService {
     );
 
     const topRole = await this.rbacRepository.getUsersTopRankedRole(user.id);
-    console.log({ topRole });
     const topRoleDto = topRole
       ? {
           name: topRole.name,
@@ -176,10 +176,33 @@ export class UserService {
       queryDto.search,
       page,
       limit,
+      queryDto.sortBy,
+      queryDto.sortOrder,
+    );
+
+    const usersWithTopRole = await Promise.all(
+      users.map(async (user) => {
+        const topRole = await this.rbacRepository.getUsersTopRankedRole(
+          user.id,
+        );
+        const topRoleDto = topRole
+          ? {
+              id: topRole.id,
+              name: topRole.name ?? "",
+              description: topRole.description,
+              rank: topRole.rank,
+              isSystem: topRole.isSystem,
+            }
+          : null;
+        return {
+          ...user,
+          topRole: topRoleDto,
+        };
+      }),
     );
 
     return {
-      users,
+      users: usersWithTopRole,
       total,
       page,
       limit,
@@ -263,6 +286,9 @@ export class UserService {
     effectiveTenant: EffectiveTenant,
     page: number = 1,
     limit: number = 10,
+    search?: string,
+    sortBy?: string,
+    sortOrder?: SortingOrderEnum,
   ): Promise<GetInvitationsResponseDto> {
     const { invitations, total } =
       await this.userRepository.findInvitationsByTenant(
@@ -270,6 +296,9 @@ export class UserService {
         effectiveTenant.branchId || undefined,
         page,
         limit,
+        search,
+        sortBy,
+        sortOrder,
       );
     return {
       invitations,

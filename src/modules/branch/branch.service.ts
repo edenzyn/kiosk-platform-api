@@ -1,6 +1,8 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
@@ -29,12 +31,43 @@ export class BranchService {
       createdBy: user.id,
     });
 
-    await this.rbacRepository.createDefaultBranchRoles(
-      branch.id,
-      branch.organizationId,
-      user.id,
+    const allKeys = Array.from(
+      new Set(DEFAULT_BRANCH_ROLES.flatMap((role) => role.permissions)),
     );
 
+    const dbPermissions =
+      await this.rbacRepository.getPermissionsByKeys(allKeys);
+    const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
+
+    for (const defaultRole of DEFAULT_BRANCH_ROLES) {
+      const role = await this.rbacRepository.createRole({
+        organizationId: branch.organizationId,
+        branchId: branch.id,
+        name: defaultRole.name,
+        description: `Default branch ${defaultRole.name.toLowerCase()} role`,
+        rank: defaultRole.rank,
+        isSystem: defaultRole.isSystem ?? false,
+        createdBy: user.id,
+      });
+
+      const permissionMappers = defaultRole.permissions
+        .map((pKey) => {
+          const permissionId = keyToIdMap.get(pKey);
+          if (!permissionId) return null;
+          return {
+            entityType: PermissionEntityType.ROLE,
+            entityId: role.id,
+            permissionId,
+            organizationId: branch.organizationId,
+            branchId: branch.id,
+            isActive: true,
+            createdBy: user.id,
+          };
+        })
+        .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
+
+      await this.rbacRepository.bulkInsertPermissionMappers(permissionMappers);
+    }
     return branch;
   }
 

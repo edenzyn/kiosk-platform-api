@@ -1,4 +1,4 @@
-import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
+import { PermissionEntityType } from "../../../../shared/enums/rbac/permission-entity-type.enum";
 
 export interface RemovePermissionRequestDto {
   permissionId: string;

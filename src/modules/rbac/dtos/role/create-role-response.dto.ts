@@ -1,4 +1,4 @@
-import type { RoleEntity } from "../schemas/role.schema";
+import type { RoleEntity } from "../../schemas/role.schema";
 
 export interface CreateRoleResponseDto {
   role: RoleEntity;

@@ -5,5 +5,6 @@ export interface CreateRoleRequestDto {
   description?: string | null;
   rank: number;
   permissions?: string[];
+  isSystem?: boolean;
   createdBy?: string;
 }

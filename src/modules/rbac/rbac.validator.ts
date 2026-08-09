@@ -1,5 +1,7 @@
 import * as yup from "yup";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+import { stringToArray } from "../../shared/validators/yup.transformer";
 
 export const RbacValidator = {
   createRole: yup.object({
@@ -38,16 +40,23 @@ export const RbacValidator = {
     entityId: yup.string().uuid().required("Entity ID is required"),
   }),
 
-  createUserRoleMapper: yup.object({
-    userId: yup.string().uuid().required("User ID is required"),
+  assignRole: yup.object({
     roleId: yup.string().uuid().required("Role ID is required"),
+    userIds: stringToArray()
+      .of(yup.string().uuid("Each userId must be a valid UUID").required())
+      .min(1, "At least one userId is required")
+      .required("userIds is required"),
   }),
 
   getRolesByTenant: yup
     .object({
       search: yup.string().max(255).optional(),
       sys: yup.boolean().optional().default(true),
-      branchId: yup.string().uuid("Invalid branch ID format").nullable().optional(),
+      branchId: yup
+        .string()
+        .uuid("Invalid branch ID format")
+        .nullable()
+        .optional(),
     })
     .from("b", "branchId"),
 
@@ -70,5 +79,31 @@ export const RbacValidator = {
     name: yup.string().trim().optional(),
     description: yup.string().optional(),
     rank: yup.number().min(1, "Rank must be at least 1").max(100).optional(),
+  }),
+
+  duplicateRole: yup.object({
+    roleId: yup.string().uuid().required("Role ID is required"),
+  }),
+
+  toggleRoleStatus: yup.object({
+    roleId: yup.string().uuid().required("Role ID is required"),
+  }),
+
+  deleteRole: yup.object({
+    roleId: yup.string().uuid().required("Role ID is required"),
+  }),
+
+  getRoleUsers: paginationQuerySchema.shape({
+    roleId: yup.string().uuid().required("Role ID is required"),
+    search: yup.string().optional(),
+    ru: yup.boolean().optional().default(true), // include role users (users within that role)
+  }),
+
+  removeUserFromRole: yup.object({
+    roleId: yup.string().uuid().required("Role ID is required"),
+    userIds: stringToArray()
+      .of(yup.string().uuid("Each userId must be a valid UUID").required())
+      .min(1, "At least one userId is required")
+      .required("userIds is required"),
   }),
 };

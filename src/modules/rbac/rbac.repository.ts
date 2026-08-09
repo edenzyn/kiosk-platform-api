@@ -1,16 +1,15 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
-import type { PermissionEntityWithAssigned } from "./dtos/get-permissions-by-tenant-response.dto";
-import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
-import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/role/create-user-role-mapper-request.dto";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
+import type { PermissionEntityWithAssigned } from "./dtos/permission/get-permissions-by-tenant-response.dto";
+import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
+import type { GetRolesResponseDto } from "./dtos/role/get-roles-response.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
 import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
@@ -19,8 +18,6 @@ import {
   permissions,
   type PermissionEntity,
 } from "./schemas/permission.schema";
-
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { roles, type RoleEntity } from "./schemas/role.schema";
 import {
   userRolesMapper,
@@ -75,22 +72,26 @@ export class RbacRepository {
     return updatedRole;
   }
 
-  async getPermissionMapper(
-    permissionId: string,
-    entityType: number,
-    entityId: string,
-  ): Promise<PermissionMapperEntity | null> {
-    const [mapper] = await this.database.client
+  async getPermissionMappers(data: {
+    permissionId?: string;
+    entityType: number;
+    entityId: string;
+    isActive?: boolean;
+  }): Promise<PermissionMapperEntity[]> {
+    const conditions = [
+      eq(permissionsMapper.entityType, data.entityType),
+      eq(permissionsMapper.entityId, data.entityId),
+    ];
+    if (data.permissionId) {
+      conditions.push(eq(permissionsMapper.permissionId, data.permissionId));
+    }
+    if (data.isActive) {
+      conditions.push(eq(permissionsMapper.isActive, data.isActive));
+    }
+    return this.database.client
       .select()
       .from(permissionsMapper)
-      .where(
-        and(
-          eq(permissionsMapper.permissionId, permissionId),
-          eq(permissionsMapper.entityType, entityType),
-          eq(permissionsMapper.entityId, entityId),
-        ),
-      );
-    return mapper || null;
+      .where(and(...conditions));
   }
 
   async createPermissionMapper(data: {
@@ -158,6 +159,16 @@ export class RbacRepository {
     return mapper;
   }
 
+  async createUserRoleMappers(
+    data: { userId: string; roleId: string; createdBy: string }[],
+  ): Promise<UserRoleMapperEntity[]> {
+    if (data.length === 0) return [];
+    return await this.database.client
+      .insert(userRolesMapper)
+      .values(data)
+      .returning();
+  }
+
   async getUserPermissionKeys(
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
@@ -179,7 +190,10 @@ export class RbacRepository {
     const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
 
     const orgIdVal = effectiveTenant.organizationId;
-    const branchIdVal = queryDto.branchId !== undefined ? queryDto.branchId : effectiveTenant.branchId;
+    const branchIdVal =
+      queryDto.branchId !== undefined
+        ? queryDto.branchId
+        : effectiveTenant.branchId;
     const includeSystemRolesVal = includeSystemRoles || queryDto.sys;
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(
@@ -253,55 +267,49 @@ export class RbacRepository {
       .where(inArray(permissions.key, keys));
   }
 
-  async createDefaultBranchRoles(
-    branchId: string,
-    organizationId: string,
-    createdBy: string,
+  async bulkInsertPermissionMappers(
+    mappers: {
+      entityType: number;
+      entityId: string;
+      permissionId: string;
+      organizationId: string | null;
+      branchId: string | null;
+      isActive: boolean;
+      createdBy: string;
+    }[],
   ): Promise<void> {
-    const allKeys = Array.from(
-      new Set(DEFAULT_BRANCH_ROLES.flatMap((role) => role.permissions)),
-    );
+    if (mappers.length === 0) return;
+    await this.database.client.insert(permissionsMapper).values(mappers);
+  }
 
-    const dbPermissions = await this.getPermissionsByKeys(allKeys);
-    const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
+  async setRoleStatus(
+    roleId: string,
+    isActive: boolean,
+    updatedBy: string,
+  ): Promise<RoleEntity> {
+    const [updated] = await this.database.client
+      .update(roles)
+      .set({ isActive, updatedBy, updatedAt: new Date() })
+      .where(eq(roles.id, roleId))
+      .returning();
+    if (!updated) throw new Error("Role not found");
+    return updated;
+  }
 
-    for (const defaultRole of DEFAULT_BRANCH_ROLES) {
-      const [role] = await this.database.client
-        .insert(roles)
-        .values({
-          organizationId,
-          branchId,
-          name: defaultRole.name,
-          description: `Default branch ${defaultRole.name.toLowerCase()} role`,
-          rank: defaultRole.rank,
-          isSystem: defaultRole.isSystem ?? false,
-          createdBy,
-        })
-        .returning();
+  async deleteRole(roleId: string): Promise<void> {
+    await this.database.client
+      .delete(roles)
+      .where(and(eq(roles.id, roleId), eq(roles.isSystem, false)));
+  }
 
-      if (!role) continue;
-
-      const permissionMappersToInsert = defaultRole.permissions
-        .map((pKey) => {
-          const permissionId = keyToIdMap.get(pKey);
-          if (!permissionId) return null;
-          return {
-            entityType: PermissionEntityType.ROLE,
-            entityId: role.id,
-            permissionId,
-            organizationId,
-            branchId,
-            isActive: true,
-            createdBy,
-          };
-        })
-        .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
-
-      if (permissionMappersToInsert.length > 0) {
-        await this.database.client
-          .insert(permissionsMapper)
-          .values(permissionMappersToInsert);
-      }
-    }
+  async removeUserFromRole(userIds: string[], roleId: string): Promise<void> {
+    await this.database.client
+      .delete(userRolesMapper)
+      .where(
+        and(
+          inArray(userRolesMapper.userId, userIds),
+          eq(userRolesMapper.roleId, roleId),
+        ),
+      );
   }
 }

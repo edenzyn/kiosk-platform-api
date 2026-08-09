@@ -42,6 +42,60 @@ router.put(
   asyncHandler(rbacController.updateRole),
 );
 
+router.post(
+  "/roles/:roleId/assign",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
+  asyncHandler(rbacController.assignRole),
+);
+
+router.delete(
+  "/roles/:roleId/users",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
+  asyncHandler(rbacController.removeUserFromRole),
+);
+
+router.get(
+  "/roles/:roleId/users",
+  accessMiddleware({
+    organization: ORGANIZATION_ROLE_READ_WRITE_PERMS,
+    branch: BRANCH_ROLE_READ_WRITE_PERMS,
+  }),
+  asyncHandler(rbacController.getRoleUsers),
+);
+
+router.post(
+  "/roles/:roleId/duplicate",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
+  asyncHandler(rbacController.duplicateRole),
+);
+
+router.patch(
+  "/roles/:roleId/status",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
+  asyncHandler(rbacController.toggleRoleStatus),
+);
+
+router.delete(
+  "/roles/:roleId",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+    branch: [UserPermissions.BRANCH_ROLE_WRITE],
+  }),
+  asyncHandler(rbacController.deleteRole),
+);
+
 // ------------------
 //  PERMISSIONS
 // ------------------
@@ -69,18 +123,6 @@ router.patch(
     branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
   }),
   asyncHandler(rbacController.removePermission),
-);
-
-// ------------------
-//  USER ROLE MAPPERS
-// ------------------
-router.post(
-  "/user-role-mappers",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
-    branch: [UserPermissions.BRANCH_ROLE_WRITE],
-  }),
-  asyncHandler(rbacController.createUserRoleMapper),
 );
 
 export default router;

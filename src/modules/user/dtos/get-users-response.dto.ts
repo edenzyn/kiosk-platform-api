@@ -1,5 +1,7 @@
 export interface UserResponseDto {
   id: string;
+  organizationId?: string | null;
+  branchId?: string | null;
   name: string;
   email: string;
   mobile: string | null;

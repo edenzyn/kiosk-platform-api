@@ -1,8 +1,9 @@
-import { and, count, eq, ilike, isNull, or } from "drizzle-orm";
+import { and, count, eq, ilike, isNull, or, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
+import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import { UserResponseDto } from "./dtos/get-users-response.dto";
 import {
   CreateUserInvitationEntity,
@@ -60,7 +61,7 @@ export class UserRepository {
     page?: number,
     limit?: number,
   ): Promise<{ users: UserResponseDto[]; total: number }> {
-    const conditions = [];
+    const conditions: (SQL | undefined)[] = [];
 
     if (organizationId && branchId) {
       conditions.push(
@@ -269,5 +270,149 @@ export class UserRepository {
       .where(eq(userInvitations.id, id))
       .limit(1);
     return invitation;
+  }
+  async getUsersByRoleId(params: {
+    roleId: string;
+    organizationId?: string;
+    branchId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+    ru?: boolean;
+  }): Promise<{
+    users: Pick<
+      UserEntity,
+      | "id"
+      | "organizationId"
+      | "branchId"
+      | "name"
+      | "email"
+      | "mobile"
+      | "userType"
+      | "isActive"
+      | "createdAt"
+      | "updatedAt"
+    >[];
+    total: number;
+  }> {
+    const { roleId, organizationId, branchId, search, page, limit } = params;
+    const ru = params.ru !== false;
+
+    const conditions: (SQL | undefined)[] = [];
+
+    if (ru) {
+      conditions.push(eq(userRolesMapper.roleId, roleId));
+    } else {
+      conditions.push(isNull(userRolesMapper.roleId));
+    }
+
+    if (organizationId && branchId) {
+      conditions.push(
+        eq(users.organizationId, organizationId),
+        eq(users.branchId, branchId),
+      );
+    } else if (organizationId) {
+      conditions.push(
+        eq(users.organizationId, organizationId),
+        isNull(users.branchId),
+      );
+    }
+
+    if (search) {
+      conditions.push(
+        or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
+      );
+    }
+
+    let countQuery;
+    let baseQuery;
+
+    if (ru) {
+      countQuery = this.database.client
+        .select({ count: count() })
+        .from(userRolesMapper)
+        .innerJoin(users, eq(userRolesMapper.userId, users.id))
+        .where(and(...conditions));
+
+      baseQuery = this.database.client
+        .select({
+          id: users.id,
+          organizationId: users.organizationId,
+          branchId: users.branchId,
+          name: users.name,
+          email: users.email,
+          mobile: users.mobile,
+          userType: users.userType,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        })
+        .from(userRolesMapper)
+        .innerJoin(users, eq(userRolesMapper.userId, users.id))
+        .where(and(...conditions))
+        .$dynamic();
+    } else {
+      countQuery = this.database.client
+        .select({ count: count() })
+        .from(users)
+        .leftJoin(
+          userRolesMapper,
+          and(
+            eq(userRolesMapper.userId, users.id),
+            eq(userRolesMapper.roleId, roleId),
+          ),
+        )
+        .where(and(...conditions));
+
+      baseQuery = this.database.client
+        .select({
+          id: users.id,
+          organizationId: users.organizationId,
+          branchId: users.branchId,
+          name: users.name,
+          email: users.email,
+          mobile: users.mobile,
+          userType: users.userType,
+          isActive: users.isActive,
+          createdAt: users.createdAt,
+          updatedAt: users.updatedAt,
+        })
+        .from(users)
+        .leftJoin(
+          userRolesMapper,
+          and(
+            eq(userRolesMapper.userId, users.id),
+            eq(userRolesMapper.roleId, roleId),
+          ),
+        )
+        .where(and(...conditions))
+        .$dynamic();
+    }
+
+    const [countResult] = await countQuery;
+    const total = Number(countResult?.count || 0);
+
+    let query = baseQuery;
+    if (page && limit) {
+      query = query.limit(limit).offset((page - 1) * limit);
+    }
+
+    const rows = await query;
+    return {
+      users: rows as Pick<
+        UserEntity,
+        | "id"
+        | "organizationId"
+        | "branchId"
+        | "name"
+        | "email"
+        | "mobile"
+        | "userType"
+        | "isActive"
+        | "createdAt"
+        | "updatedAt"
+      >[],
+      total,
+    };
   }
 }

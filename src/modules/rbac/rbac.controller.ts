@@ -2,10 +2,9 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
-import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
+import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
 import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
 
@@ -86,17 +85,21 @@ export class RbacController {
     res.status(HttpStatusCodes.OK).json({ mapper });
   };
 
-  createUserRoleMapper = async (req: Request, res: Response): Promise<void> => {
-    const data = await RbacValidator.createUserRoleMapper.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+  assignRole = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.assignRole.validate(
+      { ...req.body, roleId: req.params.roleId },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
 
-    const mapper = await this.rbacService.createUserRoleMapper(
-      data as Omit<CreateUserRoleMapperRequestDto, "createdBy">,
+    const mappers = await this.rbacService.assignRole(
+      data.roleId,
+      data.userIds,
       req.user as UserTokenDto,
     );
-    res.status(HttpStatusCodes.CREATED).json({ mapper });
+    res.status(HttpStatusCodes.CREATED).json({ mappers });
   };
 
   getRolesByTenantAndScope = async (
@@ -131,6 +134,74 @@ export class RbacController {
     const result = await this.rbacService.getPermissionsByTenant(
       data as GetPermissionsByTenantRequestDto,
       req.effectiveTenant as EffectiveTenant,
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getRoleUsers = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.getRoleUsers.validate(
+      { ...req.query, roleId: req.params.roleId },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.rbacService.getUsersByRoleId(
+      data.roleId,
+      req.user as UserTokenDto,
+      {
+        page: data.page,
+        limit: data.limit,
+        search: data.search,
+        ru: data.ru,
+      },
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  duplicateRole = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.duplicateRole.validate(
+      { roleId: req.params.roleId },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const role = await this.rbacService.duplicateRole(
+      data.roleId,
+      req.user as UserTokenDto,
+    );
+    res.status(HttpStatusCodes.CREATED).json({ role });
+  };
+
+  toggleRoleStatus = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.toggleRoleStatus.validate(
+      { roleId: req.params.roleId },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const role = await this.rbacService.toggleRoleStatus(
+      data.roleId,
+      req.user as UserTokenDto,
+    );
+    res.status(HttpStatusCodes.OK).json({ role });
+  };
+
+  deleteRole = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.deleteRole.validate(
+      { roleId: req.params.roleId },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.rbacService.deleteRole(
+      data.roleId,
+      req.user as UserTokenDto,
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  removeUserFromRole = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.removeUserFromRole.validate(
+      { roleId: req.params.roleId, userIds: req.body.userIds },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.rbacService.removeUserFromRole(
+      data.roleId,
+      data.userIds,
+      req.user as UserTokenDto,
     );
     res.status(HttpStatusCodes.OK).json(result);
   };

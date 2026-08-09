@@ -7,18 +7,17 @@ import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum
 import { AppError } from "../../shared/errors/app-error";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { UserRepository } from "../user/user.repository";
-import type { AssignPermissionRequestDto } from "./dtos/assign-permission-request.dto";
-import type { AssignPermissionResponseDto } from "./dtos/assign-permission-response.dto";
-import type { CreateRoleRequestDto } from "./dtos/create-role-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/create-user-role-mapper-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/get-permissions-by-tenant-request.dto";
-import type { GetPermissionsByTenantResponseDto } from "./dtos/get-permissions-by-tenant-response.dto";
-import type { GetRolesRequestDto } from "./dtos/get-roles-request.dto";
-import type { GetRolesResponseDto } from "./dtos/get-roles-response.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/get-user-permissions-request.dto";
-import type { RemovePermissionRequestDto } from "./dtos/remove-permission-request.dto";
-import type { RemovePermissionResponseDto } from "./dtos/remove-permission-response.dto";
-import type { UpdateRoleRequestDto } from "./dtos/update-role-request.dto";
+import type { AssignPermissionRequestDto } from "./dtos/permission/assign-permission-request.dto";
+import type { AssignPermissionResponseDto } from "./dtos/permission/assign-permission-response.dto";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
+import type { GetPermissionsByTenantResponseDto } from "./dtos/permission/get-permissions-by-tenant-response.dto";
+import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
+import type { GetRolesResponseDto } from "./dtos/role/get-roles-response.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
+import type { RemovePermissionRequestDto } from "./dtos/permission/remove-permission-request.dto";
+import type { RemovePermissionResponseDto } from "./dtos/permission/remove-permission-response.dto";
+import type { UpdateRoleRequestDto } from "./dtos/role/update-role-request.dto";
 import type { RbacRepository } from "./rbac.repository";
 import type { RoleEntity } from "./schemas/role.schema";
 
@@ -52,6 +51,33 @@ export class RbacService {
     if (user.branchId) return PermissionScope.BRANCH;
     if (user.organizationId) return PermissionScope.ORGANIZATION;
     return PermissionScope.PLATFORM;
+  }
+
+  private async _assertCanActOnRole(
+    user: UserTokenDto,
+    roleId: string,
+  ): Promise<void> {
+    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    if (!targetRole) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const isBranchRole = Boolean(targetRole.branchId);
+    const isOrgUser = getUserScope(user) === UserScopeTypeEnums.ORGANIZATION;
+    // Org-level users can always manage branch-level roles
+    const isBypassed = isOrgUser && isBranchRole;
+
+    if (!isBypassed) {
+      const userTopRole = await this._getUsersTopRankedRole(user.id);
+      if (userTopRole && targetRole.rank <= userTopRole.rank) {
+        throw new AppError(
+          "Cannot act on a role with equal or higher rank than your top role",
+          { statusCode: HttpStatusCodes.FORBIDDEN },
+        );
+      }
+    }
   }
 
   async createRole(
@@ -161,11 +187,12 @@ export class RbacService {
       }
     }
 
-    const existing = await this.rbacRepository.getPermissionMapper(
-      data.permissionId,
-      data.entityType,
-      data.entityId,
-    );
+    const mappers = await this.rbacRepository.getPermissionMappers({
+      permissionId: data.permissionId,
+      entityType: data.entityType,
+      entityId: data.entityId,
+    });
+    const existing = mappers[0];
 
     if (existing) {
       const mapper = await this.rbacRepository.updatePermissionMapperStatus(
@@ -228,11 +255,12 @@ export class RbacService {
       }
     }
 
-    const existing = await this.rbacRepository.getPermissionMapper(
-      data.permissionId,
-      data.entityType,
-      data.entityId,
-    );
+    const mappers = await this.rbacRepository.getPermissionMappers({
+      permissionId: data.permissionId,
+      entityType: data.entityType,
+      entityId: data.entityId,
+    });
+    const existing = mappers[0];
 
     if (!existing) {
       throw new AppError("Permission mapping not found", {
@@ -249,14 +277,141 @@ export class RbacService {
     return { mapper };
   }
 
-  async createUserRoleMapper(
-    data: Omit<CreateUserRoleMapperRequestDto, "createdBy">,
+  async assignRole(roleId: string, userIds: string[], user: UserTokenDto) {
+    await this._assertCanActOnRole(user, roleId);
+    const mappersData = userIds.map((userId) => ({
+      roleId,
+      userId,
+      createdBy: user.id,
+    }));
+    return this.rbacRepository.createUserRoleMappers(mappersData);
+  }
+
+  async getUsersByRoleId(
+    roleId: string,
     user: UserTokenDto,
+    query: { search?: string; page: number; limit: number; ru?: boolean },
   ) {
-    return this.rbacRepository.createUserRoleMapper({
-      ...data,
+    await this._assertCanActOnRole(user, roleId);
+
+    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    if (!targetRole) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const page = query.page;
+    const limit = query.limit;
+    const search = query?.search;
+
+    const { users, total } = await this.userRepository.getUsersByRoleId({
+      roleId,
+      organizationId: targetRole.organizationId || undefined,
+      branchId: targetRole.branchId || undefined,
+      search,
+      page,
+      limit,
+      ru: query.ru,
+    });
+
+    return {
+      users,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async duplicateRole(roleId: string, user: UserTokenDto) {
+    await this._assertCanActOnRole(user, roleId);
+    console.log(roleId);
+    const source = await this.rbacRepository.getRoleById(roleId);
+    console.log(source);
+    if (!source) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const newRole = await this.rbacRepository.createRole({
+      organizationId: source.organizationId,
+      branchId: source.branchId,
+      name: `${source.name ?? "Role"} (Copy)`,
+      description: source.description,
+      rank: source.rank,
       createdBy: user.id,
     });
+
+    const existingMappers = await this.rbacRepository.getPermissionMappers({
+      entityId: roleId,
+      entityType: PermissionEntityType.ROLE,
+      isActive: true,
+    });
+    if (existingMappers.length > 0) {
+      await Promise.all(
+        existingMappers.map((m) =>
+          this.rbacRepository.createPermissionMapper({
+            permissionId: m.permissionId,
+            entityType: PermissionEntityType.ROLE,
+            entityId: newRole.id,
+            organizationId: m.organizationId,
+            branchId: m.branchId,
+            createdBy: user.id,
+          }),
+        ),
+      );
+    }
+
+    return newRole;
+  }
+
+  async toggleRoleStatus(roleId: string, user: UserTokenDto) {
+    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    if (!targetRole) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+    if (targetRole.isSystem) {
+      throw new AppError("Cannot toggle a system role", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+    await this._assertCanActOnRole(user, roleId);
+    return this.rbacRepository.setRoleStatus(
+      roleId,
+      !targetRole.isActive,
+      user.id,
+    );
+  }
+
+  async deleteRole(roleId: string, user: UserTokenDto) {
+    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    if (!targetRole) {
+      throw new AppError("Role not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+    if (targetRole.isSystem) {
+      throw new AppError("Cannot delete a system role", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+    await this._assertCanActOnRole(user, roleId);
+    await this.rbacRepository.deleteRole(roleId);
+    return { success: true };
+  }
+
+  async removeUserFromRole(
+    roleId: string,
+    userIds: string[],
+    user: UserTokenDto,
+  ) {
+    await this._assertCanActOnRole(user, roleId);
+    await this.rbacRepository.removeUserFromRole(userIds, roleId);
+    return { success: true };
   }
 
   async getUserPermissionKeys(

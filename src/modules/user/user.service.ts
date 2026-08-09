@@ -145,10 +145,22 @@ export class UserService {
       userScope,
     );
 
+    const topRole = await this.rbacRepository.getUsersTopRankedRole(user.id);
+    console.log({ topRole });
+    const topRoleDto = topRole
+      ? {
+          name: topRole.name,
+          description: topRole.description,
+          rank: topRole.rank,
+          isSystem: topRole.isSystem,
+        }
+      : null;
+
     return {
       user: userWithoutPassword,
       permissions,
       availableScopes,
+      topRole: topRoleDto,
     };
   }
 

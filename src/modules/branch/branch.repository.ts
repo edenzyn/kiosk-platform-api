@@ -76,4 +76,30 @@ export class BranchRepository {
     const rows = await query;
     return { branches: rows, total };
   }
+
+  async findById(id: string): Promise<BranchEntity | null> {
+    const [branch] = await this.database.client
+      .select()
+      .from(branches)
+      .where(eq(branches.id, id))
+      .limit(1);
+    return branch || null;
+  }
+
+  async update(id: string, data: Partial<BranchEntity>): Promise<BranchEntity> {
+    const [updated] = await this.database.client
+      .update(branches)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(branches.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new Error("Failed to update branch");
+    }
+
+    return updated;
+  }
 }

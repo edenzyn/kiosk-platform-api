@@ -7,8 +7,8 @@ import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../shared/enums/rbac/user-permission.enum";
-import { AppError } from "../shared/errors/app-error";
 import { UserScopeTypeEnums } from "../shared/enums/user/user-scope-type.enum";
+import { AppError } from "../shared/errors/app-error";
 import { getUserScope } from "../shared/utils/user/user-scope.helper";
 
 const isReadAction = (permission: string): boolean =>
@@ -40,7 +40,9 @@ export const accessMiddleware = (permissions: AccessPermissions) => {
       }
 
       // Determine the user's scope using req.user
-      const isUserBranchScoped = req.user ? getUserScope(req.user) === UserScopeTypeEnums.BRANCH : false;
+      const isUserBranchScoped = req.user
+        ? getUserScope(req.user) === UserScopeTypeEnums.BRANCH
+        : false;
 
       // Validate requested tenant IDs against the authenticated user's scope
       const reqOrgId = req.get(CustomRequestHeaders.ORGANIZATION_ID);

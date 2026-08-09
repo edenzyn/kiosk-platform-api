@@ -41,4 +41,21 @@ export class BranchController {
     );
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  update = async (req: Request, res: Response): Promise<void> => {
+    const data = await BranchValidator.update.validate(
+      { ...req.body, id: req.params.id },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const branch = await this.branchService.updateBranch(
+      data,
+      req.user as UserTokenDto,
+      req.effectiveTenant as EffectiveTenant,
+    );
+    res.status(HttpStatusCodes.OK).json({ branch });
+  };
 }

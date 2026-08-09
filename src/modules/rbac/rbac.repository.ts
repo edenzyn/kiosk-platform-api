@@ -1,15 +1,15 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
-
-import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/role/create-user-role-mapper-request.dto";
 import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
 import type { PermissionEntityWithAssigned } from "./dtos/permission/get-permissions-by-tenant-response.dto";
+import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
+import type { CreateUserRoleMapperRequestDto } from "./dtos/role/create-user-role-mapper-request.dto";
 import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
 import type { GetRolesResponseDto } from "./dtos/role/get-roles-response.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
 import {
   permissionMapper as permissionsMapper,
   type PermissionMapperEntity,
@@ -297,9 +297,27 @@ export class RbacRepository {
   }
 
   async deleteRole(roleId: string): Promise<void> {
-    await this.database.client
-      .delete(roles)
-      .where(and(eq(roles.id, roleId), eq(roles.isSystem, false)));
+    await this.database.client.transaction(async (tx) => {
+      // 1. Delete permission mappings
+      await tx
+        .delete(permissionsMapper)
+        .where(
+          and(
+            eq(permissionsMapper.entityType, PermissionEntityType.ROLE),
+            eq(permissionsMapper.entityId, roleId),
+          ),
+        );
+
+      // 2. Delete user role mappings
+      await tx
+        .delete(userRolesMapper)
+        .where(eq(userRolesMapper.roleId, roleId));
+
+      // 3. Delete the role itself
+      await tx
+        .delete(roles)
+        .where(and(eq(roles.id, roleId), eq(roles.isSystem, false)));
+    });
   }
 
   async removeUserFromRole(userIds: string[], roleId: string): Promise<void> {

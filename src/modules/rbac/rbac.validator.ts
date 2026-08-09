@@ -43,10 +43,13 @@ export const RbacValidator = {
     roleId: yup.string().uuid().required("Role ID is required"),
   }),
 
-  getRolesByTenant: yup.object({
-    search: yup.string().max(255).optional(),
-    sys: yup.boolean().optional().default(true),
-  }),
+  getRolesByTenant: yup
+    .object({
+      search: yup.string().max(255).optional(),
+      sys: yup.boolean().optional().default(true),
+      branchId: yup.string().uuid("Invalid branch ID format").nullable().optional(),
+    })
+    .from("b", "branchId"),
 
   getPermissionsByTenant: yup.object({
     entityId: yup.string().uuid().nullable().optional(),

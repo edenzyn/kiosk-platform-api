@@ -10,6 +10,7 @@ export class UserValidator {
       "Email is required",
     ),
     roles: stringToArray().of(Yup.string().required()).default([]),
+    branchId: Yup.string().uuid("Invalid branch ID format").nullable().optional(),
   }).noUnknown();
 
   static revokeInvitation = Yup.object({

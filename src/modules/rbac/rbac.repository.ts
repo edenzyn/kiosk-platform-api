@@ -179,7 +179,7 @@ export class RbacRepository {
     const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
 
     const orgIdVal = effectiveTenant.organizationId;
-    const branchIdVal = effectiveTenant.branchId;
+    const branchIdVal = queryDto.branchId !== undefined ? queryDto.branchId : effectiveTenant.branchId;
     const includeSystemRolesVal = includeSystemRoles || queryDto.sys;
 
     const queryResult = await this.database.client.execute<GetRolesResponseDto>(

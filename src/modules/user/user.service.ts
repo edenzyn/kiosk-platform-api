@@ -188,11 +188,13 @@ export class UserService {
       });
     }
 
+    const branchId = dto.branchId !== undefined ? dto.branchId : effectiveTenant.branchId;
+
     const token = generateToken(
       {
         email: dto.email,
         organizationId: effectiveTenant.organizationId,
-        branchId: effectiveTenant.branchId,
+        branchId: branchId || null,
       },
       env.JWT_INVITE_USER_SECRET,
       {
@@ -205,7 +207,7 @@ export class UserService {
     await this.userRepository.createInvitation({
       email: dto.email,
       organizationId: effectiveTenant.organizationId,
-      branchId: effectiveTenant.branchId,
+      branchId: branchId || null,
       roleIds: dto.roles || [],
       token,
       expiresAt,

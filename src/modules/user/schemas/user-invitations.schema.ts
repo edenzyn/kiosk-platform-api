@@ -15,6 +15,7 @@ import { users } from "./user.schema";
 export const userInvitations = pgTable("user_invitations", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }),
   organizationId: uuid("organization_id").references(
     (): AnyPgColumn => organizations.id,
   ),

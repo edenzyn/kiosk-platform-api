@@ -239,6 +239,27 @@ export class UserRepository {
     return { invitations: rows, total };
   }
 
+  async resendInvitation(
+    id: string,
+    token: string,
+    expiresAt: Date,
+    updatedBy: string,
+  ): Promise<UserInvitationEntity | undefined> {
+    const [updated] = await this.database.client
+      .update(userInvitations)
+      .set({
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        updatedBy: updatedBy || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(userInvitations.id, id))
+      .returning();
+
+    return updated;
+  }
+
   async findInvitationById(
     id: string,
   ): Promise<UserInvitationEntity | undefined> {

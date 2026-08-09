@@ -76,4 +76,19 @@ export class UserController {
     );
     res.json(result);
   };
+
+  resendInvitation = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const data = await UserValidator.resendInvitation.validate(
+      { id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.userService.resendInvitation(
+      data.id,
+      userTokenData,
+      effectiveTenant,
+    );
+    res.json(result);
+  };
 }

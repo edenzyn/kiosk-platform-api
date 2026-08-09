@@ -48,4 +48,13 @@ router.post(
   asyncHandler(userController.revokeInvitation),
 );
 
+router.post(
+  "/invitations/:id/resend",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_USER_INVITE],
+    branch: [UserPermissions.BRANCH_USER_INVITE],
+  }),
+  asyncHandler(userController.resendInvitation),
+);
+
 export default router;

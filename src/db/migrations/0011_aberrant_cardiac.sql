@@ -1,0 +1,1 @@
+ALTER TABLE "user_invitations" ADD COLUMN "name" varchar(255);

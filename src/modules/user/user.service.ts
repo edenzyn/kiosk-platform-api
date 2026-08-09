@@ -188,7 +188,19 @@ export class UserService {
       });
     }
 
-    const branchId = dto.branchId !== undefined ? dto.branchId : effectiveTenant.branchId;
+    const existingPendingInvitation =
+      await this.userRepository.findPendingInvitationByEmail(dto.email);
+    if (existingPendingInvitation) {
+      throw new AppError(
+        "A pending invitation already exists for this email address",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+        },
+      );
+    }
+
+    const branchId = dto.branchId || effectiveTenant.branchId;
 
     const token = generateToken(
       {
@@ -206,6 +218,7 @@ export class UserService {
 
     await this.userRepository.createInvitation({
       email: dto.email,
+      name: dto.name,
       organizationId: effectiveTenant.organizationId,
       branchId: branchId || null,
       roleIds: dto.roles || [],
@@ -226,7 +239,7 @@ export class UserService {
         ...template,
       });
     } catch (error) {
-      console.log(error);
+      if (process.env.NODE_ENV === "development") console.log(error);
     }
 
     return {
@@ -294,6 +307,78 @@ export class UserService {
 
     return {
       message: "Invitation revoked successfully",
+      success: true,
+    };
+  }
+
+  async resendInvitation(
+    id: string,
+    userToken: UserTokenDto,
+    effectiveTenant: EffectiveTenant,
+  ): Promise<{ message: string; success: boolean }> {
+    const invitation = await this.userRepository.findInvitationById(id);
+    if (!invitation) {
+      throw new AppError("Invitation not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const isOrgMatch =
+      !effectiveTenant.organizationId ||
+      invitation.organizationId === effectiveTenant.organizationId;
+
+    if (!isOrgMatch) {
+      throw new AppError("Forbidden to access this invitation", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        code: ErrorCodes.FORBIDDEN,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
+      throw new AppError("Only pending or expired invitations can be resent", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const token = generateToken(
+      {
+        email: invitation.email,
+        organizationId: invitation.organizationId,
+        branchId: invitation.branchId || null,
+      },
+      env.JWT_INVITE_USER_SECRET,
+      {
+        expiresIn:
+          env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+    const expiresAt = dayjs().add(7, "day").toDate();
+
+    await this.userRepository.resendInvitation(
+      id,
+      token,
+      expiresAt,
+      userToken.id,
+    );
+
+    try {
+      const template = getInviteUserTemplate({
+        name: invitation.name || "User",
+        token,
+      });
+
+      await this.mailService.sendMail({
+        to: invitation.email,
+        ...template,
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") console.log(error);
+    }
+
+    return {
+      message: "Invitation resent successfully",
       success: true,
     };
   }

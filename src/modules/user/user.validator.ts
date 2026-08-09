@@ -19,6 +19,12 @@ export class UserValidator {
       .required("Invitation ID is required"),
   }).noUnknown();
 
+  static resendInvitation = Yup.object({
+    id: Yup.string()
+      .uuid("Invalid invitation ID format")
+      .required("Invitation ID is required"),
+  }).noUnknown();
+
   static getUsersQuery = paginationQuerySchema.shape({
     search: Yup.string().optional().trim(),
   }).noUnknown();

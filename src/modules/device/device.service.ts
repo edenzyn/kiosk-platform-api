@@ -1,10 +1,14 @@
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
+import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
 import type { DeviceRepository } from "./device.repository";
+import { DeviceEntity } from "./device.schema";
 import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
+import type { UpdateDeviceBodyDto } from "./dtos/update-device-request.dto";
 
 export class DeviceService {
   constructor(private readonly deviceRepository: DeviceRepository) {}
@@ -20,7 +24,7 @@ export class DeviceService {
 
     const hashedPin = await hashData(String(data.pin));
 
-    const { pin, ...rest } = await this.deviceRepository.create({
+    const device = await this.deviceRepository.create({
       ...data,
       pin: hashedPin,
       deviceCode,
@@ -29,7 +33,7 @@ export class DeviceService {
       createdBy: user.id,
     });
 
-    return rest;
+    return device;
   }
 
   async getDevices(
@@ -55,5 +59,46 @@ export class DeviceService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {
+    const { id, pin, ...updateData } = data;
+    const existing = await this.deviceRepository.findById(id);
+    if (!existing) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const prepareData: Partial<DeviceEntity> = {
+      ...updateData,
+      updatedBy: user.id,
+    };
+
+    if (pin !== undefined && pin !== null) {
+      prepareData.pin = await hashData(String(pin));
+    } else if (pin === null) {
+      prepareData.pin = null;
+    }
+
+    const updated = await this.deviceRepository.update(id, prepareData);
+
+    return updated;
+  }
+
+  async toggleDeviceStatus(id: string, user: UserTokenDto) {
+    const existing = await this.deviceRepository.findById(id);
+    if (!existing) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const updated = await this.deviceRepository.update(id, {
+      isActive: !existing.isActive,
+      updatedBy: user.id,
+    });
+
+    return updated;
   }
 }

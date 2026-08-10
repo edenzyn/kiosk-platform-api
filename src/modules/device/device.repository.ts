@@ -11,7 +11,9 @@ import type { CreateDeviceRequestDto } from "./dtos/create-device-request.dto";
 export class DeviceRepository {
   constructor(private readonly database: Database) {}
 
-  async create(data: CreateDeviceRequestDto): Promise<DeviceEntity> {
+  async create(
+    data: CreateDeviceRequestDto,
+  ): Promise<Omit<DeviceEntity, "pin">> {
     const [device] = await this.database.client
       .insert(devices)
       .values({
@@ -23,7 +25,19 @@ export class DeviceRepository {
         deviceType: data.deviceType ?? null,
         createdBy: data.createdBy,
       })
-      .returning();
+      .returning({
+        id: devices.id,
+        organizationId: devices.organizationId,
+        branchId: devices.branchId,
+        deviceCode: devices.deviceCode,
+        name: devices.name,
+        deviceType: devices.deviceType,
+        isActive: devices.isActive,
+        createdAt: devices.createdAt,
+        updatedAt: devices.updatedAt,
+        createdBy: devices.createdBy,
+        updatedBy: devices.updatedBy,
+      });
 
     if (!device) {
       throw new Error("Failed to create device");
@@ -111,7 +125,10 @@ export class DeviceRepository {
     return device || null;
   }
 
-  async update(id: string, data: Partial<DeviceEntity>): Promise<DeviceEntity> {
+  async update(
+    id: string,
+    data: Partial<DeviceEntity>,
+  ): Promise<Omit<DeviceEntity, "pin">> {
     const [updated] = await this.database.client
       .update(devices)
       .set({
@@ -119,7 +136,19 @@ export class DeviceRepository {
         updatedAt: new Date(),
       })
       .where(eq(devices.id, id))
-      .returning();
+      .returning({
+        id: devices.id,
+        organizationId: devices.organizationId,
+        branchId: devices.branchId,
+        deviceCode: devices.deviceCode,
+        name: devices.name,
+        deviceType: devices.deviceType,
+        isActive: devices.isActive,
+        createdAt: devices.createdAt,
+        updatedAt: devices.updatedAt,
+        createdBy: devices.createdBy,
+        updatedBy: devices.updatedBy,
+      });
 
     if (!updated) {
       throw new Error("Failed to update device");

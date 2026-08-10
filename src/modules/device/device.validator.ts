@@ -40,7 +40,11 @@ export const DeviceValidator = {
         )
         .nullable()
         .optional(),
-      isActive: yup.boolean().optional(),
+    })
+    .noUnknown(),
+  toggleStatus: yup
+    .object({
+      id: yup.string().uuid().required("Device ID is required"),
     })
     .noUnknown(),
   getDevicesQuery: paginationQuerySchema.noUnknown(),

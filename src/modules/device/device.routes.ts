@@ -30,4 +30,22 @@ deviceRouter.post(
   deviceController.createDevice,
 );
 
+deviceRouter.put(
+  "/:id",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+  }),
+  deviceController.updateDevice,
+);
+
+deviceRouter.patch(
+  "/:id/status",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+  }),
+  deviceController.toggleDeviceStatus,
+);
+
 export { deviceRouter };

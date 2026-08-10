@@ -11,6 +11,7 @@ import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import { requestLogger } from "./middleware/request-logger.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
+import { deviceRouter } from "./modules/device/device.routes";
 import organizationRoutes from "./modules/organization/organization.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
@@ -82,6 +83,7 @@ export class App {
       organizationRoutes,
     );
     this.instance.use(`${this.apiV1Prefix}/pvt/branches`, branchRoutes);
+    this.instance.use(`${this.apiV1Prefix}/pvt/devices`, deviceRouter);
   }
 
   private configureErrorHandling(): void {

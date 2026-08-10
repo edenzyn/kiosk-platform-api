@@ -63,3 +63,16 @@ export const BRANCH_PERMISSION_READ_MANAGE_PERMS = [
   UserPermissions.BRANCH_PERMISSION_READ,
   UserPermissions.BRANCH_PERMISSION_MANAGE,
 ];
+
+//----------------------
+// Device Module Constants
+//----------------------
+export const ORGANIZATION_DEVICE_READ_WRITE_PERMS = [
+  UserPermissions.ORGANIZATION_DEVICE_READ,
+  UserPermissions.ORGANIZATION_DEVICE_WRITE,
+];
+
+export const BRANCH_DEVICE_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_DEVICE_READ,
+  UserPermissions.BRANCH_DEVICE_WRITE,
+];

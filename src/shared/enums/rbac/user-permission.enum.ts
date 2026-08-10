@@ -29,6 +29,9 @@ export enum UserPermissions {
   ORGANIZATION_PERMISSION_READ = "organization:permission:read",
   ORGANIZATION_PERMISSION_MANAGE = "organization:permission:manage",
 
+  ORGANIZATION_DEVICE_READ = "organization:device:read",
+  ORGANIZATION_DEVICE_WRITE = "organization:device:write",
+
   // ======================================================
   // Branch
   // ======================================================
@@ -48,4 +51,7 @@ export enum UserPermissions {
 
   BRANCH_PERMISSION_READ = "branch:permission:read",
   BRANCH_PERMISSION_MANAGE = "branch:permission:manage",
+
+  BRANCH_DEVICE_READ = "branch:device:read",
+  BRANCH_DEVICE_WRITE = "branch:device:write",
 }

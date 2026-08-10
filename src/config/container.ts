@@ -7,6 +7,7 @@ import { UserContainer } from "../modules/user/user.container";
 import { OrganizationContainer } from "../modules/organization/organization.container";
 import { BranchContainer } from "../modules/branch/branch.container";
 import { RbacContainer } from "../modules/rbac/rbac.container";
+import { DeviceContainer } from "../modules/device/device.container";
 
 export const container = createContainer({
   injectionMode: InjectionMode.CLASSIC,
@@ -24,3 +25,4 @@ AuthContainer.register(container);
 OrganizationContainer.register(container);
 BranchContainer.register(container);
 RbacContainer.register(container);
+DeviceContainer.register(container);

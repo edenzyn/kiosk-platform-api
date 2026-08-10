@@ -1,7 +1,6 @@
 import {
   type AnyPgColumn,
   boolean,
-  integer,
   pgTable,
   smallint,
   timestamp,
@@ -22,7 +21,7 @@ export const devices = pgTable("devices", {
     .references((): AnyPgColumn => branches.id),
   deviceCode: varchar("device_code", { length: 255 }).unique(),
   name: varchar("name", { length: 255 }),
-  pin: integer("pin"),
+  pin: varchar("pin", { length: 255 }),
   deviceType: smallint("device_type"),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -37,3 +36,7 @@ export const devices = pgTable("devices", {
 
 export type DeviceEntity = typeof devices.$inferSelect;
 export type CreateDeviceEntity = typeof devices.$inferInsert;
+
+export type DeviceWithBranchEntity = DeviceEntity & {
+  branchName: string | null;
+};

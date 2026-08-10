@@ -3,6 +3,8 @@ import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import validateMobileNumber from "../../shared/validators/phone.validator";
 
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+
 export const BranchValidator = {
   create: yup.object({
     organizationId: yup.string().uuid().required("Organization ID is required"),
@@ -52,5 +54,15 @@ export const BranchValidator = {
     latitude: yup.number().nullable().optional(),
     longitude: yup.number().nullable().optional(),
   }).noUnknown(),
-  getBranchesQuery: paginationQuerySchema.noUnknown(),
+  getBranchesQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().optional(),
+      isActive: yup.boolean().optional(),
+      sortBy: yup.string().optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
+    })
+    .noUnknown(),
 };

@@ -1,4 +1,5 @@
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ilike, or, asc, desc } from "drizzle-orm";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { Database } from "../../config/db";
 import { branches, type BranchEntity } from "./branch.schema";
 import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
@@ -40,6 +41,10 @@ export class BranchRepository {
     branchIds?: string[],
     page?: number,
     limit?: number,
+    search?: string,
+    isActive?: boolean,
+    sortBy?: string,
+    sortOrder?: SortingOrderEnum,
   ): Promise<{ branches: BranchEntity[]; total: number }> {
     const conditions = [];
 
@@ -49,6 +54,19 @@ export class BranchRepository {
 
     if (branchIds && branchIds.length > 0) {
       conditions.push(inArray(branches.id, branchIds));
+    }
+
+    if (isActive !== undefined && isActive !== null) {
+      conditions.push(eq(branches.isActive, isActive));
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(branches.name, `%${search}%`),
+          ilike(branches.email, `%${search}%`),
+        )
+      );
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
@@ -67,6 +85,19 @@ export class BranchRepository {
 
     if (condition) {
       query = query.where(condition);
+    }
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
+      if (sortBy === "name") {
+        query = query.orderBy(orderFn(branches.name));
+      } else if (sortBy === "city") {
+        query = query.orderBy(orderFn(branches.city));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(branches.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(branches.createdAt));
     }
 
     if (page && limit) {

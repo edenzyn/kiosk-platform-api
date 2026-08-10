@@ -36,8 +36,7 @@ export class BranchController {
     );
     const result = await this.branchService.getBranches(
       req.effectiveTenant as EffectiveTenant,
-      queryDto.page,
-      queryDto.limit,
+      queryDto,
     );
     res.status(HttpStatusCodes.OK).json(result);
   };

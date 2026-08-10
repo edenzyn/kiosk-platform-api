@@ -3,6 +3,7 @@ import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
@@ -73,10 +74,18 @@ export class BranchService {
 
   async getBranches(
     effectiveTenant: EffectiveTenant,
-    page: number = 1,
-    limit: number = 10,
+    filters: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      isActive?: boolean;
+      sortBy?: string;
+      sortOrder?: SortingOrderEnum;
+    } = {},
   ) {
     const orgIdFilter = effectiveTenant.organizationId;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
 
     let branchIdsFilter: string[] | undefined = undefined;
     if (effectiveTenant.branchId) {
@@ -88,6 +97,10 @@ export class BranchService {
       branchIdsFilter,
       page,
       limit,
+      filters.search,
+      filters.isActive,
+      filters.sortBy,
+      filters.sortOrder,
     );
 
     return {

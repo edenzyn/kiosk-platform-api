@@ -99,6 +99,20 @@ export class BranchService {
     };
   }
 
+  async getBranchesForFilters(effectiveTenant: EffectiveTenant) {
+    const orgIdFilter = effectiveTenant.organizationId;
+
+    let branchIdsFilter: string[] | undefined = undefined;
+    if (effectiveTenant.branchId) {
+      branchIdsFilter = [effectiveTenant.branchId];
+    }
+
+    return this.branchRepository.getBranchesForFilters(
+      orgIdFilter,
+      branchIdsFilter,
+    );
+  }
+
   async updateBranch(
     data: UpdateBranchRequestDto,
     user: UserTokenDto,

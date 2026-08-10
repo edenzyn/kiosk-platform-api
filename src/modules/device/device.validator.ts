@@ -2,6 +2,7 @@ import * as yup from "yup";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { pinValidator } from "../../shared/validators/pin.validator";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 
 export const DeviceValidator = {
   create: yup.object({
@@ -47,5 +48,27 @@ export const DeviceValidator = {
       id: yup.string().uuid().required("Device ID is required"),
     })
     .noUnknown(),
-  getDevicesQuery: paginationQuerySchema.noUnknown(),
+  getDevicesQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().optional(),
+      type: yup
+        .number()
+        .typeError("Device type must be a number")
+        .integer("Device type must be an integer")
+        .oneOf(
+          Object.values(DeviceTypeEnum).filter(
+            (v): v is number => typeof v === "number",
+          ),
+          "Invalid device type",
+        )
+        .optional(),
+      branchId: yup.string().uuid().optional(),
+      isActive: yup.boolean().optional(),
+      sortBy: yup.string().optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
+    })
+    .noUnknown(),
 };

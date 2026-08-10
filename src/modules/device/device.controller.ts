@@ -34,8 +34,7 @@ export class DeviceController {
     });
     const result = await this.deviceService.getDevices(
       req.effectiveTenant as EffectiveTenant,
-      queryDto.page,
-      queryDto.limit,
+      queryDto,
     );
     res.status(HttpStatusCodes.OK).json(result);
   };

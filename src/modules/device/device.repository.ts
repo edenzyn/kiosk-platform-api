@@ -1,6 +1,7 @@
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { branches } from "../branch/branch.schema";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import {
   devices,
   type DeviceEntity,
@@ -52,6 +53,11 @@ export class DeviceRepository {
     deviceIds?: string[],
     page?: number,
     limit?: number,
+    search?: string,
+    deviceType?: number,
+    isActive?: boolean,
+    sortBy?: string,
+    sortOrder?: SortingOrderEnum,
   ): Promise<{
     devices: DeviceWithBranchEntity[];
     total: number;
@@ -68,6 +74,23 @@ export class DeviceRepository {
 
     if (deviceIds && deviceIds.length > 0) {
       conditions.push(inArray(devices.id, deviceIds));
+    }
+
+    if (deviceType !== undefined && deviceType !== null) {
+      conditions.push(eq(devices.deviceType, deviceType));
+    }
+
+    if (isActive !== undefined && isActive !== null) {
+      conditions.push(eq(devices.isActive, isActive));
+    }
+
+    if (search) {
+      conditions.push(
+        or(
+          ilike(devices.name, `%${search}%`),
+          ilike(devices.deviceCode, `%${search}%`),
+        ),
+      );
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
@@ -103,6 +126,23 @@ export class DeviceRepository {
 
     if (condition) {
       query = query.where(condition);
+    }
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === "asc" ? asc : desc;
+      if (sortBy === "name") {
+        query = query.orderBy(orderFn(devices.name));
+      } else if (sortBy === "deviceCode") {
+        query = query.orderBy(orderFn(devices.deviceCode));
+      } else if (sortBy === "deviceType") {
+        query = query.orderBy(orderFn(devices.deviceType));
+      } else if (sortBy === "isActive") {
+        query = query.orderBy(orderFn(devices.isActive));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(devices.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(devices.createdAt));
     }
 
     if (page && limit) {

@@ -2,6 +2,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
@@ -38,11 +39,21 @@ export class DeviceService {
 
   async getDevices(
     effectiveTenant: EffectiveTenant,
-    page: number = 1,
-    limit: number = 10,
+    filters: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      type?: number;
+      branchId?: string;
+      isActive?: boolean;
+      sortBy?: string;
+      sortOrder?: SortingOrderEnum;
+    } = {},
   ) {
     const orgIdFilter = effectiveTenant.organizationId;
-    const branchIdFilter = effectiveTenant.branchId || undefined;
+    const branchIdFilter = effectiveTenant.branchId || filters.branchId || undefined;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
 
     const { devices, total } = await this.deviceRepository.getDevices(
       orgIdFilter,
@@ -50,6 +61,11 @@ export class DeviceService {
       undefined,
       page,
       limit,
+      filters.search,
+      filters.type,
+      filters.isActive,
+      filters.sortBy,
+      filters.sortOrder,
     );
 
     return {

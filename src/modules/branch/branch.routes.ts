@@ -35,6 +35,18 @@ branchRouter.get(
   branchController.getBranches,
 );
 
+branchRouter.get(
+  "/options",
+  accessMiddleware({
+    organization: [
+      UserPermissions.ORGANIZATION_BRANCH_WRITE,
+      UserPermissions.ORGANIZATION_BRANCH_READ,
+    ],
+    branch: [UserPermissions.BRANCH_READ],
+  }),
+  branchController.getBranchesForFilters,
+);
+
 branchRouter.put(
   "/:id",
   accessMiddleware({

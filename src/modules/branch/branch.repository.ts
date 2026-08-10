@@ -77,6 +77,37 @@ export class BranchRepository {
     return { branches: rows, total };
   }
 
+  async getBranchesForFilters(
+    organizationId?: string,
+    branchIds?: string[],
+  ): Promise<Array<{ id: string; name: string }>> {
+    const conditions = [];
+
+    if (organizationId) {
+      conditions.push(eq(branches.organizationId, organizationId));
+    }
+
+    if (branchIds && branchIds.length > 0) {
+      conditions.push(inArray(branches.id, branchIds));
+    }
+
+    const condition = conditions.length > 0 ? and(...conditions) : undefined;
+
+    let query = this.database.client
+      .select({
+        id: branches.id,
+        name: branches.name,
+      })
+      .from(branches)
+      .$dynamic();
+
+    if (condition) {
+      query = query.where(condition);
+    }
+
+    return query;
+  }
+
   async findById(id: string): Promise<BranchEntity | null> {
     const [branch] = await this.database.client
       .select()

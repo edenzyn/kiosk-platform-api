@@ -85,6 +85,13 @@
       "when": 1786258181926,
       "tag": "0011_aberrant_cardiac",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786347911301,
+      "tag": "0012_add_devices_and_licenses",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 import { createHash, randomInt } from "node:crypto";
 
-const ALPHABET_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const ALPHABET_CODE = "123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 export function hashSha256(data: string): string {
   return createHash("sha256").update(data).digest("hex");

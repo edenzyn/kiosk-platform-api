@@ -53,7 +53,7 @@ export class AuthController {
 
     const result = await this.authService.refreshUserToken(refreshToken);
 
-    if (req.clientType === ClientTypeEnum.DEVICE_CLIENT) {
+    if (result.clientType === ClientTypeEnum.DEVICE_CLIENT) {
       setCookie(
         res,
         SecurityTokenEnums.ACCESS_TOKEN,

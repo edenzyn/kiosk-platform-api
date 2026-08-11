@@ -142,7 +142,13 @@ export class AuthService {
         userScope,
       );
 
-    return { user: userWithoutPassword, tokens, permissions, availableScopes };
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      tokens,
+      permissions,
+      availableScopes,
+    };
   }
 
   async refreshUserToken(
@@ -209,6 +215,7 @@ export class AuthService {
         const { pin, ...deviceWithoutPin } = device;
 
         return {
+          clientType: ClientTypeEnum.DEVICE_CLIENT,
           device: deviceWithoutPin,
           tokens: {
             accessToken: generatedTokens.accessToken,
@@ -276,6 +283,7 @@ export class AuthService {
         );
 
       return {
+        clientType: ClientTypeEnum.USER_CLIENT,
         user: userWithoutPassword,
         tokens: {
           accessToken: generatedTokens.accessToken,
@@ -426,6 +434,7 @@ export class AuthService {
       );
 
     return {
+      clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens: {
         accessToken: tokens.accessToken,
@@ -485,6 +494,7 @@ export class AuthService {
     const { pin, ...deviceWithoutPin } = device;
 
     return {
+      clientType: ClientTypeEnum.DEVICE_CLIENT,
       device: deviceWithoutPin,
       tokens: {
         accessToken: generatedTokens.accessToken,

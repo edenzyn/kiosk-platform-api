@@ -151,7 +151,7 @@ export class AuthService {
     };
   }
 
-  async refreshUserToken(
+  async refreshToken(
     refreshToken: string,
   ): Promise<LoginResult | LoginDeviceResult> {
     try {
@@ -301,7 +301,7 @@ export class AuthService {
     }
   }
 
-  async logoutUser(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string): Promise<void> {
     try {
       const decoded = verifyToken<RefreshTokenPayload>(
         refreshToken,

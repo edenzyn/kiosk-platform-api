@@ -85,7 +85,7 @@ export class App {
       `${this.userApiv1Prefix}/organizations`,
       organizationRoutes,
     );
-    this.instance.use(`${this.userApiv1Prefix}branches`, branchRoutes);
+    this.instance.use(`${this.userApiv1Prefix}/branches`, branchRoutes);
     this.instance.use(`${this.userApiv1Prefix}/devices`, deviceRouter);
 
     // Private device routes

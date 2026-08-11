@@ -13,5 +13,7 @@ router.post("/accept-invite", asyncHandler(authController.acceptInvitation));
 
 // Device routes
 router.post("/d/login", asyncHandler(authController.loginDevice));
+router.post("/d/refresh", asyncHandler(authController.refreshDeviceToken));
+router.post("/d/logout", asyncHandler(authController.logoutDevice));
 
 export default router;

@@ -22,14 +22,14 @@ export class AuthController {
 
     setCookie(
       res,
-      SecurityTokenEnums.ACCESS_TOKEN,
+      SecurityTokenEnums.USER_ACCESS_TOKEN,
       result.tokens.accessToken,
       ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
       { httpOnly: false },
     );
     setCookie(
       res,
-      SecurityTokenEnums.REFRESH_TOKEN,
+      SecurityTokenEnums.USER_REFRESH_TOKEN,
       result.tokens.refreshToken,
       ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
     );
@@ -42,7 +42,7 @@ export class AuthController {
   };
 
   refreshUserToken = async (req: Request, res: Response): Promise<void> => {
-    const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
+    const refreshToken = req.cookies[SecurityTokenEnums.USER_REFRESH_TOKEN];
 
     if (!refreshToken) {
       throw new AppError("Your session has expired. Please sign in again.", {
@@ -51,56 +51,90 @@ export class AuthController {
       });
     }
 
-    const result = await this.authService.refreshUserToken(refreshToken);
+    const result = await this.authService.refreshToken(refreshToken);
 
-    if (result.clientType === ClientTypeEnum.DEVICE_CLIENT) {
-      setCookie(
-        res,
-        SecurityTokenEnums.ACCESS_TOKEN,
-        result.tokens.accessToken,
-        ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
-        { httpOnly: false },
-      );
-      setCookie(
-        res,
-        SecurityTokenEnums.REFRESH_TOKEN,
-        result.tokens.refreshToken,
-        ms(env.JWT_DEVICE_REFRESH_EXPIRES_IN as ms.StringValue),
-      );
-
-      res.json({
-        device: result.device,
-        token: result.tokens.accessToken,
-      });
-    } else {
-      setCookie(
-        res,
-        SecurityTokenEnums.ACCESS_TOKEN,
-        result.tokens.accessToken,
-        ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-        { httpOnly: false },
-      );
-      setCookie(
-        res,
-        SecurityTokenEnums.REFRESH_TOKEN,
-        result.tokens.refreshToken,
-        ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-      );
-
-      res.json({
-        user: result.user,
-        permissions: result.permissions,
-        availableScopes: result.availableScopes,
+    if (result.clientType !== ClientTypeEnum.USER_CLIENT) {
+      throw new AppError("Invalid session type.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
       });
     }
+
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+      availableScopes: result.availableScopes,
+    });
+  };
+
+  refreshDeviceToken = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies[SecurityTokenEnums.DEVICE_REFRESH_TOKEN];
+
+    if (!refreshToken) {
+      throw new AppError("Your session has expired. Please sign in again.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    const result = await this.authService.refreshToken(refreshToken);
+
+    if (result.clientType !== ClientTypeEnum.DEVICE_CLIENT) {
+      throw new AppError("Invalid session type.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    setCookie(
+      res,
+      SecurityTokenEnums.DEVICE_ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.DEVICE_REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_DEVICE_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
+    res.json({
+      device: result.device,
+      token: result.tokens.accessToken,
+    });
   };
 
   logoutUser = async (req: Request, res: Response): Promise<void> => {
-    const refreshToken = req.cookies[SecurityTokenEnums.REFRESH_TOKEN];
-    if (refreshToken) await this.authService.logoutUser(refreshToken);
+    const refreshToken = req.cookies[SecurityTokenEnums.USER_REFRESH_TOKEN];
+    if (refreshToken) await this.authService.logout(refreshToken);
 
-    clearCookie(res, SecurityTokenEnums.ACCESS_TOKEN);
-    clearCookie(res, SecurityTokenEnums.REFRESH_TOKEN);
+    clearCookie(res, SecurityTokenEnums.USER_ACCESS_TOKEN);
+    clearCookie(res, SecurityTokenEnums.USER_REFRESH_TOKEN);
+    res.status(HttpStatusCodes.NO_CONTENT).send();
+  };
+
+  logoutDevice = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken = req.cookies[SecurityTokenEnums.DEVICE_REFRESH_TOKEN];
+    if (refreshToken) await this.authService.logout(refreshToken);
+
+    clearCookie(res, SecurityTokenEnums.DEVICE_ACCESS_TOKEN);
+    clearCookie(res, SecurityTokenEnums.DEVICE_REFRESH_TOKEN);
     res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 
@@ -113,14 +147,14 @@ export class AuthController {
 
     setCookie(
       res,
-      SecurityTokenEnums.ACCESS_TOKEN,
+      SecurityTokenEnums.USER_ACCESS_TOKEN,
       result.tokens.accessToken,
       ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
       { httpOnly: false },
     );
     setCookie(
       res,
-      SecurityTokenEnums.REFRESH_TOKEN,
+      SecurityTokenEnums.USER_REFRESH_TOKEN,
       result.tokens.refreshToken,
       ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
     );
@@ -141,7 +175,7 @@ export class AuthController {
 
     setCookie(
       res,
-      SecurityTokenEnums.ACCESS_TOKEN,
+      SecurityTokenEnums.DEVICE_ACCESS_TOKEN,
       result.tokens.accessToken,
       ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
       { httpOnly: false },
@@ -149,7 +183,7 @@ export class AuthController {
 
     setCookie(
       res,
-      SecurityTokenEnums.REFRESH_TOKEN,
+      SecurityTokenEnums.DEVICE_REFRESH_TOKEN,
       result.tokens.refreshToken,
       ms(env.JWT_DEVICE_REFRESH_EXPIRES_IN as ms.StringValue),
     );

@@ -30,10 +30,18 @@ export function authMiddleware(
   next: NextFunction,
 ): void {
   try {
+    const apiPrefix = env.API_PREFIX_V1 || "/api/v1";
+    const isDeviceRoute = req.originalUrl.startsWith(`${apiPrefix}/pvt/d`);
+
     let token: string | undefined;
-    if (req.cookies && req.cookies[SecurityTokenEnums.ACCESS_TOKEN]) {
-      token = req.cookies[SecurityTokenEnums.ACCESS_TOKEN];
-    } else if (
+    if (req.cookies) {
+      token = isDeviceRoute
+        ? req.cookies[SecurityTokenEnums.DEVICE_ACCESS_TOKEN]
+        : req.cookies[SecurityTokenEnums.USER_ACCESS_TOKEN];
+    }
+
+    if (
+      !token &&
       req.headers.authorization &&
       req.headers.authorization.startsWith("Bearer ")
     ) {
@@ -51,17 +59,22 @@ export function authMiddleware(
       jwt.JwtPayload & { user?: UserTokenDto; device?: DeviceTokenDto }
     >(token, env.JWT_ACCESS_SECRET);
 
-    if (!decoded?.user?.id && !decoded?.device?.id) {
-      throw new AppError("Invalid Session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-        code: ErrorCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (decoded.device) {
+    if (isDeviceRoute) {
+      if (!decoded?.device?.id) {
+        throw new AppError("Invalid Session.", {
+          statusCode: HttpStatusCodes.UNAUTHORIZED,
+          code: ErrorCodes.UNAUTHORIZED,
+        });
+      }
       req.device = decoded.device;
       req.clientType = ClientTypeEnum.DEVICE_CLIENT;
     } else {
+      if (!decoded?.user?.id) {
+        throw new AppError("Invalid Session.", {
+          statusCode: HttpStatusCodes.UNAUTHORIZED,
+          code: ErrorCodes.UNAUTHORIZED,
+        });
+      }
       req.user = decoded.user;
       req.clientType = ClientTypeEnum.USER_CLIENT;
     }

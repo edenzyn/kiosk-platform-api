@@ -1,14 +1,14 @@
 import {
-  type AnyPgColumn,
   pgTable,
   smallint,
   text,
   timestamp,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { licenses } from "./license.schema";
-import { licensePurchases } from "./license-purchase.schema";
+import { licenseTransactions } from "./license-transaction.schema";
 import { users } from "../../user/schemas/user.schema";
+import { licenses } from "./license.schema";
 
 export const licenseHistory = pgTable("license_history", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -20,7 +20,9 @@ export const licenseHistory = pgTable("license_history", {
   newStatus: smallint("new_status"),
   previousExpiresAt: timestamp("previous_expires_at", { withTimezone: true }),
   newExpiresAt: timestamp("new_expires_at", { withTimezone: true }),
-  purchaseId: uuid("purchase_id").references((): AnyPgColumn => licensePurchases.id),
+  transactionId: uuid("transaction_id").references(
+    (): AnyPgColumn => licenseTransactions.id,
+  ),
   remarks: text("remarks"),
   performedBy: uuid("performed_by").references((): AnyPgColumn => users.id),
   createdAt: timestamp("created_at", { withTimezone: true })

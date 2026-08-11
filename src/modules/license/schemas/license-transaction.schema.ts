@@ -1,0 +1,53 @@
+import {
+  decimal,
+  pgTable,
+  smallint,
+  timestamp,
+  uuid,
+  varchar,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
+import { resellerDiscountRules } from "../../reseller/schemas/reseller-discount-rule.schema";
+import { users } from "../../user/schemas/user.schema";
+
+export const licenseTransactions = pgTable("license_transactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references((): AnyPgColumn => users.id),
+  transactionType: smallint("transaction_type").notNull(),
+  // Pricing snapshot
+  subtotalAmount: decimal("subtotal_amount", {
+    precision: 10,
+    scale: 2,
+  }).notNull(),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
+  discountPercentage: decimal("discount_percentage", {
+    precision: 5,
+    scale: 2,
+  }),
+  appliedDiscountRuleId: uuid("applied_discount_rule_id").references(
+    (): AnyPgColumn => resellerDiscountRules.id,
+  ),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }).notNull(),
+  // Payment
+  paymentMethod: smallint("payment_method"),
+  paymentProvider: smallint("payment_provider"),
+  paymentStatus: smallint("payment_status"),
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  transactionAt: timestamp("transaction_at", { withTimezone: true }),
+  // Audit
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdBy: uuid("created_by").references((): AnyPgColumn => users.id),
+  updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
+});
+
+export type LicenseTransactionEntity = typeof licenseTransactions.$inferSelect;
+export type CreateLicenseTransactionEntity =
+  typeof licenseTransactions.$inferInsert;

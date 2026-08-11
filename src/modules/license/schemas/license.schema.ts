@@ -14,7 +14,9 @@ import { devices } from "../../device/device.schema";
 export const licenses = pgTable("licenses", {
   id: uuid("id").defaultRandom().primaryKey(),
   licenseKey: varchar("license_key", { length: 255 }).unique().notNull(),
-  organizationId: uuid("organization_id").references((): AnyPgColumn => organizations.id),
+  organizationId: uuid("organization_id").references(
+    (): AnyPgColumn => organizations.id,
+  ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
   status: smallint("status").notNull(),

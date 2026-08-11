@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { container } from "../../config/container";
+import { authMiddleware } from "../../middleware/auth.middleware";
 import { accessMiddleware } from "../../middleware/access.middleware";
 import {
   BRANCH_DEVICE_READ_WRITE_PERMS,
@@ -11,6 +12,12 @@ import type { DeviceController } from "./device.controller";
 const deviceRouter = Router();
 const deviceController =
   container.resolve<DeviceController>("deviceController");
+
+deviceRouter.get(
+  "/e",
+  authMiddleware,
+  deviceController.deviceAuthCheck,
+);
 
 deviceRouter.get(
   "/",

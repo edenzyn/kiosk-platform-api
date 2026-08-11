@@ -2,9 +2,11 @@ import type { NextFunction, Request, Response } from "express";
 import type jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import type { DeviceTokenDto } from "../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../shared/dtos/effective-tenant.dto";
 import type { UserRequestScope } from "../shared/dtos/user-request-scope.dto";
 import type { UserTokenDto } from "../shared/dtos/user-token.dto";
+import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import { AppError } from "../shared/errors/app-error";
@@ -16,6 +18,8 @@ declare global {
       user?: UserTokenDto;
       userScope?: UserRequestScope;
       effectiveTenant?: EffectiveTenant;
+      device?: DeviceTokenDto;
+      clientType?: ClientTypeEnum;
     }
   }
 }
@@ -43,19 +47,25 @@ export function authMiddleware(
       });
     }
 
-    const decoded = verifyToken<jwt.JwtPayload & { user?: UserTokenDto }>(
-      token,
-      env.JWT_ACCESS_SECRET,
-    );
+    const decoded = verifyToken<
+      jwt.JwtPayload & { user?: UserTokenDto; device?: DeviceTokenDto }
+    >(token, env.JWT_ACCESS_SECRET);
 
-    if (!decoded?.user?.id) {
+    if (!decoded?.user?.id && !decoded?.device?.id) {
       throw new AppError("Invalid Session.", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
-    req.user = decoded?.user;
+    if (decoded.device) {
+      req.device = decoded.device;
+      req.clientType = ClientTypeEnum.DEVICE_CLIENT;
+    } else {
+      req.user = decoded.user;
+      req.clientType = ClientTypeEnum.USER_CLIENT;
+    }
+
     next();
   } catch (error) {
     next(

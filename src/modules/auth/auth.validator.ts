@@ -1,4 +1,5 @@
 import * as Yup from "yup";
+import { deviceCodeValidator } from "../../shared/validators/device-code.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { passwordValidator } from "../../shared/validators/password.validator";
 
@@ -17,5 +18,16 @@ export class AuthValidator {
       .max(100, "Name cannot exceed 100 characters")
       .required("Name is required"),
     password: passwordValidator().required("Password is required"),
+  }).noUnknown();
+
+  static readonly loginDevice = Yup.object({
+    deviceCode: deviceCodeValidator(
+      "Device code is required",
+      "Invalid device code format",
+    ),
+    pin: Yup.string()
+      .required("PIN is required")
+      .length(4, "PIN must be exactly 4 digits")
+      .matches(/^\d{4}$/, "PIN must contain only numbers"),
   }).noUnknown();
 }

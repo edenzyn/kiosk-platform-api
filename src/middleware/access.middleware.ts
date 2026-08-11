@@ -4,6 +4,7 @@ import { env } from "../config/env";
 import { RbacService } from "../modules/rbac/rbac.service";
 import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
+import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../shared/enums/rbac/user-permission.enum";
@@ -28,6 +29,17 @@ export const accessMiddleware = (permissions: AccessPermissions) => {
     next: NextFunction,
   ): Promise<void> => {
     try {
+      if (req.clientType === ClientTypeEnum.DEVICE_CLIENT) {
+        if (!req.device) {
+          throw new AppError("Unauthorized access", {
+            statusCode: HttpStatusCodes.UNAUTHORIZED,
+            code: ErrorCodes.UNAUTHORIZED,
+          });
+        }
+        // TODO: Device permission validation should check from here in future if needed
+        return next();
+      }
+
       const userId = req.user?.id;
       const userOrgId = req.user?.organizationId;
       const userBranchId = req.user?.branchId;

@@ -2,6 +2,8 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { AppError } from "../../shared/errors/app-error";
 import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
 import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
@@ -68,6 +70,19 @@ export class DeviceController {
       data.id,
       req.user as UserTokenDto,
     );
+    res.status(HttpStatusCodes.OK).json({ device });
+  };
+
+  deviceAuthCheck = async (req: Request, res: Response): Promise<void> => {
+    const deviceId = req.device?.id;
+    if (!deviceId) {
+      throw new AppError("No device session found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    const device = await this.deviceService.deviceAuthCheck(deviceId);
     res.status(HttpStatusCodes.OK).json({ device });
   };
 }

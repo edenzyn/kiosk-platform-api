@@ -13,10 +13,9 @@ export const getInviteUserTemplate = (options: InviteUserTemplateOptions) => {
   const orgName = organizationName || "Kiosk Platform";
 
   const subject = `You're invited to join ${orgName}`;
-  const baseUrl = env.FRONTEND_BASE_URL.replace(/\/$/, "");
+  const baseUrl = env.USER_CLIENT_BASE_URL.replace(/\/$/, "");
   const link =
-    inviteUrl ||
-    (token ? `${baseUrl}/accept-invite?it=${token}` : "#");
+    inviteUrl || (token ? `${baseUrl}/accept-invite?it=${token}` : "#");
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">

@@ -19,6 +19,8 @@ import { swaggerDocument } from "./shared/utils/core/swagger";
 
 export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
+  private readonly userApiv1Prefix = `${this.apiV1Prefix}/pvt/u`;
+  private readonly deviceApiv1Prefix = `${this.apiV1Prefix}/pvt/d`;
   private readonly currentEnv = env.NODE_ENV;
   readonly instance: Express;
 
@@ -40,7 +42,8 @@ export class App {
     this.instance.use(express.json({ limit: "1mb" }));
     this.instance.use(express.urlencoded({ extended: false, limit: "1mb" }));
     this.instance.use(rateLimitMiddleware);
-    this.instance.use(`${this.apiV1Prefix}/pvt`, authMiddleware);
+    this.instance.use(`${this.userApiv1Prefix}`, authMiddleware);
+    this.instance.use(`${this.deviceApiv1Prefix}`, authMiddleware);
   }
 
   private configureSwagger(): void {
@@ -76,14 +79,17 @@ export class App {
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
 
     // Private routes
-    this.instance.use(`${this.apiV1Prefix}/pvt/users`, userRoutes);
-    this.instance.use(`${this.apiV1Prefix}/pvt/rbac`, rbacRoutes);
+    this.instance.use(`${this.userApiv1Prefix}/users`, userRoutes);
+    this.instance.use(`${this.userApiv1Prefix}/rbac`, rbacRoutes);
     this.instance.use(
-      `${this.apiV1Prefix}/pvt/organizations`,
+      `${this.userApiv1Prefix}/organizations`,
       organizationRoutes,
     );
-    this.instance.use(`${this.apiV1Prefix}/pvt/branches`, branchRoutes);
-    this.instance.use(`${this.apiV1Prefix}/pvt/devices`, deviceRouter);
+    this.instance.use(`${this.userApiv1Prefix}branches`, branchRoutes);
+    this.instance.use(`${this.userApiv1Prefix}/devices`, deviceRouter);
+
+    // Private device routes
+    this.instance.use(`${this.deviceApiv1Prefix}/devices`, deviceRouter);
   }
 
   private configureErrorHandling(): void {

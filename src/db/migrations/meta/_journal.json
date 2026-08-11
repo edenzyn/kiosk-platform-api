@@ -92,6 +92,20 @@
       "when": 1786347911301,
       "tag": "0012_add_devices_and_licenses",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786440249353,
+      "tag": "0013_update-device-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786440528391,
+      "tag": "0014_add-device-refresh-tokens",
+      "breakpoints": true
     }
   ]
 }

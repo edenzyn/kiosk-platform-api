@@ -1,14 +1,14 @@
 import {
-  type AnyPgColumn,
   boolean,
   pgTable,
   smallint,
   timestamp,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../organization/organization.schema";
 import { branches } from "../branch/branch.schema";
+import { organizations } from "../organization/organization.schema";
 import { users } from "../user/schemas/user.schema";
 
 export const devices = pgTable("devices", {
@@ -20,9 +20,9 @@ export const devices = pgTable("devices", {
     .notNull()
     .references((): AnyPgColumn => branches.id),
   deviceCode: varchar("device_code", { length: 255 }).unique(),
-  name: varchar("name", { length: 255 }),
-  pin: varchar("pin", { length: 255 }),
-  deviceType: smallint("device_type"),
+  name: varchar("name", { length: 255 }).notNull(),
+  pin: varchar("pin", { length: 255 }).notNull(),
+  deviceType: smallint("device_type").notNull(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

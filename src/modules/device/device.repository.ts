@@ -165,6 +165,15 @@ export class DeviceRepository {
     return device || null;
   }
 
+  async findByDeviceCode(deviceCode: string): Promise<DeviceEntity | null> {
+    const [device] = await this.database.client
+      .select()
+      .from(devices)
+      .where(eq(devices.deviceCode, deviceCode))
+      .limit(1);
+    return device || null;
+  }
+
   async update(
     id: string,
     data: Partial<DeviceEntity>,

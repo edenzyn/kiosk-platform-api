@@ -77,6 +77,27 @@ export class DeviceService {
     };
   }
 
+  async deviceAuthCheck(id: string) {
+    const device = await this.deviceRepository.findById(id);
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (!device.isActive) {
+      throw new AppError(
+        "Device is deactivated. Please contact your administrator.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
+    const { pin, ...deviceWithoutPin } = device;
+    return deviceWithoutPin;
+  }
+
   async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {
     const { id, pin, ...updateData } = data;
     const existing = await this.deviceRepository.findById(id);
@@ -87,14 +108,15 @@ export class DeviceService {
     }
 
     const prepareData: Partial<DeviceEntity> = {
-      ...updateData,
+      branchId: updateData.branchId,
+      name: updateData.name ?? undefined,
+      deviceCode: updateData.deviceCode ?? undefined,
+      deviceType: updateData.deviceType ?? undefined,
       updatedBy: user.id,
     };
 
     if (pin !== undefined && pin !== null) {
       prepareData.pin = await hashData(String(pin));
-    } else if (pin === null) {
-      prepareData.pin = null;
     }
 
     const updated = await this.deviceRepository.update(id, prepareData);

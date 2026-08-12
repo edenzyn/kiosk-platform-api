@@ -7,6 +7,9 @@ export interface GetInvitationsRequestDto {
   search?: string;
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
+  status?: number;
+  expiresStart?: string;
+  expiresEnd?: string;
 }
 
 export interface GetInvitationsResponseDto {

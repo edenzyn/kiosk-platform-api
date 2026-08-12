@@ -61,7 +61,7 @@ export interface InviteUserServiceResult {
   message: string;
 }
 
-export interface GetInvitationsServiceInput {
+export interface GetInvitationsByTenantServiceInput {
   effectiveTenant: EffectiveTenant;
   query: {
     page?: number;
@@ -69,10 +69,13 @@ export interface GetInvitationsServiceInput {
     search?: string;
     sortBy?: string;
     sortOrder?: any;
+    status?: number;
+    expiresStart?: Date;
+    expiresEnd?: Date;
   };
 }
 
-export interface GetInvitationsServiceResult {
+export interface GetInvitationsByTenantServiceResult {
   invitations: UserInvitationEntity[];
   total: number;
   page: number;
@@ -166,6 +169,9 @@ export interface FindInvitationsByTenantRepoInput {
   search?: string;
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
+  status?: number;
+  expiresStart?: Date;
+  expiresEnd?: Date;
 }
 export interface FindInvitationsByTenantRepoResult {
   invitations: UserInvitationEntity[];

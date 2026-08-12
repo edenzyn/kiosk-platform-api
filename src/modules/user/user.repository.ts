@@ -4,8 +4,10 @@ import {
   count,
   desc,
   eq,
+  gte,
   ilike,
   isNull,
+  lte,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -248,8 +250,18 @@ export class UserRepository {
   async findInvitationsByTenant(
     input: FindInvitationsByTenantRepoInput,
   ): Promise<FindInvitationsByTenantRepoResult> {
-    const { organizationId, branchId, page, limit, search, sortBy, sortOrder } =
-      input;
+    const {
+      organizationId,
+      branchId,
+      page,
+      limit,
+      search,
+      sortBy,
+      sortOrder,
+      status,
+      expiresStart,
+      expiresEnd,
+    } = input;
     const conditions = [];
 
     if (organizationId && branchId) {
@@ -268,6 +280,18 @@ export class UserRepository {
 
     if (search) {
       conditions.push(ilike(userInvitations.email, `%${search}%`));
+    }
+
+    if (status !== undefined) {
+      conditions.push(eq(userInvitations.status, status));
+    }
+
+    if (expiresStart) {
+      conditions.push(gte(userInvitations.expiresAt, expiresStart));
+    }
+
+    if (expiresEnd) {
+      conditions.push(lte(userInvitations.expiresAt, expiresEnd));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;

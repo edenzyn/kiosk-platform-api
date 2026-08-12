@@ -5,7 +5,6 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
@@ -18,11 +17,14 @@ import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
-import type { GetInvitationsResponseDto } from "./dtos/get-invitations.dtos";
 import type { GetUsersRequestDto, GetUsersResponseDto } from "./dtos/get-users.dtos";
 import type { InviteUserRequestDto, InviteUserResponseDto } from "./dtos/invite-user.dtos";
 import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos";
 import type { UserRepository } from "./user.repository";
+import type {
+  GetInvitationsByTenantServiceInput,
+  GetInvitationsByTenantServiceResult,
+} from "./user.types";
 
 export class UserService {
   constructor(
@@ -279,13 +281,20 @@ export class UserService {
   }
 
   async getInvitationsByTenant(
-    effectiveTenant: EffectiveTenant,
-    page: number = 1,
-    limit: number = 10,
-    search?: string,
-    sortBy?: string,
-    sortOrder?: SortingOrderEnum,
-  ): Promise<GetInvitationsResponseDto> {
+    input: GetInvitationsByTenantServiceInput,
+  ): Promise<GetInvitationsByTenantServiceResult> {
+    const { effectiveTenant, query } = input;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy,
+      sortOrder,
+      status,
+      expiresStart,
+      expiresEnd,
+    } = query;
+
     const { invitations, total } =
       await this.userRepository.findInvitationsByTenant({
         organizationId: effectiveTenant.organizationId,
@@ -295,6 +304,9 @@ export class UserService {
         search,
         sortBy,
         sortOrder,
+        status,
+        expiresStart,
+        expiresEnd,
       });
     return {
       invitations,

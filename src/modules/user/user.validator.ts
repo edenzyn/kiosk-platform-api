@@ -1,8 +1,10 @@
 import * as Yup from "yup";
-import { emailValidator } from "../../shared/validators/email.validator";
-import { stringToArray } from "../../shared/validators/yup.transformer";
-import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
+import { emailValidator } from "../../shared/validators/email.validator";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+import { stringToArray } from "../../shared/validators/yup.transformer";
 
 export class UserValidator {
   static inviteUser = Yup.object({
@@ -11,7 +13,10 @@ export class UserValidator {
       "Email is required",
     ),
     roles: stringToArray().of(Yup.string().required()).default([]),
-    branchId: Yup.string().uuid("Invalid branch ID format").nullable().optional(),
+    branchId: Yup.string()
+      .uuid("Invalid branch ID format")
+      .nullable()
+      .optional(),
   }).noUnknown();
 
   static revokeInvitation = Yup.object({
@@ -26,15 +31,44 @@ export class UserValidator {
       .required("Invitation ID is required"),
   }).noUnknown();
 
-  static getUsersQuery = paginationQuerySchema.shape({
-    search: Yup.string().optional().trim(),
-    sortBy: Yup.string().oneOf(["name", "userType", "isActive", "createdAt"]).optional().default("createdAt"),
-    sortOrder: Yup.mixed<SortingOrderEnum>().oneOf(Object.values(SortingOrderEnum)).optional().default(SortingOrderEnum.DESC),
-  }).noUnknown();
+  static getUsersQuery = paginationQuerySchema
+    .shape({
+      search: Yup.string().optional().trim(),
+      sortBy: Yup.string()
+        .oneOf(["name", "userType", "isActive", "createdAt"])
+        .optional()
+        .default("createdAt"),
+      sortOrder: Yup.mixed<SortingOrderEnum>()
+        .oneOf(Object.values(SortingOrderEnum))
+        .optional()
+        .default(SortingOrderEnum.DESC),
+    })
+    .noUnknown();
 
-  static getInvitationsQuery = paginationQuerySchema.shape({
-    search: Yup.string().optional().trim(),
-    sortBy: Yup.string().oneOf(["email", "status", "expiresAt", "createdAt"]).optional().default("createdAt"),
-    sortOrder: Yup.mixed<SortingOrderEnum>().oneOf(Object.values(SortingOrderEnum)).optional().default(SortingOrderEnum.DESC),
-  }).noUnknown();
+  static getInvitationsQuery = paginationQuerySchema
+    .shape({
+      search: Yup.string().optional().trim(),
+      sortBy: Yup.string()
+        .oneOf(["email", "status", "expiresAt", "createdAt"])
+        .optional()
+        .default("createdAt"),
+      sortOrder: Yup.mixed<SortingOrderEnum>()
+        .oneOf(Object.values(SortingOrderEnum))
+        .optional()
+        .default(SortingOrderEnum.DESC),
+      status: Yup.number()
+        .oneOf(
+          Object.values(UserInvitationStatusEnum) as number[],
+          "Invalid status",
+        )
+        .optional(),
+      expiresStart: Yup.date().typeError("Invalid start date").optional(),
+      expiresEnd: dateIsAfterRef(
+        "expiresStart",
+        "End date cannot be before start date",
+      )
+        .typeError("Invalid end date")
+        .optional(),
+    })
+    .noUnknown();
 }

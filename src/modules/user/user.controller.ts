@@ -54,14 +54,10 @@ export class UserController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.userService.getInvitationsByTenant(
+    const result = await this.userService.getInvitationsByTenant({
       effectiveTenant,
-      queryDto.page,
-      queryDto.limit,
-      queryDto.search,
-      queryDto.sortBy,
-      queryDto.sortOrder,
-    );
+      query: queryDto,
+    });
     res.json(result);
   };
 

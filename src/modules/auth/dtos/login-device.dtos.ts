@@ -8,5 +8,5 @@ export interface LoginDeviceRequestDto {
 
 export interface LoginDeviceResponseDto {
   device: Omit<DeviceEntity, "pin">;
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy"> | null;
+  license: Omit<LicenseEntity, "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"> | null;
 }

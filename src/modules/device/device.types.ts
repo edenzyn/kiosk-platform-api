@@ -51,7 +51,7 @@ export interface UpdateDeviceServiceInput {
     deviceCode?: string | null;
     name?: string | null;
     pin?: number | null;
-    deviceType?: any | null;
+    deviceType?: DeviceTypeEnum | null;
   };
   user: UserTokenDto;
 }
@@ -71,7 +71,10 @@ export interface DeviceAuthCheckServiceInput {
 
 export interface DeviceAuthCheckServiceResult {
   device: Omit<DeviceEntity, "pin">;
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy"> | null;
+  license: Omit<
+    LicenseEntity,
+    "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
+  > | null;
 }
 
 // ========================================

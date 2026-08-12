@@ -8,6 +8,7 @@ import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
 import type { CreateDeviceBodyDto } from "./dtos/create-device.dtos";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
+
 export class DeviceController {
   constructor(
     private readonly deviceService: DeviceService,
@@ -25,11 +26,11 @@ export class DeviceController {
       },
     );
 
-    const device = await this.deviceService.createDevice(
-      data as CreateDeviceBodyDto,
-      req.user as UserTokenDto,
-      req.effectiveTenant as EffectiveTenant,
-    );
+    const device = await this.deviceService.createDevice({
+      data: data as CreateDeviceBodyDto,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
     res.status(HttpStatusCodes.CREATED).json({ device });
   };
 
@@ -38,10 +39,10 @@ export class DeviceController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.deviceService.getDevices(
-      req.effectiveTenant as EffectiveTenant,
-      queryDto,
-    );
+    const result = await this.deviceService.getDevices({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      filters: queryDto,
+    });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
@@ -54,10 +55,10 @@ export class DeviceController {
       },
     );
 
-    const device = await this.deviceService.updateDevice(
-      data as UpdateDeviceBodyDto,
-      req.user as UserTokenDto,
-    );
+    const device = await this.deviceService.updateDevice({
+      data: data as UpdateDeviceBodyDto,
+      user: req.user as UserTokenDto,
+    });
     res.status(HttpStatusCodes.OK).json({ device });
   };
 
@@ -70,10 +71,10 @@ export class DeviceController {
       },
     );
 
-    const device = await this.deviceService.toggleDeviceStatus(
-      data.id,
-      req.user as UserTokenDto,
-    );
+    const device = await this.deviceService.toggleDeviceStatus({
+      id: data.id,
+      user: req.user as UserTokenDto,
+    });
     res.status(HttpStatusCodes.OK).json({ device });
   };
 
@@ -89,8 +90,7 @@ export class DeviceController {
       });
     }
 
-    const result = await this.deviceService.deviceAuthCheck(deviceId);
+    const result = await this.deviceService.deviceAuthCheck({ id: deviceId });
     res.status(HttpStatusCodes.OK).json(result);
   };
 }
-

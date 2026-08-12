@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
 import type { LicenseService } from "./license.service";
 import { LicenseValidator } from "./license.validator";
@@ -11,7 +13,35 @@ export class LicenseController {
   // ========================================
   // ? USER CLIENT APIS
   // ========================================
-  // user apis
+  getLicenses = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await LicenseValidator.getLicensesQuery.validate(req.query, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.licenseService.getLicenses({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      filters: queryDto,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  purchaseLicense = async (req: Request, res: Response): Promise<void> => {
+    const data = await LicenseValidator.purchaseLicense.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.purchaseLicense({
+      dto: data,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      userId: user.id,
+    });
+
+    res.status(HttpStatusCodes.CREATED).json(result);
+  };
 
   // ========================================
   // ? DEVICE CLIENT APIS
@@ -24,10 +54,11 @@ export class LicenseController {
       stripUnknown: true,
     });
 
-    const result = await this.licenseService.activateLicenseByKey(
-      data as ActivateLicenseRequestDto,
-      device.id,
-    );
+    const result = await this.licenseService.activateLicenseByKey({
+      dto: data as ActivateLicenseRequestDto,
+      deviceId: device.id,
+      deviceBranchId: device.branchId,
+    });
 
     res.status(HttpStatusCodes.OK).json(result);
   };

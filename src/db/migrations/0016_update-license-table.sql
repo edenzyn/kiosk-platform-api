@@ -1,0 +1,1 @@
+ALTER TABLE "licenses" ALTER COLUMN "license_key" SET DATA TYPE text;

@@ -26,6 +26,9 @@ export enum UserPermissions {
   ORGANIZATION_ROLE_READ = "organization:role:read",
   ORGANIZATION_ROLE_WRITE = "organization:role:write",
 
+  ORGANIZATION_LICENSE_READ = "organization:license:read",
+  ORGANIZATION_LICENSE_WRITE = "organization:license:write",
+
   ORGANIZATION_PERMISSION_READ = "organization:permission:read",
   ORGANIZATION_PERMISSION_MANAGE = "organization:permission:manage",
 
@@ -48,6 +51,9 @@ export enum UserPermissions {
 
   BRANCH_ROLE_READ = "branch:role:read",
   BRANCH_ROLE_WRITE = "branch:role:write",
+
+  BRANCH_LICENSE_READ = "branch:license:read",
+  BRANCH_LICENSE_WRITE = "branch:license:write",
 
   BRANCH_PERMISSION_READ = "branch:permission:read",
   BRANCH_PERMISSION_MANAGE = "branch:permission:manage",

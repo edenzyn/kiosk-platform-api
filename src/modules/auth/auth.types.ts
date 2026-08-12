@@ -36,7 +36,7 @@ export interface LoginDeviceServiceResult {
   clientType: ClientTypeEnum.DEVICE_CLIENT;
   device: Omit<DeviceEntity, "pin">;
   tokens: AuthTokens;
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy"> | null;
+  license: Omit<LicenseEntity, "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"> | null;
 }
 
 export interface AcceptInvitationServiceInput {

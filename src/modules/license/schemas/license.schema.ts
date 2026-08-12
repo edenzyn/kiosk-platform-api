@@ -1,19 +1,20 @@
 import {
-  type AnyPgColumn,
   pgTable,
   smallint,
+  text,
   timestamp,
   uuid,
-  varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../../organization/organization.schema";
 import { branches } from "../../branch/branch.schema";
-import { users } from "../../user/schemas/user.schema";
 import { devices } from "../../device/device.schema";
+import { organizations } from "../../organization/organization.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const licenses = pgTable("licenses", {
   id: uuid("id").defaultRandom().primaryKey(),
-  licenseKey: varchar("license_key", { length: 255 }).unique().notNull(),
+  licenseKey: text("license_key").notNull().unique(),
+  licenseKeyHash: text("license_key_hash").notNull().unique(),
   organizationId: uuid("organization_id").references(
     (): AnyPgColumn => organizations.id,
   ),

@@ -76,3 +76,17 @@ export const BRANCH_DEVICE_READ_WRITE_PERMS = [
   UserPermissions.BRANCH_DEVICE_READ,
   UserPermissions.BRANCH_DEVICE_WRITE,
 ];
+
+//----------------------
+// License Module Constants
+//----------------------
+export const ORGANIZATION_LICENSE_READ_WRITE_PERMS = [
+  UserPermissions.ORGANIZATION_LICENSE_READ,
+  UserPermissions.ORGANIZATION_LICENSE_WRITE,
+];
+
+export const BRANCH_LICENSE_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_LICENSE_READ,
+  UserPermissions.BRANCH_LICENSE_WRITE,
+];
+

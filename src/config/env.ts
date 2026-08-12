@@ -33,6 +33,21 @@ const EnvSchema = Yup.object({
   SMTP_FROM: Yup.string().default(
     '"Kiosk Platform" <noreply@kioskplatform.com>',
   ),
+  LICENSE_ENCRYPTION_KEY: Yup.string()
+    .required()
+    .test(
+      "valid-aes-key",
+      "LICENSE_ENCRYPTION_KEY must be a Base64-encoded 32-byte key",
+      (value) => {
+        if (!value) return false;
+
+        try {
+          return Buffer.from(value, "base64").length === 32;
+        } catch {
+          return false;
+        }
+      },
+    ),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

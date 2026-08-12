@@ -106,6 +106,27 @@
       "when": 1786440528391,
       "tag": "0014_add-device-refresh-tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786513547334,
+      "tag": "0015_update-license-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786514361293,
+      "tag": "0016_update-license-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786517146982,
+      "tag": "0017_update-license-table",
+      "breakpoints": true
     }
   ]
 }

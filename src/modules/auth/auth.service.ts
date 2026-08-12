@@ -376,9 +376,9 @@ export class AuthService {
 
         const { pin, ...deviceWithoutPin } = device;
 
-        const licenseInfo = await this.licenseService.getLicenseForDevice(
-          device.id,
-        );
+        const licenseInfo = await this.licenseService.getLicenseForDevice({
+          deviceId: device.id,
+        });
 
         return {
           clientType: ClientTypeEnum.DEVICE_CLIENT,
@@ -518,9 +518,9 @@ export class AuthService {
 
     const { pin, ...deviceWithoutPin } = device;
 
-    const licenseInfo = await this.licenseService.getLicenseForDevice(
-      device.id,
-    );
+    const licenseInfo = await this.licenseService.getLicenseForDevice({
+      deviceId: device.id,
+    });
 
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,

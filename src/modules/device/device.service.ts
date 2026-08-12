@@ -1,16 +1,24 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
-import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
+import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
+import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
-import type { CreateDeviceBodyDto, CreateDeviceRequestDto } from "./dtos/create-device.dtos";
-import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 import type { LicenseService } from "../license/license.service";
+import type {
+  CreateDeviceServiceInput,
+  CreateDeviceServiceResult,
+  DeviceAuthCheckServiceInput,
+  DeviceAuthCheckServiceResult,
+  GetDevicesServiceInput,
+  GetDevicesServiceResult,
+  ToggleDeviceStatusServiceInput,
+  ToggleDeviceStatusServiceResult,
+  UpdateDeviceServiceInput,
+  UpdateDeviceServiceResult,
+} from "./device.types";
 
 export class DeviceService {
   constructor(
@@ -22,24 +30,22 @@ export class DeviceService {
   // ? USER CLIENT SERVICES
   // ========================================
   async createDevice(
-    data: CreateDeviceBodyDto,
-    user: UserTokenDto,
-    effectiveTenant: EffectiveTenant,
-  ) {
-    const shortLabel = DEVICE_TYPE_SHORT_LABELS[data.deviceType] || "DVC";
+    input: CreateDeviceServiceInput,
+  ): Promise<CreateDeviceServiceResult> {
+    const shortLabel = DEVICE_TYPE_SHORT_LABELS[input.data.deviceType] || "DVC";
     const randPart = createRandomReadableCode(8);
     const deviceCode = `${shortLabel}-${randPart.slice(0, 4)}-${randPart.slice(4)}`;
 
-    const hashedPin = await hashData(String(data.pin));
+    const hashedPin = await hashData(String(input.data.pin));
 
     const device = await this.deviceRepository.create({
       data: {
-        ...data,
+        ...input.data,
         pin: hashedPin,
         deviceCode,
         organizationId:
-          effectiveTenant.organizationId || (user.organizationId as string),
-        createdBy: user.id,
+          input.effectiveTenant.organizationId || (input.user.organizationId as string),
+        createdBy: input.user.id,
       } as CreateDeviceRequestDto,
     });
 
@@ -47,20 +53,12 @@ export class DeviceService {
   }
 
   async getDevices(
-    effectiveTenant: EffectiveTenant,
-    filters: {
-      page?: number;
-      limit?: number;
-      search?: string;
-      type?: number;
-      branchId?: string;
-      isActive?: boolean;
-      sortBy?: string;
-      sortOrder?: SortingOrderEnum;
-    } = {},
-  ) {
-    const orgIdFilter = effectiveTenant.organizationId;
-    const branchIdFilter = effectiveTenant.branchId || filters.branchId || undefined;
+    input: GetDevicesServiceInput,
+  ): Promise<GetDevicesServiceResult> {
+    const filters = input.filters ?? {};
+    const orgIdFilter = input.effectiveTenant.organizationId;
+    const branchIdFilter =
+      input.effectiveTenant.branchId || filters.branchId || undefined;
     const page = filters.page || 1;
     const limit = filters.limit || 10;
 
@@ -85,8 +83,10 @@ export class DeviceService {
     };
   }
 
-  async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {
-    const { id, pin, ...updateData } = data;
+  async updateDevice(
+    input: UpdateDeviceServiceInput,
+  ): Promise<UpdateDeviceServiceResult> {
+    const { id, pin, ...updateData } = input.data;
     const existing = await this.deviceRepository.findById({ id });
     if (!existing) {
       throw new AppError("Device not found", {
@@ -99,7 +99,7 @@ export class DeviceService {
       name: updateData.name ?? undefined,
       deviceCode: updateData.deviceCode ?? undefined,
       deviceType: updateData.deviceType ?? undefined,
-      updatedBy: user.id,
+      updatedBy: input.user.id,
     };
 
     if (pin !== undefined && pin !== null) {
@@ -114,8 +114,10 @@ export class DeviceService {
     return updated;
   }
 
-  async toggleDeviceStatus(id: string, user: UserTokenDto) {
-    const existing = await this.deviceRepository.findById({ id });
+  async toggleDeviceStatus(
+    input: ToggleDeviceStatusServiceInput,
+  ): Promise<ToggleDeviceStatusServiceResult> {
+    const existing = await this.deviceRepository.findById({ id: input.id });
     if (!existing) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -123,10 +125,10 @@ export class DeviceService {
     }
 
     const updated = await this.deviceRepository.update({
-      id,
+      id: input.id,
       data: {
         isActive: !existing.isActive,
-        updatedBy: user.id,
+        updatedBy: input.user.id,
       },
     });
 
@@ -136,8 +138,10 @@ export class DeviceService {
   // ========================================
   // ? DEVICE CLIENT SERVICES
   // ========================================
-  async deviceAuthCheck(id: string) {
-    const device = await this.deviceRepository.findById({ id });
+  async deviceAuthCheck(
+    input: DeviceAuthCheckServiceInput,
+  ): Promise<DeviceAuthCheckServiceResult> {
+    const device = await this.deviceRepository.findById({ id: input.id });
     if (!device) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -154,7 +158,9 @@ export class DeviceService {
     }
 
     const { pin, ...deviceWithoutPin } = device;
-    const licenseInfo = await this.licenseService.getLicenseForDevice(id);
+    const licenseInfo = await this.licenseService.getLicenseForDevice({
+      deviceId: input.id,
+    });
 
     return {
       device: deviceWithoutPin,

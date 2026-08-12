@@ -1,68 +1,81 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
-import type { PermissionEntityWithAssigned } from "./dtos/permission/get-permissions-by-tenant-response.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
-import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
-import type { CreateUserRoleMapperRequestDto } from "./dtos/role/create-user-role-mapper-request.dto";
-import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
-import type { GetRolesResponseDto } from "./dtos/role/get-roles-response.dto";
-import {
-  permissionMapper as permissionsMapper,
-  type PermissionMapperEntity,
-} from "./schemas/permission-mapper.schema";
-import {
-  permissions,
-  type PermissionEntity,
-} from "./schemas/permission.schema";
-import { roles, type RoleEntity } from "./schemas/role.schema";
-import {
-  userRolesMapper,
-  type UserRoleMapperEntity,
-} from "./schemas/user-roles-mapper.schema";
+import type { PermissionEntityWithAssigned } from "./dtos/permission/get-permissions-by-tenant.dtos";
+import type { GetRolesResponseDto } from "./dtos/role/get-roles.dtos";
+import type {
+  BulkInsertPermissionMappersRepoInput,
+  CreatePermissionMapperRepoInput,
+  CreatePermissionMapperRepoResult,
+  CreateRoleRepoInput,
+  CreateRoleRepoResult,
+  CreateUserRoleMapperRepoInput,
+  CreateUserRoleMapperRepoResult,
+  CreateUserRoleMappersRepoInput,
+  CreateUserRoleMappersRepoResult,
+  DeleteRoleRepoInput,
+  GetPermissionByIdRepoInput,
+  GetPermissionByIdRepoResult,
+  GetPermissionMappersRepoInput,
+  GetPermissionMappersRepoResult,
+  GetPermissionsByKeysRepoInput,
+  GetPermissionsByKeysRepoResult,
+  GetPermissionsByTenantRepoInput,
+  GetPermissionsByTenantRepoResult,
+  GetRoleByIdRepoInput,
+  GetRoleByIdRepoResult,
+  GetRolesByTenantAndScopeRepoInput,
+  GetRolesByTenantAndScopeRepoResult,
+  GetUserPermissionKeysRepoInput,
+  GetUserPermissionKeysRepoResult,
+  GetUsersTopRankedRoleRepoInput,
+  GetUsersTopRankedRoleRepoResult,
+  RemoveUserFromRoleRepoInput,
+  SetRoleStatusRepoInput,
+  SetRoleStatusRepoResult,
+  UpdatePermissionMapperStatusRepoInput,
+  UpdatePermissionMapperStatusRepoResult,
+  UpdateRoleRepoInput,
+  UpdateRoleRepoResult,
+} from "./rbac.types";
+import { permissionMapper as permissionsMapper } from "./schemas/permission-mapper.schema";
+import { permissions } from "./schemas/permission.schema";
+import { roles } from "./schemas/role.schema";
+import { userRolesMapper } from "./schemas/user-roles-mapper.schema";
+
 export class RbacRepository {
   constructor(private readonly database: Database) {}
 
-  async createRole(data: CreateRoleRequestDto): Promise<RoleEntity> {
+  async createRole(input: CreateRoleRepoInput): Promise<CreateRoleRepoResult> {
     const [role] = await this.database.client
       .insert(roles)
       .values({
-        organizationId: data.organizationId ?? null,
-        branchId: data.branchId ?? null,
-        name: data.name,
-        description: data.description ?? null,
-        rank: data.rank,
-        createdBy: data.createdBy,
+        organizationId: input.organizationId ?? null,
+        branchId: input.branchId ?? null,
+        name: input.name,
+        description: input.description ?? null,
+        rank: input.rank,
+        createdBy: input.createdBy,
       })
       .returning();
     if (!role) throw new Error("Failed to create role");
     return role;
   }
 
-  async updateRole(
-    roleId: string,
-    data: {
-      name?: string;
-      description?: string;
-      rank?: number;
-      updatedBy: string;
-    },
-  ): Promise<RoleEntity> {
+  async updateRole(input: UpdateRoleRepoInput): Promise<UpdateRoleRepoResult> {
     const fieldsToUpdate: Record<string, unknown> = {
-      updatedBy: data.updatedBy,
+      updatedBy: input.updatedBy,
     };
-    if (data.name !== undefined) fieldsToUpdate.name = data.name;
-    if (data.description !== undefined)
-      fieldsToUpdate.description = data.description;
-    if (data.rank !== undefined) fieldsToUpdate.rank = data.rank;
+    if (input.name !== undefined) fieldsToUpdate.name = input.name;
+    if (input.description !== undefined)
+      fieldsToUpdate.description = input.description;
+    if (input.rank !== undefined) fieldsToUpdate.rank = input.rank;
 
     const [updatedRole] = await this.database.client
       .update(roles)
       .set(fieldsToUpdate)
-      .where(and(eq(roles.id, roleId), eq(roles.isActive, true)))
+      .where(and(eq(roles.id, input.roleId), eq(roles.isActive, true)))
       .returning();
 
     if (!updatedRole) {
@@ -72,21 +85,18 @@ export class RbacRepository {
     return updatedRole;
   }
 
-  async getPermissionMappers(data: {
-    permissionId?: string;
-    entityType: number;
-    entityId: string;
-    isActive?: boolean;
-  }): Promise<PermissionMapperEntity[]> {
+  async getPermissionMappers(
+    input: GetPermissionMappersRepoInput,
+  ): Promise<GetPermissionMappersRepoResult> {
     const conditions = [
-      eq(permissionsMapper.entityType, data.entityType),
-      eq(permissionsMapper.entityId, data.entityId),
+      eq(permissionsMapper.entityType, input.entityType),
+      eq(permissionsMapper.entityId, input.entityId),
     ];
-    if (data.permissionId) {
-      conditions.push(eq(permissionsMapper.permissionId, data.permissionId));
+    if (input.permissionId) {
+      conditions.push(eq(permissionsMapper.permissionId, input.permissionId));
     }
-    if (data.isActive) {
-      conditions.push(eq(permissionsMapper.isActive, data.isActive));
+    if (input.isActive) {
+      conditions.push(eq(permissionsMapper.isActive, input.isActive));
     }
     return this.database.client
       .select()
@@ -94,24 +104,19 @@ export class RbacRepository {
       .where(and(...conditions));
   }
 
-  async createPermissionMapper(data: {
-    permissionId: string;
-    entityType: number;
-    entityId: string;
-    organizationId: string | null;
-    branchId: string | null;
-    createdBy: string;
-  }): Promise<PermissionMapperEntity> {
+  async createPermissionMapper(
+    input: CreatePermissionMapperRepoInput,
+  ): Promise<CreatePermissionMapperRepoResult> {
     const [inserted] = await this.database.client
       .insert(permissionsMapper)
       .values({
-        entityType: data.entityType,
-        entityId: data.entityId,
-        permissionId: data.permissionId,
-        organizationId: data.organizationId,
-        branchId: data.branchId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        permissionId: input.permissionId,
+        organizationId: input.organizationId,
+        branchId: input.branchId,
         isActive: true,
-        createdBy: data.createdBy,
+        createdBy: input.createdBy,
       })
       .returning();
     if (!inserted) throw new Error("Failed to create permission mapper");
@@ -119,40 +124,40 @@ export class RbacRepository {
   }
 
   async updatePermissionMapperStatus(
-    mapperId: string,
-    isActive: boolean,
-    updatedBy: string,
-  ): Promise<PermissionMapperEntity> {
+    input: UpdatePermissionMapperStatusRepoInput,
+  ): Promise<UpdatePermissionMapperStatusRepoResult> {
     const [updated] = await this.database.client
       .update(permissionsMapper)
       .set({
-        isActive,
-        updatedBy,
+        isActive: input.isActive,
+        updatedBy: input.updatedBy,
         updatedAt: new Date(),
       })
-      .where(eq(permissionsMapper.id, mapperId))
+      .where(eq(permissionsMapper.id, input.mapperId))
       .returning();
     if (!updated) throw new Error("Failed to update permission mapper status");
     return updated;
   }
 
-  async getRoleById(id: string): Promise<RoleEntity | null> {
+  async getRoleById(
+    input: GetRoleByIdRepoInput,
+  ): Promise<GetRoleByIdRepoResult> {
     const [role] = await this.database.client
       .select()
       .from(roles)
-      .where(eq(roles.id, id));
+      .where(eq(roles.id, input.id));
     return role || null;
   }
 
   async createUserRoleMapper(
-    data: CreateUserRoleMapperRequestDto,
-  ): Promise<UserRoleMapperEntity> {
+    input: CreateUserRoleMapperRepoInput,
+  ): Promise<CreateUserRoleMapperRepoResult> {
     const [mapper] = await this.database.client
       .insert(userRolesMapper)
       .values({
-        userId: data.userId,
-        roleId: data.roleId,
-        createdBy: data.createdBy,
+        userId: input.userId,
+        roleId: input.roleId,
+        createdBy: input.createdBy,
       })
       .returning();
     if (!mapper) throw new Error("Failed to create user role mapper");
@@ -160,33 +165,32 @@ export class RbacRepository {
   }
 
   async createUserRoleMappers(
-    data: { userId: string; roleId: string; createdBy: string }[],
-  ): Promise<UserRoleMapperEntity[]> {
-    if (data.length === 0) return [];
+    input: CreateUserRoleMappersRepoInput,
+  ): Promise<CreateUserRoleMappersRepoResult> {
+    if (input.mappers.length === 0) return [];
     return await this.database.client
       .insert(userRolesMapper)
-      .values(data)
+      .values(input.mappers)
       .returning();
   }
 
   async getUserPermissionKeys(
-    data: GetUserPermissionsRequestDto,
-  ): Promise<Set<string>> {
-    const orgIdVal = data.organizationId || null;
-    const branchIdVal = data.branchId || null;
+    input: GetUserPermissionKeysRepoInput,
+  ): Promise<GetUserPermissionKeysRepoResult> {
+    const orgIdVal = input.organizationId || null;
+    const branchIdVal = input.branchId || null;
 
     const queryResult = await this.database.client.execute<{ key: string }>(
-      sql`SELECT key FROM fn_get_user_permission_keys_by_tenant(${data.userId}, ${orgIdVal}, ${branchIdVal})`,
+      sql`SELECT key FROM fn_get_user_permission_keys_by_tenant(${input.userId}, ${orgIdVal}, ${branchIdVal})`,
     );
 
     return new Set(queryResult.rows.map((row) => row.key));
   }
 
   async getRolesByTenantAndScope(
-    queryDto: GetRolesRequestDto,
-    effectiveTenant: EffectiveTenant,
-    includeSystemRoles: boolean,
-  ): Promise<GetRolesResponseDto[]> {
+    input: GetRolesByTenantAndScopeRepoInput,
+  ): Promise<GetRolesByTenantAndScopeRepoResult> {
+    const { queryDto, effectiveTenant, includeSystemRoles } = input;
     const searchVal = queryDto.search ? `%${queryDto.search}%` : null;
 
     const orgIdVal = effectiveTenant.organizationId;
@@ -204,9 +208,9 @@ export class RbacRepository {
   }
 
   async getPermissionsByTenant(
-    queryDto: GetPermissionsByTenantRequestDto,
-    effectiveTenant: EffectiveTenant,
-  ): Promise<PermissionEntityWithAssigned[]> {
+    input: GetPermissionsByTenantRepoInput,
+  ): Promise<GetPermissionsByTenantRepoResult> {
+    const { queryDto, effectiveTenant } = input;
     const entityIdVal = queryDto.entityId || null;
     const entityTypeVal = queryDto.entityType || null;
     const orgIdVal = effectiveTenant.organizationId;
@@ -225,7 +229,9 @@ export class RbacRepository {
     return queryResult.rows;
   }
 
-  async getUsersTopRankedRole(userId: string): Promise<RoleEntity | null> {
+  async getUsersTopRankedRole(
+    input: GetUsersTopRankedRoleRepoInput,
+  ): Promise<GetUsersTopRankedRoleRepoResult> {
     const [topRole] = await this.database.client
       .select({
         id: roles.id,
@@ -243,60 +249,60 @@ export class RbacRepository {
       })
       .from(userRolesMapper)
       .innerJoin(roles, eq(userRolesMapper.roleId, roles.id))
-      .where(and(eq(userRolesMapper.userId, userId), eq(roles.isActive, true)))
+      .where(
+        and(eq(userRolesMapper.userId, input.userId), eq(roles.isActive, true)),
+      )
       .orderBy(roles.rank)
       .limit(1);
 
     return topRole || null;
   }
 
-  async getPermissionById(id: string): Promise<PermissionEntity | null> {
+  async getPermissionById(
+    input: GetPermissionByIdRepoInput,
+  ): Promise<GetPermissionByIdRepoResult> {
     const [permission] = await this.database.client
       .select()
       .from(permissions)
-      .where(eq(permissions.id, id));
+      .where(eq(permissions.id, input.id));
 
     return permission || null;
   }
 
-  async getPermissionsByKeys(keys: string[]): Promise<PermissionEntity[]> {
-    if (keys.length === 0) return [];
+  async getPermissionsByKeys(
+    input: GetPermissionsByKeysRepoInput,
+  ): Promise<GetPermissionsByKeysRepoResult> {
+    if (input.keys.length === 0) return [];
     return await this.database.client
       .select()
       .from(permissions)
-      .where(inArray(permissions.key, keys));
+      .where(inArray(permissions.key, input.keys));
   }
 
   async bulkInsertPermissionMappers(
-    mappers: {
-      entityType: number;
-      entityId: string;
-      permissionId: string;
-      organizationId: string | null;
-      branchId: string | null;
-      isActive: boolean;
-      createdBy: string;
-    }[],
+    input: BulkInsertPermissionMappersRepoInput,
   ): Promise<void> {
-    if (mappers.length === 0) return;
-    await this.database.client.insert(permissionsMapper).values(mappers);
+    if (input.mappers.length === 0) return;
+    await this.database.client.insert(permissionsMapper).values(input.mappers);
   }
 
   async setRoleStatus(
-    roleId: string,
-    isActive: boolean,
-    updatedBy: string,
-  ): Promise<RoleEntity> {
+    input: SetRoleStatusRepoInput,
+  ): Promise<SetRoleStatusRepoResult> {
     const [updated] = await this.database.client
       .update(roles)
-      .set({ isActive, updatedBy, updatedAt: new Date() })
-      .where(eq(roles.id, roleId))
+      .set({
+        isActive: input.isActive,
+        updatedBy: input.updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(roles.id, input.roleId))
       .returning();
     if (!updated) throw new Error("Role not found");
     return updated;
   }
 
-  async deleteRole(roleId: string): Promise<void> {
+  async deleteRole(input: DeleteRoleRepoInput): Promise<void> {
     await this.database.client.transaction(async (tx) => {
       // 1. Delete permission mappings
       await tx
@@ -304,29 +310,29 @@ export class RbacRepository {
         .where(
           and(
             eq(permissionsMapper.entityType, PermissionEntityType.ROLE),
-            eq(permissionsMapper.entityId, roleId),
+            eq(permissionsMapper.entityId, input.roleId),
           ),
         );
 
       // 2. Delete user role mappings
       await tx
         .delete(userRolesMapper)
-        .where(eq(userRolesMapper.roleId, roleId));
+        .where(eq(userRolesMapper.roleId, input.roleId));
 
       // 3. Delete the role itself
       await tx
         .delete(roles)
-        .where(and(eq(roles.id, roleId), eq(roles.isSystem, false)));
+        .where(and(eq(roles.id, input.roleId), eq(roles.isSystem, false)));
     });
   }
 
-  async removeUserFromRole(userIds: string[], roleId: string): Promise<void> {
+  async removeUserFromRole(input: RemoveUserFromRoleRepoInput): Promise<void> {
     await this.database.client
       .delete(userRolesMapper)
       .where(
         and(
-          inArray(userRolesMapper.userId, userIds),
-          eq(userRolesMapper.roleId, roleId),
+          inArray(userRolesMapper.userId, input.userIds),
+          eq(userRolesMapper.roleId, input.roleId),
         ),
       );
   }

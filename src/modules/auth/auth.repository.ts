@@ -1,22 +1,26 @@
 import { and, eq, isNull } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import {
-  refreshTokens,
-  type CreateRefreshTokenEntity,
-} from "./schemas/refresh-token.schema";
+import { refreshTokens } from "./schemas/refresh-token.schema";
+import type {
+  CreateRefreshTokenRepoInput,
+  CreateRefreshTokenRepoResult,
+  RotateRefreshTokenRepoInput,
+  RotateRefreshTokenRepoResult,
+  RevokeRefreshTokenRepoInput,
+  RevokeRefreshTokenRepoResult,
+} from "./auth.types";
 
 export class AuthRepository {
   constructor(private readonly database: Database) {}
 
-  async createRefreshToken(data: CreateRefreshTokenEntity): Promise<void> {
-    await this.database.client.insert(refreshTokens).values(data);
+  async createRefreshToken(input: CreateRefreshTokenRepoInput): Promise<CreateRefreshTokenRepoResult> {
+    await this.database.client.insert(refreshTokens).values(input.data);
   }
 
   async rotateRefreshToken(
-    currentTokenId: string,
-    currentTokenHash: string,
-    replacement: CreateRefreshTokenEntity,
-  ): Promise<boolean> {
+    input: RotateRefreshTokenRepoInput,
+  ): Promise<RotateRefreshTokenRepoResult> {
+    const { currentTokenId, currentTokenHash, replacement } = input;
     return this.database.client.transaction(async (transaction) => {
       const [revoked] = await transaction
         .update(refreshTokens)
@@ -40,7 +44,8 @@ export class AuthRepository {
     });
   }
 
-  async revokeRefreshToken(tokenId: string, tokenHash: string): Promise<void> {
+  async revokeRefreshToken(input: RevokeRefreshTokenRepoInput): Promise<RevokeRefreshTokenRepoResult> {
+    const { tokenId, tokenHash } = input;
     await this.database.client
       .update(refreshTokens)
       .set({ revokedAt: new Date() })

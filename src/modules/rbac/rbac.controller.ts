@@ -2,9 +2,9 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
-import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role.dtos";
+import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant.dtos";
+import type { GetRolesRequestDto } from "./dtos/role/get-roles.dtos";
 import type { RbacService } from "./rbac.service";
 import { RbacValidator } from "./rbac.validator";
 

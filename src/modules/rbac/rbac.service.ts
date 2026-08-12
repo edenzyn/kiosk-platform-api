@@ -7,17 +7,13 @@ import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum
 import { AppError } from "../../shared/errors/app-error";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { UserRepository } from "../user/user.repository";
-import type { AssignPermissionRequestDto } from "./dtos/permission/assign-permission-request.dto";
-import type { AssignPermissionResponseDto } from "./dtos/permission/assign-permission-response.dto";
-import type { CreateRoleRequestDto } from "./dtos/role/create-role-request.dto";
-import type { GetPermissionsByTenantRequestDto } from "./dtos/permission/get-permissions-by-tenant-request.dto";
-import type { GetPermissionsByTenantResponseDto } from "./dtos/permission/get-permissions-by-tenant-response.dto";
-import type { GetRolesRequestDto } from "./dtos/role/get-roles-request.dto";
-import type { GetRolesResponseDto } from "./dtos/role/get-roles-response.dto";
-import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions-request.dto";
-import type { RemovePermissionRequestDto } from "./dtos/permission/remove-permission-request.dto";
-import type { RemovePermissionResponseDto } from "./dtos/permission/remove-permission-response.dto";
-import type { UpdateRoleRequestDto } from "./dtos/role/update-role-request.dto";
+import type { AssignPermissionRequestDto, AssignPermissionResponseDto } from "./dtos/permission/assign-permission.dtos";
+import type { GetPermissionsByTenantRequestDto, GetPermissionsByTenantResponseDto } from "./dtos/permission/get-permissions-by-tenant.dtos";
+import type { GetUserPermissionsRequestDto } from "./dtos/permission/get-user-permissions.dtos";
+import type { RemovePermissionRequestDto, RemovePermissionResponseDto } from "./dtos/permission/remove-permission.dtos";
+import type { CreateRoleRequestDto } from "./dtos/role/create-role.dtos";
+import type { GetRolesRequestDto, GetRolesResponseDto } from "./dtos/role/get-roles.dtos";
+import type { UpdateRoleRequestDto } from "./dtos/role/update-role.dtos";
 import type { RbacRepository } from "./rbac.repository";
 import type { RoleEntity } from "./schemas/role.schema";
 
@@ -30,7 +26,7 @@ export class RbacService {
   private async _getUsersTopRankedRole(
     userId: string,
   ): Promise<RoleEntity | null> {
-    return await this.rbacRepository.getUsersTopRankedRole(userId);
+    return await this.rbacRepository.getUsersTopRankedRole({ userId });
   }
 
   private async _getUserTopPermissionScope(
@@ -57,7 +53,7 @@ export class RbacService {
     user: UserTokenDto,
     roleId: string,
   ): Promise<void> {
-    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -125,7 +121,7 @@ export class RbacService {
   }
 
   async updateRole(data: UpdateRoleRequestDto, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById(data.roleId);
+    const targetRole = await this.rbacRepository.getRoleById({ id: data.roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -153,7 +149,8 @@ export class RbacService {
       }
     }
 
-    const updatedRole = await this.rbacRepository.updateRole(data.roleId, {
+    const updatedRole = await this.rbacRepository.updateRole({
+      roleId: data.roleId,
       name: data.name,
       description: data.description,
       rank: data.rank,
@@ -168,9 +165,7 @@ export class RbacService {
     user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<AssignPermissionResponseDto> {
-    const permission = await this.rbacRepository.getPermissionById(
-      data.permissionId,
-    );
+    const permission = await this.rbacRepository.getPermissionById({ id: data.permissionId });
     if (!permission) {
       throw new AppError("Permission not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -195,11 +190,11 @@ export class RbacService {
     const existing = mappers[0];
 
     if (existing) {
-      const mapper = await this.rbacRepository.updatePermissionMapperStatus(
-        existing.id,
-        true,
-        user.id,
-      );
+      const mapper = await this.rbacRepository.updatePermissionMapperStatus({
+        mapperId: existing.id,
+        isActive: true,
+        updatedBy: user.id,
+      });
       return { mapper };
     }
 
@@ -207,13 +202,13 @@ export class RbacService {
     let branchId: string | null = effectiveTenant.branchId || null;
 
     if (data.entityType === PermissionEntityType.ROLE) {
-      const role = await this.rbacRepository.getRoleById(data.entityId);
+      const role = await this.rbacRepository.getRoleById({ id: data.entityId });
       if (role) {
         organizationId = role.organizationId || organizationId;
         branchId = role.branchId || branchId;
       }
     } else if (data.entityType === PermissionEntityType.USER) {
-      const targetUser = await this.userRepository.findById(data.entityId);
+      const targetUser = await this.userRepository.findById({ id: data.entityId });
       if (targetUser) {
         organizationId = targetUser.organizationId || organizationId;
         branchId = targetUser.branchId || branchId;
@@ -236,9 +231,7 @@ export class RbacService {
     data: Omit<RemovePermissionRequestDto, "updatedBy">,
     user: UserTokenDto,
   ): Promise<RemovePermissionResponseDto> {
-    const permission = await this.rbacRepository.getPermissionById(
-      data.permissionId,
-    );
+    const permission = await this.rbacRepository.getPermissionById({ id: data.permissionId });
     if (!permission) {
       throw new AppError("Permission not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -268,11 +261,11 @@ export class RbacService {
       });
     }
 
-    const mapper = await this.rbacRepository.updatePermissionMapperStatus(
-      existing.id,
-      false,
-      user.id,
-    );
+    const mapper = await this.rbacRepository.updatePermissionMapperStatus({
+      mapperId: existing.id,
+      isActive: false,
+      updatedBy: user.id,
+    });
 
     return { mapper };
   }
@@ -284,7 +277,7 @@ export class RbacService {
       userId,
       createdBy: user.id,
     }));
-    return this.rbacRepository.createUserRoleMappers(mappersData);
+    return this.rbacRepository.createUserRoleMappers({ mappers: mappersData });
   }
 
   async getUsersByRoleId(
@@ -294,7 +287,7 @@ export class RbacService {
   ) {
     await this._assertCanActOnRole(user, roleId);
 
-    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -327,7 +320,7 @@ export class RbacService {
   async duplicateRole(roleId: string, user: UserTokenDto) {
     await this._assertCanActOnRole(user, roleId);
     console.log(roleId);
-    const source = await this.rbacRepository.getRoleById(roleId);
+    const source = await this.rbacRepository.getRoleById({ id: roleId });
     console.log(source);
     if (!source) {
       throw new AppError("Role not found", {
@@ -368,7 +361,7 @@ export class RbacService {
   }
 
   async toggleRoleStatus(roleId: string, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -380,15 +373,15 @@ export class RbacService {
       });
     }
     await this._assertCanActOnRole(user, roleId);
-    return this.rbacRepository.setRoleStatus(
+    return this.rbacRepository.setRoleStatus({
       roleId,
-      !targetRole.isActive,
-      user.id,
-    );
+      isActive: !targetRole.isActive,
+      updatedBy: user.id,
+    });
   }
 
   async deleteRole(roleId: string, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById(roleId);
+    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -400,7 +393,7 @@ export class RbacService {
       });
     }
     await this._assertCanActOnRole(user, roleId);
-    await this.rbacRepository.deleteRole(roleId);
+    await this.rbacRepository.deleteRole({ roleId });
     return { success: true };
   }
 
@@ -410,7 +403,7 @@ export class RbacService {
     user: UserTokenDto,
   ) {
     await this._assertCanActOnRole(user, roleId);
-    await this.rbacRepository.removeUserFromRole(userIds, roleId);
+    await this.rbacRepository.removeUserFromRole({ userIds, roleId });
     return { success: true };
   }
 
@@ -425,21 +418,21 @@ export class RbacService {
     user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetRolesResponseDto[]> {
-    return this.rbacRepository.getRolesByTenantAndScope(
+    return this.rbacRepository.getRolesByTenantAndScope({
       queryDto,
       effectiveTenant,
-      getUserScope(user) === UserScopeTypeEnums.ORGANIZATION,
-    );
+      includeSystemRoles: getUserScope(user) === UserScopeTypeEnums.ORGANIZATION,
+    });
   }
 
   async getPermissionsByTenant(
     queryDto: GetPermissionsByTenantRequestDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetPermissionsByTenantResponseDto> {
-    const permissions = await this.rbacRepository.getPermissionsByTenant(
+    const permissions = await this.rbacRepository.getPermissionsByTenant({
       queryDto,
       effectiveTenant,
-    );
+    });
     return { permissions };
   }
 }

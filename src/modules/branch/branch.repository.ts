@@ -1,13 +1,25 @@
-import { and, count, eq, inArray, ilike, or, asc, desc } from "drizzle-orm";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { branches, type BranchEntity } from "./branch.schema";
-import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { branches } from "./branch.schema";
+import type {
+  CreateBranchRepoInput,
+  CreateBranchRepoResult,
+  FindBranchByIdRepoInput,
+  FindBranchByIdRepoResult,
+  GetBranchesForFiltersRepoInput,
+  GetBranchesForFiltersRepoResult,
+  GetBranchesRepoInput,
+  GetBranchesRepoResult,
+  UpdateBranchRepoInput,
+  UpdateBranchRepoResult,
+} from "./branch.types";
 
 export class BranchRepository {
   constructor(private readonly database: Database) {}
 
-  async create(data: CreateBranchRequestDto): Promise<BranchEntity> {
+  async create(input: CreateBranchRepoInput): Promise<CreateBranchRepoResult> {
+    const { data } = input;
     const [branch] = await this.database.client
       .insert(branches)
       .values({
@@ -37,15 +49,18 @@ export class BranchRepository {
   }
 
   async getBranches(
-    organizationId?: string,
-    branchIds?: string[],
-    page?: number,
-    limit?: number,
-    search?: string,
-    isActive?: boolean,
-    sortBy?: string,
-    sortOrder?: SortingOrderEnum,
-  ): Promise<{ branches: BranchEntity[]; total: number }> {
+    input: GetBranchesRepoInput,
+  ): Promise<GetBranchesRepoResult> {
+    const {
+      organizationId,
+      branchIds,
+      page,
+      limit,
+      search,
+      isActive,
+      sortBy,
+      sortOrder,
+    } = input;
     const conditions = [];
 
     if (organizationId) {
@@ -65,7 +80,7 @@ export class BranchRepository {
         or(
           ilike(branches.name, `%${search}%`),
           ilike(branches.email, `%${search}%`),
-        )
+        ),
       );
     }
 
@@ -109,9 +124,9 @@ export class BranchRepository {
   }
 
   async getBranchesForFilters(
-    organizationId?: string,
-    branchIds?: string[],
-  ): Promise<Array<{ id: string; name: string }>> {
+    input: GetBranchesForFiltersRepoInput,
+  ): Promise<GetBranchesForFiltersRepoResult> {
+    const { organizationId, branchIds } = input;
     const conditions = [];
 
     if (organizationId) {
@@ -139,16 +154,19 @@ export class BranchRepository {
     return query;
   }
 
-  async findById(id: string): Promise<BranchEntity | null> {
+  async findById(
+    input: FindBranchByIdRepoInput,
+  ): Promise<FindBranchByIdRepoResult> {
     const [branch] = await this.database.client
       .select()
       .from(branches)
-      .where(eq(branches.id, id))
+      .where(eq(branches.id, input.id))
       .limit(1);
     return branch || null;
   }
 
-  async update(id: string, data: Partial<BranchEntity>): Promise<BranchEntity> {
+  async update(input: UpdateBranchRepoInput): Promise<UpdateBranchRepoResult> {
+    const { id, data } = input;
     const [updated] = await this.database.client
       .update(branches)
       .set({

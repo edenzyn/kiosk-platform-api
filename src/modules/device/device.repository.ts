@@ -1,20 +1,25 @@
 import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { branches } from "../branch/branch.schema";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
-import {
-  devices,
-  type DeviceEntity,
-  type DeviceWithBranchEntity,
-} from "./device.schema";
-import type { CreateDeviceRequestDto } from "./dtos/create-device-request.dto";
+import { devices, type DeviceWithBranchEntity } from "./device.schema";
+import type {
+  CreateDeviceRepoInput,
+  CreateDeviceRepoResult,
+  FindDeviceByDeviceCodeRepoInput,
+  FindDeviceByDeviceCodeRepoResult,
+  FindDeviceByIdRepoInput,
+  FindDeviceByIdRepoResult,
+  GetDevicesRepoInput,
+  GetDevicesRepoResult,
+  UpdateDeviceRepoInput,
+  UpdateDeviceRepoResult,
+} from "./device.types";
 
 export class DeviceRepository {
   constructor(private readonly database: Database) {}
 
-  async create(
-    data: CreateDeviceRequestDto,
-  ): Promise<Omit<DeviceEntity, "pin">> {
+  async create(input: CreateDeviceRepoInput): Promise<CreateDeviceRepoResult> {
+    const { data } = input;
     const [device] = await this.database.client
       .insert(devices)
       .values({
@@ -47,21 +52,19 @@ export class DeviceRepository {
     return device;
   }
 
-  async getDevices(
-    organizationId?: string,
-    branchId?: string,
-    deviceIds?: string[],
-    page?: number,
-    limit?: number,
-    search?: string,
-    deviceType?: number,
-    isActive?: boolean,
-    sortBy?: string,
-    sortOrder?: SortingOrderEnum,
-  ): Promise<{
-    devices: DeviceWithBranchEntity[];
-    total: number;
-  }> {
+  async getDevices(input: GetDevicesRepoInput): Promise<GetDevicesRepoResult> {
+    const {
+      organizationId,
+      branchId,
+      deviceIds,
+      page,
+      limit,
+      search,
+      deviceType,
+      isActive,
+      sortBy,
+      sortOrder,
+    } = input;
     const conditions = [];
 
     if (organizationId) {
@@ -156,28 +159,30 @@ export class DeviceRepository {
     };
   }
 
-  async findById(id: string): Promise<DeviceEntity | null> {
+  async findById(
+    input: FindDeviceByIdRepoInput,
+  ): Promise<FindDeviceByIdRepoResult> {
     const [device] = await this.database.client
       .select()
       .from(devices)
-      .where(eq(devices.id, id))
+      .where(eq(devices.id, input.id))
       .limit(1);
     return device || null;
   }
 
-  async findByDeviceCode(deviceCode: string): Promise<DeviceEntity | null> {
+  async findByDeviceCode(
+    input: FindDeviceByDeviceCodeRepoInput,
+  ): Promise<FindDeviceByDeviceCodeRepoResult> {
     const [device] = await this.database.client
       .select()
       .from(devices)
-      .where(eq(devices.deviceCode, deviceCode))
+      .where(eq(devices.deviceCode, input.deviceCode))
       .limit(1);
     return device || null;
   }
 
-  async update(
-    id: string,
-    data: Partial<DeviceEntity>,
-  ): Promise<Omit<DeviceEntity, "pin">> {
+  async update(input: UpdateDeviceRepoInput): Promise<UpdateDeviceRepoResult> {
+    const { id, data } = input;
     const [updated] = await this.database.client
       .update(devices)
       .set({

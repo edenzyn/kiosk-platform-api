@@ -2,9 +2,8 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { AppError } from "../../shared/errors/app-error";
-import type { ActivateLicenseRequestDto } from "./dtos/activate-license-request.dto";
-import type { ActivateLicenseResponseDto } from "./dtos/activate-license-response.dto";
-import type { LicenseStatusResponseDto } from "./dtos/license-status-response.dto";
+import type { ActivateLicenseRequestDto, ActivateLicenseResponseDto } from "./dtos/activate-license.dtos";
+import type { LicenseStatusResponseDto } from "./dtos/license-status.dtos";
 import type { LicenseRepository } from "./license.repository";
 
 export class LicenseService {
@@ -17,7 +16,7 @@ export class LicenseService {
     deviceId: string,
   ): Promise<LicenseStatusResponseDto> {
     const activeLicense =
-      await this.licenseRepository.findActiveByDeviceId(deviceId);
+      await this.licenseRepository.findActiveByDeviceId({ deviceId });
     if (activeLicense) {
       const { createdBy, updatedBy, ...rest } = activeLicense;
       return {
@@ -25,7 +24,7 @@ export class LicenseService {
       };
     }
 
-    const anyLicense = await this.licenseRepository.findByDeviceId(deviceId);
+    const anyLicense = await this.licenseRepository.findByDeviceId({ deviceId });
     if (anyLicense) {
       const { createdBy, updatedBy, ...rest } = anyLicense;
       const isExpired = rest.expiresAt && new Date(rest.expiresAt) < new Date();
@@ -46,7 +45,7 @@ export class LicenseService {
     dto: ActivateLicenseRequestDto,
     deviceId: string,
   ): Promise<ActivateLicenseResponseDto> {
-    const license = await this.licenseRepository.findByKey(dto.licenseKey);
+    const license = await this.licenseRepository.findByKey({ licenseKey: dto.licenseKey });
 
     if (!license) {
       throw new AppError("Invalid license key. No such license found.", {
@@ -72,13 +71,14 @@ export class LicenseService {
       });
     }
 
-    const activated = await this.licenseRepository.activate(
-      license.id,
+    const activated = await this.licenseRepository.activate({
+      licenseId: license.id,
       deviceId,
-    );
+    });
 
     const { createdBy, updatedBy, ...rest } = activated;
 
     return { license: rest };
   }
 }
+

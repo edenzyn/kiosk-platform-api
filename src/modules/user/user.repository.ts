@@ -15,48 +15,78 @@ import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitatio
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
-import { UserResponseDto } from "./dtos/get-users-response.dto";
-import {
-  CreateUserInvitationEntity,
-  UserInvitationEntity,
-  userInvitations,
-} from "./schemas/user-invitations.schema";
-import { CreateUserEntity, UserEntity, users } from "./schemas/user.schema";
+import { UserResponseDto } from "./dtos/get-users.dtos";
+import { userInvitations } from "./schemas/user-invitations.schema";
+import { UserEntity, users } from "./schemas/user.schema";
+import type {
+  CreateUserInvitationRepoInput,
+  CreateUserInvitationRepoResult,
+  CreateUserRepoInput,
+  CreateUserRepoResult,
+  FindInvitationByIdRepoInput,
+  FindInvitationByIdRepoResult,
+  FindInvitationByTokenRepoInput,
+  FindInvitationByTokenRepoResult,
+  FindInvitationsByTenantRepoInput,
+  FindInvitationsByTenantRepoResult,
+  FindPendingInvitationByEmailRepoInput,
+  FindPendingInvitationByEmailRepoResult,
+  FindUserByEmailRepoInput,
+  FindUserByEmailRepoResult,
+  FindUserByIdRepoInput,
+  FindUserByIdRepoResult,
+  FindUserByMobileRepoInput,
+  FindUserByMobileRepoResult,
+  FindUserByTenantRepoInput,
+  FindUserByTenantRepoResult,
+  GetUsersByRoleIdRepoInput,
+  GetUsersByRoleIdRepoResult,
+  ResendInvitationRepoInput,
+  ResendInvitationRepoResult,
+  UpdateInvitationStatusRepoInput,
+  UpdateInvitationStatusRepoResult,
+} from "./user.types";
 
 export class UserRepository {
   constructor(private readonly database: Database) {}
 
-  async findByEmail(email: string): Promise<UserEntity | undefined> {
+  async findByEmail(
+    input: FindUserByEmailRepoInput,
+  ): Promise<FindUserByEmailRepoResult> {
     const [user] = await this.database.client
       .select()
       .from(users)
-      .where(eq(users.email, email))
+      .where(eq(users.email, input.email))
       .limit(1);
     return user;
   }
 
-  async findByMobile(mobile: string): Promise<UserEntity | undefined> {
+  async findByMobile(
+    input: FindUserByMobileRepoInput,
+  ): Promise<FindUserByMobileRepoResult> {
     const [user] = await this.database.client
       .select()
       .from(users)
-      .where(eq(users.mobile, mobile))
+      .where(eq(users.mobile, input.mobile))
       .limit(1);
     return user;
   }
 
-  async findById(id: string): Promise<UserEntity | undefined> {
+  async findById(
+    input: FindUserByIdRepoInput,
+  ): Promise<FindUserByIdRepoResult> {
     const [user] = await this.database.client
       .select()
       .from(users)
-      .where(eq(users.id, id))
+      .where(eq(users.id, input.id))
       .limit(1);
     return user;
   }
 
-  async create(user: CreateUserEntity): Promise<UserEntity> {
+  async create(input: CreateUserRepoInput): Promise<CreateUserRepoResult> {
     const [created] = await this.database.client
       .insert(users)
-      .values(user)
+      .values(input.user)
       .returning();
 
     if (!created) {
@@ -66,14 +96,10 @@ export class UserRepository {
   }
 
   async findByTenant(
-    organizationId?: string,
-    branchId?: string,
-    search?: string,
-    page?: number,
-    limit?: number,
-    sortBy?: string,
-    sortOrder?: SortingOrderEnum,
-  ): Promise<{ users: UserResponseDto[]; total: number }> {
+    input: FindUserByTenantRepoInput,
+  ): Promise<FindUserByTenantRepoResult> {
+    const { organizationId, branchId, search, page, limit, sortBy, sortOrder } =
+      input;
     const conditions: (SQL | undefined)[] = [];
 
     if (organizationId && branchId) {
@@ -162,11 +188,11 @@ export class UserRepository {
   }
 
   async createInvitation(
-    invitation: CreateUserInvitationEntity,
-  ): Promise<UserInvitationEntity> {
+    input: CreateUserInvitationRepoInput,
+  ): Promise<CreateUserInvitationRepoResult> {
     const [created] = await this.database.client
       .insert(userInvitations)
-      .values(invitation)
+      .values(input.invitation)
       .returning();
 
     if (!created) {
@@ -176,25 +202,25 @@ export class UserRepository {
   }
 
   async findInvitationByToken(
-    token: string,
-  ): Promise<UserInvitationEntity | undefined> {
+    input: FindInvitationByTokenRepoInput,
+  ): Promise<FindInvitationByTokenRepoResult> {
     const [invitation] = await this.database.client
       .select()
       .from(userInvitations)
-      .where(eq(userInvitations.token, token))
+      .where(eq(userInvitations.token, input.token))
       .limit(1);
     return invitation;
   }
 
   async findPendingInvitationByEmail(
-    email: string,
-  ): Promise<UserInvitationEntity | undefined> {
+    input: FindPendingInvitationByEmailRepoInput,
+  ): Promise<FindPendingInvitationByEmailRepoResult> {
     const [invitation] = await this.database.client
       .select()
       .from(userInvitations)
       .where(
         and(
-          eq(userInvitations.email, email),
+          eq(userInvitations.email, input.email),
           eq(userInvitations.status, UserInvitationStatusEnum.PENDING),
         ),
       )
@@ -203,10 +229,9 @@ export class UserRepository {
   }
 
   async updateInvitationStatus(
-    id: string,
-    status: number,
-    updatedBy: string,
-  ): Promise<UserInvitationEntity | undefined> {
+    input: UpdateInvitationStatusRepoInput,
+  ): Promise<UpdateInvitationStatusRepoResult> {
+    const { id, status, updatedBy } = input;
     const [updated] = await this.database.client
       .update(userInvitations)
       .set({
@@ -221,14 +246,10 @@ export class UserRepository {
   }
 
   async findInvitationsByTenant(
-    organizationId?: string,
-    branchId?: string,
-    page?: number,
-    limit?: number,
-    search?: string,
-    sortBy?: string,
-    sortOrder?: SortingOrderEnum,
-  ): Promise<{ invitations: UserInvitationEntity[]; total: number }> {
+    input: FindInvitationsByTenantRepoInput,
+  ): Promise<FindInvitationsByTenantRepoResult> {
+    const { organizationId, branchId, page, limit, search, sortBy, sortOrder } =
+      input;
     const conditions = [];
 
     if (organizationId && branchId) {
@@ -291,11 +312,9 @@ export class UserRepository {
   }
 
   async resendInvitation(
-    id: string,
-    token: string,
-    expiresAt: Date,
-    updatedBy: string,
-  ): Promise<UserInvitationEntity | undefined> {
+    input: ResendInvitationRepoInput,
+  ): Promise<ResendInvitationRepoResult> {
+    const { id, token, expiresAt, updatedBy } = input;
     const [updated] = await this.database.client
       .update(userInvitations)
       .set({
@@ -312,41 +331,21 @@ export class UserRepository {
   }
 
   async findInvitationById(
-    id: string,
-  ): Promise<UserInvitationEntity | undefined> {
+    input: FindInvitationByIdRepoInput,
+  ): Promise<FindInvitationByIdRepoResult> {
     const [invitation] = await this.database.client
       .select()
       .from(userInvitations)
-      .where(eq(userInvitations.id, id))
+      .where(eq(userInvitations.id, input.id))
       .limit(1);
     return invitation;
   }
-  async getUsersByRoleId(params: {
-    roleId: string;
-    organizationId?: string;
-    branchId?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-    ru?: boolean;
-  }): Promise<{
-    users: Pick<
-      UserEntity,
-      | "id"
-      | "organizationId"
-      | "branchId"
-      | "name"
-      | "email"
-      | "mobile"
-      | "userType"
-      | "isActive"
-      | "createdAt"
-      | "updatedAt"
-    >[];
-    total: number;
-  }> {
-    const { roleId, organizationId, branchId, search, page, limit } = params;
-    const ru = params.ru !== false;
+
+  async getUsersByRoleId(
+    input: GetUsersByRoleIdRepoInput,
+  ): Promise<GetUsersByRoleIdRepoResult> {
+    const { roleId, organizationId, branchId, search, page, limit } = input;
+    const ru = input.ru !== false;
 
     const conditions: (SQL | undefined)[] = [];
 

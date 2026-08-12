@@ -6,8 +6,8 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
-import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
-import type { UpdateDeviceBodyDto } from "./dtos/update-device-request.dto";
+import type { CreateDeviceBodyDto } from "./dtos/create-device.dtos";
+import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 export class DeviceController {
   constructor(
     private readonly deviceService: DeviceService,

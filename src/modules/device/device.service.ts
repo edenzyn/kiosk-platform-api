@@ -8,8 +8,8 @@ import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
-import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
-import type { UpdateDeviceBodyDto } from "./dtos/update-device-request.dto";
+import type { CreateDeviceBodyDto, CreateDeviceRequestDto } from "./dtos/create-device.dtos";
+import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 import type { LicenseService } from "../license/license.service";
 
 export class DeviceService {
@@ -33,12 +33,14 @@ export class DeviceService {
     const hashedPin = await hashData(String(data.pin));
 
     const device = await this.deviceRepository.create({
-      ...data,
-      pin: hashedPin,
-      deviceCode,
-      organizationId:
-        effectiveTenant.organizationId || (user.organizationId as string),
-      createdBy: user.id,
+      data: {
+        ...data,
+        pin: hashedPin,
+        deviceCode,
+        organizationId:
+          effectiveTenant.organizationId || (user.organizationId as string),
+        createdBy: user.id,
+      } as CreateDeviceRequestDto,
     });
 
     return device;
@@ -62,18 +64,17 @@ export class DeviceService {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
 
-    const { devices, total } = await this.deviceRepository.getDevices(
-      orgIdFilter,
-      branchIdFilter,
-      undefined,
+    const { devices, total } = await this.deviceRepository.getDevices({
+      organizationId: orgIdFilter,
+      branchId: branchIdFilter,
       page,
       limit,
-      filters.search,
-      filters.type,
-      filters.isActive,
-      filters.sortBy,
-      filters.sortOrder,
-    );
+      search: filters.search,
+      deviceType: filters.type,
+      isActive: filters.isActive,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    });
 
     return {
       devices,
@@ -86,7 +87,7 @@ export class DeviceService {
 
   async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {
     const { id, pin, ...updateData } = data;
-    const existing = await this.deviceRepository.findById(id);
+    const existing = await this.deviceRepository.findById({ id });
     if (!existing) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -105,22 +106,28 @@ export class DeviceService {
       prepareData.pin = await hashData(String(pin));
     }
 
-    const updated = await this.deviceRepository.update(id, prepareData);
+    const updated = await this.deviceRepository.update({
+      id,
+      data: prepareData,
+    });
 
     return updated;
   }
 
   async toggleDeviceStatus(id: string, user: UserTokenDto) {
-    const existing = await this.deviceRepository.findById(id);
+    const existing = await this.deviceRepository.findById({ id });
     if (!existing) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
       });
     }
 
-    const updated = await this.deviceRepository.update(id, {
-      isActive: !existing.isActive,
-      updatedBy: user.id,
+    const updated = await this.deviceRepository.update({
+      id,
+      data: {
+        isActive: !existing.isActive,
+        updatedBy: user.id,
+      },
     });
 
     return updated;
@@ -130,7 +137,7 @@ export class DeviceService {
   // ? DEVICE CLIENT SERVICES
   // ========================================
   async deviceAuthCheck(id: string) {
-    const device = await this.deviceRepository.findById(id);
+    const device = await this.deviceRepository.findById({ id });
     if (!device) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,

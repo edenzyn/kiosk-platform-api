@@ -7,8 +7,8 @@ import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
-import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
-import type { UpdateBranchRequestDto } from "./dtos/update-branch-request.dto";
+import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
+import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 
 export class BranchService {
   constructor(
@@ -28,8 +28,10 @@ export class BranchService {
     }
 
     const branch = await this.branchRepository.create({
-      ...data,
-      createdBy: user.id,
+      data: {
+        ...data,
+        createdBy: user.id,
+      } as CreateBranchRequestDto,
     });
 
     const allKeys = Array.from(
@@ -37,7 +39,7 @@ export class BranchService {
     );
 
     const dbPermissions =
-      await this.rbacRepository.getPermissionsByKeys(allKeys);
+      await this.rbacRepository.getPermissionsByKeys({ keys: allKeys });
     const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
 
     for (const defaultRole of DEFAULT_BRANCH_ROLES) {
@@ -47,7 +49,6 @@ export class BranchService {
         name: defaultRole.name,
         description: `Default branch ${defaultRole.name.toLowerCase()} role`,
         rank: defaultRole.rank,
-        isSystem: defaultRole.isSystem ?? false,
         createdBy: user.id,
       });
 
@@ -67,7 +68,7 @@ export class BranchService {
         })
         .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
 
-      await this.rbacRepository.bulkInsertPermissionMappers(permissionMappers);
+      await this.rbacRepository.bulkInsertPermissionMappers({ mappers: permissionMappers });
     }
     return branch;
   }
@@ -92,16 +93,16 @@ export class BranchService {
       branchIdsFilter = [effectiveTenant.branchId];
     }
 
-    const { branches, total } = await this.branchRepository.getBranches(
-      orgIdFilter,
-      branchIdsFilter,
+    const { branches, total } = await this.branchRepository.getBranches({
+      organizationId: orgIdFilter,
+      branchIds: branchIdsFilter,
       page,
       limit,
-      filters.search,
-      filters.isActive,
-      filters.sortBy,
-      filters.sortOrder,
-    );
+      search: filters.search,
+      isActive: filters.isActive,
+      sortBy: filters.sortBy,
+      sortOrder: filters.sortOrder,
+    });
 
     return {
       branches,
@@ -120,10 +121,10 @@ export class BranchService {
       branchIdsFilter = [effectiveTenant.branchId];
     }
 
-    return this.branchRepository.getBranchesForFilters(
-      orgIdFilter,
-      branchIdsFilter,
-    );
+    return this.branchRepository.getBranchesForFilters({
+      organizationId: orgIdFilter,
+      branchIds: branchIdsFilter,
+    });
   }
 
   async updateBranch(
@@ -132,7 +133,7 @@ export class BranchService {
     effectiveTenant: EffectiveTenant,
   ) {
     const { id, ...updateData } = data;
-    const existing = await this.branchRepository.findById(id);
+    const existing = await this.branchRepository.findById({ id });
     if (!existing) {
       throw new AppError("Branch not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -145,9 +146,12 @@ export class BranchService {
       });
     }
 
-    const updated = await this.branchRepository.update(id, {
-      ...updateData,
-      updatedBy: user.id,
+    const updated = await this.branchRepository.update({
+      id,
+      data: {
+        ...updateData,
+        updatedBy: user.id,
+      },
     });
 
     return updated;

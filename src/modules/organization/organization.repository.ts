@@ -1,18 +1,26 @@
 import { eq, inArray } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import {
-  organizations,
-  type OrganizationEntity,
-  type CreateOrganizationEntity,
-} from "./organization.schema";
+import { organizations } from "./organization.schema";
+import type {
+  CreateOrganizationRepoInput,
+  CreateOrganizationRepoResult,
+  FindAllOrganizationsRepoInput,
+  FindAllOrganizationsRepoResult,
+  FindOrganizationByIdRepoInput,
+  FindOrganizationByIdRepoResult,
+  FindOrganizationByNameRepoInput,
+  FindOrganizationByNameRepoResult,
+} from "./organization.types";
 
 export class OrganizationRepository {
   constructor(private readonly database: Database) {}
 
-  async create(data: CreateOrganizationEntity): Promise<OrganizationEntity> {
+  async create(
+    input: CreateOrganizationRepoInput,
+  ): Promise<CreateOrganizationRepoResult> {
     const [organization] = await this.database.client
       .insert(organizations)
-      .values(data)
+      .values(input.data)
       .returning();
 
     if (!organization) {
@@ -21,33 +29,37 @@ export class OrganizationRepository {
     return organization;
   }
 
-  async findById(id: string): Promise<OrganizationEntity | undefined> {
+  async findById(
+    input: FindOrganizationByIdRepoInput,
+  ): Promise<FindOrganizationByIdRepoResult> {
     const [organization] = await this.database.client
       .select()
       .from(organizations)
-      .where(eq(organizations.id, id))
+      .where(eq(organizations.id, input.id))
       .limit(1);
 
     return organization;
   }
 
-  async findByName(name: string): Promise<OrganizationEntity | undefined> {
+  async findByName(
+    input: FindOrganizationByNameRepoInput,
+  ): Promise<FindOrganizationByNameRepoResult> {
     const [organization] = await this.database.client
       .select()
       .from(organizations)
-      .where(eq(organizations.name, name))
+      .where(eq(organizations.name, input.name))
       .limit(1);
 
     return organization;
   }
 
-  async findAll(filters?: {
-    orgIds?: string[];
-  }): Promise<OrganizationEntity[]> {
+  async findAll(
+    input: FindAllOrganizationsRepoInput = {},
+  ): Promise<FindAllOrganizationsRepoResult> {
     let query = this.database.client.select().from(organizations).$dynamic();
 
-    if (filters?.orgIds && filters.orgIds.length > 0) {
-      query = query.where(inArray(organizations.id, filters.orgIds));
+    if (input.orgIds && input.orgIds.length > 0) {
+      query = query.where(inArray(organizations.id, input.orgIds));
     }
 
     return query;

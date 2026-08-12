@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
-import type { ActivateLicenseRequestDto } from "./dtos/activate-license-request.dto";
+import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
 import type { LicenseService } from "./license.service";
 import { LicenseValidator } from "./license.validator";
 

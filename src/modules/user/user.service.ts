@@ -17,16 +17,11 @@ import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
-import {
-  type CheckAuthResponseDto,
-  type UserScope,
-} from "./dtos/check-auth-response.dto";
-import type { GetInvitationsResponseDto } from "./dtos/get-invitations-response.dto";
-import type { GetUsersRequestDto } from "./dtos/get-users-request.dto";
-import type { GetUsersResponseDto } from "./dtos/get-users-response.dto";
-import type { InviteUserRequestDto } from "./dtos/invite-user-request.dto";
-import type { InviteUserResponseDto } from "./dtos/invite-user-response.dto";
-import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation-response.dto";
+import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
+import type { GetInvitationsResponseDto } from "./dtos/get-invitations.dtos";
+import type { GetUsersRequestDto, GetUsersResponseDto } from "./dtos/get-users.dtos";
+import type { InviteUserRequestDto, InviteUserResponseDto } from "./dtos/invite-user.dtos";
+import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos";
 import type { UserRepository } from "./user.repository";
 
 export class UserService {
@@ -63,7 +58,7 @@ export class UserService {
     }
 
     const organization =
-      await this.organizationRepository.findById(organizationId);
+      await this.organizationRepository.findById({ id: organizationId });
 
     if (!organization) {
       return {
@@ -84,7 +79,7 @@ export class UserService {
       });
 
       const { branches } =
-        await this.branchRepository.getBranches(organizationId);
+        await this.branchRepository.getBranches({ organizationId });
 
       for (const branch of branches) {
         availableScopes.push({
@@ -101,10 +96,9 @@ export class UserService {
     // ======================================================
     else {
       if (branchId) {
-        const { branches } = await this.branchRepository.getBranches(
-          undefined,
-          [branchId],
-        );
+        const { branches } = await this.branchRepository.getBranches({
+          branchIds: [branchId],
+        });
 
         const branch = branches[0];
 
@@ -126,7 +120,7 @@ export class UserService {
   }
 
   async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
-    const user = await this.userRepository.findById(tokenUser.id);
+    const user = await this.userRepository.findById({ id: tokenUser.id });
 
     if (!user) {
       throw new AppError("User not found", {
@@ -146,7 +140,7 @@ export class UserService {
       userScope,
     );
 
-    const topRole = await this.rbacRepository.getUsersTopRankedRole(user.id);
+    const topRole = await this.rbacRepository.getUsersTopRankedRole({ userId: user.id });
     const topRoleDto = topRole
       ? {
           name: topRole.name,
@@ -170,20 +164,20 @@ export class UserService {
   ): Promise<GetUsersResponseDto> {
     const page = queryDto.page;
     const limit = queryDto.limit;
-    const { users, total } = await this.userRepository.findByTenant(
-      effectiveTenant.organizationId,
-      effectiveTenant.branchId || undefined,
-      queryDto.search,
+    const { users, total } = await this.userRepository.findByTenant({
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || undefined,
+      search: queryDto.search,
       page,
       limit,
-      queryDto.sortBy,
-      queryDto.sortOrder,
-    );
+      sortBy: queryDto.sortBy,
+      sortOrder: queryDto.sortOrder,
+    });
 
     const usersWithTopRole = await Promise.all(
       users.map(async (user) => {
         const topRole = await this.rbacRepository.getUsersTopRankedRole(
-          user.id,
+          { userId: user.id },
         );
         const topRoleDto = topRole
           ? {
@@ -215,7 +209,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<InviteUserResponseDto> {
-    const existingUser = await this.userRepository.findByEmail(dto.email);
+    const existingUser = await this.userRepository.findByEmail({ email: dto.email });
     if (existingUser) {
       throw new AppError("User already exists with this email address", {
         statusCode: HttpStatusCodes.CONFLICT,
@@ -224,7 +218,7 @@ export class UserService {
     }
 
     const existingPendingInvitation =
-      await this.userRepository.findPendingInvitationByEmail(dto.email);
+      await this.userRepository.findPendingInvitationByEmail({ email: dto.email });
     if (existingPendingInvitation) {
       throw new AppError(
         "A pending invitation already exists for this email address",
@@ -252,15 +246,17 @@ export class UserService {
     const expiresAt = dayjs().add(7, "day").toDate();
 
     await this.userRepository.createInvitation({
-      email: dto.email,
-      name: dto.name,
-      organizationId: effectiveTenant.organizationId,
-      branchId: branchId || null,
-      roleIds: dto.roles || [],
-      token,
-      expiresAt,
-      status: UserInvitationStatusEnum.PENDING,
-      createdBy: userToken.id,
+      invitation: {
+        email: dto.email,
+        name: dto.name,
+        organizationId: effectiveTenant.organizationId,
+        branchId: branchId || null,
+        roleIds: dto.roles || [],
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        createdBy: userToken.id,
+      },
     });
 
     try {
@@ -291,15 +287,15 @@ export class UserService {
     sortOrder?: SortingOrderEnum,
   ): Promise<GetInvitationsResponseDto> {
     const { invitations, total } =
-      await this.userRepository.findInvitationsByTenant(
-        effectiveTenant.organizationId,
-        effectiveTenant.branchId || undefined,
+      await this.userRepository.findInvitationsByTenant({
+        organizationId: effectiveTenant.organizationId,
+        branchId: effectiveTenant.branchId || undefined,
         page,
         limit,
         search,
         sortBy,
         sortOrder,
-      );
+      });
     return {
       invitations,
       total,
@@ -314,7 +310,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<RevokeInvitationResponseDto> {
-    const invitation = await this.userRepository.findInvitationById(id);
+    const invitation = await this.userRepository.findInvitationById({ id });
     if (!invitation) {
       throw new AppError("Invitation not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -340,11 +336,11 @@ export class UserService {
       });
     }
 
-    await this.userRepository.updateInvitationStatus(
+    await this.userRepository.updateInvitationStatus({
       id,
-      UserInvitationStatusEnum.REVOKED,
-      userToken.id,
-    );
+      status: UserInvitationStatusEnum.REVOKED,
+      updatedBy: userToken.id,
+    });
 
     return {
       message: "Invitation revoked successfully",
@@ -357,7 +353,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<{ message: string; success: boolean }> {
-    const invitation = await this.userRepository.findInvitationById(id);
+    const invitation = await this.userRepository.findInvitationById({ id });
     if (!invitation) {
       throw new AppError("Invitation not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -397,12 +393,12 @@ export class UserService {
     );
     const expiresAt = dayjs().add(7, "day").toDate();
 
-    await this.userRepository.resendInvitation(
+    await this.userRepository.resendInvitation({
       id,
       token,
       expiresAt,
-      userToken.id,
-    );
+      updatedBy: userToken.id,
+    });
 
     try {
       const template = getInviteUserTemplate({

@@ -4,7 +4,7 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { BranchService } from "./branch.service";
 import { BranchValidator } from "./branch.validator";
-import type { CreateBranchRequestDto } from "./dtos/create-branch-request.dto";
+import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 
 export class BranchController {
   constructor(private readonly branchService: BranchService) {}

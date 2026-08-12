@@ -255,6 +255,16 @@ export class LicenseService {
       });
     }
 
+    const activeLicenseForDevice = await this.licenseRepository.findActiveByDeviceId({
+      deviceId: input.deviceId,
+    });
+
+    if (activeLicenseForDevice) {
+      throw new AppError("Device already has an active license assigned", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
     const updated = await this.licenseRepository.update({
       licenseId: license.id,
       data: {

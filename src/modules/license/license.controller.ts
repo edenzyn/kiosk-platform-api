@@ -3,6 +3,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
 import type { LicenseService } from "./license.service";
 import { LicenseValidator } from "./license.validator";
@@ -101,17 +102,9 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getDiscountRules = async (req: Request, res: Response): Promise<void> => {
-    const query = await LicenseValidator.getDiscountRulesQuery.validate(
-      req.query,
-      {
-        abortEarly: false,
-        stripUnknown: true,
-      },
-    );
-
+  getDiscountRules = async (_req: Request, res: Response): Promise<void> => {
     const result = await this.licenseService.getDiscountRules({
-      targetEntity: query.targetEntity,
+      targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

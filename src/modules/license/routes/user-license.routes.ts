@@ -66,4 +66,13 @@ userLicenseRouter.post(
   licenseController.assignLicenseToDevice,
 );
 
+userLicenseRouter.post(
+  "/:id/extend",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.extendLicense,
+);
+
 export { userLicenseRouter };

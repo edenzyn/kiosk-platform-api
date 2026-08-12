@@ -3,6 +3,7 @@ import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
+import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
 import { LicenseTransactionTypeEnum } from "../../shared/enums/license/license-transaction-type.enum";
@@ -23,6 +24,8 @@ import type {
   AssignLicenseToBranchServiceResult,
   AssignLicenseToDeviceServiceInput,
   AssignLicenseToDeviceServiceResult,
+  ExtendLicenseServiceInput,
+  ExtendLicenseServiceResult,
   GetDiscountRulesServiceInput,
   GetDiscountRulesServiceResult,
   GetLicenseForDeviceServiceInput,
@@ -137,16 +140,13 @@ export class LicenseService {
       );
       const keyHash = hashSha256(plaintextKey);
 
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + durationDays);
-
       newLicenses.push({
         licenseKey: encryptedKey,
         licenseKeyHash: keyHash,
         organizationId,
         branchId,
         status: LicenseStatusEnum.AVAILABLE,
-        expiresAt,
+        expiresAt: null,
         createdBy: input.userId,
         updatedBy: input.userId,
       });
@@ -428,10 +428,18 @@ export class LicenseService {
       });
     }
 
+    const purchaseItem =
+      await this.licenseRepository.findLatestPurchaseItemByLicenseId(
+        license.id,
+      );
+    const durationDays = purchaseItem?.durationDays as number;
+    const expiresAt = dayjs().add(durationDays, "day").toDate();
+
     const activated = await this.licenseRepository.activate({
       licenseId: license.id,
       deviceId: input.deviceId,
       branchId: license.branchId ?? input.deviceBranchId,
+      expiresAt,
     });
 
     const { createdBy, updatedBy, ...rest } = activated;
@@ -439,5 +447,103 @@ export class LicenseService {
     rest.licenseKey = decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY);
 
     return { license: rest };
+  }
+
+  async extendLicense(
+    input: ExtendLicenseServiceInput,
+  ): Promise<ExtendLicenseServiceResult> {
+    const license = await this.licenseRepository.findById({
+      licenseId: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const pricingPlans = await this.licenseRepository.getLicensePricingPlans({
+      id: input.dto.pricingPlanId,
+    });
+    const plan = pricingPlans[0];
+    if (!plan) {
+      throw new AppError("Pricing plan not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const durationDays = plan.durationDays;
+    const basePrice = plan.price;
+    const currency = plan.currency;
+
+    const {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      totalAmount,
+      unitPrice,
+      baseUnitPrice,
+    } = calculateLicensePurchasePricing(Number(basePrice), 1, 0);
+
+    const now = new Date();
+    const currentExpiresAt = license.expiresAt
+      ? new Date(license.expiresAt)
+      : null;
+    let baseDate = now;
+    if (
+      currentExpiresAt &&
+      currentExpiresAt > now &&
+      (license.status === LicenseStatusEnum.ACTIVE ||
+        license.status === LicenseStatusEnum.GRACE_PERIOD)
+    ) {
+      baseDate = currentExpiresAt;
+    }
+
+    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
+
+    let newStatus = LicenseStatusEnum.ACTIVE;
+    if (!license.deviceId) {
+      newStatus = LicenseStatusEnum.AVAILABLE;
+    }
+
+    const updated = await this.licenseRepository.extendLicense({
+      licenseId: license.id,
+      newExpiresAt,
+      newStatus,
+      transaction: {
+        userId: input.userId,
+        transactionType: LicenseTransactionTypeEnum.RENEWAL,
+        subtotalAmount: subtotal,
+        discountAmount: discountAmount,
+        discountPercentage: discountPercentage,
+        appliedDiscountRuleId: null,
+        totalAmount: totalAmount,
+        currency,
+        paymentStatus: PaymentStatusEnum.COMPLETED,
+      },
+      transactionItem: {
+        actionType: LicenseTransactionActionTypeEnum.RENEWAL,
+        durationDays,
+        baseUnitPrice,
+        discountPercentage,
+        unitPrice,
+      },
+      historyEvent: {
+        eventType: LicenseHistoryEventTypeEnum.EXTEND,
+        previousStatus: license.status,
+        previousExpiresAt: license.expiresAt,
+        remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
+      },
+    });
+
+    const { createdBy, updatedBy, ...rest } = updated;
+    return {
+      license: {
+        ...rest,
+        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      },
+    };
   }
 }

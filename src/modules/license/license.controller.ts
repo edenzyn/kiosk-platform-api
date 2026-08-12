@@ -87,6 +87,23 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  extendLicense = async (req: Request, res: Response): Promise<void> => {
+    const data = await LicenseValidator.extendLicense.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.extendLicense({
+      licenseId: req.params.id as string,
+      dto: data,
+      userId: user.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getPricingPlans = async (req: Request, res: Response): Promise<void> => {
     const query = await LicenseValidator.getPricingPlansQuery.validate(
       req.query,

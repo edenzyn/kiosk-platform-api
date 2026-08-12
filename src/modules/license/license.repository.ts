@@ -14,6 +14,7 @@ import {
 import type { Database } from "../../config/db";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
+import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
 import { branches } from "../branch/branch.schema";
 import { devices } from "../device/device.schema";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
@@ -22,6 +23,10 @@ import type {
   ActivateLicenseRepoResult,
   CreateLicensesRepoInput,
   CreateLicensesRepoResult,
+  ExtendLicenseRepoInput,
+  ExtendLicenseRepoResult,
+  FindActiveDiscountRulesRepoInput,
+  FindActiveDiscountRulesRepoResult,
   FindActiveLicenseByDeviceIdRepoInput,
   FindActiveLicenseByDeviceIdRepoResult,
   FindLicenseByDeviceIdRepoInput,
@@ -36,8 +41,6 @@ import type {
   GetLicensesRepoResult,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
-  FindActiveDiscountRulesRepoInput,
-  FindActiveDiscountRulesRepoResult,
 } from "./license.types";
 import { licenseDiscountRules } from "./schemas/license-discount-rule.schema";
 import { licenseHistory } from "./schemas/license-history.schema";
@@ -101,6 +104,7 @@ export class LicenseRepository {
         deviceId: input.deviceId,
         status: LicenseStatusEnum.ACTIVE,
         activatedAt: new Date(),
+        expiresAt: input.expiresAt,
         updatedAt: new Date(),
         ...(input.branchId != null ? { branchId: input.branchId } : {}),
       })
@@ -112,6 +116,24 @@ export class LicenseRepository {
     }
 
     return updated;
+  }
+
+  async findLatestPurchaseItemByLicenseId(licenseId: string) {
+    const [item] = await this.database.client
+      .select()
+      .from(licenseTransactionItems)
+      .where(
+        and(
+          eq(licenseTransactionItems.licenseId, licenseId),
+          eq(
+            licenseTransactionItems.actionType,
+            LicenseTransactionActionTypeEnum.PURCHASE,
+          ),
+        ),
+      )
+      .orderBy(desc(licenseTransactionItems.createdAt))
+      .limit(1);
+    return item || null;
   }
 
   async getLicenses(
@@ -370,5 +392,78 @@ export class LicenseRepository {
       );
 
     return rules;
+  }
+
+  async extendLicense(
+    input: ExtendLicenseRepoInput,
+  ): Promise<ExtendLicenseRepoResult> {
+    const result = await this.database.client.transaction(async (tx) => {
+      // 1. Create transaction record
+      const [insertedTx] = await tx
+        .insert(licenseTransactions)
+        .values({
+          userId: input.transaction.userId,
+          transactionType: input.transaction.transactionType,
+          subtotalAmount: input.transaction.subtotalAmount,
+          discountAmount: input.transaction.discountAmount,
+          discountPercentage: input.transaction.discountPercentage,
+          appliedDiscountRuleId: input.transaction.appliedDiscountRuleId,
+          totalAmount: input.transaction.totalAmount,
+          currency: input.transaction.currency,
+          paymentStatus: input.transaction.paymentStatus,
+          transactionAt: new Date(),
+          createdBy: input.transaction.userId,
+          updatedBy: input.transaction.userId,
+        })
+        .returning();
+
+      if (!insertedTx) {
+        throw new Error("Failed to create license transaction record");
+      }
+
+      // 2. Update license expiresAt and status
+      const [updatedLicense] = await tx
+        .update(licenses)
+        .set({
+          expiresAt: input.newExpiresAt,
+          status: input.newStatus,
+          updatedAt: new Date(),
+          updatedBy: input.transaction.userId,
+        })
+        .where(eq(licenses.id, input.licenseId))
+        .returning();
+
+      if (!updatedLicense) {
+        throw new Error("Failed to update license");
+      }
+
+      // 3. Create transaction item record
+      await tx.insert(licenseTransactionItems).values({
+        transactionId: insertedTx.id,
+        licenseId: input.licenseId,
+        actionType: input.transactionItem.actionType,
+        durationDays: input.transactionItem.durationDays,
+        baseUnitPrice: input.transactionItem.baseUnitPrice,
+        discountPercentage: input.transactionItem.discountPercentage,
+        unitPrice: input.transactionItem.unitPrice,
+      });
+
+      // 4. Create license history record
+      await tx.insert(licenseHistory).values({
+        licenseId: input.licenseId,
+        eventType: input.historyEvent.eventType,
+        previousStatus: input.historyEvent.previousStatus,
+        newStatus: input.newStatus,
+        previousExpiresAt: input.historyEvent.previousExpiresAt,
+        newExpiresAt: input.newExpiresAt,
+        transactionId: insertedTx.id,
+        performedBy: input.transaction.userId,
+        remarks: input.historyEvent.remarks,
+      });
+
+      return updatedLicense;
+    });
+
+    return result;
   }
 }

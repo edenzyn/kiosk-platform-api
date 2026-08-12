@@ -64,4 +64,9 @@ export const LicenseValidator = {
         .required("Target entity is required"),
     })
     .noUnknown(),
+  extendLicense: yup
+    .object({
+      pricingPlanId: yup.string().uuid().required("Pricing plan ID is required"),
+    })
+    .noUnknown(),
 };

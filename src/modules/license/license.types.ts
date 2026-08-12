@@ -94,6 +94,19 @@ export interface GetDiscountRulesServiceResult {
   rules: LicenseDiscountRuleEntity[];
 }
 
+export interface ExtendLicenseServiceInput {
+  licenseId: string;
+  dto: {
+    pricingPlanId: string;
+  };
+  userId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface ExtendLicenseServiceResult {
+  license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -116,6 +129,7 @@ export interface ActivateLicenseRepoInput {
   licenseId: string;
   deviceId: string;
   branchId?: string | null;
+  expiresAt: Date;
 }
 export type ActivateLicenseRepoResult = LicenseEntity;
 
@@ -142,7 +156,7 @@ export interface CreateLicensesRepoInput {
     organizationId: string;
     branchId: string | null;
     status: number;
-    expiresAt: Date;
+    expiresAt?: Date | null;
     createdBy: string;
     updatedBy: string;
   }>;
@@ -204,3 +218,35 @@ export interface FindActiveDiscountRulesRepoInput {
 }
 
 export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
+
+export interface ExtendLicenseRepoInput {
+  licenseId: string;
+  newExpiresAt: Date;
+  newStatus: number;
+  transaction: {
+    userId: string;
+    transactionType: number;
+    subtotalAmount: string;
+    discountAmount: string;
+    discountPercentage: string;
+    appliedDiscountRuleId: string | null;
+    totalAmount: string;
+    currency: string;
+    paymentStatus: number;
+  };
+  transactionItem: {
+    actionType: number;
+    durationDays: number;
+    baseUnitPrice: string;
+    discountPercentage: string;
+    unitPrice: string;
+  };
+  historyEvent: {
+    eventType: number;
+    previousStatus: number;
+    previousExpiresAt: Date | null;
+    remarks: string;
+  };
+}
+
+export type ExtendLicenseRepoResult = LicenseEntity;

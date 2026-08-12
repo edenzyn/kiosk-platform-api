@@ -1,12 +1,11 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
-import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
-import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
+import type { LicenseService } from "../license/license.service";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
-import type { LicenseService } from "../license/license.service";
 import type {
   CreateDeviceServiceInput,
   CreateDeviceServiceResult,
@@ -19,6 +18,7 @@ import type {
   UpdateDeviceServiceInput,
   UpdateDeviceServiceResult,
 } from "./device.types";
+import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
 
 export class DeviceService {
   constructor(
@@ -44,7 +44,8 @@ export class DeviceService {
         pin: hashedPin,
         deviceCode,
         organizationId:
-          input.effectiveTenant.organizationId || (input.user.organizationId as string),
+          input.effectiveTenant.organizationId ||
+          (input.user.organizationId as string),
         createdBy: input.user.id,
       } as CreateDeviceRequestDto,
     });

@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
@@ -255,9 +256,10 @@ export class LicenseService {
       });
     }
 
-    const activeLicenseForDevice = await this.licenseRepository.findActiveByDeviceId({
-      deviceId: input.deviceId,
-    });
+    const activeLicenseForDevice =
+      await this.licenseRepository.findActiveByDeviceId({
+        deviceId: input.deviceId,
+      });
 
     if (activeLicenseForDevice) {
       throw new AppError("Device already has an active license assigned", {
@@ -332,13 +334,62 @@ export class LicenseService {
         licenseKeyHash: _lkh,
         ...rest
       } = anyLicense;
-      const isExpired = rest.expiresAt && new Date(rest.expiresAt) < new Date();
-      return {
-        license: {
-          ...rest,
-          status: isExpired ? LicenseStatusEnum.EXPIRED : rest.status,
-        },
-      };
+
+      const now = new Date();
+      const expiresAtDate = rest.expiresAt ? new Date(rest.expiresAt) : null;
+
+      if (expiresAtDate && now > expiresAtDate) {
+        if (rest.status === LicenseStatusEnum.ACTIVE) {
+          const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
+          const gracePeriodEndDate = dayjs(expiresAtDate)
+            .add(gracePeriodDays, "day")
+            .toDate();
+          await this.licenseRepository.update({
+            licenseId: rest.id,
+            data: {
+              status: LicenseStatusEnum.GRACE_PERIOD,
+            },
+          });
+          return {
+            license: {
+              ...rest,
+              status: LicenseStatusEnum.GRACE_PERIOD,
+              gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
+            },
+          };
+        }
+
+        if (rest.status === LicenseStatusEnum.GRACE_PERIOD) {
+          const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
+          const gracePeriodEndDate = dayjs(expiresAtDate)
+            .add(gracePeriodDays, "day")
+            .toDate();
+
+          if (now >= gracePeriodEndDate) {
+            await this.licenseRepository.update({
+              licenseId: rest.id,
+              data: {
+                status: LicenseStatusEnum.EXPIRED,
+              },
+            });
+            return {
+              license: {
+                ...rest,
+                status: LicenseStatusEnum.EXPIRED,
+              },
+            };
+          }
+
+          return {
+            license: {
+              ...rest,
+              gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
+            },
+          };
+        }
+      }
+
+      return { license: rest };
     }
 
     return { license: null };

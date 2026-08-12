@@ -12,10 +12,10 @@ export interface GetLicenseForDeviceServiceInput {
 }
 
 export interface GetLicenseForDeviceServiceResult {
-  license: Omit<
+  license: (Omit<
     LicenseEntity,
     "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
-  > | null;
+  > & { gracePeriodExpiresAt?: string }) | null;
 }
 
 export interface ActivateLicenseServiceInput {

@@ -1,25 +1,18 @@
 import { Router } from "express";
-import { container } from "../../config/container";
-import { authMiddleware } from "../../middleware/auth.middleware";
-import { accessMiddleware } from "../../middleware/access.middleware";
+import { container } from "../../../config/container";
+import { accessMiddleware } from "../../../middleware/access.middleware";
 import {
   BRANCH_DEVICE_READ_WRITE_PERMS,
   ORGANIZATION_DEVICE_READ_WRITE_PERMS,
-} from "../../shared/constants/user-permission.constants";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import type { DeviceController } from "./device.controller";
+} from "../../../shared/constants/user-permission.constants";
+import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
+import type { DeviceController } from "../device.controller";
 
-const deviceRouter = Router();
+const userDeviceRouter = Router();
 const deviceController =
   container.resolve<DeviceController>("deviceController");
 
-deviceRouter.get(
-  "/e",
-  authMiddleware,
-  deviceController.deviceAuthCheck,
-);
-
-deviceRouter.get(
+userDeviceRouter.get(
   "/",
   accessMiddleware({
     organization: [...ORGANIZATION_DEVICE_READ_WRITE_PERMS],
@@ -28,7 +21,7 @@ deviceRouter.get(
   deviceController.getDevices,
 );
 
-deviceRouter.post(
+userDeviceRouter.post(
   "/",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
@@ -37,7 +30,7 @@ deviceRouter.post(
   deviceController.createDevice,
 );
 
-deviceRouter.put(
+userDeviceRouter.put(
   "/:id",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
@@ -46,7 +39,7 @@ deviceRouter.put(
   deviceController.updateDevice,
 );
 
-deviceRouter.patch(
+userDeviceRouter.patch(
   "/:id/status",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
@@ -55,4 +48,4 @@ deviceRouter.patch(
   deviceController.toggleDeviceStatus,
 );
 
-export { deviceRouter };
+export { userDeviceRouter };

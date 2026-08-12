@@ -1,13 +1,20 @@
-import { asClass, asFunction, asValue, createContainer, InjectionMode } from "awilix";
+import {
+  asClass,
+  asFunction,
+  asValue,
+  createContainer,
+  InjectionMode,
+} from "awilix";
+import { AuthContainer } from "../modules/auth/auth.container";
+import { BranchContainer } from "../modules/branch/branch.container";
+import { DeviceContainer } from "../modules/device/device.container";
+import { LicenseContainer } from "../modules/license/license.container";
+import { OrganizationContainer } from "../modules/organization/organization.container";
+import { RbacContainer } from "../modules/rbac/rbac.container";
+import { UserContainer } from "../modules/user/user.container";
+import { MailService } from "../shared/services/mail/mail.service";
 import { initDatabase } from "./db";
 import { mailTransporter } from "./mail";
-import { MailService } from "../shared/services/mail/mail.service";
-import { AuthContainer } from "../modules/auth/auth.container";
-import { UserContainer } from "../modules/user/user.container";
-import { OrganizationContainer } from "../modules/organization/organization.container";
-import { BranchContainer } from "../modules/branch/branch.container";
-import { RbacContainer } from "../modules/rbac/rbac.container";
-import { DeviceContainer } from "../modules/device/device.container";
 
 export const container = createContainer({
   injectionMode: InjectionMode.CLASSIC,
@@ -26,3 +33,4 @@ OrganizationContainer.register(container);
 BranchContainer.register(container);
 RbacContainer.register(container);
 DeviceContainer.register(container);
+LicenseContainer.register(container);

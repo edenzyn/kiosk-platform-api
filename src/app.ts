@@ -11,7 +11,10 @@ import { rateLimitMiddleware } from "./middleware/rate-limit.middleware";
 import { requestLogger } from "./middleware/request-logger.middleware";
 import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
-import { deviceRouter } from "./modules/device/device.routes";
+import { deviceRouter } from "./modules/device/routes/device.routes";
+import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
+import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
+import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
 import organizationRoutes from "./modules/organization/organization.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
@@ -86,10 +89,12 @@ export class App {
       organizationRoutes,
     );
     this.instance.use(`${this.userApiv1Prefix}/branches`, branchRoutes);
-    this.instance.use(`${this.userApiv1Prefix}/devices`, deviceRouter);
+    this.instance.use(`${this.userApiv1Prefix}/devices`, userDeviceRouter);
+    this.instance.use(`${this.userApiv1Prefix}/licenses`, userLicenseRouter);
 
     // Private device routes
     this.instance.use(`${this.deviceApiv1Prefix}/devices`, deviceRouter);
+    this.instance.use(`${this.deviceApiv1Prefix}/licenses`, deviceLicenseRouter);
   }
 
   private configureErrorHandling(): void {

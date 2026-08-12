@@ -8,9 +8,10 @@ import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
 import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device-request.dto";
-
 export class DeviceController {
-  constructor(private readonly deviceService: DeviceService) {}
+  constructor(
+    private readonly deviceService: DeviceService,
+  ) {}
 
   createDevice = async (req: Request, res: Response): Promise<void> => {
     const data = await DeviceValidator.create.validate(
@@ -82,7 +83,8 @@ export class DeviceController {
       });
     }
 
-    const device = await this.deviceService.deviceAuthCheck(deviceId);
-    res.status(HttpStatusCodes.OK).json({ device });
+    const result = await this.deviceService.deviceAuthCheck(deviceId);
+    res.status(HttpStatusCodes.OK).json(result);
   };
 }
+

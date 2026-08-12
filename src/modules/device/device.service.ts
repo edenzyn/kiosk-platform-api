@@ -10,9 +10,13 @@ import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
 import type { CreateDeviceBodyDto } from "./dtos/create-device-request.dto";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device-request.dto";
+import type { LicenseService } from "../license/license.service";
 
 export class DeviceService {
-  constructor(private readonly deviceRepository: DeviceRepository) {}
+  constructor(
+    private readonly deviceRepository: DeviceRepository,
+    private readonly licenseService: LicenseService,
+  ) {}
 
   async createDevice(
     data: CreateDeviceBodyDto,
@@ -95,7 +99,12 @@ export class DeviceService {
     }
 
     const { pin, ...deviceWithoutPin } = device;
-    return deviceWithoutPin;
+    const licenseInfo = await this.licenseService.getLicenseForDevice(id);
+
+    return {
+      device: deviceWithoutPin,
+      license: licenseInfo.license,
+    };
   }
 
   async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {

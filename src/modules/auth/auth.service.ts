@@ -26,6 +26,7 @@ import type { LoginDeviceRequestDto } from "./dtos/login-device-request.dto";
 import type { LoginDeviceResult } from "./dtos/login-device-response.dto";
 import type { LoginResult } from "./dtos/login-result.dto";
 import type { LoginUserRequestDto } from "./dtos/login-user-request.dto";
+import type { LicenseService } from "../license/license.service";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
   user?: { id: string };
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly rbacRepository: RbacRepository,
     private readonly userService: UserService,
     private readonly deviceRepository: DeviceRepository,
+    private readonly licenseService: LicenseService,
   ) {}
 
   private _generateTokens(
@@ -214,6 +216,10 @@ export class AuthService {
 
         const { pin, ...deviceWithoutPin } = device;
 
+        const licenseInfo = await this.licenseService.getLicenseForDevice(
+          device.id,
+        );
+
         return {
           clientType: ClientTypeEnum.DEVICE_CLIENT,
           device: deviceWithoutPin,
@@ -221,6 +227,7 @@ export class AuthService {
             accessToken: generatedTokens.accessToken,
             refreshToken: generatedTokens.refreshToken,
           },
+          license: licenseInfo.license,
         };
       }
 
@@ -493,6 +500,10 @@ export class AuthService {
 
     const { pin, ...deviceWithoutPin } = device;
 
+    const licenseInfo = await this.licenseService.getLicenseForDevice(
+      device.id,
+    );
+
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,
       device: deviceWithoutPin,
@@ -500,6 +511,7 @@ export class AuthService {
         accessToken: generatedTokens.accessToken,
         refreshToken: generatedTokens.refreshToken,
       },
+      license: licenseInfo.license,
     };
   }
 }

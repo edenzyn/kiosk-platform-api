@@ -12,7 +12,7 @@ import type { UserController } from "./user.controller";
 const router = Router();
 const userController = container.resolve<UserController>("userController");
 
-router.get("/me", asyncHandler(userController.checkAuth));
+router.get("/e", asyncHandler(userController.checkAuth));
 router.get(
   "/",
   accessMiddleware({

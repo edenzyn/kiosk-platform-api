@@ -81,7 +81,9 @@ export class App {
 
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
 
-    // Private routes
+    // ========================================
+    // ? USER CLIENT ROUTES
+    // ========================================
     this.instance.use(`${this.userApiv1Prefix}/users`, userRoutes);
     this.instance.use(`${this.userApiv1Prefix}/rbac`, rbacRoutes);
     this.instance.use(
@@ -92,9 +94,14 @@ export class App {
     this.instance.use(`${this.userApiv1Prefix}/devices`, userDeviceRouter);
     this.instance.use(`${this.userApiv1Prefix}/licenses`, userLicenseRouter);
 
-    // Private device routes
+    // ========================================
+    // ? DEVICE CLIENT ROUTES
+    // ========================================
     this.instance.use(`${this.deviceApiv1Prefix}/devices`, deviceRouter);
-    this.instance.use(`${this.deviceApiv1Prefix}/licenses`, deviceLicenseRouter);
+    this.instance.use(
+      `${this.deviceApiv1Prefix}/licenses`,
+      deviceLicenseRouter,
+    );
   }
 
   private configureErrorHandling(): void {

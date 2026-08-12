@@ -17,6 +17,7 @@ import { hashSha256 } from "../../shared/utils/core/crypto.helper";
 import { generateToken, verifyToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { DeviceRepository } from "../device/device.repository";
+import type { LicenseService } from "../license/license.service";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserRepository } from "../user/user.repository";
 import type { UserService } from "../user/user.service";
@@ -26,7 +27,6 @@ import type { LoginDeviceRequestDto } from "./dtos/login-device-request.dto";
 import type { LoginDeviceResult } from "./dtos/login-device-response.dto";
 import type { LoginResult } from "./dtos/login-result.dto";
 import type { LoginUserRequestDto } from "./dtos/login-user-request.dto";
-import type { LicenseService } from "../license/license.service";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
   user?: { id: string };
@@ -97,6 +97,9 @@ export class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
   async loginUser(dto: LoginUserRequestDto): Promise<LoginResult> {
     const user = await this.userRepository.findByEmail(dto.email);
 
@@ -148,6 +151,150 @@ export class AuthService {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens,
+      permissions,
+      availableScopes,
+    };
+  }
+
+  async logout(refreshToken: string): Promise<void> {
+    try {
+      const decoded = verifyToken<RefreshTokenPayload>(
+        refreshToken,
+        env.JWT_REFRESH_SECRET,
+      );
+      if (decoded.jti) {
+        await this.authRepository.revokeRefreshToken(
+          decoded.jti,
+          hashSha256(refreshToken),
+        );
+      }
+    } catch {
+      // Logout is intentionally idempotent, including for expired tokens.
+    }
+  }
+
+  async acceptInvitation(
+    dto: AcceptInvitationRequestDto,
+  ): Promise<LoginResult> {
+    try {
+      verifyToken(dto.token, env.JWT_INVITE_USER_SECRET);
+    } catch (error) {
+      throw new AppError("Invalid or expired invitation.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const invitation = await this.userRepository.findInvitationByToken(
+      dto.token,
+    );
+    if (!invitation) {
+      throw new AppError("Invitation not found.", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.PENDING) {
+      if (invitation.status === UserInvitationStatusEnum.ACCEPTED) {
+        throw new AppError("This invitation has already been accepted.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      if (invitation.status === UserInvitationStatusEnum.REVOKED) {
+        throw new AppError("This invitation has been revoked.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      if (invitation.status === UserInvitationStatusEnum.EXPIRED) {
+        throw new AppError("This invitation has expired.", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+      throw new AppError("This invitation is no longer valid.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
+      await this.userRepository.updateInvitationStatus(
+        invitation.id,
+        UserInvitationStatusEnum.EXPIRED,
+        invitation.id,
+      );
+      throw new AppError("Invitation has expired.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const existingUser = await this.userRepository.findByEmail(
+      invitation.email,
+    );
+    if (existingUser) {
+      throw new AppError("Email already registered", {
+        statusCode: HttpStatusCodes.CONFLICT,
+      });
+    }
+
+    const hashedPassword = await hashData(dto.password);
+
+    const createdUser = await this.userRepository.create({
+      name: dto.name,
+      email: invitation.email,
+      password: hashedPassword,
+      organizationId: invitation.organizationId,
+      branchId: invitation.branchId,
+      userType: UserTypeEnums.NORMAL,
+    });
+
+    if (invitation.roleIds && invitation.roleIds.length > 0) {
+      for (const roleId of invitation.roleIds) {
+        await this.rbacRepository.createUserRoleMapper({
+          userId: createdUser.id,
+          roleId: roleId,
+          createdBy: createdUser.id,
+        });
+      }
+    }
+
+    await this.userRepository.updateInvitationStatus(
+      invitation.id,
+      UserInvitationStatusEnum.ACCEPTED,
+      createdUser.id,
+    );
+
+    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+      user: {
+        id: createdUser.id,
+        organizationId: createdUser.organizationId ?? undefined,
+        branchId: createdUser.branchId ?? undefined,
+      },
+    });
+
+    await this.authRepository.createRefreshToken({
+      id: tokens.refreshTokenId,
+      userId: createdUser.id,
+      tokenHash: hashSha256(tokens.refreshToken),
+      expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
+    });
+
+    const { password, ...userWithoutPassword } = createdUser;
+
+    const userScope = getUserScope(createdUser);
+
+    const { permissions, availableScopes } =
+      await this.userService.getPermissionsAndScopes(
+        createdUser.id,
+        createdUser.organizationId,
+        createdUser.branchId,
+        userScope,
+      );
+
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
       permissions,
       availableScopes,
     };
@@ -308,153 +455,9 @@ export class AuthService {
     }
   }
 
-  async logout(refreshToken: string): Promise<void> {
-    try {
-      const decoded = verifyToken<RefreshTokenPayload>(
-        refreshToken,
-        env.JWT_REFRESH_SECRET,
-      );
-      if (decoded.jti) {
-        await this.authRepository.revokeRefreshToken(
-          decoded.jti,
-          hashSha256(refreshToken),
-        );
-      }
-    } catch {
-      // Logout is intentionally idempotent, including for expired tokens.
-    }
-  }
-
-  async acceptInvitation(
-    dto: AcceptInvitationRequestDto,
-  ): Promise<LoginResult> {
-    try {
-      verifyToken(dto.token, env.JWT_INVITE_USER_SECRET);
-    } catch (error) {
-      throw new AppError("Invalid or expired invitation.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    const invitation = await this.userRepository.findInvitationByToken(
-      dto.token,
-    );
-    if (!invitation) {
-      throw new AppError("Invitation not found.", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
-    }
-
-    if (invitation.status !== UserInvitationStatusEnum.PENDING) {
-      if (invitation.status === UserInvitationStatusEnum.ACCEPTED) {
-        throw new AppError("This invitation has already been accepted.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-      if (invitation.status === UserInvitationStatusEnum.REVOKED) {
-        throw new AppError("This invitation has been revoked.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-      if (invitation.status === UserInvitationStatusEnum.EXPIRED) {
-        throw new AppError("This invitation has expired.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-      throw new AppError("This invitation is no longer valid.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-      await this.userRepository.updateInvitationStatus(
-        invitation.id,
-        UserInvitationStatusEnum.EXPIRED,
-        invitation.id,
-      );
-      throw new AppError("Invitation has expired.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    const existingUser = await this.userRepository.findByEmail(
-      invitation.email,
-    );
-    if (existingUser) {
-      throw new AppError("Email already registered", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
-    }
-
-    const hashedPassword = await hashData(dto.password);
-
-    const createdUser = await this.userRepository.create({
-      name: dto.name,
-      email: invitation.email,
-      password: hashedPassword,
-      organizationId: invitation.organizationId,
-      branchId: invitation.branchId,
-      userType: UserTypeEnums.NORMAL,
-    });
-
-    if (invitation.roleIds && invitation.roleIds.length > 0) {
-      for (const roleId of invitation.roleIds) {
-        await this.rbacRepository.createUserRoleMapper({
-          userId: createdUser.id,
-          roleId: roleId,
-          createdBy: createdUser.id,
-        });
-      }
-    }
-
-    await this.userRepository.updateInvitationStatus(
-      invitation.id,
-      UserInvitationStatusEnum.ACCEPTED,
-      createdUser.id,
-    );
-
-    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: createdUser.id,
-        organizationId: createdUser.organizationId ?? undefined,
-        branchId: createdUser.branchId ?? undefined,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      id: tokens.refreshTokenId,
-      userId: createdUser.id,
-      tokenHash: hashSha256(tokens.refreshToken),
-      expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
-    });
-
-    const { password, ...userWithoutPassword } = createdUser;
-
-    const userScope = getUserScope(createdUser);
-
-    const { permissions, availableScopes } =
-      await this.userService.getPermissionsAndScopes(
-        createdUser.id,
-        createdUser.organizationId,
-        createdUser.branchId,
-        userScope,
-      );
-
-    return {
-      clientType: ClientTypeEnum.USER_CLIENT,
-      user: userWithoutPassword,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
-      permissions,
-      availableScopes,
-    };
-  }
-
-  // ----------------------
-  // DEVICE APIS
-  // ----------------------
+  // ========================================
+  // ? DEVICE CLIENT SERVICES
+  // ========================================
   async loginDevice(dto: LoginDeviceRequestDto): Promise<LoginDeviceResult> {
     const device = await this.deviceRepository.findByDeviceCode(dto.deviceCode);
 

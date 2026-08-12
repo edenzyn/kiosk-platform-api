@@ -8,6 +8,14 @@ import { LicenseValidator } from "./license.validator";
 export class LicenseController {
   constructor(private readonly licenseService: LicenseService) {}
 
+  // ========================================
+  // ? USER CLIENT APIS
+  // ========================================
+  // user apis
+
+  // ========================================
+  // ? DEVICE CLIENT APIS
+  // ========================================
   activateLicense = async (req: Request, res: Response): Promise<void> => {
     const device = req.device as DeviceTokenDto;
 

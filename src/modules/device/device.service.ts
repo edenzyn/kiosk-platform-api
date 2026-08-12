@@ -18,6 +18,9 @@ export class DeviceService {
     private readonly licenseService: LicenseService,
   ) {}
 
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
   async createDevice(
     data: CreateDeviceBodyDto,
     user: UserTokenDto,
@@ -81,32 +84,6 @@ export class DeviceService {
     };
   }
 
-  async deviceAuthCheck(id: string) {
-    const device = await this.deviceRepository.findById(id);
-    if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
-    }
-
-    if (!device.isActive) {
-      throw new AppError(
-        "Device is deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
-      );
-    }
-
-    const { pin, ...deviceWithoutPin } = device;
-    const licenseInfo = await this.licenseService.getLicenseForDevice(id);
-
-    return {
-      device: deviceWithoutPin,
-      license: licenseInfo.license,
-    };
-  }
-
   async updateDevice(data: UpdateDeviceBodyDto, user: UserTokenDto) {
     const { id, pin, ...updateData } = data;
     const existing = await this.deviceRepository.findById(id);
@@ -147,5 +124,34 @@ export class DeviceService {
     });
 
     return updated;
+  }
+
+  // ========================================
+  // ? DEVICE CLIENT SERVICES
+  // ========================================
+  async deviceAuthCheck(id: string) {
+    const device = await this.deviceRepository.findById(id);
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (!device.isActive) {
+      throw new AppError(
+        "Device is deactivated. Please contact your administrator.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
+    const { pin, ...deviceWithoutPin } = device;
+    const licenseInfo = await this.licenseService.getLicenseForDevice(id);
+
+    return {
+      device: deviceWithoutPin,
+      license: licenseInfo.license,
+    };
   }
 }

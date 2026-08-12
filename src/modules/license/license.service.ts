@@ -10,6 +10,9 @@ import type { LicenseRepository } from "./license.repository";
 export class LicenseService {
   constructor(private readonly licenseRepository: LicenseRepository) {}
 
+  // ========================================
+  // ? DEVICE CLIENT SERVICES
+  // ========================================
   async getLicenseForDevice(
     deviceId: string,
   ): Promise<LicenseStatusResponseDto> {

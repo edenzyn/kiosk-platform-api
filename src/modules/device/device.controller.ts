@@ -13,6 +13,9 @@ export class DeviceController {
     private readonly deviceService: DeviceService,
   ) {}
 
+  // ========================================
+  // ? USER CLIENT APIS
+  // ========================================
   createDevice = async (req: Request, res: Response): Promise<void> => {
     const data = await DeviceValidator.create.validate(
       { ...req.effectiveTenant, ...req.body },
@@ -74,6 +77,9 @@ export class DeviceController {
     res.status(HttpStatusCodes.OK).json({ device });
   };
 
+  // ========================================
+  // ? DEVICE CLIENT APIS
+  // ========================================
   deviceAuthCheck = async (req: Request, res: Response): Promise<void> => {
     const deviceId = req.device?.id;
     if (!deviceId) {

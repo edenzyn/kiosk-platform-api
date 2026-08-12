@@ -6,7 +6,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { users } from "../../user/schemas/user.schema";
-import { resellerDiscountRules } from "./reseller-discount-rule.schema";
+import { licenseDiscountRules } from "../../license/schemas/license-discount-rule.schema";
 
 export const resellerDiscountRuleMapper = pgTable(
   "reseller_discount_rule_mapper",
@@ -17,7 +17,7 @@ export const resellerDiscountRuleMapper = pgTable(
       .references((): AnyPgColumn => users.id),
     discountRuleId: uuid("discount_rule_id")
       .notNull()
-      .references((): AnyPgColumn => resellerDiscountRules.id),
+      .references((): AnyPgColumn => licenseDiscountRules.id),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

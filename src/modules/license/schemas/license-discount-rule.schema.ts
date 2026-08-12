@@ -11,9 +11,10 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "../../user/schemas/user.schema";
 
-export const resellerDiscountRules = pgTable("reseller_discount_rules", {
+export const licenseDiscountRules = pgTable("license_discount_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  targetEntity: smallint("target_entity").notNull(), // LicenseDiscountRuleTargetEntityTypeEnum: 1 = ORGANIZATIONS, 2 = RESELLERS, 3 = RESELLER_INDIVIDUAL
   discountType: smallint("discount_type").notNull(), // e.g. PERCENTAGE = 1, FLAT = 2
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
   minQuantity: integer("min_quantity").notNull().default(1),
@@ -31,5 +32,5 @@ export const resellerDiscountRules = pgTable("reseller_discount_rules", {
   updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
 });
 
-export type ResellerDiscountRuleEntity = typeof resellerDiscountRules.$inferSelect;
-export type CreateResellerDiscountRuleEntity = typeof resellerDiscountRules.$inferInsert;
+export type LicenseDiscountRuleEntity = typeof licenseDiscountRules.$inferSelect;
+export type CreateLicenseDiscountRuleEntity = typeof licenseDiscountRules.$inferInsert;

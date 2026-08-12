@@ -21,6 +21,24 @@ userLicenseRouter.get(
   licenseController.getLicenses,
 );
 
+userLicenseRouter.get(
+  "/pricing",
+  accessMiddleware({
+    organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
+    branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
+  }),
+  licenseController.getPricingPlans,
+);
+
+userLicenseRouter.get(
+  "/discount-rules",
+  accessMiddleware({
+    organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
+    branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
+  }),
+  licenseController.getDiscountRules,
+);
+
 userLicenseRouter.post(
   "/purchase",
   accessMiddleware({
@@ -28,6 +46,24 @@ userLicenseRouter.post(
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
   }),
   licenseController.purchaseLicense,
+);
+
+userLicenseRouter.post(
+  "/:id/assign-branch",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.assignLicenseToBranch,
+);
+
+userLicenseRouter.post(
+  "/:id/assign-device",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.assignLicenseToDevice,
 );
 
 export { userLicenseRouter };

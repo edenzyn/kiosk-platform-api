@@ -1,21 +1,33 @@
-import crypto from "crypto";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
+import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
+import { LicenseTransactionTypeEnum } from "../../shared/enums/license/license-transaction-type.enum";
+import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../shared/errors/app-error";
 import {
-  HASH_ALPHABET_CODE,
   decryptData,
   encryptData,
   hashSha256,
 } from "../../shared/utils/core/crypto.helper";
+import { calculateLicensePurchasePricing } from "../../shared/utils/license/calculate-license-purchase-pricing.helper";
+import { generateReadableLicenseKey } from "../../shared/utils/license/generate-readable-license-key.helper";
 import type { LicenseRepository } from "./license.repository";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
+  AssignLicenseToBranchServiceInput,
+  AssignLicenseToBranchServiceResult,
+  AssignLicenseToDeviceServiceInput,
+  AssignLicenseToDeviceServiceResult,
+  GetDiscountRulesServiceInput,
+  GetDiscountRulesServiceResult,
   GetLicenseForDeviceServiceInput,
   GetLicenseForDeviceServiceResult,
+  GetLicensePricingPlansServiceInput,
+  GetLicensePricingPlansServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
   PurchaseLicenseServiceInput,
@@ -24,21 +36,6 @@ import type {
 
 export class LicenseService {
   constructor(private readonly licenseRepository: LicenseRepository) {}
-
-  private _generateReadableLicenseKey(): string {
-    const generateSegment = (length: number) => {
-      let result = "";
-      const randomBytes = crypto.randomBytes(length);
-      for (let i = 0; i < length; i++) {
-        const byte = randomBytes[i];
-        if (byte !== undefined) {
-          result += HASH_ALPHABET_CODE.charAt(byte % HASH_ALPHABET_CODE.length);
-        }
-      }
-      return result;
-    };
-    return `LIC-${generateSegment(5)}-${generateSegment(5)}-${generateSegment(5)}`;
-  }
 
   // ========================================
   // ? USER CLIENT SERVICES
@@ -82,14 +79,57 @@ export class LicenseService {
   async purchaseLicense(
     input: PurchaseLicenseServiceInput,
   ): Promise<PurchaseLicenseServiceResult> {
-    const qty = input.dto.quantity || 1;
+    const qty = input.dto.quantity;
     const organizationId = input.effectiveTenant.organizationId;
-    const branchId =
-      input.dto.branchId || input.effectiveTenant.branchId || null;
+    const branchId = input.effectiveTenant.branchId || null;
+
+    const pricingPlanId = input.dto.pricingPlanId;
+
+    const plansResult = await this.getLicensePricingPlans({
+      id: pricingPlanId,
+    });
+    const selectedPlan = plansResult.plans[0];
+
+    if (!selectedPlan) {
+      throw new AppError("Selected pricing plan not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const durationDays = selectedPlan.durationDays;
+    const basePrice = Number(selectedPlan.price);
+    const currency = selectedPlan.currency;
+
+    const rules = await this.licenseRepository.findActiveDiscountRules({
+      targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
+    });
+
+    const matchedRule = rules.find(
+      (rule) =>
+        qty >= rule.minQuantity &&
+        (rule.maxQuantity === null || qty <= rule.maxQuantity),
+    );
+
+    let discountPct = 0.0;
+    let appliedDiscountRuleId: string | null = null;
+
+    if (matchedRule) {
+      discountPct = Number(matchedRule.discountValue);
+      appliedDiscountRuleId = matchedRule.id;
+    }
+
+    const {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      totalAmount,
+      unitPrice,
+      baseUnitPrice,
+    } = calculateLicensePurchasePricing(basePrice, qty, discountPct);
 
     const newLicenses = [];
     for (let i = 0; i < qty; i++) {
-      const plaintextKey = this._generateReadableLicenseKey();
+      const plaintextKey = generateReadableLicenseKey();
       const encryptedKey = encryptData(
         plaintextKey,
         env.LICENSE_ENCRYPTION_KEY,
@@ -97,7 +137,7 @@ export class LicenseService {
       const keyHash = hashSha256(plaintextKey);
 
       const expiresAt = new Date();
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1); // 1 year from now
+      expiresAt.setDate(expiresAt.getDate() + durationDays);
 
       newLicenses.push({
         licenseKey: encryptedKey,
@@ -113,6 +153,24 @@ export class LicenseService {
 
     const created = await this.licenseRepository.createLicenses({
       licenses: newLicenses,
+      transaction: {
+        userId: input.userId,
+        transactionType: LicenseTransactionTypeEnum.PURCHASE,
+        subtotalAmount: subtotal,
+        discountAmount: discountAmount,
+        discountPercentage: discountPercentage,
+        appliedDiscountRuleId,
+        totalAmount: totalAmount,
+        currency,
+        paymentStatus: PaymentStatusEnum.COMPLETED,
+      },
+      transactionItems: newLicenses.map(() => ({
+        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
+        durationDays,
+        baseUnitPrice: baseUnitPrice,
+        discountPercentage: discountPercentage,
+        unitPrice: unitPrice,
+      })),
     });
 
     const resultLicenses = created.map(({ createdBy, updatedBy, ...rest }) => {
@@ -125,6 +183,112 @@ export class LicenseService {
     return {
       licenses: resultLicenses,
     };
+  }
+
+  async assignLicenseToBranch(
+    input: AssignLicenseToBranchServiceInput,
+  ): Promise<AssignLicenseToBranchServiceResult> {
+    const orgId = input.effectiveTenant.organizationId;
+    if (!orgId) {
+      throw new AppError("Organization ID is required", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const license = await this.licenseRepository.findById({
+      licenseId: input.licenseId,
+      organizationId: orgId,
+    });
+
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (license.branchId) {
+      throw new AppError("License is already assigned to a branch", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const updated = await this.licenseRepository.update({
+      licenseId: license.id,
+      data: {
+        branchId: input.branchId,
+        updatedBy: input.userId,
+      },
+    });
+
+    const { createdBy, updatedBy, ...rest } = updated;
+    rest.licenseKey = decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY);
+
+    return {
+      license: rest,
+    };
+  }
+
+  async assignLicenseToDevice(
+    input: AssignLicenseToDeviceServiceInput,
+  ): Promise<AssignLicenseToDeviceServiceResult> {
+    const orgId = input.effectiveTenant.organizationId;
+    if (!orgId) {
+      throw new AppError("Organization ID is required", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const license = await this.licenseRepository.findById({
+      licenseId: input.licenseId,
+      organizationId: orgId,
+    });
+
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (license.deviceId) {
+      throw new AppError("License is already assigned to a device", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const updated = await this.licenseRepository.update({
+      licenseId: license.id,
+      data: {
+        deviceId: input.deviceId,
+        status: LicenseStatusEnum.ACTIVE,
+        activatedAt: new Date(),
+        updatedBy: input.userId,
+      },
+    });
+
+    const { createdBy, updatedBy, ...rest } = updated;
+    rest.licenseKey = decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY);
+
+    return {
+      license: rest,
+    };
+  }
+
+  async getLicensePricingPlans(
+    input: GetLicensePricingPlansServiceInput,
+  ): Promise<GetLicensePricingPlansServiceResult> {
+    const plans = await this.licenseRepository.getLicensePricingPlans({
+      id: input.id,
+    });
+    return { plans };
+  }
+
+  async getDiscountRules(
+    input: GetDiscountRulesServiceInput,
+  ): Promise<GetDiscountRulesServiceResult> {
+    const rules = await this.licenseRepository.findActiveDiscountRules({
+      targetEntity: input.targetEntity,
+    });
+    return { rules };
   }
 
   // ========================================

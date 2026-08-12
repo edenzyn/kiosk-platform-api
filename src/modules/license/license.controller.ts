@@ -1,8 +1,8 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
-import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
 import type { LicenseService } from "./license.service";
 import { LicenseValidator } from "./license.validator";
@@ -14,10 +14,13 @@ export class LicenseController {
   // ? USER CLIENT APIS
   // ========================================
   getLicenses = async (req: Request, res: Response): Promise<void> => {
-    const queryDto = await LicenseValidator.getLicensesQuery.validate(req.query, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+    const queryDto = await LicenseValidator.getLicensesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
 
     const result = await this.licenseService.getLicenses({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
@@ -41,6 +44,76 @@ export class LicenseController {
     });
 
     res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  assignLicenseToBranch = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await LicenseValidator.assignToBranch.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.assignLicenseToBranch({
+      licenseId: req.params.id as string,
+      branchId: data.branchId,
+      userId: user.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  assignLicenseToDevice = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await LicenseValidator.assignToDevice.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.assignLicenseToDevice({
+      licenseId: req.params.id as string,
+      deviceId: data.deviceId,
+      userId: user.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getPricingPlans = async (req: Request, res: Response): Promise<void> => {
+    const query = await LicenseValidator.getPricingPlansQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const result = await this.licenseService.getLicensePricingPlans({
+      id: query.id,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getDiscountRules = async (req: Request, res: Response): Promise<void> => {
+    const query = await LicenseValidator.getDiscountRulesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const result = await this.licenseService.getDiscountRules({
+      targetEntity: query.targetEntity,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   // ========================================

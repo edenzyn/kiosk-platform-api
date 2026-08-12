@@ -1,6 +1,7 @@
 import * as yup from "yup";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 
 export const LicenseValidator = {
   activate: yup.object({
@@ -32,9 +33,35 @@ export const LicenseValidator = {
         .typeError("Quantity must be a number")
         .integer("Quantity must be an integer")
         .min(1, "Quantity must be at least 1")
-        .default(1)
-        .optional(),
-      branchId: yup.string().uuid().optional(),
+        .required("Quantity is required"),
+      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+    })
+    .noUnknown(),
+  assignToBranch: yup
+    .object({
+      branchId: yup.string().uuid().required("Branch ID is required"),
+    })
+    .noUnknown(),
+  assignToDevice: yup
+    .object({
+      deviceId: yup.string().uuid().required("Device ID is required"),
+    })
+    .noUnknown(),
+  getPricingPlansQuery: yup
+    .object({
+      id: yup.string().uuid().optional(),
+    })
+    .noUnknown(),
+  getDiscountRulesQuery: yup
+    .object({
+      targetEntity: yup
+        .number()
+        .typeError("Target entity must be a number")
+        .oneOf(
+          Object.values(LicenseDiscountRuleTargetEntityTypeEnum) as number[],
+          "Invalid target entity",
+        )
+        .required("Target entity is required"),
     })
     .noUnknown(),
 };

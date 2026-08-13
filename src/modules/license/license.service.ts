@@ -40,6 +40,7 @@ import type {
   GetLicensesServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
+  CreateLicenseHistoryRepoInput,
 } from "./license.types";
 
 export class LicenseService {
@@ -237,14 +238,17 @@ export class LicenseService {
         branchId: input.branchId,
         updatedBy: input.userId,
       },
-      historyEvent: {
-        eventType: LicenseHistoryEventTypeEnum.ASSIGNMENT,
-        previousStatus: license.status,
-        newStatus: license.status,
-        previousExpiresAt: license.expiresAt,
-        newExpiresAt: license.expiresAt,
-        remarks: "Assigned to branch",
-      },
+    });
+
+    await this._createLicenseHistory({
+      licenseId: license.id,
+      eventType: LicenseHistoryEventTypeEnum.ASSIGNMENT,
+      previousStatus: license.status,
+      newStatus: license.status,
+      previousExpiresAt: license.expiresAt,
+      newExpiresAt: license.expiresAt,
+      performedBy: input.userId,
+      remarks: "Assigned to branch",
     });
 
     const { createdBy, updatedBy, ...rest } = updated;
@@ -292,14 +296,17 @@ export class LicenseService {
         activatedAt: new Date(),
         updatedBy: input.userId,
       },
-      historyEvent: {
-        eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
-        previousStatus: license.status,
-        newStatus: LicenseStatusEnum.ACTIVE,
-        previousExpiresAt: license.expiresAt,
-        newExpiresAt: license.expiresAt,
-        remarks: "Assigned to device",
-      },
+    });
+
+    await this._createLicenseHistory({
+      licenseId: license.id,
+      eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
+      previousStatus: license.status,
+      newStatus: LicenseStatusEnum.ACTIVE,
+      previousExpiresAt: license.expiresAt,
+      newExpiresAt: license.expiresAt,
+      performedBy: input.userId,
+      remarks: "Assigned to device",
     });
 
     const { createdBy, updatedBy, ...rest } = updated;
@@ -537,6 +544,15 @@ export class LicenseService {
                 status: LicenseStatusEnum.EXPIRED,
               },
             });
+            await this._createLicenseHistory({
+              licenseId: rest.id,
+              eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+              previousStatus: LicenseStatusEnum.ACTIVE,
+              newStatus: LicenseStatusEnum.EXPIRED,
+              previousExpiresAt: expiresAtDate,
+              newExpiresAt: expiresAtDate,
+              remarks: "License status changed from Active to Expired because grace period ended",
+            });
             return {
               license: {
                 ...rest,
@@ -550,6 +566,15 @@ export class LicenseService {
             data: {
               status: LicenseStatusEnum.GRACE_PERIOD,
             },
+          });
+          await this._createLicenseHistory({
+            licenseId: rest.id,
+            eventType: LicenseHistoryEventTypeEnum.GRACE_PERIOD,
+            previousStatus: LicenseStatusEnum.ACTIVE,
+            newStatus: LicenseStatusEnum.GRACE_PERIOD,
+            previousExpiresAt: expiresAtDate,
+            newExpiresAt: expiresAtDate,
+            remarks: `License status changed to Grace Period (${gracePeriodDays} days) because it expired`,
           });
           return {
             license: {
@@ -567,6 +592,15 @@ export class LicenseService {
               data: {
                 status: LicenseStatusEnum.EXPIRED,
               },
+            });
+            await this._createLicenseHistory({
+              licenseId: rest.id,
+              eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+              previousStatus: LicenseStatusEnum.GRACE_PERIOD,
+              newStatus: LicenseStatusEnum.EXPIRED,
+              previousExpiresAt: expiresAtDate,
+              newExpiresAt: expiresAtDate,
+              remarks: "License status changed from Grace Period to Expired because grace period ended",
             });
             return {
               license: {
@@ -638,10 +672,26 @@ export class LicenseService {
       expiresAt,
     });
 
+    await this._createLicenseHistory({
+      licenseId: license.id,
+      eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
+      previousStatus: license.status,
+      newStatus: LicenseStatusEnum.ACTIVE,
+      previousExpiresAt: license.expiresAt,
+      newExpiresAt: expiresAt,
+      remarks: "License activated on device",
+    });
+
     const { createdBy, updatedBy, ...rest } = activated;
 
     rest.licenseKey = decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY);
 
     return { license: rest };
+  }
+
+  private async _createLicenseHistory(
+    input: CreateLicenseHistoryRepoInput,
+  ): Promise<void> {
+    await this.licenseRepository.createHistory(input);
   }
 }

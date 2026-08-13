@@ -224,14 +224,17 @@ export interface UpdateLicenseRepoInput {
       "branchId" | "deviceId" | "status" | "activatedAt" | "updatedBy"
     >
   >;
-  historyEvent?: {
-    eventType: LicenseHistoryEventTypeEnum;
-    previousStatus: LicenseStatusEnum;
-    newStatus: LicenseStatusEnum;
-    previousExpiresAt?: Date | null;
-    newExpiresAt?: Date | null;
-    remarks?: string;
-  };
+}
+
+export interface CreateLicenseHistoryRepoInput {
+  licenseId: string;
+  eventType: LicenseHistoryEventTypeEnum;
+  previousStatus: LicenseStatusEnum;
+  newStatus: LicenseStatusEnum;
+  previousExpiresAt?: Date | null;
+  newExpiresAt?: Date | null;
+  performedBy?: string | null;
+  remarks?: string | null;
 }
 export type UpdateLicenseRepoResult = LicenseEntity;
 

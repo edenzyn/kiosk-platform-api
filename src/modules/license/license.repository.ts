@@ -42,6 +42,7 @@ import type {
   GetLicensesRepoResult,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
+  CreateLicenseHistoryRepoInput,
   GetLicenseHistoryRepoInput,
   GetLicenseHistoryRepoResult,
   GetLicenseDetailsRepoInput,
@@ -338,37 +339,20 @@ export class LicenseRepository {
   async update(
     input: UpdateLicenseRepoInput,
   ): Promise<UpdateLicenseRepoResult> {
-    const result = await this.database.client.transaction(async (tx) => {
-      const [updated] = await tx
-        .update(licenses)
-        .set({
-          ...input.data,
-          updatedAt: new Date(),
-        })
-        .where(eq(licenses.id, input.licenseId))
-        .returning();
+    const [updated] = await this.database.client
+      .update(licenses)
+      .set({
+        ...input.data,
+        updatedAt: new Date(),
+      })
+      .where(eq(licenses.id, input.licenseId))
+      .returning();
 
-      if (!updated) {
-        throw new Error("Failed to update license");
-      }
+    if (!updated) {
+      throw new Error("Failed to update license");
+    }
 
-      if (input.historyEvent) {
-        await tx.insert(licenseHistory).values({
-          licenseId: input.licenseId,
-          eventType: input.historyEvent.eventType,
-          previousStatus: input.historyEvent.previousStatus,
-          newStatus: input.historyEvent.newStatus,
-          previousExpiresAt: input.historyEvent.previousExpiresAt,
-          newExpiresAt: input.historyEvent.newExpiresAt,
-          performedBy: input.data.updatedBy || null,
-          remarks: input.historyEvent.remarks,
-        });
-      }
-
-      return updated;
-    });
-
-    return result;
+    return updated;
   }
 
   async getLicensePricingPlans(
@@ -565,5 +549,20 @@ export class LicenseRepository {
       license: license || null,
       transactions,
     };
+  }
+
+  async createHistory(
+    input: CreateLicenseHistoryRepoInput,
+  ): Promise<void> {
+    await this.database.client.insert(licenseHistory).values({
+      licenseId: input.licenseId,
+      eventType: input.eventType,
+      previousStatus: input.previousStatus,
+      newStatus: input.newStatus,
+      previousExpiresAt: input.previousExpiresAt,
+      newExpiresAt: input.newExpiresAt,
+      performedBy: input.performedBy || null,
+      remarks: input.remarks || null,
+    });
   }
 }

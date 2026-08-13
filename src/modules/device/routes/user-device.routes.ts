@@ -12,23 +12,22 @@ const userDeviceRouter = Router();
 const deviceController =
   container.resolve<DeviceController>("deviceController");
 
-userDeviceRouter.get(
-  "/",
-  accessMiddleware({
-    organization: [...ORGANIZATION_DEVICE_READ_WRITE_PERMS],
-    branch: [...BRANCH_DEVICE_READ_WRITE_PERMS],
-  }),
-  deviceController.getDevices,
-);
-
-userDeviceRouter.post(
-  "/",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
-    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
-  }),
-  deviceController.createDevice,
-);
+userDeviceRouter
+  .route("/")
+  .get(
+    accessMiddleware({
+      organization: [...ORGANIZATION_DEVICE_READ_WRITE_PERMS],
+      branch: [...BRANCH_DEVICE_READ_WRITE_PERMS],
+    }),
+    deviceController.getDevices,
+  )
+  .post(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+      branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+    }),
+    deviceController.createDevice,
+  );
 
 userDeviceRouter.put(
   "/:id",

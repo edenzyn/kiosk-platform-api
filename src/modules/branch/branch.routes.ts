@@ -9,31 +9,30 @@ const branchRouter = Router();
 const branchController =
   container.resolve<BranchController>("branchController");
 
-branchRouter.post(
-  "/",
-  accessMiddleware({
-    organization: [
-      UserPermissions.ORGANIZATION_ALL_WRITE,
-      UserPermissions.ORGANIZATION_BRANCH_WRITE,
-      UserPermissions.ORGANIZATION_BRANCH_READ,
-    ],
-    branch: [],
-  }),
-  branchController.create,
-);
-
-branchRouter.get(
-  "/",
-  accessMiddleware({
-    organization: [
-      UserPermissions.ORGANIZATION_ALL_WRITE,
-      UserPermissions.ORGANIZATION_BRANCH_WRITE,
-      UserPermissions.ORGANIZATION_BRANCH_READ,
-    ],
-    branch: [...BRANCH_TOP_SCOPED_PERMISSIONS],
-  }),
-  branchController.getBranches,
-);
+branchRouter
+  .route("/")
+  .get(
+    accessMiddleware({
+      organization: [
+        UserPermissions.ORGANIZATION_ALL_WRITE,
+        UserPermissions.ORGANIZATION_BRANCH_WRITE,
+        UserPermissions.ORGANIZATION_BRANCH_READ,
+      ],
+      branch: [...BRANCH_TOP_SCOPED_PERMISSIONS],
+    }),
+    branchController.getBranches,
+  )
+  .post(
+    accessMiddleware({
+      organization: [
+        UserPermissions.ORGANIZATION_ALL_WRITE,
+        UserPermissions.ORGANIZATION_BRANCH_WRITE,
+        UserPermissions.ORGANIZATION_BRANCH_READ,
+      ],
+      branch: [],
+    }),
+    branchController.create,
+  );
 
 branchRouter.get(
   "/options",

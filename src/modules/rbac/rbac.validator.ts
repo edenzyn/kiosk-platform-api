@@ -106,4 +106,9 @@ export const RbacValidator = {
       .min(1, "At least one userId is required")
       .required("userIds is required"),
   }),
+
+  getUserRoles: paginationQuerySchema.shape({
+    userId: yup.string().uuid().required("User ID is required"),
+    search: yup.string().optional(),
+  }),
 };

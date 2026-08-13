@@ -13,6 +13,7 @@ import type { RbacController } from "./rbac.controller";
 
 const router = Router();
 const rbacController = container.resolve<RbacController>("rbacController");
+
 // ------------------
 //  ROLES
 // ------------------
@@ -33,14 +34,22 @@ router
     asyncHandler(rbacController.createRole),
   );
 
-router.put(
-  "/roles/:roleId",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
-    branch: [UserPermissions.BRANCH_ROLE_WRITE],
-  }),
-  asyncHandler(rbacController.updateRole),
-);
+router
+  .route("/roles/:roleId")
+  .put(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+      branch: [UserPermissions.BRANCH_ROLE_WRITE],
+    }),
+    asyncHandler(rbacController.updateRole),
+  )
+  .delete(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+      branch: [UserPermissions.BRANCH_ROLE_WRITE],
+    }),
+    asyncHandler(rbacController.deleteRole),
+  );
 
 router.post(
   "/roles/:roleId/assign",
@@ -51,22 +60,30 @@ router.post(
   asyncHandler(rbacController.assignRole),
 );
 
-router.delete(
-  "/roles/:roleId/users",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
-    branch: [UserPermissions.BRANCH_ROLE_WRITE],
-  }),
-  asyncHandler(rbacController.removeUserFromRole),
-);
+router
+  .route("/roles/:roleId/users")
+  .get(
+    accessMiddleware({
+      organization: ORGANIZATION_ROLE_READ_WRITE_PERMS,
+      branch: BRANCH_ROLE_READ_WRITE_PERMS,
+    }),
+    asyncHandler(rbacController.getRoleUsers),
+  )
+  .delete(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
+      branch: [UserPermissions.BRANCH_ROLE_WRITE],
+    }),
+    asyncHandler(rbacController.removeUserFromRole),
+  );
 
 router.get(
-  "/roles/:roleId/users",
+  "/users/:userId/roles",
   accessMiddleware({
     organization: ORGANIZATION_ROLE_READ_WRITE_PERMS,
     branch: BRANCH_ROLE_READ_WRITE_PERMS,
   }),
-  asyncHandler(rbacController.getRoleUsers),
+  asyncHandler(rbacController.getUserRoles),
 );
 
 router.post(
@@ -87,15 +104,6 @@ router.patch(
   asyncHandler(rbacController.toggleRoleStatus),
 );
 
-router.delete(
-  "/roles/:roleId",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_ROLE_WRITE],
-    branch: [UserPermissions.BRANCH_ROLE_WRITE],
-  }),
-  asyncHandler(rbacController.deleteRole),
-);
-
 // ------------------
 //  PERMISSIONS
 // ------------------
@@ -107,22 +115,21 @@ router.route("/permissions").get(
   asyncHandler(rbacController.getPermissionsByScopeAndTenant),
 );
 
-router.put(
-  "/permissions/:permissionId",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
-    branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
-  }),
-  asyncHandler(rbacController.assignPermission),
-);
-
-router.patch(
-  "/permissions/:permissionId",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
-    branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
-  }),
-  asyncHandler(rbacController.removePermission),
-);
+router
+  .route("/permissions/:permissionId")
+  .put(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
+      branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
+    }),
+    asyncHandler(rbacController.assignPermission),
+  )
+  .patch(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_PERMISSION_MANAGE],
+      branch: [UserPermissions.BRANCH_PERMISSION_MANAGE],
+    }),
+    asyncHandler(rbacController.removePermission),
+  );
 
 export default router;

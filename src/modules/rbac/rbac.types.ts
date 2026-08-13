@@ -135,6 +135,18 @@ export interface GetPermissionsByTenantServiceInput {
 export type GetPermissionsByTenantServiceResult =
   GetPermissionsByTenantResponseDto;
 
+export interface GetUserRolesServiceInput {
+  userId: string;
+  query: { search?: string; page: number; limit: number };
+}
+export interface GetUserRolesServiceResult {
+  roles: RoleEntity[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -260,4 +272,15 @@ export interface DeleteRoleRepoInput {
 export interface RemoveUserFromRoleRepoInput {
   userIds: string[];
   roleId: string;
+}
+
+export interface GetUserRolesRepoInput {
+  userId: string;
+  search?: string;
+  page: number;
+  limit: number;
+}
+export interface GetUserRolesRepoResult {
+  roles: RoleEntity[];
+  total: number;
 }

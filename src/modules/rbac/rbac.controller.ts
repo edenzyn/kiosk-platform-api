@@ -205,4 +205,22 @@ export class RbacController {
     );
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  getUserRoles = async (req: Request, res: Response): Promise<void> => {
+    const data = await RbacValidator.getUserRoles.validate(
+      { ...req.query, userId: req.params.userId },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.rbacService.getUserRoles({
+      userId: data.userId,
+      query: {
+        page: data.page,
+        limit: data.limit,
+        search: data.search,
+      },
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
 }

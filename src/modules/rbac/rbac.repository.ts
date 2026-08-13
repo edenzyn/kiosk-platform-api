@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, ilike, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
@@ -38,6 +38,8 @@ import type {
   UpdatePermissionMapperStatusRepoResult,
   UpdateRoleRepoInput,
   UpdateRoleRepoResult,
+  GetUserRolesRepoInput,
+  GetUserRolesRepoResult,
 } from "./rbac.types";
 import { permissionMapper as permissionsMapper } from "./schemas/permission-mapper.schema";
 import { permissions } from "./schemas/permission.schema";
@@ -335,5 +337,45 @@ export class RbacRepository {
           eq(userRolesMapper.roleId, input.roleId),
         ),
       );
+  }
+
+  async getUserRoles(
+    input: GetUserRolesRepoInput,
+  ): Promise<GetUserRolesRepoResult> {
+    const conditions = [eq(userRolesMapper.userId, input.userId)];
+    if (input.search) {
+      conditions.push(ilike(roles.name, `%${input.search}%`));
+    }
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(userRolesMapper)
+      .innerJoin(roles, eq(userRolesMapper.roleId, roles.id))
+      .where(and(...conditions));
+    const total = Number(countResult?.count || 0);
+
+    const rows = await this.database.client
+      .select({
+        id: roles.id,
+        organizationId: roles.organizationId,
+        branchId: roles.branchId,
+        name: roles.name,
+        description: roles.description,
+        rank: roles.rank,
+        isSystem: roles.isSystem,
+        isActive: roles.isActive,
+        createdAt: roles.createdAt,
+        updatedAt: roles.updatedAt,
+        createdBy: roles.createdBy,
+        updatedBy: roles.updatedBy,
+      })
+      .from(userRolesMapper)
+      .innerJoin(roles, eq(userRolesMapper.roleId, roles.id))
+      .where(and(...conditions))
+      .orderBy(roles.rank)
+      .limit(input.limit)
+      .offset((input.page - 1) * input.limit);
+
+    return { roles: rows, total };
   }
 }

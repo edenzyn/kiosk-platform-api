@@ -126,6 +126,32 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.licenseIdParam.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.licenseService.getLicenseHistory({
+      licenseId: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getLicenseDetails = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.licenseIdParam.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.licenseService.getLicenseDetails({
+      licenseId: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   // ========================================
   // ? DEVICE CLIENT APIS
   // ========================================

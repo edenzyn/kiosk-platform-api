@@ -28,8 +28,12 @@ import type {
   ExtendLicenseServiceResult,
   GetDiscountRulesServiceInput,
   GetDiscountRulesServiceResult,
+  GetLicenseDetailsServiceInput,
+  GetLicenseDetailsServiceResult,
   GetLicenseForDeviceServiceInput,
   GetLicenseForDeviceServiceResult,
+  GetLicenseHistoryServiceInput,
+  GetLicenseHistoryServiceResult,
   GetLicensePricingPlansServiceInput,
   GetLicensePricingPlansServiceResult,
   GetLicensesServiceInput,
@@ -233,6 +237,14 @@ export class LicenseService {
         branchId: input.branchId,
         updatedBy: input.userId,
       },
+      historyEvent: {
+        eventType: LicenseHistoryEventTypeEnum.ASSIGNMENT,
+        previousStatus: license.status,
+        newStatus: license.status,
+        previousExpiresAt: license.expiresAt,
+        newExpiresAt: license.expiresAt,
+        remarks: "Assigned to branch",
+      },
     });
 
     const { createdBy, updatedBy, ...rest } = updated;
@@ -280,6 +292,14 @@ export class LicenseService {
         activatedAt: new Date(),
         updatedBy: input.userId,
       },
+      historyEvent: {
+        eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
+        previousStatus: license.status,
+        newStatus: LicenseStatusEnum.ACTIVE,
+        previousExpiresAt: license.expiresAt,
+        newExpiresAt: license.expiresAt,
+        remarks: "Assigned to device",
+      },
     });
 
     const { createdBy, updatedBy, ...rest } = updated;
@@ -306,6 +326,166 @@ export class LicenseService {
       targetEntity: input.targetEntity,
     });
     return { rules };
+  }
+
+  async extendLicense(
+    input: ExtendLicenseServiceInput,
+  ): Promise<ExtendLicenseServiceResult> {
+    const license = await this.licenseRepository.findById({
+      licenseId: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (license.deviceId) {
+      await this._checkActiveLicenseExists(license.deviceId, license.id);
+    }
+
+    const pricingPlans = await this.licenseRepository.getLicensePricingPlans({
+      id: input.dto.pricingPlanId,
+    });
+    const plan = pricingPlans[0];
+    if (!plan) {
+      throw new AppError("Pricing plan not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const durationDays = plan.durationDays;
+    const basePrice = plan.price;
+    const currency = plan.currency;
+
+    const {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      totalAmount,
+      unitPrice,
+      baseUnitPrice,
+    } = calculateLicensePurchasePricing(Number(basePrice), 1, 0);
+
+    const now = new Date();
+    const currentExpiresAt = license.expiresAt
+      ? new Date(license.expiresAt)
+      : null;
+    let baseDate = now;
+    if (
+      currentExpiresAt &&
+      currentExpiresAt > now &&
+      (license.status === LicenseStatusEnum.ACTIVE ||
+        license.status === LicenseStatusEnum.GRACE_PERIOD)
+    ) {
+      baseDate = currentExpiresAt;
+    }
+
+    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
+
+    let newStatus = LicenseStatusEnum.ACTIVE;
+    if (!license.deviceId) {
+      newStatus = LicenseStatusEnum.AVAILABLE;
+    }
+
+    const updated = await this.licenseRepository.extendLicense({
+      licenseId: license.id,
+      newExpiresAt,
+      newStatus,
+      transaction: {
+        userId: input.userId,
+        transactionType: LicenseTransactionTypeEnum.RENEWAL,
+        subtotalAmount: subtotal,
+        discountAmount: discountAmount,
+        discountPercentage: discountPercentage,
+        appliedDiscountRuleId: null,
+        totalAmount: totalAmount,
+        currency,
+        paymentStatus: PaymentStatusEnum.COMPLETED,
+      },
+      transactionItem: {
+        actionType: LicenseTransactionActionTypeEnum.RENEWAL,
+        durationDays,
+        baseUnitPrice,
+        discountPercentage,
+        unitPrice,
+      },
+      historyEvent: {
+        eventType: LicenseHistoryEventTypeEnum.EXTEND,
+        previousStatus: license.status,
+        previousExpiresAt: license.expiresAt,
+        remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
+      },
+    });
+
+    const { createdBy, updatedBy, ...rest } = updated;
+    return {
+      license: {
+        ...rest,
+        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      },
+    };
+  }
+
+  async getLicenseHistory(
+    input: GetLicenseHistoryServiceInput,
+  ): Promise<GetLicenseHistoryServiceResult> {
+    const license = await this.licenseRepository.findById({
+      licenseId: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const history = await this.licenseRepository.getLicenseHistory({
+      licenseId: input.licenseId,
+    });
+
+    return { history };
+  }
+
+  async getLicenseDetails(
+    input: GetLicenseDetailsServiceInput,
+  ): Promise<GetLicenseDetailsServiceResult> {
+    const details = await this.licenseRepository.getLicenseDetails({
+      licenseId: input.licenseId,
+    });
+
+    if (!details.license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (
+      input.effectiveTenant.organizationId &&
+      details.license.organizationId !== input.effectiveTenant.organizationId
+    ) {
+      throw new AppError("Access denied to license", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const decryptedLicense = {
+      ...details.license,
+      licenseKey: decryptData(
+        details.license.licenseKey,
+        env.LICENSE_ENCRYPTION_KEY,
+      ),
+    };
+
+    return {
+      license: decryptedLicense,
+      transactions: details.transactions,
+    };
   }
 
   // ========================================
@@ -463,107 +643,5 @@ export class LicenseService {
     rest.licenseKey = decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY);
 
     return { license: rest };
-  }
-
-  async extendLicense(
-    input: ExtendLicenseServiceInput,
-  ): Promise<ExtendLicenseServiceResult> {
-    const license = await this.licenseRepository.findById({
-      licenseId: input.licenseId,
-      organizationId: input.effectiveTenant.organizationId as string,
-    });
-    if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    if (license.deviceId) {
-      await this._checkActiveLicenseExists(license.deviceId, license.id);
-    }
-
-    const pricingPlans = await this.licenseRepository.getLicensePricingPlans({
-      id: input.dto.pricingPlanId,
-    });
-    const plan = pricingPlans[0];
-    if (!plan) {
-      throw new AppError("Pricing plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    const durationDays = plan.durationDays;
-    const basePrice = plan.price;
-    const currency = plan.currency;
-
-    const {
-      subtotal,
-      discountPercentage,
-      discountAmount,
-      totalAmount,
-      unitPrice,
-      baseUnitPrice,
-    } = calculateLicensePurchasePricing(Number(basePrice), 1, 0);
-
-    const now = new Date();
-    const currentExpiresAt = license.expiresAt
-      ? new Date(license.expiresAt)
-      : null;
-    let baseDate = now;
-    if (
-      currentExpiresAt &&
-      currentExpiresAt > now &&
-      (license.status === LicenseStatusEnum.ACTIVE ||
-        license.status === LicenseStatusEnum.GRACE_PERIOD)
-    ) {
-      baseDate = currentExpiresAt;
-    }
-
-    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
-
-    let newStatus = LicenseStatusEnum.ACTIVE;
-    if (!license.deviceId) {
-      newStatus = LicenseStatusEnum.AVAILABLE;
-    }
-
-    const updated = await this.licenseRepository.extendLicense({
-      licenseId: license.id,
-      newExpiresAt,
-      newStatus,
-      transaction: {
-        userId: input.userId,
-        transactionType: LicenseTransactionTypeEnum.RENEWAL,
-        subtotalAmount: subtotal,
-        discountAmount: discountAmount,
-        discountPercentage: discountPercentage,
-        appliedDiscountRuleId: null,
-        totalAmount: totalAmount,
-        currency,
-        paymentStatus: PaymentStatusEnum.COMPLETED,
-      },
-      transactionItem: {
-        actionType: LicenseTransactionActionTypeEnum.RENEWAL,
-        durationDays,
-        baseUnitPrice,
-        discountPercentage,
-        unitPrice,
-      },
-      historyEvent: {
-        eventType: LicenseHistoryEventTypeEnum.EXTEND,
-        previousStatus: license.status,
-        previousExpiresAt: license.expiresAt,
-        remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
-      },
-    });
-
-    const { createdBy, updatedBy, ...rest } = updated;
-    return {
-      license: {
-        ...rest,
-        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
-      },
-    };
   }
 }

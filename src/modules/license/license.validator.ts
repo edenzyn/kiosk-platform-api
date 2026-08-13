@@ -69,4 +69,9 @@ export const LicenseValidator = {
       pricingPlanId: yup.string().uuid().required("Pricing plan ID is required"),
     })
     .noUnknown(),
+  licenseIdParam: yup
+    .object({
+      id: yup.string().uuid("Invalid license ID").required("License ID is required"),
+    })
+    .noUnknown(),
 };

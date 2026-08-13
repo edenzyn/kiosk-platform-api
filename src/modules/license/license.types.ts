@@ -3,6 +3,10 @@ import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type { LicenseDiscountRuleEntity } from "./schemas/license-discount-rule.schema";
 import type { LicensePricingEntity } from "./schemas/license-pricing.schema";
 import type { LicenseEntity } from "./schemas/license.schema";
+import type { LicenseHistoryEntity } from "./schemas/license-history.schema";
+import type { LicenseTransactionItemEntity } from "./schemas/license-transaction-item.schema";
+import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
+import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -107,6 +111,36 @@ export interface ExtendLicenseServiceResult {
   license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
 }
 
+export interface GetLicenseHistoryServiceInput {
+  licenseId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface GetLicenseHistoryServiceResult {
+  history: (LicenseHistoryEntity & {
+    performedByName: string | null;
+    performedByEmail: string | null;
+  })[];
+}
+
+export interface GetLicenseDetailsServiceInput {
+  licenseId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface GetLicenseDetailsServiceResult {
+  license: Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
+    branchName: string | null;
+    deviceName: string | null;
+  };
+  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
+    paymentStatus: number | null;
+    currency: string | null;
+    totalAmount: string | null;
+    performedByName: string | null;
+  })[];
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -190,6 +224,14 @@ export interface UpdateLicenseRepoInput {
       "branchId" | "deviceId" | "status" | "activatedAt" | "updatedBy"
     >
   >;
+  historyEvent?: {
+    eventType: LicenseHistoryEventTypeEnum;
+    previousStatus: LicenseStatusEnum;
+    newStatus: LicenseStatusEnum;
+    previousExpiresAt?: Date | null;
+    newExpiresAt?: Date | null;
+    remarks?: string;
+  };
 }
 export type UpdateLicenseRepoResult = LicenseEntity;
 
@@ -250,3 +292,29 @@ export interface ExtendLicenseRepoInput {
 }
 
 export type ExtendLicenseRepoResult = LicenseEntity;
+
+export interface GetLicenseHistoryRepoInput {
+  licenseId: string;
+}
+
+export type GetLicenseHistoryRepoResult = (LicenseHistoryEntity & {
+  performedByName: string | null;
+  performedByEmail: string | null;
+})[];
+
+export interface GetLicenseDetailsRepoInput {
+  licenseId: string;
+}
+
+export interface GetLicenseDetailsRepoResult {
+  license: (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
+    branchName: string | null;
+    deviceName: string | null;
+  }) | null;
+  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
+    paymentStatus: number | null;
+    currency: string | null;
+    totalAmount: string | null;
+    performedByName: string | null;
+  })[];
+}

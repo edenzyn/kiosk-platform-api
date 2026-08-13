@@ -41,6 +41,20 @@ import type {
 export class LicenseService {
   constructor(private readonly licenseRepository: LicenseRepository) {}
 
+  private async _checkActiveLicenseExists(
+    deviceId: string,
+    excludeLicenseId?: string,
+  ): Promise<void> {
+    const activeLicense = await this.licenseRepository.findActiveByDeviceId({
+      deviceId,
+    });
+    if (activeLicense && activeLicense.id !== excludeLicenseId) {
+      throw new AppError("Device already has an active license assigned", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+  }
+
   // ========================================
   // ? USER CLIENT SERVICES
   // ========================================
@@ -256,16 +270,7 @@ export class LicenseService {
       });
     }
 
-    const activeLicenseForDevice =
-      await this.licenseRepository.findActiveByDeviceId({
-        deviceId: input.deviceId,
-      });
-
-    if (activeLicenseForDevice) {
-      throw new AppError("Device already has an active license assigned", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
+    await this._checkActiveLicenseExists(input.deviceId);
 
     const updated = await this.licenseRepository.update({
       licenseId: license.id,
@@ -472,6 +477,10 @@ export class LicenseService {
         statusCode: HttpStatusCodes.NOT_FOUND,
         code: ErrorCodes.RESOURCE_NOT_FOUND,
       });
+    }
+
+    if (license.deviceId) {
+      await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
     const pricingPlans = await this.licenseRepository.getLicensePricingPlans({

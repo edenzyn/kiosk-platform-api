@@ -339,11 +339,27 @@ export class LicenseService {
       const expiresAtDate = rest.expiresAt ? new Date(rest.expiresAt) : null;
 
       if (expiresAtDate && now > expiresAtDate) {
+        const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
+        const gracePeriodEndDate = dayjs(expiresAtDate)
+          .add(gracePeriodDays, "day")
+          .toDate();
+
         if (rest.status === LicenseStatusEnum.ACTIVE) {
-          const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
-          const gracePeriodEndDate = dayjs(expiresAtDate)
-            .add(gracePeriodDays, "day")
-            .toDate();
+          if (now >= gracePeriodEndDate) {
+            await this.licenseRepository.update({
+              licenseId: rest.id,
+              data: {
+                status: LicenseStatusEnum.EXPIRED,
+              },
+            });
+            return {
+              license: {
+                ...rest,
+                status: LicenseStatusEnum.EXPIRED,
+              },
+            };
+          }
+
           await this.licenseRepository.update({
             licenseId: rest.id,
             data: {
@@ -360,11 +376,6 @@ export class LicenseService {
         }
 
         if (rest.status === LicenseStatusEnum.GRACE_PERIOD) {
-          const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
-          const gracePeriodEndDate = dayjs(expiresAtDate)
-            .add(gracePeriodDays, "day")
-            .toDate();
-
           if (now >= gracePeriodEndDate) {
             await this.licenseRepository.update({
               licenseId: rest.id,

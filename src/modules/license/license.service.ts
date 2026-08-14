@@ -24,6 +24,7 @@ import type {
   AssignLicenseToBranchServiceResult,
   AssignLicenseToDeviceServiceInput,
   AssignLicenseToDeviceServiceResult,
+  CreateLicenseHistoryRepoInput,
   ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
   GetDiscountRulesServiceInput,
@@ -40,7 +41,6 @@ import type {
   GetLicensesServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
-  CreateLicenseHistoryRepoInput,
 } from "./license.types";
 
 export class LicenseService {
@@ -551,7 +551,8 @@ export class LicenseService {
               newStatus: LicenseStatusEnum.EXPIRED,
               previousExpiresAt: expiresAtDate,
               newExpiresAt: expiresAtDate,
-              remarks: "License status changed from Active to Expired because grace period ended",
+              remarks:
+                "License status changed from Active to Expired because grace period ended",
             });
             return {
               license: {
@@ -600,7 +601,8 @@ export class LicenseService {
               newStatus: LicenseStatusEnum.EXPIRED,
               previousExpiresAt: expiresAtDate,
               newExpiresAt: expiresAtDate,
-              remarks: "License status changed from Grace Period to Expired because grace period ended",
+              remarks:
+                "License status changed from Grace Period to Expired because grace period ended",
             });
             return {
               license: {
@@ -641,7 +643,7 @@ export class LicenseService {
       });
     }
 
-    if (license.status === LicenseStatusEnum.ACTIVE && license.deviceId) {
+    if (license.status === LicenseStatusEnum.ACTIVE || license.deviceId) {
       throw new AppError(
         "This license key is already activated on another device.",
         {

@@ -71,6 +71,50 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/auth/platform/login": {
+    post: {
+      tags: ["Auth"],
+      summary: "Platform super-admin login",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["email", "password"],
+              properties: {
+                email: {
+                  type: "string",
+                  description: "Email address",
+                },
+                password: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description:
+            "Successfully authenticated platform user (Returns user info and sets JWT cookies)",
+          headers: {
+            "Set-Cookie": {
+              description: "x-access-token (accessible to client scripts) and x-refresh-token (HttpOnly)",
+              schema: {
+                type: "string"
+              }
+            }
+          }
+        },
+        "401": {
+          description: "Invalid credentials",
+        },
+        "403": {
+          description: "Access denied: Not a platform user",
+        },
+      },
+    },
+  },
   "/auth/refresh": {
     post: {
       tags: ["Auth"],

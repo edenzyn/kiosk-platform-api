@@ -1,5 +1,10 @@
 import { UserPermissions } from "../enums/rbac/user-permission.enum";
 
+export const PLATFORM_TOP_PERMISSIONS = [
+  UserPermissions.PLATFORM_ALL_WRITE,
+  UserPermissions.PLATFORM_ALL_READ,
+];
+
 export const ORGANIZATION_TOP_PERMISSIONS = [
   UserPermissions.ORGANIZATION_ALL_WRITE,
   UserPermissions.ORGANIZATION_ALL_READ,
@@ -89,4 +94,3 @@ export const BRANCH_LICENSE_READ_WRITE_PERMS = [
   UserPermissions.BRANCH_LICENSE_READ,
   UserPermissions.BRANCH_LICENSE_WRITE,
 ];
-

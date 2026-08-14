@@ -17,8 +17,14 @@ import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
-import type { GetUsersRequestDto, GetUsersResponseDto } from "./dtos/get-users.dtos";
-import type { InviteUserRequestDto, InviteUserResponseDto } from "./dtos/invite-user.dtos";
+import type {
+  GetUsersRequestDto,
+  GetUsersResponseDto,
+} from "./dtos/get-users.dtos";
+import type {
+  InviteUserRequestDto,
+  InviteUserResponseDto,
+} from "./dtos/invite-user.dtos";
 import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos";
 import type { UserRepository } from "./user.repository";
 import type {
@@ -39,7 +45,7 @@ export class UserService {
     userId: string,
     organizationId: string | null,
     branchId: string | null,
-    userScope: UserScopeTypeEnums,
+    userScope?: UserScopeTypeEnums,
   ): Promise<{
     permissions: UserPermissions[];
     availableScopes: UserScope[];
@@ -59,8 +65,9 @@ export class UserService {
       };
     }
 
-    const organization =
-      await this.organizationRepository.findById({ id: organizationId });
+    const organization = await this.organizationRepository.findById({
+      id: organizationId,
+    });
 
     if (!organization) {
       return {
@@ -80,8 +87,9 @@ export class UserService {
         createdAt: null,
       });
 
-      const { branches } =
-        await this.branchRepository.getBranches({ organizationId });
+      const { branches } = await this.branchRepository.getBranches({
+        organizationId,
+      });
 
       for (const branch of branches) {
         availableScopes.push({
@@ -142,7 +150,9 @@ export class UserService {
       userScope,
     );
 
-    const topRole = await this.rbacRepository.getUsersTopRankedRole({ userId: user.id });
+    const topRole = await this.rbacRepository.getUsersTopRankedRole({
+      userId: user.id,
+    });
     const topRoleDto = topRole
       ? {
           name: topRole.name,
@@ -178,9 +188,9 @@ export class UserService {
 
     const usersWithTopRole = await Promise.all(
       users.map(async (user) => {
-        const topRole = await this.rbacRepository.getUsersTopRankedRole(
-          { userId: user.id },
-        );
+        const topRole = await this.rbacRepository.getUsersTopRankedRole({
+          userId: user.id,
+        });
         const topRoleDto = topRole
           ? {
               id: topRole.id,
@@ -211,7 +221,9 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<InviteUserResponseDto> {
-    const existingUser = await this.userRepository.findByEmail({ email: dto.email });
+    const existingUser = await this.userRepository.findByEmail({
+      email: dto.email,
+    });
     if (existingUser) {
       throw new AppError("User already exists with this email address", {
         statusCode: HttpStatusCodes.CONFLICT,
@@ -220,7 +232,9 @@ export class UserService {
     }
 
     const existingPendingInvitation =
-      await this.userRepository.findPendingInvitationByEmail({ email: dto.email });
+      await this.userRepository.findPendingInvitationByEmail({
+        email: dto.email,
+      });
     if (existingPendingInvitation) {
       throw new AppError(
         "A pending invitation already exists for this email address",

@@ -6,6 +6,7 @@ import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
@@ -23,14 +24,16 @@ import type { UserRepository } from "../user/user.repository";
 import type { UserService } from "../user/user.service";
 import type { AuthRepository } from "./auth.repository";
 import type {
-  LoginServiceInput,
-  LoginServiceResult,
-  LoginDeviceServiceInput,
-  LoginDeviceServiceResult,
   AcceptInvitationServiceInput,
   AcceptInvitationServiceResult,
-  RefreshTokenServiceResult,
+  LoginDeviceServiceInput,
+  LoginDeviceServiceResult,
+  LoginPlatformUserServiceInput,
+  LoginPlatformUserServiceResult,
+  LoginServiceInput,
+  LoginServiceResult,
   LogoutServiceResult,
+  RefreshTokenServiceResult,
 } from "./auth.types";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
@@ -121,12 +124,22 @@ export class AuthService {
       });
     }
 
+    if (user.userType === UserTypeEnums.PLATFORM) {
+      throw new AppError(
+        "Platform users must sign in through the platform portal",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
     const { password, ...userWithoutPassword } = user;
     const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
       user: {
         id: user.id,
         organizationId: user.organizationId ?? undefined,
         branchId: user.branchId ?? undefined,
+        userType: user.userType,
       },
     });
 
@@ -160,6 +173,71 @@ export class AuthService {
       tokens,
       permissions,
       availableScopes,
+    };
+  }
+
+  // Platform user login (SuperAdmin)
+  async loginPlatformUser(
+    dto: LoginPlatformUserServiceInput,
+  ): Promise<LoginPlatformUserServiceResult> {
+    const user = await this.userRepository.findByEmail({ email: dto.email });
+
+    if (!user) {
+      throw new AppError("Invalid Credentials", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (
+      user.userType !== UserTypeEnums.PLATFORM ||
+      !!user.organizationId ||
+      !!user.branchId
+    ) {
+      throw new AppError("Access Denied, You are not a platform user", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const isMatch = await compareHashedData(dto.password, user.password);
+    if (!isMatch) {
+      throw new AppError("Invalid Credentials", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+      user: {
+        id: user.id,
+        organizationId: user.organizationId ?? undefined,
+        branchId: user.branchId ?? undefined,
+        userType: user.userType,
+      },
+    });
+
+    await this.authRepository.createRefreshToken({
+      data: {
+        id: generatedTokens.refreshTokenId,
+        userId: user.id,
+        tokenHash: hashSha256(generatedTokens.refreshToken),
+        expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
+      },
+    });
+
+    const tokens = {
+      accessToken: generatedTokens.accessToken,
+      refreshToken: generatedTokens.refreshToken,
+    };
+
+    const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
+      userId: user.id,
+    });
+
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      tokens,
+      permissions: Array.from(permissionKeys) as UserPermissions[],
     };
   }
 
@@ -277,6 +355,7 @@ export class AuthService {
         id: createdUser.id,
         organizationId: createdUser.organizationId ?? undefined,
         branchId: createdUser.branchId ?? undefined,
+        userType: createdUser.userType,
       },
     });
 
@@ -313,9 +392,7 @@ export class AuthService {
     };
   }
 
-  async refreshToken(
-    refreshToken: string,
-  ): Promise<RefreshTokenServiceResult> {
+  async refreshToken(refreshToken: string): Promise<RefreshTokenServiceResult> {
     try {
       const decoded = verifyToken<RefreshTokenPayload>(
         refreshToken,
@@ -330,7 +407,9 @@ export class AuthService {
       }
 
       if (decoded.device?.id) {
-        const device = await this.deviceRepository.findById({ id: decoded.device.id });
+        const device = await this.deviceRepository.findById({
+          id: decoded.device.id,
+        });
         if (!device || !device.isActive) {
           throw new AppError("Invalid or expired refresh token", {
             statusCode: HttpStatusCodes.UNAUTHORIZED,
@@ -419,6 +498,7 @@ export class AuthService {
             id: user.id,
             organizationId: user.organizationId ?? undefined,
             branchId: user.branchId ?? undefined,
+            userType: user.userType,
           },
         },
         customRefreshExp,
@@ -471,8 +551,12 @@ export class AuthService {
   // ========================================
   // ? DEVICE CLIENT SERVICES
   // ========================================
-  async loginDevice(dto: LoginDeviceServiceInput): Promise<LoginDeviceServiceResult> {
-    const device = await this.deviceRepository.findByDeviceCode({ deviceCode: dto.deviceCode });
+  async loginDevice(
+    dto: LoginDeviceServiceInput,
+  ): Promise<LoginDeviceServiceResult> {
+    const device = await this.deviceRepository.findByDeviceCode({
+      deviceCode: dto.deviceCode,
+    });
 
     if (!device) {
       throw new AppError("Device not found", {
@@ -496,7 +580,7 @@ export class AuthService {
       });
     }
 
-    const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+    const generatedTokens = this._generateTokens(ClientTypeEnum.DEVICE_CLIENT, {
       device: {
         id: device.id,
         organizationId: device.organizationId,

@@ -27,6 +27,18 @@ export interface LoginServiceResult {
   availableScopes: UserScope[];
 }
 
+export interface LoginPlatformUserServiceInput {
+  email: string;
+  password: string;
+}
+
+export interface LoginPlatformUserServiceResult {
+  clientType: ClientTypeEnum.USER_CLIENT;
+  user: Omit<UserEntity, "password">;
+  tokens: AuthTokens;
+  permissions: UserPermissions[];
+}
+
 export interface LoginDeviceServiceInput {
   deviceCode: string;
   pin: string;

@@ -25,7 +25,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed": "tsx ./src/db/seeds/add-permissions-seed.ts"
+    "db:seed": "tsx ./src/db/seeds/add-permissions-seed.ts",
+    "db:seed:platform": "tsx ./src/db/seeds/platform-user-seed.ts"
   },
   "dependencies": {
     "awesome-phonenumber": "^7.8.0",

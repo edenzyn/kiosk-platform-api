@@ -7,7 +7,7 @@ import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 
 function getScopeForKey(key: string): PermissionScope {
-  if (key.startsWith("all:")) {
+  if (key.startsWith("platform:")) {
     return PermissionScope.PLATFORM;
   }
   if (key.startsWith("organization:")) {
@@ -27,8 +27,8 @@ function formatDescription(key: string): string {
 }
 
 const PRIVILEGED_KEYS = new Set<string>([
-  UserPermissions.ALL_READ,
-  UserPermissions.ALL_WRITE,
+  UserPermissions.PLATFORM_ALL_READ,
+  UserPermissions.PLATFORM_ALL_WRITE,
   UserPermissions.ORGANIZATION_ALL_READ,
   UserPermissions.ORGANIZATION_ALL_WRITE,
   UserPermissions.BRANCH_ALL_READ,
@@ -57,9 +57,7 @@ export async function runSeedPermissions() {
   const sqlContent = fs.readFileSync(sqlFilePath, "utf-8");
   await db.execute(sql.raw(sqlContent));
 
-  console.log(
-    "Updating SQL function fn_get_user_permission_keys_by_tenant...",
-  );
+  console.log("Updating SQL function fn_get_user_permission_keys_by_tenant...");
   await db.execute(
     sql`DROP FUNCTION IF EXISTS fn_get_user_permission_keys_by_tenant(UUID, UUID, UUID);`,
   );
@@ -70,9 +68,7 @@ export async function runSeedPermissions() {
   const userPermsSql = fs.readFileSync(userPermsSqlPath, "utf-8");
   await db.execute(sql.raw(userPermsSql));
 
-  console.log(
-    "Updating SQL function fn_get_roles_by_tenant_and_scope...",
-  );
+  console.log("Updating SQL function fn_get_roles_by_tenant_and_scope...");
   await db.execute(
     sql`DROP FUNCTION IF EXISTS fn_get_roles_by_tenant(TEXT, UUID, UUID);`,
   );

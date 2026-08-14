@@ -1,10 +1,27 @@
 export enum UserPermissions {
   // ======================================================
-  // Global (Platform)
-  // Used only by the platform roles.
+  // Platform
   // ======================================================
-  ALL_READ = "all:read",
-  ALL_WRITE = "all:write",
+  PLATFORM_ALL_READ = "platform:all:read",
+  PLATFORM_ALL_WRITE = "platform:all:write",
+  PLATFORM_BASIC = "platform:basic",
+
+  PLATFORM_ORGANIZATION_READ = "platform:organization:read",
+  PLATFORM_ORGANIZATION_WRITE = "platform:organization:write",
+
+  PLATFORM_DEVICE_READ = "platform:device:read",
+  PLATFORM_DEVICE_WRITE = "platform:device:write",
+
+  PLATFORM_LICENSE_READ = "platform:license:read",
+  PLATFORM_LICENSE_WRITE = "platform:license:write",
+
+  PLATFORM_ROLE_READ = "platform:role:read",
+  PLATFORM_ROLE_WRITE = "platform:role:write",
+
+  PLATFORM_AUDIT_READ = "platform:audit:read",
+
+  PLATFORM_SETTING_READ = "platform:setting:read",
+  PLATFORM_SETTING_WRITE = "platform:setting:write",
 
   // ======================================================
   // Organization

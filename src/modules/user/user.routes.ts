@@ -12,7 +12,14 @@ import type { UserController } from "./user.controller";
 const router = Router();
 const userController = container.resolve<UserController>("userController");
 
-router.get("/e", asyncHandler(userController.checkAuth));
+router.get(
+  "/e",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.checkAuth),
+);
 router.get(
   "/",
   accessMiddleware({

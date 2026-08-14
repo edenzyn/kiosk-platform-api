@@ -16,6 +16,7 @@ import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
+import type { RbacService } from "../rbac/rbac.service";
 import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
 import type {
   GetUsersRequestDto,
@@ -39,6 +40,7 @@ export class UserService {
     private readonly mailService: MailService,
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
+    private readonly rbacService: RbacService,
   ) {}
 
   async getPermissionsAndScopes(
@@ -246,6 +248,10 @@ export class UserService {
     }
 
     const branchId = dto.branchId || effectiveTenant.branchId;
+
+    if (dto.roles && dto.roles.length > 0) {
+      await this.rbacService.validateUserCanAssignRoles(userToken, dto.roles);
+    }
 
     const token = generateToken(
       {

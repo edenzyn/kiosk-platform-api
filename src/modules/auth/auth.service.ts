@@ -6,8 +6,10 @@ import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import {
@@ -344,6 +346,29 @@ export class AuthService {
       }
     }
 
+    const userScope = getUserScope(createdUser);
+
+    // Assign scope-specific basic permission to the user
+    const basicPermissionKey =
+      userScope === UserScopeTypeEnums.BRANCH
+        ? UserPermissions.BRANCH_BASIC
+        : UserPermissions.ORGANIZATION_BASIC;
+
+    const [basicPerm] = await this.rbacRepository.getPermissionsByKeys({
+      keys: [basicPermissionKey],
+    });
+
+    if (basicPerm) {
+      await this.rbacRepository.createPermissionMapper({
+        entityType: PermissionEntityType.USER,
+        entityId: createdUser.id,
+        permissionId: basicPerm.id,
+        organizationId: createdUser.organizationId,
+        branchId: createdUser.branchId,
+        createdBy: createdUser.id,
+      });
+    }
+
     await this.userRepository.updateInvitationStatus({
       id: invitation.id,
       status: UserInvitationStatusEnum.ACCEPTED,
@@ -369,8 +394,6 @@ export class AuthService {
     });
 
     const { password, ...userWithoutPassword } = createdUser;
-
-    const userScope = getUserScope(createdUser);
 
     const { permissions, availableScopes } =
       await this.userService.getPermissionsAndScopes(

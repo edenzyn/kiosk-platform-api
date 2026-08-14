@@ -147,6 +147,18 @@ export interface GetUserRolesServiceResult {
   totalPages: number;
 }
 
+export interface ValidateUserCanManageRoleServiceInput {
+  user: UserTokenDto;
+  roleId: string;
+}
+export type ValidateUserCanManageRoleServiceResult = RoleEntity;
+
+export interface ValidateUserCanAssignRolesServiceInput {
+  user: UserTokenDto;
+  roleIds: string[];
+}
+export type ValidateUserCanAssignRolesServiceResult = boolean;
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================

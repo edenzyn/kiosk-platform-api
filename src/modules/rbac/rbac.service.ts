@@ -27,11 +27,11 @@ import type {
 } from "./dtos/role/get-roles.dtos";
 import type { UpdateRoleRequestDto } from "./dtos/role/update-role.dtos";
 import type { RbacRepository } from "./rbac.repository";
-import type { RoleEntity } from "./schemas/role.schema";
 import type {
   GetUserRolesServiceInput,
   GetUserRolesServiceResult,
 } from "./rbac.types";
+import type { RoleEntity } from "./schemas/role.schema";
 
 export class RbacService {
   constructor(
@@ -65,10 +65,10 @@ export class RbacService {
     return PermissionScope.PLATFORM;
   }
 
-  private async _assertCanActOnRole(
+  async validateUserCanManageRole(
     user: UserTokenDto,
     roleId: string,
-  ): Promise<void> {
+  ): Promise<RoleEntity> {
     const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
@@ -90,6 +90,21 @@ export class RbacService {
         );
       }
     }
+
+    return targetRole;
+  }
+
+  async validateUserCanAssignRoles(
+    user: UserTokenDto,
+    roleIds: string[],
+  ): Promise<boolean> {
+    if (!roleIds || roleIds.length === 0) return true;
+
+    for (const roleId of roleIds) {
+      await this.validateUserCanManageRole(user, roleId);
+    }
+
+    return true;
   }
 
   private async _checkPermissionHierarchy(
@@ -352,7 +367,7 @@ export class RbacService {
   }
 
   async assignRole(roleId: string, userIds: string[], user: UserTokenDto) {
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
     const mappersData = userIds.map((userId) => ({
       roleId,
       userId,
@@ -366,7 +381,7 @@ export class RbacService {
     user: UserTokenDto,
     query: { search?: string; page: number; limit: number; ru?: boolean },
   ) {
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
 
     const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
     if (!targetRole) {
@@ -399,7 +414,7 @@ export class RbacService {
   }
 
   async duplicateRole(roleId: string, user: UserTokenDto) {
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
     console.log(roleId);
     const source = await this.rbacRepository.getRoleById({ id: roleId });
     console.log(source);
@@ -453,7 +468,7 @@ export class RbacService {
         statusCode: HttpStatusCodes.FORBIDDEN,
       });
     }
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
     return this.rbacRepository.setRoleStatus({
       roleId,
       isActive: !targetRole.isActive,
@@ -473,7 +488,7 @@ export class RbacService {
         statusCode: HttpStatusCodes.FORBIDDEN,
       });
     }
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
     await this.rbacRepository.deleteRole({ roleId });
     return { success: true };
   }
@@ -483,7 +498,7 @@ export class RbacService {
     userIds: string[],
     user: UserTokenDto,
   ) {
-    await this._assertCanActOnRole(user, roleId);
+    await this.validateUserCanManageRole(user, roleId);
     await this.rbacRepository.removeUserFromRole({ userIds, roleId });
     return { success: true };
   }
@@ -499,11 +514,15 @@ export class RbacService {
     user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetRolesResponseDto[]> {
+    const userScope = getUserScope(user);
+    const effectiveScope = effectiveTenant.branchId
+      ? UserScopeTypeEnums.BRANCH
+      : UserScopeTypeEnums.ORGANIZATION;
+
     return this.rbacRepository.getRolesByTenantAndScope({
       queryDto,
       effectiveTenant,
-      includeSystemRoles:
-        getUserScope(user) === UserScopeTypeEnums.ORGANIZATION,
+      includeSystemRoles: userScope !== effectiveScope,
     });
   }
 

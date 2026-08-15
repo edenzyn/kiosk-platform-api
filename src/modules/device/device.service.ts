@@ -63,7 +63,7 @@ export class DeviceService {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
 
-    const { devices, total } = await this.deviceRepository.getDevices({
+    const { devices, total } = await this.deviceRepository.find({
       organizationId: orgIdFilter,
       branchId: branchIdFilter,
       page,
@@ -88,7 +88,7 @@ export class DeviceService {
     input: UpdateDeviceServiceInput,
   ): Promise<UpdateDeviceServiceResult> {
     const { id, pin, ...updateData } = input.data;
-    const existing = await this.deviceRepository.findById({ id });
+    const existing = await this.deviceRepository.findOne({ id });
     if (!existing) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -118,7 +118,7 @@ export class DeviceService {
   async toggleDeviceStatus(
     input: ToggleDeviceStatusServiceInput,
   ): Promise<ToggleDeviceStatusServiceResult> {
-    const existing = await this.deviceRepository.findById({ id: input.id });
+    const existing = await this.deviceRepository.findOne({ id: input.id });
     if (!existing) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -142,7 +142,7 @@ export class DeviceService {
   async deviceAuthCheck(
     input: DeviceAuthCheckServiceInput,
   ): Promise<DeviceAuthCheckServiceResult> {
-    const device = await this.deviceRepository.findById({ id: input.id });
+    const device = await this.deviceRepository.findOne({ id: input.id });
     if (!device) {
       throw new AppError("Device not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,

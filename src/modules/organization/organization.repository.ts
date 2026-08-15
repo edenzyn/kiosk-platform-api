@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { organizations } from "./organization.schema";
 import type {
@@ -6,48 +6,36 @@ import type {
   CreateOrganizationRepoResult,
   FindAllOrganizationsRepoInput,
   FindAllOrganizationsRepoResult,
-  FindOrganizationByIdRepoInput,
-  FindOrganizationByIdRepoResult,
-  FindOrganizationByNameRepoInput,
-  FindOrganizationByNameRepoResult,
+  FindOneOrganizationRepoInput,
+  FindOneOrganizationRepoResult,
 } from "./organization.types";
 
 export class OrganizationRepository {
   constructor(private readonly database: Database) {}
 
-  async create(
-    input: CreateOrganizationRepoInput,
-  ): Promise<CreateOrganizationRepoResult> {
-    const [organization] = await this.database.client
-      .insert(organizations)
-      .values(input.data)
-      .returning();
+  // ========================================
+  // ? ORGANIZATION SCHEMA METHODS
+  // ========================================
+  async findOne(
+    input: FindOneOrganizationRepoInput,
+  ): Promise<FindOneOrganizationRepoResult> {
+    const conditions: (SQL | undefined)[] = [];
 
-    if (!organization) {
-      throw new Error("Failed to create organization");
+    if (input.id !== undefined) {
+      conditions.push(eq(organizations.id, input.id));
     }
-    return organization;
-  }
+    if (input.name !== undefined) {
+      conditions.push(eq(organizations.name, input.name));
+    }
 
-  async findById(
-    input: FindOrganizationByIdRepoInput,
-  ): Promise<FindOrganizationByIdRepoResult> {
+    if (conditions.length === 0) {
+      return undefined;
+    }
+
     const [organization] = await this.database.client
       .select()
       .from(organizations)
-      .where(eq(organizations.id, input.id))
-      .limit(1);
-
-    return organization;
-  }
-
-  async findByName(
-    input: FindOrganizationByNameRepoInput,
-  ): Promise<FindOrganizationByNameRepoResult> {
-    const [organization] = await this.database.client
-      .select()
-      .from(organizations)
-      .where(eq(organizations.name, input.name))
+      .where(and(...conditions))
       .limit(1);
 
     return organization;
@@ -63,5 +51,19 @@ export class OrganizationRepository {
     }
 
     return query;
+  }
+
+  async create(
+    input: CreateOrganizationRepoInput,
+  ): Promise<CreateOrganizationRepoResult> {
+    const [organization] = await this.database.client
+      .insert(organizations)
+      .values(input.data)
+      .returning();
+
+    if (!organization) {
+      throw new Error("Failed to create organization");
+    }
+    return organization;
   }
 }

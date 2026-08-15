@@ -162,6 +162,23 @@ export type ValidateUserCanAssignRolesServiceResult = boolean;
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
+
+// Role Schema
+export interface FindOneRoleRepoInput {
+  id?: string;
+  name?: string;
+  organizationId?: string | null;
+  branchId?: string | null;
+}
+export type FindOneRoleRepoResult = RoleEntity | null;
+
+export interface FindRolesByTenantAndScopeRepoInput {
+  queryDto: GetRolesRequestDto;
+  effectiveTenant: EffectiveTenant;
+  includeSystemRoles: boolean;
+}
+export type FindRolesByTenantAndScopeRepoResult = GetRolesResponseDto[];
+
 export interface CreateRoleRepoInput {
   organizationId?: string | null;
   branchId?: string | null;
@@ -181,13 +198,51 @@ export interface UpdateRoleRepoInput {
 }
 export type UpdateRoleRepoResult = RoleEntity;
 
-export interface GetPermissionMappersRepoInput {
+export interface UpdateRoleStatusRepoInput {
+  roleId: string;
+  isActive: boolean;
+  updatedBy: string;
+}
+export type UpdateRoleStatusRepoResult = RoleEntity;
+
+export interface DeleteRoleRepoInput {
+  roleId: string;
+}
+export type DeleteRoleRepoResult = void;
+
+// Permission Schema
+export interface FindOnePermissionRepoInput {
+  id?: string;
+  key?: string;
+}
+export type FindOnePermissionRepoResult = PermissionEntity | null;
+
+export interface FindPermissionsByKeysRepoInput {
+  keys: string[];
+}
+export type FindPermissionsByKeysRepoResult = PermissionEntity[];
+
+export interface FindPermissionsByTenantRepoInput {
+  queryDto: GetPermissionsByTenantRequestDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type FindPermissionsByTenantRepoResult = PermissionEntityWithAssigned[];
+
+export interface FindUserPermissionKeysRepoInput {
+  userId: string;
+  organizationId?: string | null;
+  branchId?: string | null;
+}
+export type FindUserPermissionKeysRepoResult = Set<string>;
+
+// Permission Mapper Schema
+export interface FindPermissionMappersRepoInput {
   permissionId?: string;
   entityType: number;
   entityId: string;
   isActive?: boolean;
 }
-export type GetPermissionMappersRepoResult = PermissionMapperEntity[];
+export type FindPermissionMappersRepoResult = PermissionMapperEntity[];
 
 export interface CreatePermissionMapperRepoInput {
   permissionId: string;
@@ -199,6 +254,19 @@ export interface CreatePermissionMapperRepoInput {
 }
 export type CreatePermissionMapperRepoResult = PermissionMapperEntity;
 
+export interface CreateBulkPermissionMappersRepoInput {
+  mappers: {
+    entityType: number;
+    entityId: string;
+    permissionId: string;
+    organizationId: string | null;
+    branchId: string | null;
+    isActive: boolean;
+    createdBy: string;
+  }[];
+}
+export type CreateBulkPermissionMappersRepoResult = void;
+
 export interface UpdatePermissionMapperStatusRepoInput {
   mapperId: string;
   isActive: boolean;
@@ -206,10 +274,22 @@ export interface UpdatePermissionMapperStatusRepoInput {
 }
 export type UpdatePermissionMapperStatusRepoResult = PermissionMapperEntity;
 
-export interface GetRoleByIdRepoInput {
-  id: string;
+// User Roles Mapper Schema
+export interface FindOneTopRankedRoleRepoInput {
+  userId: string;
 }
-export type GetRoleByIdRepoResult = RoleEntity | null;
+export type FindOneTopRankedRoleRepoResult = RoleEntity | null;
+
+export interface FindUserRolesRepoInput {
+  userId: string;
+  search?: string;
+  page: number;
+  limit: number;
+}
+export interface FindUserRolesRepoResult {
+  roles: RoleEntity[];
+  total: number;
+}
 
 export interface CreateUserRoleMapperRepoInput {
   userId: string;
@@ -223,76 +303,8 @@ export interface CreateUserRoleMappersRepoInput {
 }
 export type CreateUserRoleMappersRepoResult = UserRoleMapperEntity[];
 
-export interface GetUserPermissionKeysRepoInput {
-  userId: string;
-  organizationId?: string | null;
-  branchId?: string | null;
-}
-export type GetUserPermissionKeysRepoResult = Set<string>;
-
-export interface GetRolesByTenantAndScopeRepoInput {
-  queryDto: GetRolesRequestDto;
-  effectiveTenant: EffectiveTenant;
-  includeSystemRoles: boolean;
-}
-export type GetRolesByTenantAndScopeRepoResult = GetRolesResponseDto[];
-
-export interface GetPermissionsByTenantRepoInput {
-  queryDto: GetPermissionsByTenantRequestDto;
-  effectiveTenant: EffectiveTenant;
-}
-export type GetPermissionsByTenantRepoResult = PermissionEntityWithAssigned[];
-
-export interface GetUsersTopRankedRoleRepoInput {
-  userId: string;
-}
-export type GetUsersTopRankedRoleRepoResult = RoleEntity | null;
-
-export interface GetPermissionByIdRepoInput {
-  id: string;
-}
-export type GetPermissionByIdRepoResult = PermissionEntity | null;
-
-export interface GetPermissionsByKeysRepoInput {
-  keys: string[];
-}
-export type GetPermissionsByKeysRepoResult = PermissionEntity[];
-
-export interface BulkInsertPermissionMappersRepoInput {
-  mappers: {
-    entityType: number;
-    entityId: string;
-    permissionId: string;
-    organizationId: string | null;
-    branchId: string | null;
-    isActive: boolean;
-    createdBy: string;
-  }[];
-}
-
-export interface SetRoleStatusRepoInput {
-  roleId: string;
-  isActive: boolean;
-  updatedBy: string;
-}
-export type SetRoleStatusRepoResult = RoleEntity;
-
-export interface DeleteRoleRepoInput {
-  roleId: string;
-}
-
-export interface RemoveUserFromRoleRepoInput {
+export interface DeleteUserRoleMappersRepoInput {
   userIds: string[];
   roleId: string;
 }
-
-export interface GetUserRolesRepoInput {
-  userId: string;
-  search?: string;
-  page: number;
-  limit: number;
-}
-export interface GetUserRolesRepoResult {
-  roles: RoleEntity[];
-  total: number;
-}
+export type DeleteUserRoleMappersRepoResult = void;

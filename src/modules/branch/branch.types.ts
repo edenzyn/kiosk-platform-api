@@ -73,12 +73,14 @@ export type UpdateBranchServiceResult = BranchEntity;
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface CreateBranchRepoInput {
-  data: CreateBranchRequestDto;
+export interface FindOneBranchRepoInput {
+  id?: string;
+  name?: string;
+  organizationId?: string;
 }
-export type CreateBranchRepoResult = BranchEntity;
+export type FindOneBranchRepoResult = BranchEntity | null;
 
-export interface GetBranchesRepoInput {
+export interface FindBranchesRepoInput {
   organizationId?: string;
   branchIds?: string[];
   page?: number;
@@ -88,24 +90,24 @@ export interface GetBranchesRepoInput {
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
 }
-export interface GetBranchesRepoResult {
+export interface FindBranchesRepoResult {
   branches: BranchEntity[];
   total: number;
 }
 
-export interface GetBranchesForFiltersRepoInput {
+export interface FindBranchesForFiltersRepoInput {
   organizationId?: string;
   branchIds?: string[];
 }
-export type GetBranchesForFiltersRepoResult = Array<{
+export type FindBranchesForFiltersRepoResult = Array<{
   id: string;
   name: string;
 }>;
 
-export interface FindBranchByIdRepoInput {
-  id: string;
+export interface CreateBranchRepoInput {
+  data: CreateBranchRequestDto;
 }
-export type FindBranchByIdRepoResult = BranchEntity | null;
+export type CreateBranchRepoResult = BranchEntity;
 
 export interface UpdateBranchRepoInput {
   id: string;

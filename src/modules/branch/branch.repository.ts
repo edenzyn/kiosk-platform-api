@@ -1,16 +1,26 @@
-import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { branches } from "./branch.schema";
 import type {
   CreateBranchRepoInput,
   CreateBranchRepoResult,
-  FindBranchByIdRepoInput,
-  FindBranchByIdRepoResult,
-  GetBranchesForFiltersRepoInput,
-  GetBranchesForFiltersRepoResult,
-  GetBranchesRepoInput,
-  GetBranchesRepoResult,
+  FindBranchesForFiltersRepoInput,
+  FindBranchesForFiltersRepoResult,
+  FindBranchesRepoInput,
+  FindBranchesRepoResult,
+  FindOneBranchRepoInput,
+  FindOneBranchRepoResult,
   UpdateBranchRepoInput,
   UpdateBranchRepoResult,
 } from "./branch.types";
@@ -18,39 +28,38 @@ import type {
 export class BranchRepository {
   constructor(private readonly database: Database) {}
 
-  async create(input: CreateBranchRepoInput): Promise<CreateBranchRepoResult> {
-    const { data } = input;
-    const [branch] = await this.database.client
-      .insert(branches)
-      .values({
-        organizationId: data.organizationId,
-        name: data.name,
-        email: data.email ?? null,
-        mobile: data.mobile ?? null,
-        country: data.country,
-        state: data.state,
-        city: data.city,
-        postalCode: data.postalCode,
-        area: data.area ?? null,
-        landmark: data.landmark ?? null,
-        address: data.address,
-        timezone: data.timezone,
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-        createdBy: data.createdBy,
-      })
-      .returning();
+  // ========================================
+  // ? BRANCH SCHEMA METHODS
+  // ========================================
+  async findOne(
+    input: FindOneBranchRepoInput,
+  ): Promise<FindOneBranchRepoResult> {
+    const conditions: (SQL | undefined)[] = [];
 
-    if (!branch) {
-      throw new Error("Failed to create branch");
+    if (input.id !== undefined) {
+      conditions.push(eq(branches.id, input.id));
+    }
+    if (input.name !== undefined) {
+      conditions.push(eq(branches.name, input.name));
+    }
+    if (input.organizationId !== undefined) {
+      conditions.push(eq(branches.organizationId, input.organizationId));
     }
 
-    return branch;
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const [branch] = await this.database.client
+      .select()
+      .from(branches)
+      .where(and(...conditions))
+      .limit(1);
+
+    return branch || null;
   }
 
-  async getBranches(
-    input: GetBranchesRepoInput,
-  ): Promise<GetBranchesRepoResult> {
+  async find(input: FindBranchesRepoInput): Promise<FindBranchesRepoResult> {
     const {
       organizationId,
       branchIds,
@@ -123,9 +132,9 @@ export class BranchRepository {
     return { branches: rows, total };
   }
 
-  async getBranchesForFilters(
-    input: GetBranchesForFiltersRepoInput,
-  ): Promise<GetBranchesForFiltersRepoResult> {
+  async findBranchesForFilters(
+    input: FindBranchesForFiltersRepoInput,
+  ): Promise<FindBranchesForFiltersRepoResult> {
     const { organizationId, branchIds } = input;
     const conditions = [];
 
@@ -154,15 +163,34 @@ export class BranchRepository {
     return query;
   }
 
-  async findById(
-    input: FindBranchByIdRepoInput,
-  ): Promise<FindBranchByIdRepoResult> {
+  async create(input: CreateBranchRepoInput): Promise<CreateBranchRepoResult> {
+    const { data } = input;
     const [branch] = await this.database.client
-      .select()
-      .from(branches)
-      .where(eq(branches.id, input.id))
-      .limit(1);
-    return branch || null;
+      .insert(branches)
+      .values({
+        organizationId: data.organizationId,
+        name: data.name,
+        email: data.email ?? null,
+        mobile: data.mobile ?? null,
+        country: data.country,
+        state: data.state,
+        city: data.city,
+        postalCode: data.postalCode,
+        area: data.area ?? null,
+        landmark: data.landmark ?? null,
+        address: data.address,
+        timezone: data.timezone,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        createdBy: data.createdBy,
+      })
+      .returning();
+
+    if (!branch) {
+      throw new Error("Failed to create branch");
+    }
+
+    return branch;
   }
 
   async update(input: UpdateBranchRepoInput): Promise<UpdateBranchRepoResult> {

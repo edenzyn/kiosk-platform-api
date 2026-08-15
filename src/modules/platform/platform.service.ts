@@ -18,7 +18,7 @@ export class PlatformService {
   async checkPlatformUserAuth(
     input: CheckPlatformUserAuthServiceInput,
   ): Promise<CheckPlatformUserAuthServiceResult> {
-    const user = await this.userRepository.findById({ id: input.tokenUser.id });
+    const user = await this.userRepository.findOne({ id: input.tokenUser.id });
 
     if (!user) {
       throw new AppError("User not found", {
@@ -29,13 +29,13 @@ export class PlatformService {
 
     const { password, ...userWithoutPassword } = user;
 
-    const userPermissions = await this.rbacRepository.getUserPermissionKeys({
+    const userPermissions = await this.rbacRepository.findUserPermissionKeys({
       userId: user.id,
       organizationId: null,
       branchId: null,
     });
 
-    const topRole = await this.rbacRepository.getUsersTopRankedRole({
+    const topRole = await this.rbacRepository.findOneTopRankedRole({
       userId: user.id,
     });
 

@@ -2,8 +2,8 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
@@ -38,8 +38,9 @@ export class BranchService {
       new Set(DEFAULT_BRANCH_ROLES.flatMap((role) => role.permissions)),
     );
 
-    const dbPermissions =
-      await this.rbacRepository.getPermissionsByKeys({ keys: allKeys });
+    const dbPermissions = await this.rbacRepository.findPermissionsByKeys({
+      keys: allKeys,
+    });
     const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
 
     for (const defaultRole of DEFAULT_BRANCH_ROLES) {
@@ -68,7 +69,9 @@ export class BranchService {
         })
         .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
 
-      await this.rbacRepository.bulkInsertPermissionMappers({ mappers: permissionMappers });
+      await this.rbacRepository.createBulkPermissionMappers({
+        mappers: permissionMappers,
+      });
     }
     return branch;
   }
@@ -93,7 +96,7 @@ export class BranchService {
       branchIdsFilter = [effectiveTenant.branchId];
     }
 
-    const { branches, total } = await this.branchRepository.getBranches({
+    const { branches, total } = await this.branchRepository.find({
       organizationId: orgIdFilter,
       branchIds: branchIdsFilter,
       page,
@@ -121,7 +124,7 @@ export class BranchService {
       branchIdsFilter = [effectiveTenant.branchId];
     }
 
-    return this.branchRepository.getBranchesForFilters({
+    return this.branchRepository.findBranchesForFilters({
       organizationId: orgIdFilter,
       branchIds: branchIdsFilter,
     });
@@ -133,7 +136,7 @@ export class BranchService {
     effectiveTenant: EffectiveTenant,
   ) {
     const { id, ...updateData } = data;
-    const existing = await this.branchRepository.findById({ id });
+    const existing = await this.branchRepository.findOne({ id });
     if (!existing) {
       throw new AppError("Branch not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,

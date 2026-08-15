@@ -111,7 +111,7 @@ export class AuthService {
   // ? USER CLIENT SERVICES
   // ========================================
   async loginUser(dto: LoginServiceInput): Promise<LoginServiceResult> {
-    const user = await this.userRepository.findByEmail({ email: dto.email });
+    const user = await this.userRepository.findOne({ email: dto.email });
 
     if (!user) {
       throw new AppError("Invalid Credentials", {
@@ -182,7 +182,7 @@ export class AuthService {
   async loginPlatformUser(
     dto: LoginPlatformUserServiceInput,
   ): Promise<LoginPlatformUserServiceResult> {
-    const user = await this.userRepository.findByEmail({ email: dto.email });
+    const user = await this.userRepository.findOne({ email: dto.email });
 
     if (!user) {
       throw new AppError("Invalid Credentials", {
@@ -231,7 +231,7 @@ export class AuthService {
       refreshToken: generatedTokens.refreshToken,
     };
 
-    const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
+    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
       userId: user.id,
     });
 
@@ -273,7 +273,7 @@ export class AuthService {
       });
     }
 
-    const invitation = await this.userRepository.findInvitationByToken({
+    const invitation = await this.userRepository.findOneInvitation({
       token: dto.token,
     });
     if (!invitation) {
@@ -304,17 +304,19 @@ export class AuthService {
     }
 
     if (invitation.expiresAt && invitation.expiresAt < new Date()) {
-      await this.userRepository.updateInvitationStatus({
+      await this.userRepository.updateInvitation({
         id: invitation.id,
-        status: UserInvitationStatusEnum.EXPIRED,
-        updatedBy: invitation.id,
+        data: {
+          status: UserInvitationStatusEnum.EXPIRED,
+          updatedBy: invitation.id,
+        },
       });
       throw new AppError("Invitation has expired.", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
       });
     }
 
-    const existingUser = await this.userRepository.findByEmail({
+    const existingUser = await this.userRepository.findOne({
       email: invitation.email,
     });
     if (existingUser) {
@@ -354,7 +356,7 @@ export class AuthService {
         ? UserPermissions.BRANCH_BASIC
         : UserPermissions.ORGANIZATION_BASIC;
 
-    const [basicPerm] = await this.rbacRepository.getPermissionsByKeys({
+    const [basicPerm] = await this.rbacRepository.findPermissionsByKeys({
       keys: [basicPermissionKey],
     });
 
@@ -369,10 +371,12 @@ export class AuthService {
       });
     }
 
-    await this.userRepository.updateInvitationStatus({
+    await this.userRepository.updateInvitation({
       id: invitation.id,
-      status: UserInvitationStatusEnum.ACCEPTED,
-      updatedBy: createdUser.id,
+      data: {
+        status: UserInvitationStatusEnum.ACCEPTED,
+        updatedBy: createdUser.id,
+      },
     });
 
     const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
@@ -430,7 +434,7 @@ export class AuthService {
       }
 
       if (decoded.device?.id) {
-        const device = await this.deviceRepository.findById({
+        const device = await this.deviceRepository.findOne({
           id: decoded.device.id,
         });
         if (!device || !device.isActive) {
@@ -463,8 +467,8 @@ export class AuthService {
           currentTokenHash: hashSha256(refreshToken),
           replacement: {
             id: generatedTokens.refreshTokenId,
-            userId: null,
             deviceId: device.id,
+            userId: null,
             tokenHash: hashSha256(generatedTokens.refreshToken),
             expiresAt: this._getRefreshTokenExpiry(
               generatedTokens.refreshToken,
@@ -473,22 +477,26 @@ export class AuthService {
         });
 
         if (!rotated) {
-          throw new Error("Refresh token was already used or revoked");
+          throw new AppError("Invalid or expired refresh token", {
+            statusCode: HttpStatusCodes.UNAUTHORIZED,
+            code: ErrorCodes.UNAUTHORIZED,
+          });
         }
 
-        const { pin, ...deviceWithoutPin } = device;
+        const tokens = {
+          accessToken: generatedTokens.accessToken,
+          refreshToken: generatedTokens.refreshToken,
+        };
 
+        const { pin, ...deviceWithoutPin } = device;
         const licenseInfo = await this.licenseService.getLicenseForDevice({
           deviceId: device.id,
         });
 
         return {
           clientType: ClientTypeEnum.DEVICE_CLIENT,
+          tokens,
           device: deviceWithoutPin,
-          tokens: {
-            accessToken: generatedTokens.accessToken,
-            refreshToken: generatedTokens.refreshToken,
-          },
           license: licenseInfo.license,
         };
       }
@@ -500,7 +508,7 @@ export class AuthService {
         });
       }
 
-      const user = await this.userRepository.findById({ id: decoded.user.id });
+      const user = await this.userRepository.findOne({ id: decoded.user.id });
       if (!user) {
         throw new AppError("Invalid or expired refresh token", {
           statusCode: HttpStatusCodes.UNAUTHORIZED,
@@ -533,14 +541,23 @@ export class AuthService {
         replacement: {
           id: generatedTokens.refreshTokenId,
           userId: user.id,
+          deviceId: null,
           tokenHash: hashSha256(generatedTokens.refreshToken),
           expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
         },
       });
 
       if (!rotated) {
-        throw new Error("Refresh token was already used or revoked");
+        throw new AppError("Invalid or expired refresh token", {
+          statusCode: HttpStatusCodes.UNAUTHORIZED,
+          code: ErrorCodes.UNAUTHORIZED,
+        });
       }
+
+      const tokens = {
+        accessToken: generatedTokens.accessToken,
+        refreshToken: generatedTokens.refreshToken,
+      };
 
       const userScope = getUserScope(user);
 
@@ -554,19 +571,16 @@ export class AuthService {
 
       return {
         clientType: ClientTypeEnum.USER_CLIENT,
+        tokens,
         user: userWithoutPassword,
-        tokens: {
-          accessToken: generatedTokens.accessToken,
-          refreshToken: generatedTokens.refreshToken,
-        },
         permissions,
         availableScopes,
       };
     } catch (error) {
+      if (error instanceof AppError) throw error;
       throw new AppError("Invalid or expired refresh token", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
         code: ErrorCodes.UNAUTHORIZED,
-        details: error,
       });
     }
   }
@@ -577,7 +591,7 @@ export class AuthService {
   async loginDevice(
     dto: LoginDeviceServiceInput,
   ): Promise<LoginDeviceServiceResult> {
-    const device = await this.deviceRepository.findByDeviceCode({
+    const device = await this.deviceRepository.findOne({
       deviceCode: dto.deviceCode,
     });
 

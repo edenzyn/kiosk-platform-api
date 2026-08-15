@@ -14,7 +14,7 @@ export class OrganizationService {
     dto: CreateOrganizationRequestDto,
     user?: UserTokenDto,
   ): Promise<CreateOrganizationResponseDto> {
-    const existingOrg = await this.organizationRepository.findByName({ name: dto.name });
+    const existingOrg = await this.organizationRepository.findOne({ name: dto.name });
     if (existingOrg) {
       throw new AppError("Organization name already exists", {
         statusCode: HttpStatusCodes.CONFLICT,

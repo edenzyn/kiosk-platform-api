@@ -80,12 +80,15 @@ export interface DeviceAuthCheckServiceResult {
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface CreateDeviceRepoInput {
-  data: CreateDeviceRequestDto;
+export interface FindOneDeviceRepoInput {
+  id?: string;
+  deviceCode?: string;
+  organizationId?: string;
+  branchId?: string;
 }
-export type CreateDeviceRepoResult = Omit<DeviceEntity, "pin">;
+export type FindOneDeviceRepoResult = DeviceEntity | null;
 
-export interface GetDevicesRepoInput {
+export interface FindDevicesRepoInput {
   organizationId?: string;
   branchId?: string;
   deviceIds?: string[];
@@ -97,20 +100,15 @@ export interface GetDevicesRepoInput {
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
 }
-export interface GetDevicesRepoResult {
+export interface FindDevicesRepoResult {
   devices: DeviceWithBranchEntity[];
   total: number;
 }
 
-export interface FindDeviceByIdRepoInput {
-  id: string;
+export interface CreateDeviceRepoInput {
+  data: CreateDeviceRequestDto;
 }
-export type FindDeviceByIdRepoResult = DeviceEntity | null;
-
-export interface FindDeviceByDeviceCodeRepoInput {
-  deviceCode: string;
-}
-export type FindDeviceByDeviceCodeRepoResult = DeviceEntity | null;
+export type CreateDeviceRepoResult = Omit<DeviceEntity, "pin">;
 
 export interface UpdateDeviceRepoInput {
   id: string;

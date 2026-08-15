@@ -10,6 +10,7 @@ import {
   isNull,
   lte,
   or,
+  type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
@@ -22,31 +23,28 @@ import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type {
   ActivateLicenseRepoInput,
   ActivateLicenseRepoResult,
+  CreateLicenseHistoryRepoInput,
+  CreateLicenseHistoryRepoResult,
   CreateLicensesRepoInput,
   CreateLicensesRepoResult,
   ExtendLicenseRepoInput,
   ExtendLicenseRepoResult,
   FindActiveDiscountRulesRepoInput,
   FindActiveDiscountRulesRepoResult,
-  FindActiveLicenseByDeviceIdRepoInput,
-  FindActiveLicenseByDeviceIdRepoResult,
-  FindLicenseByDeviceIdRepoInput,
-  FindLicenseByDeviceIdRepoResult,
-  FindLicenseByIdRepoInput,
-  FindLicenseByIdRepoResult,
-  FindLicenseByKeyHashRepoInput,
-  FindLicenseByKeyHashRepoResult,
-  GetLicensePricingPlansRepoInput,
-  GetLicensePricingPlansRepoResult,
-  GetLicensesRepoInput,
-  GetLicensesRepoResult,
+  FindLicenseHistoryRepoInput,
+  FindLicenseHistoryRepoResult,
+  FindLicensePricingPlansRepoInput,
+  FindLicensePricingPlansRepoResult,
+  FindLicensesRepoInput,
+  FindLicensesRepoResult,
+  FindOneActiveLicenseByDeviceIdRepoInput,
+  FindOneActiveLicenseByDeviceIdRepoResult,
+  FindOneLicenseDetailsRepoInput,
+  FindOneLicenseDetailsRepoResult,
+  FindOneLicenseRepoInput,
+  FindOneLicenseRepoResult,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
-  CreateLicenseHistoryRepoInput,
-  GetLicenseHistoryRepoInput,
-  GetLicenseHistoryRepoResult,
-  GetLicenseDetailsRepoInput,
-  GetLicenseDetailsRepoResult,
 } from "./license.types";
 import { licenseDiscountRules } from "./schemas/license-discount-rule.schema";
 import { licenseHistory } from "./schemas/license-history.schema";
@@ -58,21 +56,41 @@ import { licenses } from "./schemas/license.schema";
 export class LicenseRepository {
   constructor(private readonly database: Database) {}
 
-  async findByDeviceId(
-    input: FindLicenseByDeviceIdRepoInput,
-  ): Promise<FindLicenseByDeviceIdRepoResult> {
+  // ========================================
+  // ? LICENSE SCHEMA METHODS
+  // ========================================
+  async findOne(
+    input: FindOneLicenseRepoInput,
+  ): Promise<FindOneLicenseRepoResult> {
+    const conditions: (SQL | undefined)[] = [];
+
+    if (input.id !== undefined) conditions.push(eq(licenses.id, input.id));
+    if (input.deviceId !== undefined) {
+      conditions.push(eq(licenses.deviceId, input.deviceId));
+    }
+    if (input.licenseKeyHash !== undefined) {
+      conditions.push(eq(licenses.licenseKeyHash, input.licenseKeyHash));
+    }
+    if (input.organizationId !== undefined) {
+      conditions.push(eq(licenses.organizationId, input.organizationId));
+    }
+
+    if (conditions.length === 0) {
+      return null;
+    }
+
     const [license] = await this.database.client
       .select()
       .from(licenses)
-      .where(eq(licenses.deviceId, input.deviceId))
+      .where(and(...conditions))
       .limit(1);
 
     return license || null;
   }
 
-  async findActiveByDeviceId(
-    input: FindActiveLicenseByDeviceIdRepoInput,
-  ): Promise<FindActiveLicenseByDeviceIdRepoResult> {
+  async findOneActiveByDeviceId(
+    input: FindOneActiveLicenseByDeviceIdRepoInput,
+  ): Promise<FindOneActiveLicenseByDeviceIdRepoResult> {
     const now = new Date();
     const [license] = await this.database.client
       .select()
@@ -89,62 +107,61 @@ export class LicenseRepository {
     return license || null;
   }
 
-  async findByKeyHash(
-    input: FindLicenseByKeyHashRepoInput,
-  ): Promise<FindLicenseByKeyHashRepoResult> {
+  async findOneDetails(
+    input: FindOneLicenseDetailsRepoInput,
+  ): Promise<FindOneLicenseDetailsRepoResult> {
     const [license] = await this.database.client
-      .select()
-      .from(licenses)
-      .where(eq(licenses.licenseKeyHash, input.licenseKeyHash))
-      .limit(1);
-
-    return license || null;
-  }
-
-  async activate(
-    input: ActivateLicenseRepoInput,
-  ): Promise<ActivateLicenseRepoResult> {
-    const [updated] = await this.database.client
-      .update(licenses)
-      .set({
-        deviceId: input.deviceId,
-        status: LicenseStatusEnum.ACTIVE,
-        activatedAt: new Date(),
-        expiresAt: input.expiresAt,
-        updatedAt: new Date(),
-        ...(input.branchId != null ? { branchId: input.branchId } : {}),
+      .select({
+        id: licenses.id,
+        licenseKey: licenses.licenseKey,
+        organizationId: licenses.organizationId,
+        branchId: licenses.branchId,
+        branchName: branches.name,
+        deviceId: licenses.deviceId,
+        deviceName: devices.name,
+        status: licenses.status,
+        activatedAt: licenses.activatedAt,
+        expiresAt: licenses.expiresAt,
+        createdAt: licenses.createdAt,
+        updatedAt: licenses.updatedAt,
       })
+      .from(licenses)
+      .leftJoin(branches, eq(licenses.branchId, branches.id))
+      .leftJoin(devices, eq(licenses.deviceId, devices.id))
       .where(eq(licenses.id, input.licenseId))
-      .returning();
-
-    if (!updated) {
-      throw new Error("Failed to activate license");
-    }
-
-    return updated;
-  }
-
-  async findLatestPurchaseItemByLicenseId(licenseId: string) {
-    const [item] = await this.database.client
-      .select()
-      .from(licenseTransactionItems)
-      .where(
-        and(
-          eq(licenseTransactionItems.licenseId, licenseId),
-          eq(
-            licenseTransactionItems.actionType,
-            LicenseTransactionActionTypeEnum.PURCHASE,
-          ),
-        ),
-      )
-      .orderBy(desc(licenseTransactionItems.createdAt))
       .limit(1);
-    return item || null;
+
+    const transactions = await this.database.client
+      .select({
+        id: licenseTransactionItems.id,
+        transactionId: licenseTransactionItems.transactionId,
+        actionType: licenseTransactionItems.actionType,
+        durationDays: licenseTransactionItems.durationDays,
+        baseUnitPrice: licenseTransactionItems.baseUnitPrice,
+        discountPercentage: licenseTransactionItems.discountPercentage,
+        unitPrice: licenseTransactionItems.unitPrice,
+        createdAt: licenseTransactionItems.createdAt,
+        paymentStatus: licenseTransactions.paymentStatus,
+        currency: licenseTransactions.currency,
+        totalAmount: licenseTransactions.totalAmount,
+        performedByName: users.name,
+      })
+      .from(licenseTransactionItems)
+      .leftJoin(
+        licenseTransactions,
+        eq(licenseTransactionItems.transactionId, licenseTransactions.id),
+      )
+      .leftJoin(users, eq(licenseTransactions.userId, users.id))
+      .where(eq(licenseTransactionItems.licenseId, input.licenseId))
+      .orderBy(desc(licenseTransactionItems.createdAt));
+
+    return {
+      license: license || null,
+      transactions,
+    };
   }
 
-  async getLicenses(
-    input: GetLicensesRepoInput,
-  ): Promise<GetLicensesRepoResult> {
+  async find(input: FindLicensesRepoInput): Promise<FindLicensesRepoResult> {
     const {
       organizationId,
       branchId,
@@ -319,85 +336,27 @@ export class LicenseRepository {
     return created;
   }
 
-  async findById(
-    input: FindLicenseByIdRepoInput,
-  ): Promise<FindLicenseByIdRepoResult> {
-    const [license] = await this.database.client
-      .select()
-      .from(licenses)
-      .where(
-        and(
-          eq(licenses.id, input.licenseId),
-          eq(licenses.organizationId, input.organizationId),
-        ),
-      )
-      .limit(1);
-
-    return license || null;
-  }
-
-  async update(
-    input: UpdateLicenseRepoInput,
-  ): Promise<UpdateLicenseRepoResult> {
+  async activate(
+    input: ActivateLicenseRepoInput,
+  ): Promise<ActivateLicenseRepoResult> {
     const [updated] = await this.database.client
       .update(licenses)
       .set({
-        ...input.data,
+        deviceId: input.deviceId,
+        status: LicenseStatusEnum.ACTIVE,
+        activatedAt: new Date(),
+        expiresAt: input.expiresAt,
         updatedAt: new Date(),
+        ...(input.branchId != null ? { branchId: input.branchId } : {}),
       })
       .where(eq(licenses.id, input.licenseId))
       .returning();
 
     if (!updated) {
-      throw new Error("Failed to update license");
+      throw new Error("Failed to activate license");
     }
 
     return updated;
-  }
-
-  async getLicensePricingPlans(
-    input: GetLicensePricingPlansRepoInput,
-  ): Promise<GetLicensePricingPlansRepoResult> {
-    const query = this.database.client
-      .select()
-      .from(licensePricing)
-      .where(
-        input.id
-          ? and(
-              eq(licensePricing.isActive, true),
-              eq(licensePricing.id, input.id),
-            )
-          : eq(licensePricing.isActive, true),
-      )
-      .orderBy(asc(licensePricing.durationDays));
-
-    const plans = await query;
-    return plans;
-  }
-
-  async findActiveDiscountRules(
-    input: FindActiveDiscountRulesRepoInput,
-  ): Promise<FindActiveDiscountRulesRepoResult> {
-    const now = new Date();
-    const rules = await this.database.client
-      .select()
-      .from(licenseDiscountRules)
-      .where(
-        and(
-          eq(licenseDiscountRules.targetEntity, input.targetEntity),
-          eq(licenseDiscountRules.isActive, true),
-          or(
-            isNull(licenseDiscountRules.startsAt),
-            lte(licenseDiscountRules.startsAt, now),
-          ),
-          or(
-            isNull(licenseDiscountRules.endsAt),
-            gte(licenseDiscountRules.endsAt, now),
-          ),
-        ),
-      );
-
-    return rules;
   }
 
   async extendLicense(
@@ -473,9 +432,100 @@ export class LicenseRepository {
     return result;
   }
 
-  async getLicenseHistory(
-    input: GetLicenseHistoryRepoInput,
-  ): Promise<GetLicenseHistoryRepoResult> {
+  async update(
+    input: UpdateLicenseRepoInput,
+  ): Promise<UpdateLicenseRepoResult> {
+    const [updated] = await this.database.client
+      .update(licenses)
+      .set({
+        ...input.data,
+        updatedAt: new Date(),
+      })
+      .where(eq(licenses.id, input.licenseId))
+      .returning();
+
+    if (!updated) {
+      throw new Error("Failed to update license");
+    }
+
+    return updated;
+  }
+
+  // ========================================
+  // ? LICENSE PRICING & DISCOUNT SCHEMA METHODS
+  // ========================================
+  async findPricingPlans(
+    input: FindLicensePricingPlansRepoInput,
+  ): Promise<FindLicensePricingPlansRepoResult> {
+    const query = this.database.client
+      .select()
+      .from(licensePricing)
+      .where(
+        input.id
+          ? and(
+              eq(licensePricing.isActive, true),
+              eq(licensePricing.id, input.id),
+            )
+          : eq(licensePricing.isActive, true),
+      )
+      .orderBy(asc(licensePricing.durationDays));
+
+    const plans = await query;
+    return plans;
+  }
+
+  async findActiveDiscountRules(
+    input: FindActiveDiscountRulesRepoInput,
+  ): Promise<FindActiveDiscountRulesRepoResult> {
+    const now = new Date();
+    const rules = await this.database.client
+      .select()
+      .from(licenseDiscountRules)
+      .where(
+        and(
+          eq(licenseDiscountRules.targetEntity, input.targetEntity),
+          eq(licenseDiscountRules.isActive, true),
+          or(
+            isNull(licenseDiscountRules.startsAt),
+            lte(licenseDiscountRules.startsAt, now),
+          ),
+          or(
+            isNull(licenseDiscountRules.endsAt),
+            gte(licenseDiscountRules.endsAt, now),
+          ),
+        ),
+      );
+
+    return rules;
+  }
+
+  // ========================================
+  // ? LICENSE TRANSACTION ITEM SCHEMA METHODS
+  // ========================================
+  async findOneLatestPurchaseItem(licenseId: string) {
+    const [item] = await this.database.client
+      .select()
+      .from(licenseTransactionItems)
+      .where(
+        and(
+          eq(licenseTransactionItems.licenseId, licenseId),
+          eq(
+            licenseTransactionItems.actionType,
+            LicenseTransactionActionTypeEnum.PURCHASE,
+          ),
+        ),
+      )
+      .orderBy(desc(licenseTransactionItems.createdAt))
+      .limit(1);
+    return item || null;
+  }
+
+  // ========================================
+  // ? LICENSE HISTORY SCHEMA METHODS
+  // ========================================
+  async findHistory(
+    input: FindLicenseHistoryRepoInput,
+  ): Promise<FindLicenseHistoryRepoResult> {
     const rows = await this.database.client
       .select({
         id: licenseHistory.id,
@@ -500,60 +550,9 @@ export class LicenseRepository {
     return rows;
   }
 
-  async getLicenseDetails(
-    input: GetLicenseDetailsRepoInput,
-  ): Promise<GetLicenseDetailsRepoResult> {
-    const [license] = await this.database.client
-      .select({
-        id: licenses.id,
-        licenseKey: licenses.licenseKey,
-        organizationId: licenses.organizationId,
-        branchId: licenses.branchId,
-        branchName: branches.name,
-        deviceId: licenses.deviceId,
-        deviceName: devices.name,
-        status: licenses.status,
-        activatedAt: licenses.activatedAt,
-        expiresAt: licenses.expiresAt,
-        createdAt: licenses.createdAt,
-        updatedAt: licenses.updatedAt,
-      })
-      .from(licenses)
-      .leftJoin(branches, eq(licenses.branchId, branches.id))
-      .leftJoin(devices, eq(licenses.deviceId, devices.id))
-      .where(eq(licenses.id, input.licenseId))
-      .limit(1);
-
-    const transactions = await this.database.client
-      .select({
-        id: licenseTransactionItems.id,
-        transactionId: licenseTransactionItems.transactionId,
-        actionType: licenseTransactionItems.actionType,
-        durationDays: licenseTransactionItems.durationDays,
-        baseUnitPrice: licenseTransactionItems.baseUnitPrice,
-        discountPercentage: licenseTransactionItems.discountPercentage,
-        unitPrice: licenseTransactionItems.unitPrice,
-        createdAt: licenseTransactionItems.createdAt,
-        paymentStatus: licenseTransactions.paymentStatus,
-        currency: licenseTransactions.currency,
-        totalAmount: licenseTransactions.totalAmount,
-        performedByName: users.name,
-      })
-      .from(licenseTransactionItems)
-      .leftJoin(licenseTransactions, eq(licenseTransactionItems.transactionId, licenseTransactions.id))
-      .leftJoin(users, eq(licenseTransactions.userId, users.id))
-      .where(eq(licenseTransactionItems.licenseId, input.licenseId))
-      .orderBy(desc(licenseTransactionItems.createdAt));
-
-    return {
-      license: license || null,
-      transactions,
-    };
-  }
-
   async createHistory(
     input: CreateLicenseHistoryRepoInput,
-  ): Promise<void> {
+  ): Promise<CreateLicenseHistoryRepoResult> {
     await this.database.client.insert(licenseHistory).values({
       licenseId: input.licenseId,
       eventType: input.eventType,

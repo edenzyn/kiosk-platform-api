@@ -50,7 +50,7 @@ export class LicenseService {
     deviceId: string,
     excludeLicenseId?: string,
   ): Promise<void> {
-    const activeLicense = await this.licenseRepository.findActiveByDeviceId({
+    const activeLicense = await this.licenseRepository.findOneActiveByDeviceId({
       deviceId,
     });
     if (activeLicense && activeLicense.id !== excludeLicenseId) {
@@ -72,7 +72,7 @@ export class LicenseService {
     const page = input.filters.page || 1;
     const limit = input.filters.limit || 10;
 
-    const { licenses: rows, total } = await this.licenseRepository.getLicenses({
+    const { licenses: rows, total } = await this.licenseRepository.find({
       organizationId: orgIdFilter,
       branchId: branchIdFilter,
       page,
@@ -215,8 +215,8 @@ export class LicenseService {
       });
     }
 
-    const license = await this.licenseRepository.findById({
-      licenseId: input.licenseId,
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
       organizationId: orgId,
     });
 
@@ -269,8 +269,8 @@ export class LicenseService {
       });
     }
 
-    const license = await this.licenseRepository.findById({
-      licenseId: input.licenseId,
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
       organizationId: orgId,
     });
 
@@ -320,7 +320,7 @@ export class LicenseService {
   async getLicensePricingPlans(
     input: GetLicensePricingPlansServiceInput,
   ): Promise<GetLicensePricingPlansServiceResult> {
-    const plans = await this.licenseRepository.getLicensePricingPlans({
+    const plans = await this.licenseRepository.findPricingPlans({
       id: input.id,
     });
     return { plans };
@@ -338,8 +338,8 @@ export class LicenseService {
   async extendLicense(
     input: ExtendLicenseServiceInput,
   ): Promise<ExtendLicenseServiceResult> {
-    const license = await this.licenseRepository.findById({
-      licenseId: input.licenseId,
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
@@ -353,7 +353,7 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const pricingPlans = await this.licenseRepository.getLicensePricingPlans({
+    const pricingPlans = await this.licenseRepository.findPricingPlans({
       id: input.dto.pricingPlanId,
     });
     const plan = pricingPlans[0];
@@ -440,8 +440,8 @@ export class LicenseService {
   async getLicenseHistory(
     input: GetLicenseHistoryServiceInput,
   ): Promise<GetLicenseHistoryServiceResult> {
-    const license = await this.licenseRepository.findById({
-      licenseId: input.licenseId,
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
@@ -451,7 +451,7 @@ export class LicenseService {
       });
     }
 
-    const history = await this.licenseRepository.getLicenseHistory({
+    const history = await this.licenseRepository.findHistory({
       licenseId: input.licenseId,
     });
 
@@ -461,7 +461,7 @@ export class LicenseService {
   async getLicenseDetails(
     input: GetLicenseDetailsServiceInput,
   ): Promise<GetLicenseDetailsServiceResult> {
-    const details = await this.licenseRepository.getLicenseDetails({
+    const details = await this.licenseRepository.findOneDetails({
       licenseId: input.licenseId,
     });
 
@@ -501,7 +501,7 @@ export class LicenseService {
   async getLicenseForDevice(
     input: GetLicenseForDeviceServiceInput,
   ): Promise<GetLicenseForDeviceServiceResult> {
-    const activeLicense = await this.licenseRepository.findActiveByDeviceId({
+    const activeLicense = await this.licenseRepository.findOneActiveByDeviceId({
       deviceId: input.deviceId,
     });
     if (activeLicense) {
@@ -515,7 +515,7 @@ export class LicenseService {
       return { license: rest };
     }
 
-    const anyLicense = await this.licenseRepository.findByDeviceId({
+    const anyLicense = await this.licenseRepository.findOne({
       deviceId: input.deviceId,
     });
     if (anyLicense) {
@@ -528,7 +528,9 @@ export class LicenseService {
       } = anyLicense;
 
       const now = new Date();
-      const expiresAtDate = rest.expiresAt ? new Date(rest.expiresAt) : null;
+      const expiresAtDate = anyLicense.expiresAt
+        ? new Date(anyLicense.expiresAt)
+        : null;
 
       if (expiresAtDate && now > expiresAtDate) {
         const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
@@ -632,7 +634,7 @@ export class LicenseService {
   ): Promise<ActivateLicenseServiceResult> {
     const keyHash = hashSha256(input.dto.licenseKey);
 
-    const license = await this.licenseRepository.findByKeyHash({
+    const license = await this.licenseRepository.findOne({
       licenseKeyHash: keyHash,
     });
 
@@ -661,7 +663,7 @@ export class LicenseService {
     }
 
     const purchaseItem =
-      await this.licenseRepository.findLatestPurchaseItemByLicenseId(
+      await this.licenseRepository.findOneLatestPurchaseItem(
         license.id,
       );
     const durationDays = purchaseItem?.durationDays as number;

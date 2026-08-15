@@ -42,7 +42,7 @@ export class RbacService {
   private async _getUsersTopRankedRole(
     userId: string,
   ): Promise<RoleEntity | null> {
-    return await this.rbacRepository.getUsersTopRankedRole({ userId });
+    return await this.rbacRepository.findOneTopRankedRole({ userId });
   }
 
   private async _getUserTopPermissionScope(
@@ -69,7 +69,7 @@ export class RbacService {
     user: UserTokenDto,
     roleId: string,
   ): Promise<RoleEntity> {
-    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
+    const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -116,7 +116,7 @@ export class RbacService {
     const topScope = await this._getUserTopPermissionScope(actionedUser);
     if (permissionScope === topScope) {
       if (entityType === PermissionEntityType.ROLE) {
-        const targetRole = await this.rbacRepository.getRoleById({
+        const targetRole = await this.rbacRepository.findOneRole({
           id: entityId,
         });
         if (!targetRole) {
@@ -195,7 +195,7 @@ export class RbacService {
   }
 
   async updateRole(data: UpdateRoleRequestDto, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById({
+    const targetRole = await this.rbacRepository.findOneRole({
       id: data.roleId,
     });
     if (!targetRole) {
@@ -241,7 +241,7 @@ export class RbacService {
     user: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<AssignPermissionResponseDto> {
-    const permission = await this.rbacRepository.getPermissionById({
+    const permission = await this.rbacRepository.findOnePermission({
       id: data.permissionId,
     });
     if (!permission) {
@@ -267,7 +267,7 @@ export class RbacService {
       user,
     );
 
-    const mappers = await this.rbacRepository.getPermissionMappers({
+    const mappers = await this.rbacRepository.findPermissionMappers({
       permissionId: data.permissionId,
       entityType: data.entityType,
       entityId: data.entityId,
@@ -287,13 +287,13 @@ export class RbacService {
     let branchId: string | null = effectiveTenant.branchId || null;
 
     if (data.entityType === PermissionEntityType.ROLE) {
-      const role = await this.rbacRepository.getRoleById({ id: data.entityId });
+      const role = await this.rbacRepository.findOneRole({ id: data.entityId });
       if (role) {
         organizationId = role.organizationId || organizationId;
         branchId = role.branchId || branchId;
       }
     } else if (data.entityType === PermissionEntityType.USER) {
-      const targetUser = await this.userRepository.findById({
+      const targetUser = await this.userRepository.findOne({
         id: data.entityId,
       });
       if (targetUser) {
@@ -318,7 +318,7 @@ export class RbacService {
     data: Omit<RemovePermissionRequestDto, "updatedBy">,
     user: UserTokenDto,
   ): Promise<RemovePermissionResponseDto> {
-    const permission = await this.rbacRepository.getPermissionById({
+    const permission = await this.rbacRepository.findOnePermission({
       id: data.permissionId,
     });
     if (!permission) {
@@ -344,7 +344,7 @@ export class RbacService {
       user,
     );
 
-    const mappers = await this.rbacRepository.getPermissionMappers({
+    const mappers = await this.rbacRepository.findPermissionMappers({
       permissionId: data.permissionId,
       entityType: data.entityType,
       entityId: data.entityId,
@@ -383,7 +383,7 @@ export class RbacService {
   ) {
     await this.validateUserCanManageRole(user, roleId);
 
-    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
+    const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -394,7 +394,7 @@ export class RbacService {
     const limit = query.limit;
     const search = query?.search;
 
-    const { users, total } = await this.userRepository.getUsersByRoleId({
+    const { users, total } = await this.userRepository.findUsersByRoleId({
       roleId,
       organizationId: targetRole.organizationId || undefined,
       branchId: targetRole.branchId || undefined,
@@ -415,9 +415,7 @@ export class RbacService {
 
   async duplicateRole(roleId: string, user: UserTokenDto) {
     await this.validateUserCanManageRole(user, roleId);
-    console.log(roleId);
-    const source = await this.rbacRepository.getRoleById({ id: roleId });
-    console.log(source);
+    const source = await this.rbacRepository.findOneRole({ id: roleId });
     if (!source) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -433,7 +431,7 @@ export class RbacService {
       createdBy: user.id,
     });
 
-    const existingMappers = await this.rbacRepository.getPermissionMappers({
+    const existingMappers = await this.rbacRepository.findPermissionMappers({
       entityId: roleId,
       entityType: PermissionEntityType.ROLE,
       isActive: true,
@@ -457,7 +455,7 @@ export class RbacService {
   }
 
   async toggleRoleStatus(roleId: string, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
+    const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -469,7 +467,7 @@ export class RbacService {
       });
     }
     await this.validateUserCanManageRole(user, roleId);
-    return this.rbacRepository.setRoleStatus({
+    return this.rbacRepository.updateRoleStatus({
       roleId,
       isActive: !targetRole.isActive,
       updatedBy: user.id,
@@ -477,7 +475,7 @@ export class RbacService {
   }
 
   async deleteRole(roleId: string, user: UserTokenDto) {
-    const targetRole = await this.rbacRepository.getRoleById({ id: roleId });
+    const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
       throw new AppError("Role not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -499,14 +497,14 @@ export class RbacService {
     user: UserTokenDto,
   ) {
     await this.validateUserCanManageRole(user, roleId);
-    await this.rbacRepository.removeUserFromRole({ userIds, roleId });
+    await this.rbacRepository.deleteUserRoleMappers({ userIds, roleId });
     return { success: true };
   }
 
   async getUserPermissionKeys(
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
-    return this.rbacRepository.getUserPermissionKeys(data);
+    return this.rbacRepository.findUserPermissionKeys(data);
   }
 
   async getRolesByTenantAndScope(
@@ -519,7 +517,7 @@ export class RbacService {
       ? UserScopeTypeEnums.BRANCH
       : UserScopeTypeEnums.ORGANIZATION;
 
-    return this.rbacRepository.getRolesByTenantAndScope({
+    return this.rbacRepository.findRolesByTenantAndScope({
       queryDto,
       effectiveTenant,
       includeSystemRoles: userScope !== effectiveScope,
@@ -530,7 +528,7 @@ export class RbacService {
     queryDto: GetPermissionsByTenantRequestDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<GetPermissionsByTenantResponseDto> {
-    const permissions = await this.rbacRepository.getPermissionsByTenant({
+    const permissions = await this.rbacRepository.findPermissionsByTenant({
       queryDto,
       effectiveTenant,
     });
@@ -544,7 +542,7 @@ export class RbacService {
     const limit = data.query.limit;
     const search = data.query.search;
 
-    const { roles, total } = await this.rbacRepository.getUserRoles({
+    const { roles, total } = await this.rbacRepository.findUserRoles({
       userId: data.userId,
       search,
       page,

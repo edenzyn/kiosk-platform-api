@@ -31,22 +31,18 @@ export interface ListOrganizationServiceResult {
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface CreateOrganizationRepoInput {
-  data: CreateOrganizationEntity;
+export interface FindOneOrganizationRepoInput {
+  id?: string;
+  name?: string;
 }
-export type CreateOrganizationRepoResult = OrganizationEntity;
-
-export interface FindOrganizationByIdRepoInput {
-  id: string;
-}
-export type FindOrganizationByIdRepoResult = OrganizationEntity | undefined;
-
-export interface FindOrganizationByNameRepoInput {
-  name: string;
-}
-export type FindOrganizationByNameRepoResult = OrganizationEntity | undefined;
+export type FindOneOrganizationRepoResult = OrganizationEntity | undefined;
 
 export interface FindAllOrganizationsRepoInput {
   orgIds?: string[];
 }
 export type FindAllOrganizationsRepoResult = OrganizationEntity[];
+
+export interface CreateOrganizationRepoInput {
+  data: CreateOrganizationEntity;
+}
+export type CreateOrganizationRepoResult = OrganizationEntity;

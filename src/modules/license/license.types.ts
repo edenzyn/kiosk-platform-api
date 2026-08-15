@@ -90,6 +90,14 @@ export interface AssignLicenseToDeviceServiceResult {
   license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
 }
 
+export interface GetLicensePricingPlansServiceInput {
+  id?: string;
+}
+
+export interface GetLicensePricingPlansServiceResult {
+  plans: LicensePricingEntity[];
+}
+
 export interface GetDiscountRulesServiceInput {
   targetEntity: number;
 }
@@ -144,30 +152,38 @@ export interface GetLicenseDetailsServiceResult {
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface FindLicenseByDeviceIdRepoInput {
+
+// License Schema
+export interface FindOneLicenseRepoInput {
+  id?: string;
+  deviceId?: string;
+  licenseKeyHash?: string;
+  organizationId?: string;
+}
+export type FindOneLicenseRepoResult = LicenseEntity | null;
+
+export interface FindOneActiveLicenseByDeviceIdRepoInput {
   deviceId: string;
 }
-export type FindLicenseByDeviceIdRepoResult = LicenseEntity | null;
+export type FindOneActiveLicenseByDeviceIdRepoResult = LicenseEntity | null;
 
-export interface FindActiveLicenseByDeviceIdRepoInput {
-  deviceId: string;
-}
-export type FindActiveLicenseByDeviceIdRepoResult = LicenseEntity | null;
-
-export interface FindLicenseByKeyHashRepoInput {
-  licenseKeyHash: string;
-}
-export type FindLicenseByKeyHashRepoResult = LicenseEntity | null;
-
-export interface ActivateLicenseRepoInput {
+export interface FindOneLicenseDetailsRepoInput {
   licenseId: string;
-  deviceId: string;
-  branchId?: string | null;
-  expiresAt: Date;
 }
-export type ActivateLicenseRepoResult = LicenseEntity;
+export interface FindOneLicenseDetailsRepoResult {
+  license: (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
+    branchName: string | null;
+    deviceName: string | null;
+  }) | null;
+  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
+    paymentStatus: number | null;
+    currency: string | null;
+    totalAmount: string | null;
+    performedByName: string | null;
+  })[];
+}
 
-export interface GetLicensesRepoInput {
+export interface FindLicensesRepoInput {
   organizationId?: string;
   branchId?: string;
   page?: number;
@@ -177,8 +193,7 @@ export interface GetLicensesRepoInput {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
-
-export interface GetLicensesRepoResult {
+export interface FindLicensesRepoResult {
   licenses: LicenseWithDetails[];
   total: number;
 }
@@ -213,56 +228,15 @@ export interface CreateLicensesRepoInput {
     unitPrice: string;
   }>;
 }
-
 export type CreateLicensesRepoResult = LicenseEntity[];
 
-export interface UpdateLicenseRepoInput {
+export interface ActivateLicenseRepoInput {
   licenseId: string;
-  data: Partial<
-    Pick<
-      LicenseEntity,
-      "branchId" | "deviceId" | "status" | "activatedAt" | "updatedBy"
-    >
-  >;
+  deviceId: string;
+  branchId?: string | null;
+  expiresAt: Date;
 }
-
-export interface CreateLicenseHistoryRepoInput {
-  licenseId: string;
-  eventType: LicenseHistoryEventTypeEnum;
-  previousStatus: LicenseStatusEnum;
-  newStatus: LicenseStatusEnum;
-  previousExpiresAt?: Date | null;
-  newExpiresAt?: Date | null;
-  performedBy?: string | null;
-  remarks?: string | null;
-}
-export type UpdateLicenseRepoResult = LicenseEntity;
-
-export interface FindLicenseByIdRepoInput {
-  licenseId: string;
-  organizationId: string;
-}
-export type FindLicenseByIdRepoResult = LicenseEntity | null;
-
-export interface GetLicensePricingPlansServiceInput {
-  id?: string;
-}
-
-export interface GetLicensePricingPlansServiceResult {
-  plans: LicensePricingEntity[];
-}
-
-export interface GetLicensePricingPlansRepoInput {
-  id?: string;
-}
-
-export type GetLicensePricingPlansRepoResult = LicensePricingEntity[];
-
-export interface FindActiveDiscountRulesRepoInput {
-  targetEntity: number;
-}
-
-export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
+export type ActivateLicenseRepoResult = LicenseEntity;
 
 export interface ExtendLicenseRepoInput {
   licenseId: string;
@@ -293,31 +267,47 @@ export interface ExtendLicenseRepoInput {
     remarks: string;
   };
 }
-
 export type ExtendLicenseRepoResult = LicenseEntity;
 
-export interface GetLicenseHistoryRepoInput {
+export interface UpdateLicenseRepoInput {
+  licenseId: string;
+  data: Partial<
+    Pick<
+      LicenseEntity,
+      "branchId" | "deviceId" | "status" | "activatedAt" | "updatedBy"
+    >
+  >;
+}
+export type UpdateLicenseRepoResult = LicenseEntity;
+
+// Pricing & Discount Schema
+export interface FindLicensePricingPlansRepoInput {
+  id?: string;
+}
+export type FindLicensePricingPlansRepoResult = LicensePricingEntity[];
+
+export interface FindActiveDiscountRulesRepoInput {
+  targetEntity: number;
+}
+export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
+
+// License History Schema
+export interface FindLicenseHistoryRepoInput {
   licenseId: string;
 }
-
-export type GetLicenseHistoryRepoResult = (LicenseHistoryEntity & {
+export type FindLicenseHistoryRepoResult = (LicenseHistoryEntity & {
   performedByName: string | null;
   performedByEmail: string | null;
 })[];
 
-export interface GetLicenseDetailsRepoInput {
+export interface CreateLicenseHistoryRepoInput {
   licenseId: string;
+  eventType: LicenseHistoryEventTypeEnum;
+  previousStatus: LicenseStatusEnum;
+  newStatus: LicenseStatusEnum;
+  previousExpiresAt?: Date | null;
+  newExpiresAt?: Date | null;
+  performedBy?: string | null;
+  remarks?: string | null;
 }
-
-export interface GetLicenseDetailsRepoResult {
-  license: (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
-    branchName: string | null;
-    deviceName: string | null;
-  }) | null;
-  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
-    paymentStatus: number | null;
-    currency: string | null;
-    totalAmount: string | null;
-    performedByName: string | null;
-  })[];
-}
+export type CreateLicenseHistoryRepoResult = void;

@@ -1,16 +1,24 @@
-import { and, asc, count, desc, eq, ilike, inArray, or } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { branches } from "../branch/branch.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
   CreateDeviceRepoInput,
   CreateDeviceRepoResult,
-  FindDeviceByDeviceCodeRepoInput,
-  FindDeviceByDeviceCodeRepoResult,
-  FindDeviceByIdRepoInput,
-  FindDeviceByIdRepoResult,
-  GetDevicesRepoInput,
-  GetDevicesRepoResult,
+  FindDevicesRepoInput,
+  FindDevicesRepoResult,
+  FindOneDeviceRepoInput,
+  FindOneDeviceRepoResult,
   UpdateDeviceRepoInput,
   UpdateDeviceRepoResult,
 } from "./device.types";
@@ -18,41 +26,41 @@ import type {
 export class DeviceRepository {
   constructor(private readonly database: Database) {}
 
-  async create(input: CreateDeviceRepoInput): Promise<CreateDeviceRepoResult> {
-    const { data } = input;
-    const [device] = await this.database.client
-      .insert(devices)
-      .values({
-        organizationId: data.organizationId,
-        branchId: data.branchId,
-        deviceCode: data.deviceCode ?? null,
-        name: data.name ?? null,
-        pin: data.pin ?? null,
-        deviceType: data.deviceType ?? null,
-        createdBy: data.createdBy,
-      })
-      .returning({
-        id: devices.id,
-        organizationId: devices.organizationId,
-        branchId: devices.branchId,
-        deviceCode: devices.deviceCode,
-        name: devices.name,
-        deviceType: devices.deviceType,
-        isActive: devices.isActive,
-        createdAt: devices.createdAt,
-        updatedAt: devices.updatedAt,
-        createdBy: devices.createdBy,
-        updatedBy: devices.updatedBy,
-      });
+  // ========================================
+  // ? DEVICE SCHEMA METHODS
+  // ========================================
+  async findOne(
+    input: FindOneDeviceRepoInput,
+  ): Promise<FindOneDeviceRepoResult> {
+    const conditions: (SQL | undefined)[] = [];
 
-    if (!device) {
-      throw new Error("Failed to create device");
+    if (input.id !== undefined) {
+      conditions.push(eq(devices.id, input.id));
+    }
+    if (input.deviceCode !== undefined) {
+      conditions.push(eq(devices.deviceCode, input.deviceCode));
+    }
+    if (input.organizationId !== undefined) {
+      conditions.push(eq(devices.organizationId, input.organizationId));
+    }
+    if (input.branchId !== undefined) {
+      conditions.push(eq(devices.branchId, input.branchId));
     }
 
-    return device;
+    if (conditions.length === 0) {
+      return null;
+    }
+
+    const [device] = await this.database.client
+      .select()
+      .from(devices)
+      .where(and(...conditions))
+      .limit(1);
+
+    return device || null;
   }
 
-  async getDevices(input: GetDevicesRepoInput): Promise<GetDevicesRepoResult> {
+  async find(input: FindDevicesRepoInput): Promise<FindDevicesRepoResult> {
     const {
       organizationId,
       branchId,
@@ -159,26 +167,38 @@ export class DeviceRepository {
     };
   }
 
-  async findById(
-    input: FindDeviceByIdRepoInput,
-  ): Promise<FindDeviceByIdRepoResult> {
+  async create(input: CreateDeviceRepoInput): Promise<CreateDeviceRepoResult> {
+    const { data } = input;
     const [device] = await this.database.client
-      .select()
-      .from(devices)
-      .where(eq(devices.id, input.id))
-      .limit(1);
-    return device || null;
-  }
+      .insert(devices)
+      .values({
+        organizationId: data.organizationId,
+        branchId: data.branchId,
+        deviceCode: data.deviceCode ?? null,
+        name: data.name ?? null,
+        pin: data.pin ?? null,
+        deviceType: data.deviceType ?? null,
+        createdBy: data.createdBy,
+      })
+      .returning({
+        id: devices.id,
+        organizationId: devices.organizationId,
+        branchId: devices.branchId,
+        deviceCode: devices.deviceCode,
+        name: devices.name,
+        deviceType: devices.deviceType,
+        isActive: devices.isActive,
+        createdAt: devices.createdAt,
+        updatedAt: devices.updatedAt,
+        createdBy: devices.createdBy,
+        updatedBy: devices.updatedBy,
+      });
 
-  async findByDeviceCode(
-    input: FindDeviceByDeviceCodeRepoInput,
-  ): Promise<FindDeviceByDeviceCodeRepoResult> {
-    const [device] = await this.database.client
-      .select()
-      .from(devices)
-      .where(eq(devices.deviceCode, input.deviceCode))
-      .limit(1);
-    return device || null;
+    if (!device) {
+      throw new Error("Failed to create device");
+    }
+
+    return device;
   }
 
   async update(input: UpdateDeviceRepoInput): Promise<UpdateDeviceRepoResult> {

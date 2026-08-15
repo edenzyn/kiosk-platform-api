@@ -2,6 +2,7 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import type { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import type { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import type { UserScope } from "./dtos/check-auth.dtos";
 import type { UserResponseDto } from "./dtos/get-users.dtos";
@@ -103,25 +104,16 @@ export interface RevokeInvitationServiceResult {
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface FindUserByEmailRepoInput {
-  email: string;
+export interface FindOneUserRepoInput {
+  id?: string;
+  email?: string;
+  mobile?: string;
+  organizationId?: string | null;
+  branchId?: string | null;
+  userType?: number;
+  isActive?: boolean;
 }
-export type FindUserByEmailRepoResult = UserEntity | undefined;
-
-export interface FindUserByMobileRepoInput {
-  mobile: string;
-}
-export type FindUserByMobileRepoResult = UserEntity | undefined;
-
-export interface FindUserByIdRepoInput {
-  id: string;
-}
-export type FindUserByIdRepoResult = UserEntity | undefined;
-
-export interface CreateUserRepoInput {
-  user: CreateUserEntity;
-}
-export type CreateUserRepoResult = UserEntity;
+export type FindOneUserRepoResult = UserEntity | undefined;
 
 export interface FindUserByTenantRepoInput {
   organizationId?: string;
@@ -137,29 +129,34 @@ export interface FindUserByTenantRepoResult {
   total: number;
 }
 
-export interface CreateUserInvitationRepoInput {
-  invitation: CreateUserInvitationEntity;
+export interface FindUsersByRoleIdRepoInput {
+  roleId: string;
+  organizationId?: string;
+  branchId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  ru?: boolean;
 }
-export type CreateUserInvitationRepoResult = UserInvitationEntity;
+export interface FindUsersByRoleIdRepoResult {
+  users: Omit<UserEntity, "password" | "createdBy" | "updatedBy">[];
+  total: number;
+}
 
-export interface FindInvitationByTokenRepoInput {
-  token: string;
+export interface CreateUserRepoInput {
+  user: CreateUserEntity;
 }
-export type FindInvitationByTokenRepoResult = UserInvitationEntity | undefined;
+export type CreateUserRepoResult = UserEntity;
 
-export interface FindPendingInvitationByEmailRepoInput {
-  email: string;
+export interface FindOneInvitationRepoInput {
+  id?: string;
+  email?: string;
+  token?: string;
+  status?: UserInvitationStatusEnum;
+  organizationId?: string | null;
+  branchId?: string | null;
 }
-export type FindPendingInvitationByEmailRepoResult =
-  | UserInvitationEntity
-  | undefined;
-
-export interface UpdateInvitationStatusRepoInput {
-  id: string;
-  status: number;
-  updatedBy: string;
-}
-export type UpdateInvitationStatusRepoResult = UserInvitationEntity | undefined;
+export type FindOneInvitationRepoResult = UserInvitationEntity | undefined;
 
 export interface FindInvitationsByTenantRepoInput {
   organizationId?: string;
@@ -178,41 +175,22 @@ export interface FindInvitationsByTenantRepoResult {
   total: number;
 }
 
-export interface ResendInvitationRepoInput {
-  id: string;
-  token: string;
-  expiresAt: Date;
-  updatedBy: string;
+export interface CreateUserInvitationRepoInput {
+  invitation: CreateUserInvitationEntity;
 }
-export type ResendInvitationRepoResult = UserInvitationEntity | undefined;
+export type CreateUserInvitationRepoResult = UserInvitationEntity;
 
-export interface FindInvitationByIdRepoInput {
+export interface UpdateUserInvitationRepoInput {
   id: string;
+  data: {
+    name?: string;
+    email?: string;
+    token?: string;
+    status?: UserInvitationStatusEnum;
+    expiresAt?: Date;
+    roleIds?: string[];
+    branchId?: string | null;
+    updatedBy?: string | null;
+  };
 }
-export type FindInvitationByIdRepoResult = UserInvitationEntity | undefined;
-
-export interface GetUsersByRoleIdRepoInput {
-  roleId: string;
-  organizationId?: string;
-  branchId?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-  ru?: boolean;
-}
-export interface GetUsersByRoleIdRepoResult {
-  users: Pick<
-    UserEntity,
-    | "id"
-    | "organizationId"
-    | "branchId"
-    | "name"
-    | "email"
-    | "mobile"
-    | "userType"
-    | "isActive"
-    | "createdAt"
-    | "updatedAt"
-  >[];
-  total: number;
-}
+export type UpdateUserInvitationRepoResult = UserInvitationEntity | undefined;

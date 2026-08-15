@@ -52,7 +52,7 @@ export class UserService {
     permissions: UserPermissions[];
     availableScopes: UserScope[];
   }> {
-    const permissionKeys = await this.rbacRepository.getUserPermissionKeys({
+    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
       userId,
       organizationId,
       branchId,
@@ -67,7 +67,7 @@ export class UserService {
       };
     }
 
-    const organization = await this.organizationRepository.findById({
+    const organization = await this.organizationRepository.findOne({
       id: organizationId,
     });
 
@@ -89,7 +89,7 @@ export class UserService {
         createdAt: null,
       });
 
-      const { branches } = await this.branchRepository.getBranches({
+      const { branches } = await this.branchRepository.find({
         organizationId,
       });
 
@@ -108,7 +108,7 @@ export class UserService {
     // ======================================================
     else {
       if (branchId) {
-        const { branches } = await this.branchRepository.getBranches({
+        const { branches } = await this.branchRepository.find({
           branchIds: [branchId],
         });
 
@@ -132,7 +132,7 @@ export class UserService {
   }
 
   async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
-    const user = await this.userRepository.findById({ id: tokenUser.id });
+    const user = await this.userRepository.findOne({ id: tokenUser.id });
 
     if (!user) {
       throw new AppError("User not found", {
@@ -152,7 +152,7 @@ export class UserService {
       userScope,
     );
 
-    const topRole = await this.rbacRepository.getUsersTopRankedRole({
+    const topRole = await this.rbacRepository.findOneTopRankedRole({
       userId: user.id,
     });
     const topRoleDto = topRole
@@ -190,7 +190,7 @@ export class UserService {
 
     const usersWithTopRole = await Promise.all(
       users.map(async (user) => {
-        const topRole = await this.rbacRepository.getUsersTopRankedRole({
+        const topRole = await this.rbacRepository.findOneTopRankedRole({
           userId: user.id,
         });
         const topRoleDto = topRole
@@ -223,7 +223,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<InviteUserResponseDto> {
-    const existingUser = await this.userRepository.findByEmail({
+    const existingUser = await this.userRepository.findOne({
       email: dto.email,
     });
     if (existingUser) {
@@ -234,8 +234,9 @@ export class UserService {
     }
 
     const existingPendingInvitation =
-      await this.userRepository.findPendingInvitationByEmail({
+      await this.userRepository.findOneInvitation({
         email: dto.email,
+        status: UserInvitationStatusEnum.PENDING,
       });
     if (existingPendingInvitation) {
       throw new AppError(
@@ -342,7 +343,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<RevokeInvitationResponseDto> {
-    const invitation = await this.userRepository.findInvitationById({ id });
+    const invitation = await this.userRepository.findOneInvitation({ id });
     if (!invitation) {
       throw new AppError("Invitation not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -368,10 +369,12 @@ export class UserService {
       });
     }
 
-    await this.userRepository.updateInvitationStatus({
+    await this.userRepository.updateInvitation({
       id,
-      status: UserInvitationStatusEnum.REVOKED,
-      updatedBy: userToken.id,
+      data: {
+        status: UserInvitationStatusEnum.REVOKED,
+        updatedBy: userToken.id,
+      },
     });
 
     return {
@@ -385,7 +388,7 @@ export class UserService {
     userToken: UserTokenDto,
     effectiveTenant: EffectiveTenant,
   ): Promise<{ message: string; success: boolean }> {
-    const invitation = await this.userRepository.findInvitationById({ id });
+    const invitation = await this.userRepository.findOneInvitation({ id });
     if (!invitation) {
       throw new AppError("Invitation not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
@@ -425,11 +428,14 @@ export class UserService {
     );
     const expiresAt = dayjs().add(7, "day").toDate();
 
-    await this.userRepository.resendInvitation({
+    await this.userRepository.updateInvitation({
       id,
-      token,
-      expiresAt,
-      updatedBy: userToken.id,
+      data: {
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        updatedBy: userToken.id,
+      },
     });
 
     try {

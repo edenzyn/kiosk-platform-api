@@ -1,0 +1,98 @@
+name: Deploy Backend API
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy API to Remote Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          script_stop: true
+          script: |
+            set -e
+
+            APP_PATH="${{ vars.APP_PATH }}"
+            GIT_BRANCH="${{ vars.GIT_BRANCH }}"
+            PM2_APP_NAME="${{ vars.PM2_APP_NAME }}"
+
+            echo "=================================================="
+            echo "🚀 Starting Deployment for $PM2_APP_NAME"
+            echo "📁 Target Path: $APP_PATH"
+            echo "🌿 Branch: $GIT_BRANCH"
+            echo "=================================================="
+
+            echo "📂 Step 1: Navigating to API directory..."
+            cd "$APP_PATH"
+
+            echo "📥 Step 2: Fetching latest changes from origin/$GIT_BRANCH..."
+            git fetch origin "$GIT_BRANCH"
+
+            echo "🔄 Step 3: Resetting workspace to origin/$GIT_BRANCH..."
+            git reset --hard "origin/$GIT_BRANCH"
+
+            echo "📝 Step 4: Generating production .env file..."
+            cat << 'EOF' > .env
+            NODE_ENV=${{ vars.NODE_ENV }}
+            PORT=${{ vars.PORT }}
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            DATABASE_SSL_MODE=${{ vars.DATABASE_SSL_MODE }}
+            JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}
+            JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
+            JWT_INVITE_USER_SECRET=${{ secrets.JWT_INVITE_USER_SECRET }}
+            JWT_ACCESS_EXPIRES_IN=${{ vars.JWT_ACCESS_EXPIRES_IN }}
+            JWT_REFRESH_EXPIRES_IN=${{ vars.JWT_REFRESH_EXPIRES_IN }}
+            JWT_DEVICE_ACCESS_EXPIRES_IN=${{ vars.JWT_DEVICE_ACCESS_EXPIRES_IN }}
+            JWT_DEVICE_REFRESH_EXPIRES_IN=${{ vars.JWT_DEVICE_REFRESH_EXPIRES_IN }}
+            JWT_INVITE_USER_EXPIRES_IN=${{ vars.JWT_INVITE_USER_EXPIRES_IN }}
+            JWT_REFRESH_SLIDING_ENABLED=${{ vars.JWT_REFRESH_SLIDING_ENABLED }}
+            BCRYPT_ROUNDS=${{ vars.BCRYPT_ROUNDS }}
+            API_PREFIX_V1=${{ vars.API_PREFIX_V1 }}
+            CORS_ORIGIN_1=${{ vars.CORS_ORIGIN_1 }}
+            CORS_ORIGIN_2=${{ vars.CORS_ORIGIN_2 }}
+            USER_CLIENT_BASE_URL=${{ vars.USER_CLIENT_BASE_URL }}
+            RATE_LIMIT_WINDOW_MINUTES=${{ vars.RATE_LIMIT_WINDOW_MINUTES }}
+            RATE_LIMIT_MAX_REQUESTS=${{ vars.RATE_LIMIT_MAX_REQUESTS }}
+            SMTP_HOST=${{ vars.SMTP_HOST }}
+            SMTP_PORT=${{ vars.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASS=${{ secrets.SMTP_PASS }}
+            SMTP_FROM=${{ vars.SMTP_FROM }}
+            LICENSE_ENCRYPTION_KEY=${{ secrets.LICENSE_ENCRYPTION_KEY }}
+            LICENSE_GRACE_PERIOD_DAYS=${{ vars.LICENSE_GRACE_PERIOD_DAYS }}
+            REFRESH_TOKEN_CLEANUP_CRON=${{ vars.REFRESH_TOKEN_CLEANUP_CRON }}
+            LICENSE_STATUS_CHECK_CRON=${{ vars.LICENSE_STATUS_CHECK_CRON }}
+            EOF
+
+            echo "📦 Step 5: Installing dependencies..."
+            npm ci
+
+            echo "🛠️ Step 6: Building backend..."
+            npm run build
+
+            echo "🔁 Step 7: Reloading / starting PM2 process..."
+            if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
+              echo "Process '$PM2_APP_NAME' found. Reloading..."
+              pm2 reload "$PM2_APP_NAME" --update-env
+            else
+              echo "Process '$PM2_APP_NAME' not found. Starting new instance..."
+              pm2 start dist/index.js --name "$PM2_APP_NAME" --time
+            fi
+
+            echo "💾 Step 8: Saving PM2 process configuration..."
+            pm2 save
+
+            echo "=================================================="
+            echo "✅ Deployment completed successfully for $PM2_APP_NAME!"
+            echo "=================================================="

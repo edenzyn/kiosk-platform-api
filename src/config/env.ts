@@ -49,7 +49,8 @@ const EnvSchema = Yup.object({
       },
     ),
   LICENSE_GRACE_PERIOD_DAYS: Yup.number().integer().min(0).default(7),
-  REFRESH_TOKEN_CLEANUP_CRON: Yup.string().default("0 0 * * *"),
+  REFRESH_TOKEN_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
+  LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

@@ -7,6 +7,8 @@ import {
   gt,
   gte,
   ilike,
+  inArray,
+  isNotNull,
   isNull,
   lte,
   or,
@@ -35,6 +37,8 @@ import type {
   FindLicenseHistoryRepoResult,
   FindLicensePricingPlansRepoInput,
   FindLicensePricingPlansRepoResult,
+  FindLicensesForStatusCheckRepoInput,
+  FindLicensesForStatusCheckRepoResult,
   FindLicensesRepoInput,
   FindLicensesRepoResult,
   FindOneActiveLicenseByDeviceIdRepoInput,
@@ -258,6 +262,25 @@ export class LicenseRepository {
       licenses: rows as LicenseWithDetails[],
       total,
     };
+  }
+
+  async findLicensesForStatusCheck(
+    input?: FindLicensesForStatusCheckRepoInput,
+  ): Promise<FindLicensesForStatusCheckRepoResult> {
+    const targetStatuses = input?.statuses ?? [
+      LicenseStatusEnum.ACTIVE,
+      LicenseStatusEnum.GRACE_PERIOD,
+    ];
+
+    return this.database.client
+      .select()
+      .from(licenses)
+      .where(
+        and(
+          inArray(licenses.status, targetStatuses),
+          isNotNull(licenses.expiresAt),
+        ),
+      );
   }
 
   async createLicenses(

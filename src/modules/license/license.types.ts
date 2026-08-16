@@ -149,6 +149,15 @@ export interface GetLicenseDetailsServiceResult {
   })[];
 }
 
+export interface CheckLicenseStatusServiceInput {
+  licenseId?: string;
+}
+
+export interface CheckLicenseStatusServiceResult {
+  checkedCount: number;
+  updatedCount: number;
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -197,6 +206,11 @@ export interface FindLicensesRepoResult {
   licenses: LicenseWithDetails[];
   total: number;
 }
+
+export interface FindLicensesForStatusCheckRepoInput {
+  statuses?: number[];
+}
+export type FindLicensesForStatusCheckRepoResult = LicenseEntity[];
 
 export interface CreateLicensesRepoInput {
   licenses: Array<{

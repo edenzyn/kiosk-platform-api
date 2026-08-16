@@ -24,6 +24,8 @@ import type {
   AssignLicenseToBranchServiceResult,
   AssignLicenseToDeviceServiceInput,
   AssignLicenseToDeviceServiceResult,
+  CheckLicenseStatusServiceInput,
+  CheckLicenseStatusServiceResult,
   CreateLicenseHistoryRepoInput,
   ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
@@ -42,6 +44,7 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
 } from "./license.types";
+import type { LicenseEntity } from "./schemas/license.schema";
 
 export class LicenseService {
   constructor(private readonly licenseRepository: LicenseRepository) {}
@@ -498,6 +501,140 @@ export class LicenseService {
   // ========================================
   // ? DEVICE CLIENT SERVICES
   // ========================================
+  private async _evaluateAndUpdateLicenseStatus(
+    license: LicenseEntity,
+  ): Promise<{
+    license: LicenseEntity;
+    updated: boolean;
+    gracePeriodExpiresAt?: string;
+  }> {
+    const now = new Date();
+    const expiresAtDate = license.expiresAt
+      ? new Date(license.expiresAt)
+      : null;
+
+    if (!expiresAtDate || now <= expiresAtDate) {
+      return { license, updated: false };
+    }
+
+    const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
+    const gracePeriodEndDate = dayjs(expiresAtDate)
+      .add(gracePeriodDays, "day")
+      .toDate();
+
+    if (license.status === LicenseStatusEnum.ACTIVE) {
+      if (now >= gracePeriodEndDate) {
+        const updated = await this.licenseRepository.update({
+          licenseId: license.id,
+          data: {
+            status: LicenseStatusEnum.EXPIRED,
+          },
+        });
+        await this._createLicenseHistory({
+          licenseId: license.id,
+          eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+          previousStatus: LicenseStatusEnum.ACTIVE,
+          newStatus: LicenseStatusEnum.EXPIRED,
+          previousExpiresAt: expiresAtDate,
+          newExpiresAt: expiresAtDate,
+          remarks:
+            "License status changed from Active to Expired because grace period ended",
+        });
+        return { license: updated, updated: true };
+      }
+
+      const updated = await this.licenseRepository.update({
+        licenseId: license.id,
+        data: {
+          status: LicenseStatusEnum.GRACE_PERIOD,
+        },
+      });
+      await this._createLicenseHistory({
+        licenseId: license.id,
+        eventType: LicenseHistoryEventTypeEnum.GRACE_PERIOD,
+        previousStatus: LicenseStatusEnum.ACTIVE,
+        newStatus: LicenseStatusEnum.GRACE_PERIOD,
+        previousExpiresAt: expiresAtDate,
+        newExpiresAt: expiresAtDate,
+        remarks: `License status changed to Grace Period (${gracePeriodDays} days) because it expired`,
+      });
+      return {
+        license: updated,
+        updated: true,
+        gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
+      };
+    }
+
+    if (license.status === LicenseStatusEnum.GRACE_PERIOD) {
+      if (now >= gracePeriodEndDate) {
+        const updated = await this.licenseRepository.update({
+          licenseId: license.id,
+          data: {
+            status: LicenseStatusEnum.EXPIRED,
+          },
+        });
+        await this._createLicenseHistory({
+          licenseId: license.id,
+          eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+          previousStatus: LicenseStatusEnum.GRACE_PERIOD,
+          newStatus: LicenseStatusEnum.EXPIRED,
+          previousExpiresAt: expiresAtDate,
+          newExpiresAt: expiresAtDate,
+          remarks:
+            "License status changed from Grace Period to Expired because grace period ended",
+        });
+        return { license: updated, updated: true };
+      }
+
+      return {
+        license,
+        updated: false,
+        gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
+      };
+    }
+
+    return { license, updated: false };
+  }
+
+  async checkLicenseStatus(
+    input?: CheckLicenseStatusServiceInput,
+  ): Promise<CheckLicenseStatusServiceResult> {
+    if (input?.licenseId) {
+      const license = await this.licenseRepository.findOne({
+        id: input.licenseId,
+      });
+
+      if (!license) {
+        throw new AppError("License not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      const { updated } = await this._evaluateAndUpdateLicenseStatus(license);
+      return {
+        checkedCount: 1,
+        updatedCount: updated ? 1 : 0,
+      };
+    }
+
+    const licensesToCheck =
+      await this.licenseRepository.findLicensesForStatusCheck();
+
+    let updatedCount = 0;
+    for (const license of licensesToCheck) {
+      const { updated } = await this._evaluateAndUpdateLicenseStatus(license);
+      if (updated) {
+        updatedCount++;
+      }
+    }
+
+    return {
+      checkedCount: licensesToCheck.length,
+      updatedCount,
+    };
+  }
+
   async getLicenseForDevice(
     input: GetLicenseForDeviceServiceInput,
   ): Promise<GetLicenseForDeviceServiceResult> {
@@ -520,107 +657,25 @@ export class LicenseService {
     });
     if (anyLicense) {
       const {
+        license: evaluatedLicense,
+        gracePeriodExpiresAt,
+      } = await this._evaluateAndUpdateLicenseStatus(anyLicense);
+
+      const {
         createdBy,
         updatedBy,
         licenseKey: _lk,
         licenseKeyHash: _lkh,
         ...rest
-      } = anyLicense;
+      } = evaluatedLicense;
 
-      const now = new Date();
-      const expiresAtDate = anyLicense.expiresAt
-        ? new Date(anyLicense.expiresAt)
-        : null;
-
-      if (expiresAtDate && now > expiresAtDate) {
-        const gracePeriodDays = env.LICENSE_GRACE_PERIOD_DAYS;
-        const gracePeriodEndDate = dayjs(expiresAtDate)
-          .add(gracePeriodDays, "day")
-          .toDate();
-
-        if (rest.status === LicenseStatusEnum.ACTIVE) {
-          if (now >= gracePeriodEndDate) {
-            await this.licenseRepository.update({
-              licenseId: rest.id,
-              data: {
-                status: LicenseStatusEnum.EXPIRED,
-              },
-            });
-            await this._createLicenseHistory({
-              licenseId: rest.id,
-              eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
-              previousStatus: LicenseStatusEnum.ACTIVE,
-              newStatus: LicenseStatusEnum.EXPIRED,
-              previousExpiresAt: expiresAtDate,
-              newExpiresAt: expiresAtDate,
-              remarks:
-                "License status changed from Active to Expired because grace period ended",
-            });
-            return {
-              license: {
-                ...rest,
-                status: LicenseStatusEnum.EXPIRED,
-              },
-            };
-          }
-
-          await this.licenseRepository.update({
-            licenseId: rest.id,
-            data: {
-              status: LicenseStatusEnum.GRACE_PERIOD,
-            },
-          });
-          await this._createLicenseHistory({
-            licenseId: rest.id,
-            eventType: LicenseHistoryEventTypeEnum.GRACE_PERIOD,
-            previousStatus: LicenseStatusEnum.ACTIVE,
-            newStatus: LicenseStatusEnum.GRACE_PERIOD,
-            previousExpiresAt: expiresAtDate,
-            newExpiresAt: expiresAtDate,
-            remarks: `License status changed to Grace Period (${gracePeriodDays} days) because it expired`,
-          });
-          return {
-            license: {
-              ...rest,
-              status: LicenseStatusEnum.GRACE_PERIOD,
-              gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
-            },
-          };
-        }
-
-        if (rest.status === LicenseStatusEnum.GRACE_PERIOD) {
-          if (now >= gracePeriodEndDate) {
-            await this.licenseRepository.update({
-              licenseId: rest.id,
-              data: {
-                status: LicenseStatusEnum.EXPIRED,
-              },
-            });
-            await this._createLicenseHistory({
-              licenseId: rest.id,
-              eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
-              previousStatus: LicenseStatusEnum.GRACE_PERIOD,
-              newStatus: LicenseStatusEnum.EXPIRED,
-              previousExpiresAt: expiresAtDate,
-              newExpiresAt: expiresAtDate,
-              remarks:
-                "License status changed from Grace Period to Expired because grace period ended",
-            });
-            return {
-              license: {
-                ...rest,
-                status: LicenseStatusEnum.EXPIRED,
-              },
-            };
-          }
-
-          return {
-            license: {
-              ...rest,
-              gracePeriodExpiresAt: gracePeriodEndDate.toISOString(),
-            },
-          };
-        }
+      if (evaluatedLicense.status === LicenseStatusEnum.GRACE_PERIOD) {
+        return {
+          license: {
+            ...rest,
+            gracePeriodExpiresAt,
+          },
+        };
       }
 
       return { license: rest };

@@ -16,8 +16,8 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          script_stop: true
           script: |
+            bash -c '
             set -e
 
             APP_PATH="${{ vars.APP_PATH }}"
@@ -40,7 +40,7 @@ jobs:
             git reset --hard "origin/$GIT_BRANCH"
 
             echo "📝 Step 4: Generating production .env file..."
-            cat << 'EOF' > .env
+            cat << "EOF" > .env
             NODE_ENV=${{ vars.NODE_ENV }}
             PORT=${{ vars.PORT }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
@@ -65,11 +65,11 @@ jobs:
             SMTP_PORT=${{ vars.SMTP_PORT }}
             SMTP_USER=${{ secrets.SMTP_USER }}
             SMTP_PASS=${{ secrets.SMTP_PASS }}
-            SMTP_FROM=${{ vars.SMTP_FROM }}
+            SMTP_FROM="${{ vars.SMTP_FROM }}"
             LICENSE_ENCRYPTION_KEY=${{ secrets.LICENSE_ENCRYPTION_KEY }}
             LICENSE_GRACE_PERIOD_DAYS=${{ vars.LICENSE_GRACE_PERIOD_DAYS }}
-            REFRESH_TOKEN_CLEANUP_CRON=${{ vars.REFRESH_TOKEN_CLEANUP_CRON }}
-            LICENSE_STATUS_CHECK_CRON=${{ vars.LICENSE_STATUS_CHECK_CRON }}
+            REFRESH_TOKEN_CLEANUP_CRON="${{ vars.REFRESH_TOKEN_CLEANUP_CRON }}"
+            LICENSE_STATUS_CHECK_CRON="${{ vars.LICENSE_STATUS_CHECK_CRON }}"
             EOF
 
             echo "📦 Step 5: Installing dependencies..."
@@ -80,10 +80,10 @@ jobs:
 
             echo "🔁 Step 7: Reloading / starting PM2 process..."
             if pm2 describe "$PM2_APP_NAME" > /dev/null 2>&1; then
-              echo "Process '$PM2_APP_NAME' found. Reloading..."
+              echo "Process $PM2_APP_NAME found. Reloading..."
               pm2 reload "$PM2_APP_NAME" --update-env
             else
-              echo "Process '$PM2_APP_NAME' not found. Starting new instance..."
+              echo "Process $PM2_APP_NAME not found. Starting new instance..."
               pm2 start dist/index.js --name "$PM2_APP_NAME" --time
             fi
 
@@ -93,3 +93,4 @@ jobs:
             echo "=================================================="
             echo "✅ Deployment completed successfully for $PM2_APP_NAME!"
             echo "=================================================="
+            '

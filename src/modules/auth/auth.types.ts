@@ -93,3 +93,8 @@ export interface RevokeRefreshTokenRepoInput {
   tokenHash: string;
 }
 export type RevokeRefreshTokenRepoResult = void;
+
+export interface DeleteExpiredRefreshTokensRepoInput {
+  now?: Date;
+}
+export type DeleteExpiredRefreshTokensRepoResult = number;

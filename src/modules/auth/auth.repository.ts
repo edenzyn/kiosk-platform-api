@@ -1,19 +1,23 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, lt } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { refreshTokens } from "./schemas/refresh-token.schema";
 import type {
   CreateRefreshTokenRepoInput,
   CreateRefreshTokenRepoResult,
-  RotateRefreshTokenRepoInput,
-  RotateRefreshTokenRepoResult,
+  DeleteExpiredRefreshTokensRepoInput,
+  DeleteExpiredRefreshTokensRepoResult,
   RevokeRefreshTokenRepoInput,
   RevokeRefreshTokenRepoResult,
+  RotateRefreshTokenRepoInput,
+  RotateRefreshTokenRepoResult,
 } from "./auth.types";
+import { refreshTokens } from "./schemas/refresh-token.schema";
 
 export class AuthRepository {
   constructor(private readonly database: Database) {}
 
-  async createRefreshToken(input: CreateRefreshTokenRepoInput): Promise<CreateRefreshTokenRepoResult> {
+  async createRefreshToken(
+    input: CreateRefreshTokenRepoInput,
+  ): Promise<CreateRefreshTokenRepoResult> {
     await this.database.client.insert(refreshTokens).values(input.data);
   }
 
@@ -44,7 +48,9 @@ export class AuthRepository {
     });
   }
 
-  async revokeRefreshToken(input: RevokeRefreshTokenRepoInput): Promise<RevokeRefreshTokenRepoResult> {
+  async revokeRefreshToken(
+    input: RevokeRefreshTokenRepoInput,
+  ): Promise<RevokeRefreshTokenRepoResult> {
     const { tokenId, tokenHash } = input;
     await this.database.client
       .update(refreshTokens)
@@ -56,5 +62,17 @@ export class AuthRepository {
           isNull(refreshTokens.revokedAt),
         ),
       );
+  }
+
+  async deleteExpiredRefreshTokens(
+    input?: DeleteExpiredRefreshTokensRepoInput,
+  ): Promise<DeleteExpiredRefreshTokensRepoResult> {
+    const referenceDate = input?.now ?? new Date();
+    const deletedRows = await this.database.client
+      .delete(refreshTokens)
+      .where(lt(refreshTokens.expiresAt, referenceDate))
+      .returning({ id: refreshTokens.id });
+
+    return deletedRows.length;
   }
 }

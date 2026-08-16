@@ -3,14 +3,19 @@ import { App } from "./app";
 import { container } from "./config/container";
 import type { Database } from "./config/db";
 import { env } from "./config/env";
+import { registerJobs } from "./jobs/register-jobs";
+import { jobScheduler } from "./jobs/scheduler";
 import { logger } from "./shared/utils/core/logger";
 
 function bootstrap(): void {
   const app = new App();
   const server = createServer(app.instance);
 
+  registerJobs();
+
   server.listen(env.PORT, () => {
     logger.log(`Server running on port ${env.PORT}`);
+    jobScheduler.start();
   });
 
   let isShuttingDown = false;
@@ -27,6 +32,7 @@ function bootstrap(): void {
 
     server.close(async (serverError) => {
       try {
+        jobScheduler.stop();
         const database = container.resolve<Database>("database");
         await database.close();
         if (serverError) throw serverError;
@@ -45,3 +51,4 @@ function bootstrap(): void {
 }
 
 bootstrap();
+

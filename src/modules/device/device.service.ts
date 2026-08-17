@@ -2,7 +2,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
-import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
+import { createRandomCode } from "../../shared/utils/core/crypto.helper";
 import type { LicenseService } from "../license/license.service";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
@@ -33,7 +33,7 @@ export class DeviceService {
     input: CreateDeviceServiceInput,
   ): Promise<CreateDeviceServiceResult> {
     const shortLabel = DEVICE_TYPE_SHORT_LABELS[input.data.deviceType] || "DVC";
-    const randPart = createRandomReadableCode(8);
+    const randPart = createRandomCode(8);
     const deviceCode = `${shortLabel}-${randPart.slice(0, 4)}-${randPart.slice(4)}`;
 
     const hashedPin = await hashData(String(input.data.pin));

@@ -2,6 +2,7 @@ import cookieParser from "cookie-parser";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
+import { container } from "./config/container";
 import { env } from "./config/env";
 import { authMiddleware } from "./middleware/auth.middleware";
 import { applyCors } from "./middleware/cors.middleware";
@@ -19,6 +20,7 @@ import organizationRoutes from "./modules/organization/organization.routes";
 import platformRoutes from "./modules/platform/platform.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import userRoutes from "./modules/user/user.routes";
+import { Msg91OtpService } from "./shared/services/otp/msg91/msg91-otp.service";
 import { swaggerDocument } from "./shared/utils/core/swagger";
 
 export class App {
@@ -74,6 +76,20 @@ export class App {
     this.configurePlatformUserRoutes();
     this.configureNormalUserRoutes();
     this.configureDeviceClientRoutes();
+    void (async () => {
+      try {
+        const msg91OtpService =
+          container.resolve<Msg91OtpService>("msg91OtpService");
+
+        await msg91OtpService.sendOtp({
+          mobile: "919539867222",
+        });
+
+        console.log("OTP sent successfully");
+      } catch (error) {
+        console.error("Failed to send test OTP:", error);
+      }
+    })();
   }
 
   private configureHealthRoute(): void {

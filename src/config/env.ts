@@ -51,6 +51,10 @@ const EnvSchema = Yup.object({
   LICENSE_GRACE_PERIOD_DAYS: Yup.number().integer().min(0).default(7),
   REFRESH_TOKEN_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
   LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
+  MSG91_BASE_URL: Yup.string().default("https://control.msg91.com/api/v5"),
+  MSG91_AUTH_KEY: Yup.string().default(""),
+  MSG91_SENDER_ID: Yup.string().default(""),
+  MSG91_OTP_TEMPLATE_ID: Yup.string().default(""),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

@@ -4,17 +4,23 @@ export const HASH_ALPHABET_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 
 const ALGORITHM = "aes-256-gcm";
 
+// Crypto hash sha256 helper function
 export function hashSha256(data: string): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
-export function createRandomReadableCode(length: number): string {
+// Crypto random code helper function
+export function createRandomCode(
+  length: number,
+  characters: string = HASH_ALPHABET_CODE,
+): string {
   return Array.from(
     { length },
-    () => HASH_ALPHABET_CODE[randomInt(HASH_ALPHABET_CODE.length)],
+    () => characters[randomInt(characters.length)],
   ).join("");
 }
 
+// Crypto encryption helper function
 export function encryptData(text: string, base64Key: string): string {
   const key = Buffer.from(base64Key, "base64");
   const iv = crypto.randomBytes(12); // standard 12-byte IV for GCM
@@ -29,6 +35,7 @@ export function encryptData(text: string, base64Key: string): string {
   return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
+// Crypto decryption helper function
 export function decryptData(encryptedText: string, base64Key: string): string {
   const key = Buffer.from(base64Key, "base64");
   const parts = encryptedText.split(":");

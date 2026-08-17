@@ -14,8 +14,10 @@ import { PlatformContainer } from "../modules/platform/platform.container";
 import { RbacContainer } from "../modules/rbac/rbac.container";
 import { UserContainer } from "../modules/user/user.container";
 import { MailService } from "../shared/services/mail/mail.service";
+import { Msg91OtpService } from "../shared/services/otp/msg91/msg91-otp.service";
 import { initDatabase } from "./db";
 import { mailTransporter } from "./mail";
+import { msg91Config } from "./msg91";
 
 export const container = createContainer({
   injectionMode: InjectionMode.CLASSIC,
@@ -26,6 +28,8 @@ container.register({
   database: asFunction(initDatabase).singleton(),
   mailTransporter: asValue(mailTransporter),
   mailService: asClass(MailService).singleton(),
+  msg91Config: asValue(msg91Config),
+  msg91OtpService: asClass(Msg91OtpService).singleton(),
 });
 
 UserContainer.register(container);

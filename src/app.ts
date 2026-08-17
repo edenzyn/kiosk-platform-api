@@ -69,6 +69,14 @@ export class App {
   }
 
   private configureRoutes(): void {
+    this.configureHealthRoute();
+    this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
+    this.configurePlatformUserRoutes();
+    this.configureNormalUserRoutes();
+    this.configureDeviceClientRoutes();
+  }
+
+  private configureHealthRoute(): void {
     this.instance.get(`${this.apiV1Prefix}/health`, (_request, response) => {
       response.json({
         status: "ok",
@@ -79,16 +87,13 @@ export class App {
         timestamp: new Date().toISOString(),
       });
     });
+  }
 
-    this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
+  private configurePlatformUserRoutes(): void {
+    this.instance.use(this.platformUserApiV1Prefix, platformRoutes);
+  }
 
-    // ========================================
-    // ? USER CLIENT ROUTES
-    // ========================================
-    // Platform user routes
-    this.instance.use(`${this.platformUserApiV1Prefix}`, platformRoutes);
-
-    // Normal user routes
+  private configureNormalUserRoutes(): void {
     this.instance.use(`${this.normalUserApiV1Prefix}/users`, userRoutes);
     this.instance.use(`${this.normalUserApiV1Prefix}/rbac`, rbacRoutes);
     this.instance.use(
@@ -104,10 +109,9 @@ export class App {
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,
     );
+  }
 
-    // ========================================
-    // ? DEVICE CLIENT ROUTES
-    // ========================================
+  private configureDeviceClientRoutes(): void {
     this.instance.use(`${this.deviceApiV1Prefix}/devices`, deviceRouter);
     this.instance.use(
       `${this.deviceApiV1Prefix}/licenses`,

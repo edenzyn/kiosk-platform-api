@@ -9,6 +9,9 @@ export enum UserPermissions {
   PLATFORM_ORGANIZATION_READ = "platform:organization:read",
   PLATFORM_ORGANIZATION_WRITE = "platform:organization:write",
 
+  PLATFORM_RESELLER_READ = "platform:reseller:read",
+  PLATFORM_RESELLER_WRITE = "platform:reseller:write",
+
   PLATFORM_DEVICE_READ = "platform:device:read",
   PLATFORM_DEVICE_WRITE = "platform:device:write",
 

@@ -8,6 +8,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
+import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { branches } from "../../branch/branch.schema";
 import { organizations } from "../../organization/organization.schema";
 import { users } from "./user.schema";
@@ -16,6 +17,7 @@ export const userInvitations = pgTable("user_invitations", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
+  entityType: integer("entity_type").notNull().default(UserTypeEnums.NORMAL),
   organizationId: uuid("organization_id").references(
     (): AnyPgColumn => organizations.id,
   ),

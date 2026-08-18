@@ -94,3 +94,11 @@ export const BRANCH_LICENSE_READ_WRITE_PERMS = [
   UserPermissions.BRANCH_LICENSE_READ,
   UserPermissions.BRANCH_LICENSE_WRITE,
 ];
+
+//----------------------
+// Reseller Module Constants
+//----------------------
+export const PLATFORM_RESELLER_READ_WRITE_PERMS = [
+  UserPermissions.PLATFORM_RESELLER_READ,
+  UserPermissions.PLATFORM_RESELLER_WRITE,
+];

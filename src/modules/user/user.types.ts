@@ -4,6 +4,7 @@ import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enu
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import type { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import type { UserScope } from "./dtos/check-auth.dtos";
 import type { UserResponseDto } from "./dtos/get-users.dtos";
 import type {
@@ -161,12 +162,13 @@ export type FindOneInvitationRepoResult = UserInvitationEntity | undefined;
 export interface FindInvitationsByTenantRepoInput {
   organizationId?: string;
   branchId?: string;
+  entityType?: UserTypeEnums;
   page?: number;
   limit?: number;
   search?: string;
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
-  status?: number;
+  status?: UserInvitationStatusEnum;
   expiresStart?: Date;
   expiresEnd?: Date;
 }

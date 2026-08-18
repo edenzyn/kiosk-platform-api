@@ -18,6 +18,8 @@ import { userLicenseRouter } from "./modules/license/routes/user-license.routes"
 import organizationRoutes from "./modules/organization/organization.routes";
 import platformRoutes from "./modules/platform/platform.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
+import { platformResellerRouter } from "./modules/reseller/routes/platform-reseller.routes";
+import { resellerRouter } from "./modules/reseller/routes/reseller.routes";
 import userRoutes from "./modules/user/user.routes";
 import { swaggerDocument } from "./shared/utils/core/swagger";
 
@@ -91,6 +93,10 @@ export class App {
 
   private configurePlatformUserRoutes(): void {
     this.instance.use(this.platformUserApiV1Prefix, platformRoutes);
+    this.instance.use(
+      `${this.platformUserApiV1Prefix}/resellers`,
+      platformResellerRouter,
+    );
   }
 
   private configureNormalUserRoutes(): void {
@@ -108,6 +114,10 @@ export class App {
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,
+    );
+    this.instance.use(
+      `${this.normalUserApiV1Prefix}/resellers`,
+      resellerRouter,
     );
   }
 

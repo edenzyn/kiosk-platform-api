@@ -368,6 +368,7 @@ export class UserRepository {
     const {
       organizationId,
       branchId,
+      entityType,
       page,
       limit,
       search,
@@ -397,7 +398,7 @@ export class UserRepository {
       conditions.push(ilike(userInvitations.email, `%${search}%`));
     }
 
-    if (status !== undefined) {
+    if (status !== undefined && status !== null) {
       conditions.push(eq(userInvitations.status, status));
     }
 
@@ -407,6 +408,10 @@ export class UserRepository {
 
     if (expiresEnd) {
       conditions.push(lte(userInvitations.expiresAt, expiresEnd));
+    }
+
+    if (entityType !== undefined && entityType !== null) {
+      conditions.push(eq(userInvitations.entityType, entityType));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;

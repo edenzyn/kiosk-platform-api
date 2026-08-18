@@ -39,8 +39,12 @@ import type {
   GetLicenseHistoryServiceResult,
   GetLicensePricingPlansServiceInput,
   GetLicensePricingPlansServiceResult,
+  GetLicensesForResellerServiceInput,
+  GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
+  PurchaseLicenseAsResellerServiceInput,
+  PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
 } from "./license.types";
@@ -63,9 +67,120 @@ export class LicenseService {
     }
   }
 
+  private async _purchaseLicenses(params: {
+    quantity: number;
+    pricingPlanId: string;
+    organizationId: string | null;
+    branchId: string | null;
+    userId: string;
+    resellerId?: string;
+    discountTargetEntity: number;
+    historyTargetEntityType?: UserTypeEnums;
+  }): Promise<PurchaseLicenseServiceResult> {
+    const qty = params.quantity;
+
+    const plansResult = await this.getLicensePricingPlans({
+      id: params.pricingPlanId,
+    });
+    const selectedPlan = plansResult.plans[0];
+
+    if (!selectedPlan) {
+      throw new AppError("Selected pricing plan not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    const durationDays = selectedPlan.durationDays;
+    const basePrice = Number(selectedPlan.price);
+    const currency = selectedPlan.currency;
+
+    const rules = await this.licenseRepository.findActiveDiscountRules({
+      targetEntity: params.discountTargetEntity,
+    });
+
+    const matchedRule = rules.find(
+      (rule) =>
+        qty >= rule.minQuantity &&
+        (rule.maxQuantity === null || qty <= rule.maxQuantity),
+    );
+
+    let discountPct = 0.0;
+    let appliedDiscountRuleId: string | null = null;
+
+    if (matchedRule) {
+      discountPct = Number(matchedRule.discountValue);
+      appliedDiscountRuleId = matchedRule.id;
+    }
+
+    const {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      totalAmount,
+      unitPrice,
+      baseUnitPrice,
+    } = calculateLicensePurchasePricing(basePrice, qty, discountPct);
+
+    const newLicenses = [];
+    for (let i = 0; i < qty; i++) {
+      const plaintextKey = generateReadableLicenseKey();
+      const encryptedKey = encryptData(
+        plaintextKey,
+        env.LICENSE_ENCRYPTION_KEY,
+      );
+      const keyHash = hashSha256(plaintextKey);
+
+      newLicenses.push({
+        licenseKey: encryptedKey,
+        licenseKeyHash: keyHash,
+        organizationId: params.organizationId,
+        branchId: params.branchId,
+        status: LicenseStatusEnum.AVAILABLE,
+        expiresAt: null,
+        createdBy: params.userId,
+        updatedBy: params.userId,
+      });
+    }
+
+    const created = await this.licenseRepository.createLicenses({
+      licenses: newLicenses,
+      resellerId: params.resellerId,
+      historyTargetEntityType: params.historyTargetEntityType,
+      transaction: {
+        userId: params.userId,
+        subtotalAmount: subtotal,
+        discountAmount: discountAmount,
+        discountPercentage: discountPercentage,
+        appliedDiscountRuleId,
+        totalAmount: totalAmount,
+        currency,
+        paymentStatus: PaymentStatusEnum.COMPLETED,
+      },
+      transactionItems: newLicenses.map(() => ({
+        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
+        durationDays,
+        baseUnitPrice: baseUnitPrice,
+        discountPercentage: discountPercentage,
+        unitPrice: unitPrice,
+      })),
+    });
+
+    const resultLicenses = created.map(({ createdBy, updatedBy, ...rest }) => {
+      return {
+        ...rest,
+        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      };
+    });
+
+    return {
+      licenses: resultLicenses,
+    };
+  }
+
   // ========================================
   // ? USER CLIENT SERVICES
   // ========================================
+  // Normal User methods
   async getLicenses(
     input: GetLicensesServiceInput,
   ): Promise<GetLicensesServiceResult> {
@@ -105,106 +220,15 @@ export class LicenseService {
   async purchaseLicense(
     input: PurchaseLicenseServiceInput,
   ): Promise<PurchaseLicenseServiceResult> {
-    const qty = input.dto.quantity;
-    const organizationId = input.effectiveTenant.organizationId;
-    const branchId = input.effectiveTenant.branchId || null;
-
-    const pricingPlanId = input.dto.pricingPlanId;
-
-    const plansResult = await this.getLicensePricingPlans({
-      id: pricingPlanId,
+    return this._purchaseLicenses({
+      quantity: input.dto.quantity,
+      pricingPlanId: input.dto.pricingPlanId,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
+      userId: input.userId,
+      discountTargetEntity:
+        LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
     });
-    const selectedPlan = plansResult.plans[0];
-
-    if (!selectedPlan) {
-      throw new AppError("Selected pricing plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
-    }
-
-    const durationDays = selectedPlan.durationDays;
-    const basePrice = Number(selectedPlan.price);
-    const currency = selectedPlan.currency;
-
-    const rules = await this.licenseRepository.findActiveDiscountRules({
-      targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
-    });
-
-    const matchedRule = rules.find(
-      (rule) =>
-        qty >= rule.minQuantity &&
-        (rule.maxQuantity === null || qty <= rule.maxQuantity),
-    );
-
-    let discountPct = 0.0;
-    let appliedDiscountRuleId: string | null = null;
-
-    if (matchedRule) {
-      discountPct = Number(matchedRule.discountValue);
-      appliedDiscountRuleId = matchedRule.id;
-    }
-
-    const {
-      subtotal,
-      discountPercentage,
-      discountAmount,
-      totalAmount,
-      unitPrice,
-      baseUnitPrice,
-    } = calculateLicensePurchasePricing(basePrice, qty, discountPct);
-
-    const newLicenses = [];
-    for (let i = 0; i < qty; i++) {
-      const plaintextKey = generateReadableLicenseKey();
-      const encryptedKey = encryptData(
-        plaintextKey,
-        env.LICENSE_ENCRYPTION_KEY,
-      );
-      const keyHash = hashSha256(plaintextKey);
-
-      newLicenses.push({
-        licenseKey: encryptedKey,
-        licenseKeyHash: keyHash,
-        organizationId,
-        branchId,
-        status: LicenseStatusEnum.AVAILABLE,
-        expiresAt: null,
-        createdBy: input.userId,
-        updatedBy: input.userId,
-      });
-    }
-
-    const created = await this.licenseRepository.createLicenses({
-      licenses: newLicenses,
-      transaction: {
-        userId: input.userId,
-        subtotalAmount: subtotal,
-        discountAmount: discountAmount,
-        discountPercentage: discountPercentage,
-        appliedDiscountRuleId,
-        totalAmount: totalAmount,
-        currency,
-        paymentStatus: PaymentStatusEnum.COMPLETED,
-      },
-      transactionItems: newLicenses.map(() => ({
-        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
-        durationDays,
-        baseUnitPrice: baseUnitPrice,
-        discountPercentage: discountPercentage,
-        unitPrice: unitPrice,
-      })),
-    });
-
-    const resultLicenses = created.map(({ createdBy, updatedBy, ...rest }) => {
-      return {
-        ...rest,
-        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
-      };
-    });
-
-    return {
-      licenses: resultLicenses,
-    };
   }
 
   async assignLicenseToBranch(
@@ -499,6 +523,55 @@ export class LicenseService {
     };
   }
 
+  // Reseller User methods
+  async getLicensesForReseller(
+    input: GetLicensesForResellerServiceInput,
+  ): Promise<GetLicensesForResellerServiceResult> {
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { licenses: rows, total } =
+      await this.licenseRepository.findByReseller({
+        resellerId: input.resellerId,
+        page,
+        limit,
+        search: input.filters.search,
+        status: input.filters.status,
+        sortBy: input.filters.sortBy,
+        sortOrder: input.filters.sortOrder,
+      });
+
+    const decryptedRows = rows.map((row) => {
+      return {
+        ...row,
+        licenseKey: decryptData(row.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      };
+    });
+
+    return {
+      licenses: decryptedRows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async purchaseLicenseAsReseller(
+    input: PurchaseLicenseAsResellerServiceInput,
+  ): Promise<PurchaseLicenseAsResellerServiceResult> {
+    return this._purchaseLicenses({
+      quantity: input.dto.quantity,
+      pricingPlanId: input.dto.pricingPlanId,
+      organizationId: null,
+      branchId: null,
+      userId: input.resellerId,
+      resellerId: input.resellerId,
+      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+      historyTargetEntityType: UserTypeEnums.RESELLER,
+    });
+  }
+
   // ========================================
   // ? DEVICE CLIENT SERVICES
   // ========================================
@@ -660,10 +733,8 @@ export class LicenseService {
       deviceId: input.deviceId,
     });
     if (anyLicense) {
-      const {
-        license: evaluatedLicense,
-        gracePeriodExpiresAt,
-      } = await this._evaluateAndUpdateLicenseStatus(anyLicense);
+      const { license: evaluatedLicense, gracePeriodExpiresAt } =
+        await this._evaluateAndUpdateLicenseStatus(anyLicense);
 
       const {
         createdBy,
@@ -721,10 +792,9 @@ export class LicenseService {
       });
     }
 
-    const purchaseItem =
-      await this.licenseRepository.findOneLatestPurchaseItem(
-        license.id,
-      );
+    const purchaseItem = await this.licenseRepository.findOneLatestPurchaseItem(
+      license.id,
+    );
     const durationDays = purchaseItem?.durationDays as number;
     const expiresAt = dayjs().add(durationDays, "day").toDate();
 

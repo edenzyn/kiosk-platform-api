@@ -1,13 +1,13 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
-import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
-import type { LicenseDiscountRuleEntity } from "./schemas/license-discount-rule.schema";
-import type { LicensePricingEntity } from "./schemas/license-pricing.schema";
-import type { LicenseEntity } from "./schemas/license.schema";
-import type { LicenseHistoryEntity } from "./schemas/license-history.schema";
-import type { LicenseTransactionItemEntity } from "./schemas/license-transaction-item.schema";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
+import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
+import type { LicenseDiscountRuleEntity } from "./schemas/license-discount-rule.schema";
+import type { LicenseHistoryEntity } from "./schemas/license-history.schema";
+import type { LicensePricingEntity } from "./schemas/license-pricing.schema";
+import type { LicenseTransactionItemEntity } from "./schemas/license-transaction-item.schema";
+import type { LicenseEntity } from "./schemas/license.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -70,6 +70,34 @@ export interface PurchaseLicenseServiceInput {
 export interface PurchaseLicenseServiceResult {
   licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
 }
+
+// ========================================
+// ? RESELLER CLIENT SERVICES
+// ========================================
+export interface GetLicensesForResellerServiceInput {
+  resellerId: string;
+  filters: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: LicenseStatusEnum;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  };
+}
+
+export type GetLicensesForResellerServiceResult = GetLicensesServiceResult;
+
+export interface PurchaseLicenseAsResellerServiceInput {
+  dto: {
+    quantity: number;
+    pricingPlanId: string;
+  };
+  resellerId: string;
+}
+
+export type PurchaseLicenseAsResellerServiceResult =
+  PurchaseLicenseServiceResult;
 
 export interface AssignLicenseToBranchServiceInput {
   licenseId: string;
@@ -212,6 +240,20 @@ export interface FindLicensesRepoResult {
   total: number;
 }
 
+export interface FindLicensesByResellerRepoInput {
+  resellerId: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+export interface FindLicensesByResellerRepoResult {
+  licenses: LicenseWithDetails[];
+  total: number;
+}
+
 export interface FindLicensesForStatusCheckRepoInput {
   statuses?: number[];
 }
@@ -221,13 +263,15 @@ export interface CreateLicensesRepoInput {
   licenses: Array<{
     licenseKey: string;
     licenseKeyHash: string;
-    organizationId: string;
+    organizationId: string | null;
     branchId: string | null;
     status: number;
     expiresAt?: Date | null;
     createdBy: string;
     updatedBy: string;
   }>;
+  resellerId?: string;
+  historyTargetEntityType?: UserTypeEnums;
   transaction?: {
     userId: string;
     subtotalAmount: string;

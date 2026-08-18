@@ -38,6 +38,8 @@ import type {
   FindLicenseHistoryRepoResult,
   FindLicensePricingPlansRepoInput,
   FindLicensePricingPlansRepoResult,
+  FindLicensesByResellerRepoInput,
+  FindLicensesByResellerRepoResult,
   FindLicensesForStatusCheckRepoInput,
   FindLicensesForStatusCheckRepoResult,
   FindLicensesRepoInput,
@@ -54,6 +56,7 @@ import type {
 import { licenseDiscountRules } from "./schemas/license-discount-rule.schema";
 import { licenseHistory } from "./schemas/license-history.schema";
 import { licensePricing } from "./schemas/license-pricing.schema";
+import { licenseResellerMapper } from "./schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "./schemas/license-transaction-item.schema";
 import { licenseTransactions } from "./schemas/license-transaction.schema";
 import { licenses } from "./schemas/license.schema";
@@ -265,6 +268,86 @@ export class LicenseRepository {
     };
   }
 
+  async findByReseller(
+    input: FindLicensesByResellerRepoInput,
+  ): Promise<FindLicensesByResellerRepoResult> {
+    const {
+      resellerId,
+      page = 1,
+      limit = 10,
+      status,
+      sortBy,
+      sortOrder,
+    } = input;
+
+    const conditions = [
+      eq(licenseResellerMapper.resellerId, resellerId),
+      eq(licenseResellerMapper.isActive, true),
+    ];
+
+    if (status !== undefined && status !== null) {
+      conditions.push(eq(licenses.status, status));
+    }
+
+    // License keys are stored encrypted/hashed, so there is no plaintext
+    // field to search reseller-owned licenses by yet.
+
+    const condition = and(...conditions);
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(licenseResellerMapper)
+      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
+    let query = this.database.client
+      .select({
+        id: licenses.id,
+        licenseKey: licenses.licenseKey,
+        organizationId: licenses.organizationId,
+        branchId: licenses.branchId,
+        branchName: branches.name,
+        deviceId: licenses.deviceId,
+        deviceName: devices.name,
+        status: licenses.status,
+        activatedAt: licenses.activatedAt,
+        expiresAt: licenses.expiresAt,
+        createdAt: licenses.createdAt,
+        updatedAt: licenses.updatedAt,
+      })
+      .from(licenseResellerMapper)
+      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+      .leftJoin(branches, eq(licenses.branchId, branches.id))
+      .leftJoin(devices, eq(licenses.deviceId, devices.id))
+      .where(condition)
+      .$dynamic();
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === "asc" ? asc : desc;
+      if (sortBy === "status") {
+        query = query.orderBy(orderFn(licenses.status));
+      } else if (sortBy === "expiresAt") {
+        query = query.orderBy(orderFn(licenses.expiresAt));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(licenses.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(licenses.createdAt));
+    }
+
+    if (page && limit) {
+      query = query.limit(limit).offset((page - 1) * limit);
+    }
+
+    const rows = await query;
+
+    return {
+      licenses: rows as LicenseWithDetails[],
+      total,
+    };
+  }
+
   async findLicensesForStatusCheck(
     input?: FindLicensesForStatusCheckRepoInput,
   ): Promise<FindLicensesForStatusCheckRepoResult> {
@@ -336,13 +419,25 @@ export class LicenseRepository {
             await tx.insert(licenseHistory).values({
               licenseId: license.id,
               eventType: LicenseHistoryEventTypeEnum.PURCHASE,
-              targetEntityType: UserTypeEnums.NORMAL,
+              targetEntityType:
+                input.historyTargetEntityType ?? UserTypeEnums.NORMAL,
               newStatus: license.status,
               newExpiresAt: license.expiresAt,
               transactionId: insertedTx.id,
               performedBy: input.transaction!.userId,
               remarks: "Purchased via pricing plan",
             });
+
+            if (input.resellerId) {
+              await tx.insert(licenseResellerMapper).values({
+                licenseId: license.id,
+                resellerId: input.resellerId,
+                assignedAt: new Date(),
+                isActive: true,
+                createdBy: input.transaction!.userId,
+                updatedBy: input.transaction!.userId,
+              });
+            }
           }
         }
 

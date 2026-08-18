@@ -126,6 +126,58 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  // ========================================
+  // ? RESELLER CLIENT APIS
+  // ========================================
+  getLicensesForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto = await LicenseValidator.getLicensesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getLicensesForReseller({
+      resellerId: user.id,
+      filters: queryDto,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  purchaseLicenseAsReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await LicenseValidator.purchaseLicense.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.purchaseLicenseAsReseller({
+      dto: data,
+      resellerId: user.id,
+    });
+
+    res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  getResellerDiscountRules = async (
+    _req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.licenseService.getDiscountRules({
+      targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
     const params = await LicenseValidator.licenseIdParam.validate(req.params, {
       abortEarly: false,

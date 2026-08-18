@@ -22,12 +22,15 @@ import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { DeviceRepository } from "../device/device.repository";
 import type { LicenseService } from "../license/license.service";
 import type { RbacRepository } from "../rbac/rbac.repository";
+import type { UserInvitationEntity } from "../user/schemas/user-invitations.schema";
 import type { UserRepository } from "../user/user.repository";
 import type { UserService } from "../user/user.service";
 import type { AuthRepository } from "./auth.repository";
 import type {
   AcceptInvitationServiceInput,
   AcceptInvitationServiceResult,
+  AcceptResellerInvitationServiceInput,
+  AcceptResellerInvitationServiceResult,
   LoginDeviceServiceInput,
   LoginDeviceServiceResult,
   LoginPlatformUserServiceInput,
@@ -262,11 +265,11 @@ export class AuthService {
     }
   }
 
-  async acceptInvitation(
-    dto: AcceptInvitationServiceInput,
-  ): Promise<AcceptInvitationServiceResult> {
+  private async _consumePendingInvitation(
+    token: string,
+  ): Promise<UserInvitationEntity> {
     try {
-      verifyToken(dto.token, env.JWT_INVITE_USER_SECRET);
+      verifyToken(token, env.JWT_INVITE_USER_SECRET);
     } catch (error) {
       throw new AppError("Invalid or expired invitation.", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
@@ -274,7 +277,7 @@ export class AuthService {
     }
 
     const invitation = await this.userRepository.findOneInvitation({
-      token: dto.token,
+      token,
     });
     if (!invitation) {
       throw new AppError("Invitation not found.", {
@@ -315,6 +318,14 @@ export class AuthService {
         statusCode: HttpStatusCodes.BAD_REQUEST,
       });
     }
+
+    return invitation;
+  }
+
+  async acceptInvitation(
+    dto: AcceptInvitationServiceInput,
+  ): Promise<AcceptInvitationServiceResult> {
+    const invitation = await this._consumePendingInvitation(dto.token);
 
     const existingUser = await this.userRepository.findOne({
       email: invitation.email,
@@ -416,6 +427,79 @@ export class AuthService {
       },
       permissions,
       availableScopes,
+    };
+  }
+
+  async acceptResellerInvitation(
+    dto: AcceptResellerInvitationServiceInput,
+  ): Promise<AcceptResellerInvitationServiceResult> {
+    const invitation = await this._consumePendingInvitation(dto.token);
+
+    if (invitation.entityType !== UserTypeEnums.RESELLER) {
+      throw new AppError("This invitation is not a reseller invitation.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      email: invitation.email,
+    });
+    if (existingUser) {
+      throw new AppError("Email already registered", {
+        statusCode: HttpStatusCodes.CONFLICT,
+      });
+    }
+
+    const hashedPassword = await hashData(dto.password);
+
+    const createdUser = await this.userRepository.create({
+      user: {
+        name: dto.name,
+        email: invitation.email,
+        password: hashedPassword,
+        organizationId: null,
+        branchId: null,
+        userType: UserTypeEnums.RESELLER,
+      },
+    });
+
+    await this.userRepository.updateInvitation({
+      id: invitation.id,
+      data: {
+        status: UserInvitationStatusEnum.ACCEPTED,
+        updatedBy: createdUser.id,
+      },
+    });
+
+    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+      user: {
+        id: createdUser.id,
+        organizationId: undefined,
+        branchId: undefined,
+        userType: createdUser.userType,
+      },
+    });
+
+    await this.authRepository.createRefreshToken({
+      data: {
+        id: tokens.refreshTokenId,
+        userId: createdUser.id,
+        tokenHash: hashSha256(tokens.refreshToken),
+        expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
+      },
+    });
+
+    const { password, ...userWithoutPassword } = createdUser;
+
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
+      permissions: [],
+      availableScopes: [],
     };
   }
 

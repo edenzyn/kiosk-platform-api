@@ -59,6 +59,14 @@ export interface AcceptInvitationServiceInput {
 
 export type AcceptInvitationServiceResult = LoginServiceResult;
 
+export interface AcceptResellerInvitationServiceInput {
+  token: string;
+  name: string;
+  password: string;
+}
+
+export type AcceptResellerInvitationServiceResult = LoginServiceResult;
+
 export interface RefreshTokenServiceInput {
   refreshToken: string;
 }

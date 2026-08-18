@@ -14,6 +14,12 @@ router.post("/accept-invite", asyncHandler(authController.acceptInvitation));
 // Platform routes
 router.post("/p/login", asyncHandler(authController.loginPlatformUser));
 
+// Reseller routes
+router.post(
+  "/r/accept-invite",
+  asyncHandler(authController.acceptResellerInvitation),
+);
+
 // Device routes
 router.post("/d/login", asyncHandler(authController.loginDevice));
 router.post("/d/refresh", asyncHandler(authController.refreshDeviceToken));

@@ -20,6 +20,15 @@ export class AuthValidator {
     password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
+  static readonly acceptResellerInvitation = Yup.object({
+    token: Yup.string().required("Invitation key is required"),
+    name: Yup.string()
+      .min(2, "Name must be at least 2 characters")
+      .max(100, "Name cannot exceed 100 characters")
+      .required("Name is required"),
+    password: passwordValidator().required("Password is required"),
+  }).noUnknown();
+
   static readonly loginDevice = Yup.object({
     deviceCode: deviceCodeValidator(
       "Device code is required",

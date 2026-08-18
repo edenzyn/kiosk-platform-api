@@ -13,7 +13,6 @@ import { users } from "../../user/schemas/user.schema";
 export const licenseTransactions = pgTable("license_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references((): AnyPgColumn => users.id),
-  transactionType: smallint("transaction_type").notNull(),
   // Pricing snapshot
   subtotalAmount: decimal("subtotal_amount", {
     precision: 10,

@@ -14,7 +14,7 @@ import { users } from "../../user/schemas/user.schema";
 export const licenseDiscountRules = pgTable("license_discount_rules", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  targetEntity: smallint("target_entity").notNull(), // LicenseDiscountRuleTargetEntityTypeEnum: 1 = ORGANIZATIONS, 2 = RESELLERS, 3 = RESELLER_INDIVIDUAL
+  targetEntity: smallint("target_entity").notNull(), // LicenseDiscountRuleTargetEntityTypeEnum: 1 = ORGANIZATIONS, 2 = RESELLERS, 3 = RESELLER_INDIVIDUAL, 4 = LICENSE_PLAN_INDIVIDUAL
   discountType: smallint("discount_type").notNull(), // e.g. PERCENTAGE = 1, FLAT = 2
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
   minQuantity: integer("min_quantity").notNull().default(1),

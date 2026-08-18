@@ -7,4 +7,8 @@ export enum LicenseHistoryEventTypeEnum {
   EXPIRATION = 6,
   EXTEND = 7,
   GRACE_PERIOD = 8,
+  REDEMPTION_CODE_GENERATED = 9,
+  REDEEMED = 10,
+  REDEEM_CODE_REVOKED = 11,
+  REDEEM_CODE_EXPIRED = 12,
 }

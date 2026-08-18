@@ -16,6 +16,10 @@ export const licenseHistory = pgTable("license_history", {
     .notNull()
     .references((): AnyPgColumn => licenses.id),
   eventType: smallint("event_type").notNull(),
+  // UserTypeEnums - which audience this row belongs to (org vs reseller vs
+  // platform), so the same table can be filtered per portal when listing
+  // history. Not who performed it - that's performedBy.
+  targetEntityType: smallint("target_entity_type").notNull(),
   previousStatus: smallint("previous_status"),
   newStatus: smallint("new_status"),
   previousExpiresAt: timestamp("previous_expires_at", { withTimezone: true }),

@@ -127,6 +127,34 @@
       "when": 1786517146982,
       "tag": "0017_update-license-table",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1786986483488,
+      "tag": "0018_add-license-redemption-codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1787034121985,
+      "tag": "0019_drop-transaction-type-from-license-transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787034992283,
+      "tag": "0020_add-target-entity-type-to-license-history",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1787036289430,
+      "tag": "0021_add-license-pricing-discount-rule-mapper",
+      "breakpoints": true
     }
   ]
 }

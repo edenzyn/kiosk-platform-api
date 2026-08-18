@@ -18,6 +18,7 @@ import type { Database } from "../../config/db";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { branches } from "../branch/branch.schema";
 import { devices } from "../device/device.schema";
 import { users } from "../user/schemas/user.schema";
@@ -292,7 +293,6 @@ export class LicenseRepository {
           .insert(licenseTransactions)
           .values({
             userId: input.transaction!.userId,
-            transactionType: input.transaction!.transactionType,
             subtotalAmount: input.transaction!.subtotalAmount,
             discountAmount: input.transaction!.discountAmount,
             discountPercentage: input.transaction!.discountPercentage,
@@ -336,6 +336,7 @@ export class LicenseRepository {
             await tx.insert(licenseHistory).values({
               licenseId: license.id,
               eventType: LicenseHistoryEventTypeEnum.PURCHASE,
+              targetEntityType: UserTypeEnums.NORMAL,
               newStatus: license.status,
               newExpiresAt: license.expiresAt,
               transactionId: insertedTx.id,
@@ -391,7 +392,6 @@ export class LicenseRepository {
         .insert(licenseTransactions)
         .values({
           userId: input.transaction.userId,
-          transactionType: input.transaction.transactionType,
           subtotalAmount: input.transaction.subtotalAmount,
           discountAmount: input.transaction.discountAmount,
           discountPercentage: input.transaction.discountPercentage,
@@ -440,6 +440,7 @@ export class LicenseRepository {
       await tx.insert(licenseHistory).values({
         licenseId: input.licenseId,
         eventType: input.historyEvent.eventType,
+        targetEntityType: input.historyEvent.targetEntityType,
         previousStatus: input.historyEvent.previousStatus,
         newStatus: input.newStatus,
         previousExpiresAt: input.historyEvent.previousExpiresAt,
@@ -554,6 +555,7 @@ export class LicenseRepository {
         id: licenseHistory.id,
         licenseId: licenseHistory.licenseId,
         eventType: licenseHistory.eventType,
+        targetEntityType: licenseHistory.targetEntityType,
         previousStatus: licenseHistory.previousStatus,
         newStatus: licenseHistory.newStatus,
         previousExpiresAt: licenseHistory.previousExpiresAt,
@@ -579,6 +581,7 @@ export class LicenseRepository {
     await this.database.client.insert(licenseHistory).values({
       licenseId: input.licenseId,
       eventType: input.eventType,
+      targetEntityType: input.targetEntityType,
       previousStatus: input.previousStatus,
       newStatus: input.newStatus,
       previousExpiresAt: input.previousExpiresAt,

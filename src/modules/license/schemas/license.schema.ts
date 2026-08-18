@@ -13,8 +13,8 @@ import { users } from "../../user/schemas/user.schema";
 
 export const licenses = pgTable("licenses", {
   id: uuid("id").defaultRandom().primaryKey(),
-  licenseKey: text("license_key").notNull().unique(),
-  licenseKeyHash: text("license_key_hash").notNull().unique(),
+  licenseKey: text("license_key").notNull().unique(), // encrypted
+  licenseKeyHash: text("license_key_hash").notNull().unique(), // hashed
   organizationId: uuid("organization_id").references(
     (): AnyPgColumn => organizations.id,
   ),

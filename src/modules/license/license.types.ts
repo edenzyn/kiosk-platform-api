@@ -7,6 +7,7 @@ import type { LicenseHistoryEntity } from "./schemas/license-history.schema";
 import type { LicenseTransactionItemEntity } from "./schemas/license-transaction-item.schema";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -16,10 +17,12 @@ export interface GetLicenseForDeviceServiceInput {
 }
 
 export interface GetLicenseForDeviceServiceResult {
-  license: (Omit<
-    LicenseEntity,
-    "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
-  > & { gracePeriodExpiresAt?: string }) | null;
+  license:
+    | (Omit<
+        LicenseEntity,
+        "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
+      > & { gracePeriodExpiresAt?: string })
+    | null;
 }
 
 export interface ActivateLicenseServiceInput {
@@ -180,10 +183,12 @@ export interface FindOneLicenseDetailsRepoInput {
   licenseId: string;
 }
 export interface FindOneLicenseDetailsRepoResult {
-  license: (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
-    branchName: string | null;
-    deviceName: string | null;
-  }) | null;
+  license:
+    | (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
+        branchName: string | null;
+        deviceName: string | null;
+      })
+    | null;
   transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
     paymentStatus: number | null;
     currency: string | null;
@@ -225,7 +230,6 @@ export interface CreateLicensesRepoInput {
   }>;
   transaction?: {
     userId: string;
-    transactionType: number;
     subtotalAmount: string;
     discountAmount: string;
     discountPercentage?: string;
@@ -258,7 +262,6 @@ export interface ExtendLicenseRepoInput {
   newStatus: number;
   transaction: {
     userId: string;
-    transactionType: number;
     subtotalAmount: string;
     discountAmount: string;
     discountPercentage: string;
@@ -275,8 +278,9 @@ export interface ExtendLicenseRepoInput {
     unitPrice: string;
   };
   historyEvent: {
-    eventType: number;
-    previousStatus: number;
+    eventType: LicenseHistoryEventTypeEnum;
+    targetEntityType: UserTypeEnums;
+    previousStatus: LicenseStatusEnum;
     previousExpiresAt: Date | null;
     remarks: string;
   };
@@ -317,6 +321,7 @@ export type FindLicenseHistoryRepoResult = (LicenseHistoryEntity & {
 export interface CreateLicenseHistoryRepoInput {
   licenseId: string;
   eventType: LicenseHistoryEventTypeEnum;
+  targetEntityType: UserTypeEnums;
   previousStatus: LicenseStatusEnum;
   newStatus: LicenseStatusEnum;
   previousExpiresAt?: Date | null;

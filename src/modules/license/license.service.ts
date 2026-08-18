@@ -6,8 +6,8 @@ import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/lice
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
-import { LicenseTransactionTypeEnum } from "../../shared/enums/license/license-transaction-type.enum";
 import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import {
   decryptData,
@@ -178,7 +178,6 @@ export class LicenseService {
       licenses: newLicenses,
       transaction: {
         userId: input.userId,
-        transactionType: LicenseTransactionTypeEnum.PURCHASE,
         subtotalAmount: subtotal,
         discountAmount: discountAmount,
         discountPercentage: discountPercentage,
@@ -246,6 +245,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ASSIGNMENT,
+      targetEntityType: UserTypeEnums.NORMAL,
       previousStatus: license.status,
       newStatus: license.status,
       previousExpiresAt: license.expiresAt,
@@ -304,6 +304,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
+      targetEntityType: UserTypeEnums.NORMAL,
       previousStatus: license.status,
       newStatus: LicenseStatusEnum.ACTIVE,
       previousExpiresAt: license.expiresAt,
@@ -407,7 +408,6 @@ export class LicenseService {
       newStatus,
       transaction: {
         userId: input.userId,
-        transactionType: LicenseTransactionTypeEnum.RENEWAL,
         subtotalAmount: subtotal,
         discountAmount: discountAmount,
         discountPercentage: discountPercentage,
@@ -425,6 +425,7 @@ export class LicenseService {
       },
       historyEvent: {
         eventType: LicenseHistoryEventTypeEnum.EXTEND,
+        targetEntityType: UserTypeEnums.NORMAL,
         previousStatus: license.status,
         previousExpiresAt: license.expiresAt,
         remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
@@ -533,6 +534,7 @@ export class LicenseService {
         await this._createLicenseHistory({
           licenseId: license.id,
           eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+          targetEntityType: UserTypeEnums.NORMAL,
           previousStatus: LicenseStatusEnum.ACTIVE,
           newStatus: LicenseStatusEnum.EXPIRED,
           previousExpiresAt: expiresAtDate,
@@ -552,6 +554,7 @@ export class LicenseService {
       await this._createLicenseHistory({
         licenseId: license.id,
         eventType: LicenseHistoryEventTypeEnum.GRACE_PERIOD,
+        targetEntityType: UserTypeEnums.NORMAL,
         previousStatus: LicenseStatusEnum.ACTIVE,
         newStatus: LicenseStatusEnum.GRACE_PERIOD,
         previousExpiresAt: expiresAtDate,
@@ -576,6 +579,7 @@ export class LicenseService {
         await this._createLicenseHistory({
           licenseId: license.id,
           eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
+          targetEntityType: UserTypeEnums.NORMAL,
           previousStatus: LicenseStatusEnum.GRACE_PERIOD,
           newStatus: LicenseStatusEnum.EXPIRED,
           previousExpiresAt: expiresAtDate,
@@ -734,6 +738,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
+      targetEntityType: UserTypeEnums.NORMAL,
       previousStatus: license.status,
       newStatus: LicenseStatusEnum.ACTIVE,
       previousExpiresAt: license.expiresAt,

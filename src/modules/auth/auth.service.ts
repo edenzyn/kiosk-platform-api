@@ -35,6 +35,8 @@ import type {
   LoginDeviceServiceResult,
   LoginPlatformUserServiceInput,
   LoginPlatformUserServiceResult,
+  LoginResellerServiceInput,
+  LoginResellerServiceResult,
   LoginServiceInput,
   LoginServiceResult,
   LogoutServiceResult,
@@ -138,6 +140,24 @@ export class AuthService {
       );
     }
 
+    if (user.userType === UserTypeEnums.RESELLER) {
+      throw new AppError(
+        "Resellers must sign in through the reseller portal",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
+    if (!user.isActive) {
+      throw new AppError(
+        "Your account has been deactivated. Please contact your administrator.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
     const { password, ...userWithoutPassword } = user;
     const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
       user: {
@@ -210,6 +230,85 @@ export class AuthService {
       });
     }
 
+    if (!user.isActive) {
+      throw new AppError(
+        "Your account has been deactivated. Please contact your administrator.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
+    const { password, ...userWithoutPassword } = user;
+    const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+      user: {
+        id: user.id,
+        organizationId: user.organizationId ?? undefined,
+        branchId: user.branchId ?? undefined,
+        userType: user.userType,
+      },
+    });
+
+    await this.authRepository.createRefreshToken({
+      data: {
+        id: generatedTokens.refreshTokenId,
+        userId: user.id,
+        tokenHash: hashSha256(generatedTokens.refreshToken),
+        expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
+      },
+    });
+
+    const tokens = {
+      accessToken: generatedTokens.accessToken,
+      refreshToken: generatedTokens.refreshToken,
+    };
+
+    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
+      userId: user.id,
+    });
+
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      tokens,
+      permissions: Array.from(permissionKeys) as UserPermissions[],
+    };
+  }
+
+  // Reseller login
+  async loginReseller(
+    dto: LoginResellerServiceInput,
+  ): Promise<LoginResellerServiceResult> {
+    const user = await this.userRepository.findOne({ email: dto.email });
+
+    if (!user) {
+      throw new AppError("Invalid Credentials", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (user.userType !== UserTypeEnums.RESELLER) {
+      throw new AppError("Access Denied, You are not a reseller", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const isMatch = await compareHashedData(dto.password, user.password);
+    if (!isMatch) {
+      throw new AppError("Invalid Credentials", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (!user.isActive) {
+      throw new AppError(
+        "Your account has been deactivated. Please contact your administrator.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+        },
+      );
+    }
+
     const { password, ...userWithoutPassword } = user;
     const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
       user: {
@@ -265,7 +364,7 @@ export class AuthService {
     }
   }
 
-  private async _consumePendingInvitation(
+  private async _verifyAndGetPendingInvitation(
     token: string,
   ): Promise<UserInvitationEntity> {
     try {
@@ -325,7 +424,7 @@ export class AuthService {
   async acceptInvitation(
     dto: AcceptInvitationServiceInput,
   ): Promise<AcceptInvitationServiceResult> {
-    const invitation = await this._consumePendingInvitation(dto.token);
+    const invitation = await this._verifyAndGetPendingInvitation(dto.token);
 
     const existingUser = await this.userRepository.findOne({
       email: invitation.email,
@@ -433,7 +532,7 @@ export class AuthService {
   async acceptResellerInvitation(
     dto: AcceptResellerInvitationServiceInput,
   ): Promise<AcceptResellerInvitationServiceResult> {
-    const invitation = await this._consumePendingInvitation(dto.token);
+    const invitation = await this._verifyAndGetPendingInvitation(dto.token);
 
     if (invitation.entityType !== UserTypeEnums.RESELLER) {
       throw new AppError("This invitation is not a reseller invitation.", {

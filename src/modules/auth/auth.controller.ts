@@ -150,6 +150,33 @@ export class AuthController {
   };
 
   // Reseller apis
+  loginReseller = async (req: Request, res: Response): Promise<void> => {
+    const data = await AuthValidator.login.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.loginReseller(data);
+
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_ACCESS_TOKEN,
+      result.tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_REFRESH_TOKEN,
+      result.tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+    });
+  };
+
   acceptResellerInvitation = async (
     req: Request,
     res: Response,

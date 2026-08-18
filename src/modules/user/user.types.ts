@@ -144,6 +144,28 @@ export interface FindUsersByRoleIdRepoResult {
   total: number;
 }
 
+export interface FindResellersRepoInput {
+  search?: string;
+  isActive?: boolean;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: SortingOrderEnum;
+}
+export interface FindResellersRepoResult {
+  resellers: Pick<
+    UserEntity,
+    "id" | "name" | "email" | "mobile" | "isActive" | "createdAt"
+  >[];
+  total: number;
+}
+
+export interface UpdateUserRepoInput {
+  userId: string;
+  data: Partial<Pick<UserEntity, "isActive" | "updatedBy">>;
+}
+export type UpdateUserRepoResult = UserEntity;
+
 export interface CreateUserRepoInput {
   user: CreateUserEntity;
 }

@@ -142,6 +142,13 @@ export class UserService {
       });
     }
 
+    if (!user.isActive) {
+      throw new AppError("Your account has been deactivated", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        code: ErrorCodes.FORBIDDEN,
+      });
+    }
+
     const { password, ...userWithoutPassword } = user;
 
     const userScope = getUserScope(user);

@@ -39,6 +39,18 @@ export interface LoginPlatformUserServiceResult {
   permissions: UserPermissions[];
 }
 
+export interface LoginResellerServiceInput {
+  email: string;
+  password: string;
+}
+
+export interface LoginResellerServiceResult {
+  clientType: ClientTypeEnum.USER_CLIENT;
+  user: Omit<UserEntity, "password">;
+  tokens: AuthTokens;
+  permissions: UserPermissions[];
+}
+
 export interface LoginDeviceServiceInput {
   deviceCode: string;
   pin: string;

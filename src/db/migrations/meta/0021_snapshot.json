@@ -358,7 +358,8 @@
           "name": "target_entity_type",
           "type": "smallint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": true,
+          "default": 1
         },
         "previous_status": {
           "name": "previous_status",

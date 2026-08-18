@@ -121,7 +121,7 @@ export interface AssignLicenseToBranchServiceInput {
 }
 
 export interface AssignLicenseToBranchServiceResult {
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+  license: LicenseWithDetails;
 }
 
 export interface AssignLicenseToDeviceServiceInput {
@@ -132,7 +132,7 @@ export interface AssignLicenseToDeviceServiceInput {
 }
 
 export interface AssignLicenseToDeviceServiceResult {
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+  license: LicenseWithDetails;
 }
 
 export interface GetLicensePricingPlansServiceInput {
@@ -356,11 +356,19 @@ export interface UpdateLicenseRepoInput {
   data: Partial<
     Pick<
       LicenseEntity,
-      "branchId" | "deviceId" | "status" | "activatedAt" | "updatedBy"
+      | "branchId"
+      | "deviceId"
+      | "status"
+      | "activatedAt"
+      | "expiresAt"
+      | "updatedBy"
     >
   >;
 }
-export type UpdateLicenseRepoResult = LicenseEntity;
+export type UpdateLicenseRepoResult = LicenseEntity & {
+  branchName: string | null;
+  deviceName: string | null;
+};
 
 // Pricing & Discount Schema
 export interface FindLicensePricingPlansRepoInput {

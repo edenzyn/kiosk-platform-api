@@ -319,12 +319,19 @@ export class LicenseService {
 
     await this._checkActiveLicenseExists(input.deviceId);
 
+    const purchaseItem = await this.licenseRepository.findOneLatestPurchaseItem(
+      license.id,
+    );
+    const durationDays = purchaseItem?.durationDays as number;
+    const expiresAt = dayjs().add(durationDays, "day").toDate();
+
     const updated = await this.licenseRepository.update({
       licenseId: license.id,
       data: {
         deviceId: input.deviceId,
         status: LicenseStatusEnum.ACTIVE,
         activatedAt: new Date(),
+        expiresAt,
         updatedBy: input.userId,
       },
     });
@@ -336,7 +343,7 @@ export class LicenseService {
       previousStatus: license.status,
       newStatus: LicenseStatusEnum.ACTIVE,
       previousExpiresAt: license.expiresAt,
-      newExpiresAt: license.expiresAt,
+      newExpiresAt: expiresAt,
       performedBy: input.userId,
       remarks: "Assigned to device",
     });

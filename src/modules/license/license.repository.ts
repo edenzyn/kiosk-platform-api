@@ -590,7 +590,22 @@ export class LicenseRepository {
       throw new Error("Failed to update license");
     }
 
-    return updated;
+    const [names] = await this.database.client
+      .select({
+        branchName: branches.name,
+        deviceName: devices.name,
+      })
+      .from(licenses)
+      .leftJoin(branches, eq(licenses.branchId, branches.id))
+      .leftJoin(devices, eq(licenses.deviceId, devices.id))
+      .where(eq(licenses.id, updated.id))
+      .limit(1);
+
+    return {
+      ...updated,
+      branchName: names?.branchName ?? null,
+      deviceName: names?.deviceName ?? null,
+    };
   }
 
   // ========================================

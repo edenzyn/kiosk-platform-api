@@ -126,6 +126,32 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.licenseIdParam.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.licenseService.getLicenseHistory({
+      licenseId: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getLicenseDetails = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.licenseIdParam.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.licenseService.getLicenseDetails({
+      licenseId: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   // ========================================
   // ? RESELLER CLIENT APIS
   // ========================================
@@ -178,28 +204,36 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
+  getLicenseHistoryForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const params = await LicenseValidator.licenseIdParam.validate(req.params, {
       abortEarly: false,
       stripUnknown: true,
     });
 
-    const result = await this.licenseService.getLicenseHistory({
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getLicenseHistoryForReseller({
       licenseId: params.id,
-      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      resellerId: user.id,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getLicenseDetails = async (req: Request, res: Response): Promise<void> => {
+  getLicenseDetailsForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const params = await LicenseValidator.licenseIdParam.validate(req.params, {
       abortEarly: false,
       stripUnknown: true,
     });
 
-    const result = await this.licenseService.getLicenseDetails({
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getLicenseDetailsForReseller({
       licenseId: params.id,
-      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      resellerId: user.id,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

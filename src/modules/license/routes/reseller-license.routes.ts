@@ -45,4 +45,22 @@ resellerLicenseRouter.post(
   licenseController.purchaseLicenseAsReseller,
 );
 
+resellerLicenseRouter.get(
+  "/:id/history",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.getLicenseHistoryForReseller,
+);
+
+resellerLicenseRouter.get(
+  "/:id/details",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.getLicenseDetailsForReseller,
+);
+
 export { resellerLicenseRouter };

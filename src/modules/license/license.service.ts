@@ -31,10 +31,14 @@ import type {
   ExtendLicenseServiceResult,
   GetDiscountRulesServiceInput,
   GetDiscountRulesServiceResult,
+  GetLicenseDetailsForResellerServiceInput,
+  GetLicenseDetailsForResellerServiceResult,
   GetLicenseDetailsServiceInput,
   GetLicenseDetailsServiceResult,
   GetLicenseForDeviceServiceInput,
   GetLicenseForDeviceServiceResult,
+  GetLicenseHistoryForResellerServiceInput,
+  GetLicenseHistoryForResellerServiceResult,
   GetLicenseHistoryServiceInput,
   GetLicenseHistoryServiceResult,
   GetLicensePricingPlansServiceInput,
@@ -570,6 +574,70 @@ export class LicenseService {
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       historyTargetEntityType: UserTypeEnums.RESELLER,
     });
+  }
+
+  private async _checkLicenseOwnedByReseller(
+    licenseId: string,
+    resellerId: string,
+  ): Promise<void> {
+    const isOwned = await this.licenseRepository.isLicenseOwnedByReseller({
+      licenseId,
+      resellerId,
+    });
+    if (!isOwned) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+  }
+
+  async getLicenseHistoryForReseller(
+    input: GetLicenseHistoryForResellerServiceInput,
+  ): Promise<GetLicenseHistoryForResellerServiceResult> {
+    await this._checkLicenseOwnedByReseller(
+      input.licenseId,
+      input.resellerId,
+    );
+
+    const history = await this.licenseRepository.findHistory({
+      licenseId: input.licenseId,
+    });
+
+    return { history };
+  }
+
+  async getLicenseDetailsForReseller(
+    input: GetLicenseDetailsForResellerServiceInput,
+  ): Promise<GetLicenseDetailsForResellerServiceResult> {
+    await this._checkLicenseOwnedByReseller(
+      input.licenseId,
+      input.resellerId,
+    );
+
+    const details = await this.licenseRepository.findOneDetails({
+      licenseId: input.licenseId,
+    });
+
+    if (!details.license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const decryptedLicense = {
+      ...details.license,
+      licenseKey: decryptData(
+        details.license.licenseKey,
+        env.LICENSE_ENCRYPTION_KEY,
+      ),
+    };
+
+    return {
+      license: decryptedLicense,
+      transactions: details.transactions,
+    };
   }
 
   // ========================================

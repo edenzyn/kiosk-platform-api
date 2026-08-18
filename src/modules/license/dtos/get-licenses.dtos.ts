@@ -10,9 +10,13 @@ export interface GetLicensesRequestDto {
   sortOrder?: "asc" | "desc";
 }
 
-export interface LicenseWithDetails extends Omit<LicenseEntity, "createdBy" | "updatedBy"> {
+export interface LicenseWithDetails extends Omit<
+  LicenseEntity,
+  "createdBy" | "updatedBy"
+> {
   branchName: string | null;
   deviceName: string | null;
+  organizationName?: string | null;
 }
 
 export interface GetLicensesResponseDto {

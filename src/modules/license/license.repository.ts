@@ -21,6 +21,7 @@ import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/lic
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { branches } from "../branch/branch.schema";
 import { devices } from "../device/device.schema";
+import { organizations } from "../organization/organization.schema";
 import { users } from "../user/schemas/user.schema";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type {
@@ -50,6 +51,8 @@ import type {
   FindOneLicenseDetailsRepoResult,
   FindOneLicenseRepoInput,
   FindOneLicenseRepoResult,
+  IsLicenseOwnedByResellerRepoInput,
+  IsLicenseOwnedByResellerRepoResult,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
 } from "./license.types";
@@ -306,6 +309,7 @@ export class LicenseRepository {
         id: licenses.id,
         licenseKey: licenses.licenseKey,
         organizationId: licenses.organizationId,
+        organizationName: organizations.name,
         branchId: licenses.branchId,
         branchName: branches.name,
         deviceId: licenses.deviceId,
@@ -318,6 +322,7 @@ export class LicenseRepository {
       })
       .from(licenseResellerMapper)
       .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+      .leftJoin(organizations, eq(licenses.organizationId, organizations.id))
       .leftJoin(branches, eq(licenses.branchId, branches.id))
       .leftJoin(devices, eq(licenses.deviceId, devices.id))
       .where(condition)
@@ -346,6 +351,24 @@ export class LicenseRepository {
       licenses: rows as LicenseWithDetails[],
       total,
     };
+  }
+
+  async isLicenseOwnedByReseller(
+    input: IsLicenseOwnedByResellerRepoInput,
+  ): Promise<IsLicenseOwnedByResellerRepoResult> {
+    const [mapping] = await this.database.client
+      .select({ id: licenseResellerMapper.id })
+      .from(licenseResellerMapper)
+      .where(
+        and(
+          eq(licenseResellerMapper.licenseId, input.licenseId),
+          eq(licenseResellerMapper.resellerId, input.resellerId),
+          eq(licenseResellerMapper.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    return !!mapping;
   }
 
   async findLicensesForStatusCheck(

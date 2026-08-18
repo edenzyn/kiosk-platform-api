@@ -99,6 +99,20 @@ export interface PurchaseLicenseAsResellerServiceInput {
 export type PurchaseLicenseAsResellerServiceResult =
   PurchaseLicenseServiceResult;
 
+export interface GetLicenseHistoryForResellerServiceInput {
+  licenseId: string;
+  resellerId: string;
+}
+export type GetLicenseHistoryForResellerServiceResult =
+  GetLicenseHistoryServiceResult;
+
+export interface GetLicenseDetailsForResellerServiceInput {
+  licenseId: string;
+  resellerId: string;
+}
+export type GetLicenseDetailsForResellerServiceResult =
+  GetLicenseDetailsServiceResult;
+
 export interface AssignLicenseToBranchServiceInput {
   licenseId: string;
   branchId: string;
@@ -253,6 +267,12 @@ export interface FindLicensesByResellerRepoResult {
   licenses: LicenseWithDetails[];
   total: number;
 }
+
+export interface IsLicenseOwnedByResellerRepoInput {
+  licenseId: string;
+  resellerId: string;
+}
+export type IsLicenseOwnedByResellerRepoResult = boolean;
 
 export interface FindLicensesForStatusCheckRepoInput {
   statuses?: number[];

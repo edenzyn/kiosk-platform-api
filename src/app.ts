@@ -27,6 +27,7 @@ export class App {
   private readonly apiV1Prefix = env.API_PREFIX_V1;
   private readonly normalUserApiV1Prefix = `${this.apiV1Prefix}/pvt/u`;
   private readonly platformUserApiV1Prefix = `${this.apiV1Prefix}/pvt/p`;
+  private readonly resellerApiV1Prefix = `${this.apiV1Prefix}/pvt/r`;
   private readonly deviceApiV1Prefix = `${this.apiV1Prefix}/pvt/d`;
   private readonly currentEnv = env.NODE_ENV;
   readonly instance: Express;
@@ -74,6 +75,7 @@ export class App {
     this.configureHealthRoute();
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
     this.configurePlatformUserRoutes();
+    this.configureResellerRoutes();
     this.configureNormalUserRoutes();
     this.configureDeviceClientRoutes();
   }
@@ -99,6 +101,10 @@ export class App {
     );
   }
 
+  private configureResellerRoutes(): void {
+    this.instance.use(this.resellerApiV1Prefix, resellerRouter);
+  }
+
   private configureNormalUserRoutes(): void {
     this.instance.use(`${this.normalUserApiV1Prefix}/users`, userRoutes);
     this.instance.use(`${this.normalUserApiV1Prefix}/rbac`, rbacRoutes);
@@ -114,10 +120,6 @@ export class App {
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,
-    );
-    this.instance.use(
-      `${this.normalUserApiV1Prefix}/resellers`,
-      resellerRouter,
     );
   }
 

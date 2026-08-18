@@ -19,6 +19,7 @@ const isReadAction = (permission: string): boolean =>
 export interface AccessPermissions {
   userType?: UserTypeEnums | UserTypeEnums[];
   platform?: UserPermissions[];
+  reseller?: UserPermissions[];
   organization?: UserPermissions[];
   branch?: UserPermissions[];
 }
@@ -119,7 +120,45 @@ export const accessMiddleware = (
       }
 
       // ====================================================
-      // 2. Tenant User Check (Organization & Branch Scope)
+      // 2. Reseller User Check (No Tenant Scope)
+      // ====================================================
+      if (userType === UserTypeEnums.RESELLER) {
+        const permissionsToCheck = permissions.reseller || [];
+
+        // If no reseller permissions required, allow authenticated reseller
+        if (permissionsToCheck.length === 0) {
+          return next();
+        }
+
+        const userPermissions = await rbacService.getUserPermissionKeys({
+          userId,
+          organizationId: null,
+          branchId: null,
+        });
+
+        if (env.NODE_ENV === "development") {
+          console.log({
+            "REQUIRED RESELLER PERMISSIONS": permissionsToCheck,
+            "PERMISSION USER HAVE": userPermissions,
+          });
+        }
+
+        const hasPermission = permissionsToCheck.some((perm) =>
+          userPermissions.has(perm),
+        );
+
+        if (!hasPermission) {
+          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
+            statusCode: HttpStatusCodes.FORBIDDEN,
+            code: ErrorCodes.FORBIDDEN,
+          });
+        }
+
+        return next();
+      }
+
+      // ====================================================
+      // 3. Tenant User Check (Organization & Branch Scope)
       // ====================================================
       const userOrgId = req.user?.organizationId;
       const userBranchId = req.user?.branchId;

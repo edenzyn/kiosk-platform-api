@@ -15,7 +15,7 @@ export interface UserScope {
 export interface CheckAuthResponseDto {
   user: CheckAuthUserDto;
   permissions: UserPermissions[];
-  availableScopes: UserScope[];
+  availableScopes?: UserScope[];
   topRole?: Pick<RoleEntity, "name" | "description" | "rank" | "isSystem"> | null;
 }
 export interface CheckAuthRequestDto {}

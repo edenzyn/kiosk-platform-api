@@ -8,6 +8,7 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { MailService } from "../../shared/services/mail/mail.service";
 import { getInviteUserTemplate } from "../../shared/services/mail/templates/invite-user.template";
@@ -151,6 +152,14 @@ export class UserService {
       user.branchId,
       userScope,
     );
+
+    // Resellers have no org/branch scopes and never hold roles - skip both
+    if (user.userType === UserTypeEnums.RESELLER) {
+      return {
+        user: userWithoutPassword,
+        permissions,
+      };
+    }
 
     const topRole = await this.rbacRepository.findOneTopRankedRole({
       userId: user.id,

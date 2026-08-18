@@ -80,4 +80,9 @@ export enum UserPermissions {
 
   BRANCH_DEVICE_READ = "branch:device:read",
   BRANCH_DEVICE_WRITE = "branch:device:write",
+
+  // ======================================================
+  // Reseller
+  // ======================================================
+  RESELLER_BASIC = "reseller:basic",
 }

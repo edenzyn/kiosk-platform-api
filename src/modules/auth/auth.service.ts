@@ -286,24 +286,24 @@ export class AuthService {
     }
 
     if (invitation.status !== UserInvitationStatusEnum.PENDING) {
-      if (invitation.status === UserInvitationStatusEnum.ACCEPTED) {
-        throw new AppError("This invitation has already been accepted.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
+      switch (invitation.status) {
+        case UserInvitationStatusEnum.ACCEPTED:
+          throw new AppError("This invitation has already been accepted.", {
+            statusCode: HttpStatusCodes.BAD_REQUEST,
+          });
+        case UserInvitationStatusEnum.REVOKED:
+          throw new AppError("This invitation has been revoked.", {
+            statusCode: HttpStatusCodes.BAD_REQUEST,
+          });
+        case UserInvitationStatusEnum.EXPIRED:
+          throw new AppError("This invitation has expired.", {
+            statusCode: HttpStatusCodes.BAD_REQUEST,
+          });
+        default:
+          throw new AppError("This invitation is no longer valid.", {
+            statusCode: HttpStatusCodes.BAD_REQUEST,
+          });
       }
-      if (invitation.status === UserInvitationStatusEnum.REVOKED) {
-        throw new AppError("This invitation has been revoked.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-      if (invitation.status === UserInvitationStatusEnum.EXPIRED) {
-        throw new AppError("This invitation has expired.", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-      throw new AppError("This invitation is no longer valid.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
     }
 
     if (invitation.expiresAt && invitation.expiresAt < new Date()) {
@@ -463,6 +463,21 @@ export class AuthService {
       },
     });
 
+    const [basicPerm] = await this.rbacRepository.findPermissionsByKeys({
+      keys: [UserPermissions.RESELLER_BASIC],
+    });
+
+    if (basicPerm) {
+      await this.rbacRepository.createPermissionMapper({
+        entityType: PermissionEntityType.USER,
+        entityId: createdUser.id,
+        permissionId: basicPerm.id,
+        organizationId: null,
+        branchId: null,
+        createdBy: createdUser.id,
+      });
+    }
+
     await this.userRepository.updateInvitation({
       id: invitation.id,
       data: {
@@ -491,6 +506,12 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = createdUser;
 
+    const { permissions } = await this.userService.getPermissionsAndScopes(
+      createdUser.id,
+      null,
+      null,
+    );
+
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
@@ -498,7 +519,7 @@ export class AuthService {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
       },
-      permissions: [],
+      permissions,
       availableScopes: [],
     };
   }

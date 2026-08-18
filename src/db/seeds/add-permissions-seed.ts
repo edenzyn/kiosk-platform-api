@@ -16,6 +16,9 @@ function getScopeForKey(key: string): PermissionScope {
   if (key.startsWith("branch:")) {
     return PermissionScope.BRANCH;
   }
+  if (key.startsWith("reseller:")) {
+    return PermissionScope.RESELLER;
+  }
   return PermissionScope.ORGANIZATION;
 }
 

@@ -23,6 +23,7 @@ import type { DeviceRepository } from "../device/device.repository";
 import type { LicenseService } from "../license/license.service";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserInvitationEntity } from "../user/schemas/user-invitations.schema";
+import type { UserEntity } from "../user/schemas/user.schema";
 import type { UserRepository } from "../user/user.repository";
 import type { UserService } from "../user/user.service";
 import type { AuthRepository } from "./auth.repository";
@@ -112,11 +113,15 @@ export class AuthService {
     return new Date(decoded.exp * 1000);
   }
 
-  // ========================================
-  // ? USER CLIENT SERVICES
-  // ========================================
-  async loginUser(dto: LoginServiceInput): Promise<LoginServiceResult> {
-    const user = await this.userRepository.findOne({ email: dto.email });
+  private async _authenticateUser(
+    email: string,
+    password: string,
+    hooks: {
+      beforePasswordCheck?: (user: UserEntity) => void;
+      afterPasswordCheck?: (user: UserEntity) => void;
+    } = {},
+  ): Promise<UserEntity> {
+    const user = await this.userRepository.findOne({ email });
 
     if (!user) {
       throw new AppError("Invalid Credentials", {
@@ -124,30 +129,16 @@ export class AuthService {
       });
     }
 
-    const isMatch = await compareHashedData(dto.password, user.password);
+    hooks.beforePasswordCheck?.(user);
+
+    const isMatch = await compareHashedData(password, user.password);
     if (!isMatch) {
       throw new AppError("Invalid Credentials", {
         statusCode: HttpStatusCodes.UNAUTHORIZED,
       });
     }
 
-    if (user.userType === UserTypeEnums.PLATFORM) {
-      throw new AppError(
-        "Platform users must sign in through the platform portal",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
-      );
-    }
-
-    if (user.userType === UserTypeEnums.RESELLER) {
-      throw new AppError(
-        "Resellers must sign in through the reseller portal",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
-      );
-    }
+    hooks.afterPasswordCheck?.(user);
 
     if (!user.isActive) {
       throw new AppError(
@@ -158,7 +149,15 @@ export class AuthService {
       );
     }
 
-    const { password, ...userWithoutPassword } = user;
+    return user;
+  }
+
+  private async _issueUserSessionTokens(user: {
+    id: string;
+    organizationId?: string | null;
+    branchId?: string | null;
+    userType: UserTypeEnums;
+  }) {
     const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
       user: {
         id: user.id,
@@ -177,10 +176,49 @@ export class AuthService {
       },
     });
 
-    const tokens = {
+    return {
       accessToken: generatedTokens.accessToken,
       refreshToken: generatedTokens.refreshToken,
     };
+  }
+
+  private async _getUserPermissionKeys(
+    userId: string,
+  ): Promise<UserPermissions[]> {
+    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
+      userId,
+    });
+    return Array.from(permissionKeys) as UserPermissions[];
+  }
+
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
+  async loginUser(dto: LoginServiceInput): Promise<LoginServiceResult> {
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      afterPasswordCheck: (user) => {
+        if (user.userType === UserTypeEnums.PLATFORM) {
+          throw new AppError(
+            "Platform users must sign in through the platform portal",
+            {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+            },
+          );
+        }
+
+        if (user.userType === UserTypeEnums.RESELLER) {
+          throw new AppError(
+            "Resellers must sign in through the reseller portal",
+            {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+            },
+          );
+        }
+      },
+    });
+
+    const { password, ...userWithoutPassword } = user;
+    const tokens = await this._issueUserSessionTokens(user);
 
     const userScope = getUserScope(user);
 
@@ -205,73 +243,29 @@ export class AuthService {
   async loginPlatformUser(
     dto: LoginPlatformUserServiceInput,
   ): Promise<LoginPlatformUserServiceResult> {
-    const user = await this.userRepository.findOne({ email: dto.email });
-
-    if (!user) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (
-      user.userType !== UserTypeEnums.PLATFORM ||
-      !!user.organizationId ||
-      !!user.branchId
-    ) {
-      throw new AppError("Access Denied, You are not a platform user", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
-    }
-
-    const isMatch = await compareHashedData(dto.password, user.password);
-    if (!isMatch) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (!user.isActive) {
-      throw new AppError(
-        "Your account has been deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
-      );
-    }
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      beforePasswordCheck: (user) => {
+        if (
+          user.userType !== UserTypeEnums.PLATFORM ||
+          !!user.organizationId ||
+          !!user.branchId
+        ) {
+          throw new AppError("Access Denied, You are not a platform user", {
+            statusCode: HttpStatusCodes.FORBIDDEN,
+          });
+        }
+      },
+    });
 
     const { password, ...userWithoutPassword } = user;
-    const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: user.id,
-        organizationId: user.organizationId ?? undefined,
-        branchId: user.branchId ?? undefined,
-        userType: user.userType,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      data: {
-        id: generatedTokens.refreshTokenId,
-        userId: user.id,
-        tokenHash: hashSha256(generatedTokens.refreshToken),
-        expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
-      },
-    });
-
-    const tokens = {
-      accessToken: generatedTokens.accessToken,
-      refreshToken: generatedTokens.refreshToken,
-    };
-
-    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
-      userId: user.id,
-    });
+    const tokens = await this._issueUserSessionTokens(user);
+    const permissions = await this._getUserPermissionKeys(user.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens,
-      permissions: Array.from(permissionKeys) as UserPermissions[],
+      permissions,
     };
   }
 
@@ -279,69 +273,25 @@ export class AuthService {
   async loginReseller(
     dto: LoginResellerServiceInput,
   ): Promise<LoginResellerServiceResult> {
-    const user = await this.userRepository.findOne({ email: dto.email });
-
-    if (!user) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (user.userType !== UserTypeEnums.RESELLER) {
-      throw new AppError("Access Denied, You are not a reseller", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
-    }
-
-    const isMatch = await compareHashedData(dto.password, user.password);
-    if (!isMatch) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (!user.isActive) {
-      throw new AppError(
-        "Your account has been deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
-      );
-    }
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      beforePasswordCheck: (user) => {
+        if (user.userType !== UserTypeEnums.RESELLER) {
+          throw new AppError("Access Denied, You are not a reseller", {
+            statusCode: HttpStatusCodes.FORBIDDEN,
+          });
+        }
+      },
+    });
 
     const { password, ...userWithoutPassword } = user;
-    const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: user.id,
-        organizationId: user.organizationId ?? undefined,
-        branchId: user.branchId ?? undefined,
-        userType: user.userType,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      data: {
-        id: generatedTokens.refreshTokenId,
-        userId: user.id,
-        tokenHash: hashSha256(generatedTokens.refreshToken),
-        expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
-      },
-    });
-
-    const tokens = {
-      accessToken: generatedTokens.accessToken,
-      refreshToken: generatedTokens.refreshToken,
-    };
-
-    const permissionKeys = await this.rbacRepository.findUserPermissionKeys({
-      userId: user.id,
-    });
+    const tokens = await this._issueUserSessionTokens(user);
+    const permissions = await this._getUserPermissionKeys(user.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens,
-      permissions: Array.from(permissionKeys) as UserPermissions[],
+      permissions,
     };
   }
 

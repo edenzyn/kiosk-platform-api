@@ -4,9 +4,14 @@ import type {
   GetResellerInvitationsResponseDto,
 } from "./dtos/get-reseller-invitations.dtos";
 import type {
+  GetResellersRequestDto,
+  GetResellersResponseDto,
+} from "./dtos/get-resellers.dtos";
+import type {
   InviteResellerRequestDto,
   InviteResellerResponseDto,
 } from "./dtos/invite-reseller.dtos";
+import type { UpdateResellerStatusResponseDto } from "./dtos/update-reseller-status.dtos";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -22,3 +27,14 @@ export interface GetResellerInvitationsServiceInput {
 }
 export type GetResellerInvitationsServiceResult =
   GetResellerInvitationsResponseDto;
+
+export interface GetResellersServiceInput {
+  query: GetResellersRequestDto;
+}
+export type GetResellersServiceResult = GetResellersResponseDto;
+
+export interface ToggleResellerStatusServiceInput {
+  resellerId: string;
+  currentUser: UserTokenDto;
+}
+export type ToggleResellerStatusServiceResult = UpdateResellerStatusResponseDto;

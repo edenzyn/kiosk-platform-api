@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { branches } from "../branch/branch.schema";
 import { organizations } from "../organization/organization.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
@@ -30,12 +31,16 @@ import type {
   FindOneInvitationRepoResult,
   FindOneUserRepoInput,
   FindOneUserRepoResult,
+  FindResellersRepoInput,
+  FindResellersRepoResult,
   FindUserByTenantRepoInput,
   FindUserByTenantRepoResult,
   FindUsersByRoleIdRepoInput,
   FindUsersByRoleIdRepoResult,
   UpdateUserInvitationRepoInput,
   UpdateUserInvitationRepoResult,
+  UpdateUserRepoInput,
+  UpdateUserRepoResult,
 } from "./user.types";
 
 export class UserRepository {
@@ -285,19 +290,7 @@ export class UserRepository {
 
     const rows = await query;
     return {
-      users: rows as Pick<
-        UserEntity,
-        | "id"
-        | "organizationId"
-        | "branchId"
-        | "name"
-        | "email"
-        | "mobile"
-        | "userType"
-        | "isActive"
-        | "createdAt"
-        | "updatedAt"
-      >[],
+      users: rows as Omit<UserEntity, "password" | "createdBy" | "updatedBy">[],
       total,
     };
   }
@@ -312,6 +305,83 @@ export class UserRepository {
       throw new Error("Failed to create user");
     }
     return created;
+  }
+
+  async findResellers(
+    input: FindResellersRepoInput,
+  ): Promise<FindResellersRepoResult> {
+    const { search, isActive, page, limit, sortBy, sortOrder } = input;
+
+    const conditions: (SQL | undefined)[] = [
+      eq(users.userType, UserTypeEnums.RESELLER),
+    ];
+
+    if (isActive !== undefined) {
+      conditions.push(eq(users.isActive, isActive));
+    }
+
+    if (search) {
+      conditions.push(
+        or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
+      );
+    }
+
+    const condition = and(...conditions);
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(users)
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
+    let query = this.database.client
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        mobile: users.mobile,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(condition)
+      .$dynamic();
+
+    if (sortBy && sortOrder) {
+      const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
+      if (sortBy === "name") {
+        query = query.orderBy(orderFn(users.name));
+      } else if (sortBy === "isActive") {
+        query = query.orderBy(orderFn(users.isActive));
+      } else if (sortBy === "createdAt") {
+        query = query.orderBy(orderFn(users.createdAt));
+      }
+    } else {
+      query = query.orderBy(desc(users.createdAt));
+    }
+
+    if (page && limit) {
+      query = query.limit(limit).offset((page - 1) * limit);
+    }
+
+    const resellers = await query;
+    return { resellers, total };
+  }
+
+  async update(input: UpdateUserRepoInput): Promise<UpdateUserRepoResult> {
+    const [updated] = await this.database.client
+      .update(users)
+      .set({
+        ...input.data,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, input.userId))
+      .returning();
+
+    if (!updated) {
+      throw new Error("Failed to update user");
+    }
+    return updated;
   }
 
   // ========================================

@@ -31,4 +31,23 @@ export class ResellerValidator {
         .optional(),
     })
     .noUnknown();
+
+  static getResellersQuery = paginationQuerySchema
+    .shape({
+      search: Yup.string().optional().trim(),
+      status: Yup.string()
+        .oneOf(["active", "inactive", "all"])
+        .optional(),
+      sortBy: Yup.string()
+        .oneOf(["name", "isActive", "createdAt"])
+        .optional(),
+      sortOrder: Yup.mixed<SortingOrderEnum>()
+        .oneOf(Object.values(SortingOrderEnum))
+        .optional(),
+    })
+    .noUnknown();
+
+  static resellerIdParam = Yup.object({
+    id: Yup.string().uuid("Invalid reseller ID").required("Reseller ID is required"),
+  }).noUnknown();
 }

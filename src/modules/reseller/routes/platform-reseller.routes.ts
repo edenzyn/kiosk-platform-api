@@ -29,4 +29,22 @@ platformResellerRouter.get(
   asyncHandler(resellerController.getInvitations),
 );
 
+platformResellerRouter.get(
+  "/",
+  accessMiddleware(
+    { platform: PLATFORM_RESELLER_READ_WRITE_PERMS },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(resellerController.getResellers),
+);
+
+platformResellerRouter.patch(
+  "/:id/status",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_RESELLER_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(resellerController.toggleResellerStatus),
+);
+
 export { platformResellerRouter };

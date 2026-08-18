@@ -13,8 +13,12 @@ import type { UserRepository } from "../user/user.repository";
 import type {
   GetResellerInvitationsServiceInput,
   GetResellerInvitationsServiceResult,
+  GetResellersServiceInput,
+  GetResellersServiceResult,
   InviteResellerServiceInput,
   InviteResellerServiceResult,
+  ToggleResellerStatusServiceInput,
+  ToggleResellerStatusServiceResult,
 } from "./reseller.types";
 
 export class ResellerService {
@@ -134,6 +138,68 @@ export class ResellerService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getResellers(
+    input: GetResellersServiceInput,
+  ): Promise<GetResellersServiceResult> {
+    const { page = 1, limit = 10, search, sortBy, sortOrder, status } =
+      input.query;
+
+    const isActive =
+      status === "active" ? true : status === "inactive" ? false : undefined;
+
+    const { resellers, total } = await this.userRepository.findResellers({
+      search,
+      isActive,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    });
+
+    return {
+      resellers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async toggleResellerStatus(
+    input: ToggleResellerStatusServiceInput,
+  ): Promise<ToggleResellerStatusServiceResult> {
+    const target = await this.userRepository.findOne({
+      id: input.resellerId,
+      userType: UserTypeEnums.RESELLER,
+    });
+
+    if (!target) {
+      throw new AppError("Reseller not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const updated = await this.userRepository.update({
+      userId: input.resellerId,
+      data: {
+        isActive: !target.isActive,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    return {
+      reseller: {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        mobile: updated.mobile,
+        isActive: updated.isActive,
+        createdAt: updated.createdAt,
+      },
     };
   }
 }

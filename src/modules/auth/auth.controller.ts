@@ -17,7 +17,6 @@ export class AuthController {
 
   private _getSessionMeta(req: Request): SessionMeta {
     const userAgent = req.headers["user-agent"];
-    console.log(userAgent);
     return {
       ipAddress: req.ip,
       userAgent,

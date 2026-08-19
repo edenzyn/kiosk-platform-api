@@ -104,6 +104,41 @@ export class UserController {
     res.json(result);
   };
 
+  listSessions = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const result = await this.userService.listMySessions(
+      userTokenData.id,
+      userTokenData.sessionId,
+    );
+    res.json(result);
+  };
+
+  revokeSession = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const params = await UserValidator.sessionIdParam.validate(
+      { sessionId: req.params.sessionId },
+      { abortEarly: false, stripUnknown: true },
+    );
+    const revoked = await this.userService.revokeMySession(
+      userTokenData.id,
+      params.sessionId,
+    );
+    res.json({ revoked });
+  };
+
+  revokeOtherSessions = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    if (!userTokenData.sessionId) {
+      res.json({ revokedCount: 0 });
+      return;
+    }
+    const revokedCount = await this.userService.revokeMyOtherSessions(
+      userTokenData.id,
+      userTokenData.sessionId,
+    );
+    res.json({ revokedCount });
+  };
+
   changePassword = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
     const data = await UserValidator.changePassword.validate(req.body, {

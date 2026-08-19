@@ -7,11 +7,22 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
+import { parseDeviceName } from "../../shared/utils/core/user-agent.helper";
 import { AuthValidator } from "./auth.validator";
+import type { SessionMeta } from "./auth.types";
 import type { AuthService } from "./services/auth.service";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private _getSessionMeta(req: Request): SessionMeta {
+    const userAgent = req.headers["user-agent"];
+    return {
+      ipAddress: req.ip,
+      userAgent,
+      deviceName: parseDeviceName(userAgent),
+    };
+  }
 
   private _setUserAuthCookies(
     res: Response,
@@ -40,7 +51,10 @@ export class AuthController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.loginUser(data);
+    const result = await this.authService.loginUser({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     if ("requiresTwoFactor" in result) {
       res.json(result);
@@ -65,6 +79,7 @@ export class AuthController {
     const result = await this.authService.verifyTwoFactorLogin(
       data.twoFactorToken,
       data.code,
+      this._getSessionMeta(req),
     );
 
     this._setUserAuthCookies(res, result.tokens);
@@ -121,7 +136,10 @@ export class AuthController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.acceptInvitation(data);
+    const result = await this.authService.acceptInvitation({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     this._setUserAuthCookies(res, result.tokens);
 
@@ -141,7 +159,10 @@ export class AuthController {
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
-    const result = await this.authService.acceptOrganizationInvitation(data);
+    const result = await this.authService.acceptOrganizationInvitation({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     this._setUserAuthCookies(res, result.tokens);
 
@@ -160,7 +181,10 @@ export class AuthController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.loginPlatformUser(data);
+    const result = await this.authService.loginPlatformUser({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     if ("requiresTwoFactor" in result) {
       res.json(result);
@@ -182,7 +206,10 @@ export class AuthController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.loginReseller(data);
+    const result = await this.authService.loginReseller({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     if ("requiresTwoFactor" in result) {
       res.json(result);
@@ -206,7 +233,10 @@ export class AuthController {
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
-    const result = await this.authService.acceptResellerInvitation(data);
+    const result = await this.authService.acceptResellerInvitation({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     this._setUserAuthCookies(res, result.tokens);
 

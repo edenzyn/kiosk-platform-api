@@ -36,6 +36,30 @@ router.patch(
   asyncHandler(userController.changePassword),
 );
 router.get(
+  "/sessions",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.listSessions),
+);
+router.delete(
+  "/sessions/others",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.revokeOtherSessions),
+);
+router.delete(
+  "/sessions/:sessionId",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.revokeSession),
+);
+router.get(
   "/2fa/status",
   accessMiddleware(
     { platform: [UserPermissions.PLATFORM_BASIC] },

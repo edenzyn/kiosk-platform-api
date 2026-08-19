@@ -7,7 +7,10 @@ import type { UserScope } from "../user/dtos/check-auth.dtos";
 import type { UserSettingsEntity } from "../user/schemas/user-settings.schema";
 import type { UserEntity } from "../user/schemas/user.schema";
 import type { OrganizationEntity } from "../organization/organization.schema";
-import type { CreateRefreshTokenEntity } from "./schemas/refresh-token.schema";
+import type {
+  AuthSessionEntity,
+  CreateAuthSessionEntity,
+} from "./schemas/auth-session.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -17,9 +20,16 @@ export interface AuthTokens {
   refreshToken: string;
 }
 
+export interface SessionMeta {
+  ipAddress?: string;
+  userAgent?: string;
+  deviceName?: string;
+}
+
 export interface LoginServiceInput {
   email: string;
   password: string;
+  meta: SessionMeta;
 }
 
 export interface LoginServiceResult {
@@ -34,6 +44,7 @@ export interface LoginServiceResult {
 export interface LoginPlatformUserServiceInput {
   email: string;
   password: string;
+  meta: SessionMeta;
 }
 
 export interface LoginPlatformUserServiceResult {
@@ -47,6 +58,7 @@ export interface LoginPlatformUserServiceResult {
 export interface LoginResellerServiceInput {
   email: string;
   password: string;
+  meta: SessionMeta;
 }
 
 export interface LoginResellerServiceResult {
@@ -73,6 +85,7 @@ export interface AcceptInvitationServiceInput {
   token: string;
   name: string;
   password: string;
+  meta: SessionMeta;
 }
 
 export type AcceptInvitationServiceResult = LoginServiceResult;
@@ -81,6 +94,7 @@ export interface AcceptResellerInvitationServiceInput {
   token: string;
   name: string;
   password: string;
+  meta: SessionMeta;
 }
 
 export type AcceptResellerInvitationServiceResult = LoginServiceResult;
@@ -91,6 +105,7 @@ export interface AcceptOrganizationInvitationServiceInput {
   password: string;
   registeredName: string;
   registrationNumber: string;
+  meta: SessionMeta;
 }
 
 export type AcceptOrganizationInvitationServiceResult = LoginServiceResult & {
@@ -120,6 +135,7 @@ export interface RequiresTwoFactorServiceResult {
 export interface VerifyTwoFactorLoginServiceInput {
   twoFactorToken: string;
   code: string;
+  meta: SessionMeta;
 }
 
 export type VerifyTwoFactorLoginServiceResult =
@@ -159,14 +175,14 @@ export interface TwoFactorPendingLoginTokenPayload {
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
 export interface CreateRefreshTokenRepoInput {
-  data: CreateRefreshTokenEntity;
+  data: CreateAuthSessionEntity;
 }
 export type CreateRefreshTokenRepoResult = void;
 
 export interface RotateRefreshTokenRepoInput {
   currentTokenId: string;
   currentTokenHash: string;
-  replacement: CreateRefreshTokenEntity;
+  replacement: CreateAuthSessionEntity;
 }
 export type RotateRefreshTokenRepoResult = boolean;
 
@@ -180,3 +196,58 @@ export interface DeleteExpiredRefreshTokensRepoInput {
   now?: Date;
 }
 export type DeleteExpiredRefreshTokensRepoResult = number;
+
+export interface ListSessionsRepoInput {
+  userId: string;
+}
+export type ListSessionsRepoResult = AuthSessionEntity[];
+
+export interface RevokeSessionRepoInput {
+  userId: string;
+  sessionId: string;
+}
+export type RevokeSessionRepoResult = boolean;
+
+export interface RevokeOtherSessionsRepoInput {
+  userId: string;
+  keepSessionId: string;
+}
+export type RevokeOtherSessionsRepoResult = number;
+
+export interface RevokeOldestSessionsRepoInput {
+  userId: string;
+  count: number;
+}
+export type RevokeOldestSessionsRepoResult = void;
+
+// ========================================
+// ? SESSIONS (SERVICE)
+// ========================================
+export interface SessionDto {
+  id: string;
+  deviceName: string | null;
+  ipAddress: string | null;
+  lastUsedAt: Date;
+  createdAt: Date;
+  isCurrent: boolean;
+}
+
+export interface ListMySessionsServiceInput {
+  userId: string;
+  currentSessionId?: string;
+}
+export interface ListMySessionsServiceResult {
+  sessions: SessionDto[];
+}
+
+export interface RevokeSessionServiceInput {
+  userId: string;
+  sessionId: string;
+}
+export type RevokeSessionServiceResult = boolean;
+
+export interface RevokeOtherSessionsServiceInput {
+  userId: string;
+  currentSessionId: string;
+}
+export type RevokeOtherSessionsServiceResult = number;

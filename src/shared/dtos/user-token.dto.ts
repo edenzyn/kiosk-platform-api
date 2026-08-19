@@ -5,4 +5,5 @@ export interface UserTokenDto {
   organizationId?: string;
   branchId?: string;
   userType: UserTypeEnums;
+  sessionId?: string;
 }

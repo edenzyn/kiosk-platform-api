@@ -34,6 +34,30 @@ resellerRouter.patch(
   asyncHandler(userController.changePassword),
 );
 resellerRouter.get(
+  "/sessions",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.listSessions),
+);
+resellerRouter.delete(
+  "/sessions/others",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.revokeOtherSessions),
+);
+resellerRouter.delete(
+  "/sessions/:sessionId",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.revokeSession),
+);
+resellerRouter.get(
   "/2fa/status",
   accessMiddleware(
     { reseller: [UserPermissions.RESELLER_BASIC] },

@@ -6,6 +6,7 @@ export interface UpdateUserSettingsRequestDto {
   primaryColor?: string;
   languageCode?: string;
   timezone?: string;
+  currencyCode?: string;
 }
 
 export type UpdateUserSettingsResponseDto = UserSettingsEntity;

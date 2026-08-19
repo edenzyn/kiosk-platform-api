@@ -1,9 +1,9 @@
-import { index, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { index, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { users } from "../../user/schemas/user.schema";
 import { devices } from "../../device/device.schema";
 
-export const refreshTokens = pgTable(
-  "refresh_tokens",
+export const authSessions = pgTable(
+  "auth_sessions",
   {
     id: uuid("id").primaryKey(),
     userId: uuid("user_id")
@@ -14,15 +14,21 @@ export const refreshTokens = pgTable(
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     replacedByTokenId: uuid("replaced_by_token_id"),
+    ipAddress: varchar("ip_address", { length: 45 }),
+    userAgent: text("user_agent"),
+    deviceName: varchar("device_name", { length: 150 }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => [
-    index("refresh_tokens_user_id_idx").on(table.userId),
-    index("refresh_tokens_device_id_idx").on(table.deviceId),
+    index("auth_sessions_user_id_idx").on(table.userId),
+    index("auth_sessions_device_id_idx").on(table.deviceId),
   ],
 );
 
-export type CreateRefreshTokenEntity = typeof refreshTokens.$inferInsert;
-export type RefreshTokenEntity = typeof refreshTokens.$inferSelect;
+export type CreateAuthSessionEntity = typeof authSessions.$inferInsert;
+export type AuthSessionEntity = typeof authSessions.$inferSelect;

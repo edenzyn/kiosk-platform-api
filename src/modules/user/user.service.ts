@@ -49,6 +49,8 @@ import type {
   UpdateUserSettingsResponseDto,
 } from "./dtos/user-settings.dtos";
 import type { UserSettingsEntity } from "./schemas/user-settings.schema";
+import type { AuthRepository } from "../auth/auth.repository";
+import type { SessionDto } from "../auth/auth.types";
 import type { UserRepository } from "./user.repository";
 import type {
   GetInvitationsByTenantServiceInput,
@@ -64,6 +66,7 @@ export class UserService {
     private readonly branchRepository: BranchRepository,
     private readonly rbacService: RbacService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly authRepository: AuthRepository,
   ) {}
 
   async getPermissionsAndScopes(
@@ -225,6 +228,38 @@ export class UserService {
 
   async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
     return this.userRepository.getOrCreateSettings(userId);
+  }
+
+  async listMySessions(
+    userId: string,
+    currentSessionId?: string,
+  ): Promise<{ sessions: SessionDto[] }> {
+    const sessions = await this.authRepository.listSessions({ userId });
+
+    return {
+      sessions: sessions.map((session) => ({
+        id: session.id,
+        deviceName: session.deviceName,
+        ipAddress: session.ipAddress,
+        lastUsedAt: session.lastUsedAt,
+        createdAt: session.createdAt,
+        isCurrent: session.id === currentSessionId,
+      })),
+    };
+  }
+
+  async revokeMySession(userId: string, sessionId: string): Promise<boolean> {
+    return this.authRepository.revokeSession({ userId, sessionId });
+  }
+
+  async revokeMyOtherSessions(
+    userId: string,
+    currentSessionId: string,
+  ): Promise<number> {
+    return this.authRepository.revokeOtherSessions({
+      userId,
+      keepSessionId: currentSessionId,
+    });
   }
 
   async changePassword(

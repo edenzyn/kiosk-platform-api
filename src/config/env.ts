@@ -38,6 +38,9 @@ const EnvSchema = Yup.object({
   SMTP_FROM: Yup.string().default(
     '"Kiosk Platform" <noreply@kioskplatform.com>',
   ),
+  NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
+  RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
+  PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   REDIS_HOST: Yup.string().default("localhost"),
   REDIS_PORT: Yup.number().integer().positive().default(6379),
   REDIS_USERNAME: Yup.string().default(""),

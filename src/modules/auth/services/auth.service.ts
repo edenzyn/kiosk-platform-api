@@ -51,6 +51,7 @@ import type {
   LogoutServiceResult,
   RefreshTokenServiceResult,
   RequiresTwoFactorServiceResult,
+  SessionMeta,
   VerifyTwoFactorLoginServiceResult,
 } from "../auth.types";
 import type {
@@ -122,10 +123,12 @@ export class AuthService {
       isDevice ? env.JWT_DEVICE_ACCESS_EXPIRES_IN : env.JWT_ACCESS_EXPIRES_IN
     ) as jwt.SignOptions["expiresIn"];
 
+    const refreshTokenId = randomUUID();
+
     const accessToken = generateToken(payload, env.JWT_ACCESS_SECRET, {
       expiresIn: accessExpiresIn as jwt.SignOptions["expiresIn"],
+      jwtid: refreshTokenId,
     });
-    const refreshTokenId = randomUUID();
 
     const refreshTokenOptions: jwt.SignOptions = {
       jwtid: refreshTokenId,
@@ -202,12 +205,43 @@ export class AuthService {
     return user;
   }
 
-  private async _issueUserSessionTokens(user: {
-    id: string;
-    organizationId?: string | null;
-    branchId?: string | null;
-    userType: UserTypeEnums;
-  }) {
+  private _getSessionLimitForUserType(userType: UserTypeEnums): number {
+    switch (userType) {
+      case UserTypeEnums.PLATFORM:
+        return env.PLATFORM_USER_SESSION_LIMIT;
+      case UserTypeEnums.RESELLER:
+        return env.RESELLER_USER_SESSION_LIMIT;
+      default:
+        return env.NORMAL_USER_SESSION_LIMIT;
+    }
+  }
+
+  private async _enforceSessionLimit(
+    userId: string,
+    userType: UserTypeEnums,
+  ): Promise<void> {
+    const limit = this._getSessionLimitForUserType(userType);
+    const activeSessions = await this.authRepository.listSessions({ userId });
+
+    if (activeSessions.length >= limit) {
+      await this.authRepository.revokeOldestSessions({
+        userId,
+        count: activeSessions.length - limit + 1,
+      });
+    }
+  }
+
+  private async _issueUserSessionTokens(
+    user: {
+      id: string;
+      organizationId?: string | null;
+      branchId?: string | null;
+      userType: UserTypeEnums;
+    },
+    meta: SessionMeta,
+  ) {
+    await this._enforceSessionLimit(user.id, user.userType);
+
     const generatedTokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
       user: {
         id: user.id,
@@ -223,6 +257,9 @@ export class AuthService {
         userId: user.id,
         tokenHash: hashSha256(generatedTokens.refreshToken),
         expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
+        ipAddress: meta.ipAddress,
+        userAgent: meta.userAgent,
+        deviceName: meta.deviceName,
       },
     });
 
@@ -243,9 +280,10 @@ export class AuthService {
 
   private async _completeUserClientLogin(
     user: UserEntity,
+    meta: SessionMeta,
   ): Promise<LoginServiceResult> {
     const { password, ...userWithoutPassword } = user;
-    const tokens = await this._issueUserSessionTokens(user);
+    const tokens = await this._issueUserSessionTokens(user, meta);
     const settings = await this.userService.getOrCreateSettings(user.id);
 
     const userScope = getUserScope(user);
@@ -270,9 +308,10 @@ export class AuthService {
 
   private async _completePlatformLogin(
     user: UserEntity,
+    meta: SessionMeta,
   ): Promise<LoginPlatformUserServiceResult> {
     const { password, ...userWithoutPassword } = user;
-    const tokens = await this._issueUserSessionTokens(user);
+    const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings(user.id);
 
@@ -287,9 +326,10 @@ export class AuthService {
 
   private async _completeResellerLogin(
     user: UserEntity,
+    meta: SessionMeta,
   ): Promise<LoginResellerServiceResult> {
     const { password, ...userWithoutPassword } = user;
-    const tokens = await this._issueUserSessionTokens(user);
+    const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings(user.id);
 
@@ -338,7 +378,7 @@ export class AuthService {
       );
     }
 
-    return this._completeUserClientLogin(user);
+    return this._completeUserClientLogin(user, dto.meta);
   }
 
   // Platform user login (SuperAdmin)
@@ -367,7 +407,7 @@ export class AuthService {
       );
     }
 
-    return this._completePlatformLogin(user);
+    return this._completePlatformLogin(user, dto.meta);
   }
 
   // Reseller login
@@ -392,12 +432,13 @@ export class AuthService {
       );
     }
 
-    return this._completeResellerLogin(user);
+    return this._completeResellerLogin(user, dto.meta);
   }
 
   async verifyTwoFactorLogin(
     twoFactorToken: string,
     code: string,
+    meta: SessionMeta,
   ): Promise<VerifyTwoFactorLoginServiceResult> {
     const { userId } = await this.twoFactorService.verifyLogin(
       twoFactorToken,
@@ -413,12 +454,12 @@ export class AuthService {
     }
 
     if (user.userType === UserTypeEnums.PLATFORM) {
-      return this._completePlatformLogin(user);
+      return this._completePlatformLogin(user, meta);
     }
     if (user.userType === UserTypeEnums.RESELLER) {
-      return this._completeResellerLogin(user);
+      return this._completeResellerLogin(user, meta);
     }
-    return this._completeUserClientLogin(user);
+    return this._completeUserClientLogin(user, meta);
   }
 
   async logout(refreshToken: string): Promise<LogoutServiceResult> {
@@ -565,23 +606,7 @@ export class AuthService {
       },
     });
 
-    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: createdUser.id,
-        organizationId: createdUser.organizationId ?? undefined,
-        branchId: createdUser.branchId ?? undefined,
-        userType: createdUser.userType,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      data: {
-        id: tokens.refreshTokenId,
-        userId: createdUser.id,
-        tokenHash: hashSha256(tokens.refreshToken),
-        expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
-      },
-    });
+    const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
     const { password, ...userWithoutPassword } = createdUser;
 
@@ -597,10 +622,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
+      tokens,
       permissions,
       availableScopes,
       settings,
@@ -663,23 +685,7 @@ export class AuthService {
       },
     });
 
-    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: createdUser.id,
-        organizationId: undefined,
-        branchId: undefined,
-        userType: createdUser.userType,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      data: {
-        id: tokens.refreshTokenId,
-        userId: createdUser.id,
-        tokenHash: hashSha256(tokens.refreshToken),
-        expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
-      },
-    });
+    const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
     const { password, ...userWithoutPassword } = createdUser;
 
@@ -693,10 +699,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
+      tokens,
       permissions,
       availableScopes: [],
       settings,
@@ -757,23 +760,7 @@ export class AuthService {
         keyToIdMap,
       });
 
-    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
-      user: {
-        id: createdUser.id,
-        organizationId: createdUser.organizationId ?? undefined,
-        branchId: createdUser.branchId ?? undefined,
-        userType: createdUser.userType,
-      },
-    });
-
-    await this.authRepository.createRefreshToken({
-      data: {
-        id: tokens.refreshTokenId,
-        userId: createdUser.id,
-        tokenHash: hashSha256(tokens.refreshToken),
-        expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
-      },
-    });
+    const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
     const { password, ...userWithoutPassword } = createdUser;
 
@@ -791,10 +778,7 @@ export class AuthService {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       organization,
-      tokens: {
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken,
-      },
+      tokens,
       permissions,
       availableScopes,
       settings,

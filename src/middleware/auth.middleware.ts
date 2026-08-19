@@ -75,7 +75,7 @@ export function authMiddleware(
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
-      req.user = decoded.user;
+      req.user = { ...decoded.user, sessionId: decoded.jti };
       req.clientType = ClientTypeEnum.USER_CLIENT;
     }
 

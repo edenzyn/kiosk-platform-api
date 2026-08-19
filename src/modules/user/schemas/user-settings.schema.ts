@@ -28,6 +28,9 @@ export const userSettings = pgTable("user_settings", {
     .notNull()
     .default("en"),
   timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+  currencyCode: varchar("currency_code", { length: 3 })
+    .notNull()
+    .default("INR"),
   // 2FA settings
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   twoFactorMethod: smallint(

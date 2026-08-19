@@ -8,8 +8,8 @@ import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.
 import { AppError } from "../../shared/errors/app-error";
 import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
 import { parseDeviceName } from "../../shared/utils/core/user-agent.helper";
-import { AuthValidator } from "./auth.validator";
 import type { SessionMeta } from "./auth.types";
+import { AuthValidator } from "./auth.validator";
 import type { AuthService } from "./services/auth.service";
 
 export class AuthController {
@@ -17,6 +17,7 @@ export class AuthController {
 
   private _getSessionMeta(req: Request): SessionMeta {
     const userAgent = req.headers["user-agent"];
+    console.log(userAgent);
     return {
       ipAddress: req.ip,
       userAgent,

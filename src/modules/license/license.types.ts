@@ -1,4 +1,5 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
@@ -149,6 +150,77 @@ export interface GetDiscountRulesServiceInput {
 
 export interface GetDiscountRulesServiceResult {
   rules: LicenseDiscountRuleEntity[];
+}
+
+// ========================================
+// ? PLATFORM CLIENT SERVICES (Discount Rules & Pricing)
+// ========================================
+export interface DiscountRuleTarget {
+  id: string;
+  name: string;
+}
+
+export type DiscountRuleWithTargets = LicenseDiscountRuleEntity & {
+  targets: DiscountRuleTarget[];
+};
+
+export interface GetPlatformDiscountRulesServiceInput {
+  query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    targetEntity?: number;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  };
+}
+
+export interface GetPlatformDiscountRulesServiceResult {
+  rules: DiscountRuleWithTargets[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface CreateDiscountRuleServiceInput {
+  dto: {
+    name: string;
+    targetEntity: number;
+    discountType: number;
+    discountValue: number;
+    minQuantity: number;
+    maxQuantity?: number | null;
+    startsAt?: Date | null;
+    endsAt?: Date | null;
+    resellerIds?: string[];
+    pricingPlanIds?: string[];
+  };
+  currentUser: UserTokenDto;
+}
+
+export interface CreateDiscountRuleServiceResult {
+  rule: DiscountRuleWithTargets;
+}
+
+export interface ToggleDiscountRuleStatusServiceInput {
+  ruleId: string;
+  currentUser: UserTokenDto;
+}
+
+export interface ToggleDiscountRuleStatusServiceResult {
+  rule: LicenseDiscountRuleEntity;
+}
+
+export interface GetPlatformPricingPlansServiceInput {
+  query: {
+    isActive?: boolean;
+  };
+}
+
+export interface GetPlatformPricingPlansServiceResult {
+  plans: LicensePricingEntity[];
 }
 
 export interface ExtendLicenseServiceInput {
@@ -373,6 +445,7 @@ export type UpdateLicenseRepoResult = LicenseEntity & {
 // Pricing & Discount Schema
 export interface FindLicensePricingPlansRepoInput {
   id?: string;
+  isActive?: boolean;
 }
 export type FindLicensePricingPlansRepoResult = LicensePricingEntity[];
 
@@ -380,6 +453,67 @@ export interface FindActiveDiscountRulesRepoInput {
   targetEntity: number;
 }
 export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
+
+export interface FindPaginatedDiscountRulesRepoInput {
+  page: number;
+  limit: number;
+  search?: string;
+  targetEntity?: number;
+  isActive?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+export interface FindPaginatedDiscountRulesRepoResult {
+  rules: LicenseDiscountRuleEntity[];
+  total: number;
+}
+
+export interface FindDiscountRuleTargetsRepoInput {
+  ruleIds: string[];
+  targetEntity: number;
+}
+export type FindDiscountRuleTargetsRepoResult = Map<
+  string,
+  DiscountRuleTarget[]
+>;
+
+export interface CreateDiscountRuleWithTargetsRepoInput {
+  name: string;
+  targetEntity: number;
+  discountType: number;
+  discountValue: number;
+  minQuantity: number;
+  maxQuantity?: number | null;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+  resellerIds?: string[];
+  pricingPlanIds?: string[];
+  createdBy: string;
+}
+export type CreateDiscountRuleWithTargetsRepoResult = LicenseDiscountRuleEntity;
+
+export interface FindOneDiscountRuleRepoInput {
+  ruleId: string;
+}
+export type FindOneDiscountRuleRepoResult = LicenseDiscountRuleEntity | null;
+
+export interface UpdateDiscountRuleRepoInput {
+  ruleId: string;
+  updatedBy: string;
+  data: Partial<Pick<LicenseDiscountRuleEntity, "name" | "isActive" | "minQuantity" | "maxQuantity" | "startsAt" | "endsAt">>;
+}
+export type UpdateDiscountRuleRepoResult = LicenseDiscountRuleEntity;
+
+export interface FindPricingPlansPaginatedRepoInput {
+  page: number;
+  limit: number;
+  search?: string;
+  isActive?: boolean;
+}
+export interface FindPricingPlansPaginatedRepoResult {
+  plans: LicensePricingEntity[];
+  total: number;
+}
 
 // License History Schema
 export interface FindLicenseHistoryRepoInput {

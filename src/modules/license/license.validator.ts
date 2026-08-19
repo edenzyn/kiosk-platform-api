@@ -1,7 +1,8 @@
 import * as yup from "yup";
-import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
+import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
 export const LicenseValidator = {
   activate: yup.object({
@@ -62,6 +63,129 @@ export const LicenseValidator = {
           "Invalid target entity",
         )
         .required("Target entity is required"),
+    })
+    .noUnknown(),
+  getPlatformDiscountRulesQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().optional().trim(),
+      targetEntity: yup
+        .number()
+        .typeError("Target entity must be a number")
+        .oneOf(
+          Object.values(LicenseDiscountRuleTargetEntityTypeEnum) as number[],
+          "Invalid target entity",
+        )
+        .optional(),
+      isActive: yup.boolean().optional(),
+      sortBy: yup
+        .string()
+        .oneOf(["name", "discountValue", "createdAt"])
+        .optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
+    })
+    .noUnknown(),
+  createDiscountRule: yup
+    .object({
+      name: yup
+        .string()
+        .trim()
+        .min(2, "Name must be at least 2 characters")
+        .max(255, "Name cannot exceed 255 characters")
+        .required("Name is required"),
+      targetEntity: yup
+        .number()
+        .typeError("Target entity must be a number")
+        .oneOf(
+          Object.values(LicenseDiscountRuleTargetEntityTypeEnum) as number[],
+          "Invalid target entity",
+        )
+        .required("Target entity is required"),
+      discountType: yup
+        .number()
+        .typeError("Discount type must be a number")
+        .oneOf(
+          Object.values(LicenseDiscountTypeEnum) as number[],
+          "Invalid discount type",
+        )
+        .required("Discount type is required"),
+      discountValue: yup
+        .number()
+        .typeError("Discount value must be a number")
+        .moreThan(0, "Discount value must be greater than 0")
+        .required("Discount value is required"),
+      minQuantity: yup
+        .number()
+        .typeError("Minimum quantity must be a number")
+        .integer("Minimum quantity must be an integer")
+        .min(1, "Minimum quantity must be at least 1")
+        .default(1),
+      maxQuantity: yup
+        .number()
+        .typeError("Maximum quantity must be a number")
+        .integer("Maximum quantity must be an integer")
+        .nullable()
+        .optional()
+        .test(
+          "max-gte-min",
+          "Maximum quantity must be greater than or equal to minimum quantity",
+          function (value) {
+            if (value === null || value === undefined) return true;
+            const { minQuantity } = this.parent as { minQuantity?: number };
+            return minQuantity === undefined || value >= minQuantity;
+          },
+        ),
+      startsAt: yup.date().nullable().optional(),
+      endsAt: yup
+        .date()
+        .nullable()
+        .optional()
+        .test(
+          "ends-after-starts",
+          "End date must be after start date",
+          function (value) {
+            if (!value) return true;
+            const { startsAt } = this.parent as { startsAt?: Date | null };
+            return !startsAt || value > startsAt;
+          },
+        ),
+      resellerIds: yup
+        .array()
+        .of(yup.string().uuid().required())
+        .when("targetEntity", {
+          is: LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL,
+          then: (schema) =>
+            schema
+              .min(1, "Select at least one reseller")
+              .required("Select at least one reseller"),
+          otherwise: (schema) => schema.strip(),
+        }),
+      pricingPlanIds: yup
+        .array()
+        .of(yup.string().uuid().required())
+        .when("targetEntity", {
+          is: LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL,
+          then: (schema) =>
+            schema
+              .min(1, "Select at least one pricing plan")
+              .required("Select at least one pricing plan"),
+          otherwise: (schema) => schema.strip(),
+        }),
+    })
+    .noUnknown(),
+  discountRuleIdParam: yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid discount rule ID")
+        .required("Discount rule ID is required"),
+    })
+    .noUnknown(),
+  getPlatformPricingPlansQuery: yup
+    .object({
+      isActive: yup.boolean().optional(),
     })
     .noUnknown(),
   extendLicense: yup

@@ -14,6 +14,7 @@ import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
+import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
@@ -103,6 +104,10 @@ export class App {
     this.instance.use(
       `${this.platformUserApiV1Prefix}/organizations`,
       platformOrganizationRouter,
+    );
+    this.instance.use(
+      `${this.platformUserApiV1Prefix}/licenses`,
+      platformLicenseRouter,
     );
   }
 

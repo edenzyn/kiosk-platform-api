@@ -26,6 +26,8 @@ import type {
   AssignLicenseToDeviceServiceResult,
   CheckLicenseStatusServiceInput,
   CheckLicenseStatusServiceResult,
+  CreateDiscountRuleServiceInput,
+  CreateDiscountRuleServiceResult,
   CreateLicenseHistoryRepoInput,
   ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
@@ -47,10 +49,16 @@ import type {
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
+  GetPlatformDiscountRulesServiceInput,
+  GetPlatformDiscountRulesServiceResult,
+  GetPlatformPricingPlansServiceInput,
+  GetPlatformPricingPlansServiceResult,
   PurchaseLicenseAsResellerServiceInput,
   PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
+  ToggleDiscountRuleStatusServiceInput,
+  ToggleDiscountRuleStatusServiceResult,
 } from "./license.types";
 import type { LicenseEntity } from "./schemas/license.schema";
 
@@ -372,6 +380,127 @@ export class LicenseService {
       targetEntity: input.targetEntity,
     });
     return { rules };
+  }
+
+  // ========================================
+  // ? PLATFORM CLIENT SERVICES (Discount Rules & Pricing)
+  // ========================================
+  async getPlatformDiscountRules(
+    input: GetPlatformDiscountRulesServiceInput,
+  ): Promise<GetPlatformDiscountRulesServiceResult> {
+    const { page = 1, limit = 10, search, targetEntity, isActive, sortBy, sortOrder } =
+      input.query;
+
+    const { rules, total } = await this.licenseRepository.findPaginatedDiscountRules(
+      { page, limit, search, targetEntity, isActive, sortBy, sortOrder },
+    );
+
+    const individualRuleIdsByEntity = new Map<number, string[]>();
+    for (const rule of rules) {
+      if (
+        rule.targetEntity ===
+          LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL ||
+        rule.targetEntity ===
+          LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
+      ) {
+        const existing = individualRuleIdsByEntity.get(rule.targetEntity) ?? [];
+        existing.push(rule.id);
+        individualRuleIdsByEntity.set(rule.targetEntity, existing);
+      }
+    }
+
+    const targetsByRuleId = new Map<string, { id: string; name: string }[]>();
+    for (const [targetEntity, ruleIds] of individualRuleIdsByEntity) {
+      const targets = await this.licenseRepository.findDiscountRuleTargets({
+        ruleIds,
+        targetEntity,
+      });
+      for (const [ruleId, ruleTargets] of targets) {
+        targetsByRuleId.set(ruleId, ruleTargets);
+      }
+    }
+
+    const rulesWithTargets = rules.map((rule) => ({
+      ...rule,
+      targets: targetsByRuleId.get(rule.id) ?? [],
+    }));
+
+    return {
+      rules: rulesWithTargets,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async createDiscountRule(
+    input: CreateDiscountRuleServiceInput,
+  ): Promise<CreateDiscountRuleServiceResult> {
+    const { dto, currentUser } = input;
+
+    const rule = await this.licenseRepository.createDiscountRuleWithTargets({
+      name: dto.name,
+      targetEntity: dto.targetEntity,
+      discountType: dto.discountType,
+      discountValue: dto.discountValue,
+      minQuantity: dto.minQuantity,
+      maxQuantity: dto.maxQuantity,
+      startsAt: dto.startsAt,
+      endsAt: dto.endsAt,
+      resellerIds: dto.resellerIds,
+      pricingPlanIds: dto.pricingPlanIds,
+      createdBy: currentUser.id,
+    });
+
+    let targets: { id: string; name: string }[] = [];
+    if (
+      rule.targetEntity ===
+        LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL ||
+      rule.targetEntity ===
+        LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
+    ) {
+      const targetsMap = await this.licenseRepository.findDiscountRuleTargets({
+        ruleIds: [rule.id],
+        targetEntity: rule.targetEntity,
+      });
+      targets = targetsMap.get(rule.id) ?? [];
+    }
+
+    return { rule: { ...rule, targets } };
+  }
+
+  async toggleDiscountRuleStatus(
+    input: ToggleDiscountRuleStatusServiceInput,
+  ): Promise<ToggleDiscountRuleStatusServiceResult> {
+    const existing = await this.licenseRepository.findDiscountRule({
+      ruleId: input.ruleId,
+    });
+    if (!existing) {
+      throw new AppError("Discount rule not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const rule = await this.licenseRepository.updateDiscountRule({
+      ruleId: input.ruleId,
+      updatedBy: input.currentUser.id,
+      data: { isActive: !existing.isActive },
+    });
+    return { rule };
+  }
+
+  async getPlatformPricingPlans(
+    input: GetPlatformPricingPlansServiceInput,
+  ): Promise<GetPlatformPricingPlansServiceResult> {
+    const { isActive } = input.query;
+
+    const plans = await this.licenseRepository.findPricingPlans({
+      isActive: isActive ?? true,
+    });
+
+    return { plans };
   }
 
   async extendLicense(

@@ -126,6 +126,70 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  // ========================================
+  // ? PLATFORM CLIENT APIS
+  // ========================================
+  getPlatformDiscountRules = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const query = await LicenseValidator.getPlatformDiscountRulesQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.licenseService.getPlatformDiscountRules({
+      query,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  createDiscountRule = async (req: Request, res: Response): Promise<void> => {
+    const dto = await LicenseValidator.createDiscountRule.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseService.createDiscountRule({
+      dto,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  toggleDiscountRuleStatus = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const params = await LicenseValidator.discountRuleIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseService.toggleDiscountRuleStatus({
+      ruleId: params.id,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getPlatformPricingPlans = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const query = await LicenseValidator.getPlatformPricingPlansQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.licenseService.getPlatformPricingPlans({
+      query,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
     const params = await LicenseValidator.licenseIdParam.validate(req.params, {
       abortEarly: false,

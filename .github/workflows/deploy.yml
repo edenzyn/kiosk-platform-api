@@ -43,16 +43,21 @@ jobs:
             cat << "EOF" > .env
             NODE_ENV=${{ vars.NODE_ENV }}
             PORT=${{ vars.PORT }}
+            APP_NAME=${{ vars.APP_NAME }}
             DATABASE_URL=${{ secrets.DATABASE_URL }}
             DATABASE_SSL_MODE=${{ vars.DATABASE_SSL_MODE }}
             JWT_ACCESS_SECRET=${{ secrets.JWT_ACCESS_SECRET }}
             JWT_REFRESH_SECRET=${{ secrets.JWT_REFRESH_SECRET }}
             JWT_INVITE_USER_SECRET=${{ secrets.JWT_INVITE_USER_SECRET }}
+            JWT_2FA_SECRET=${{ secrets.JWT_2FA_SECRET }}
             JWT_ACCESS_EXPIRES_IN=${{ vars.JWT_ACCESS_EXPIRES_IN }}
             JWT_REFRESH_EXPIRES_IN=${{ vars.JWT_REFRESH_EXPIRES_IN }}
             JWT_DEVICE_ACCESS_EXPIRES_IN=${{ vars.JWT_DEVICE_ACCESS_EXPIRES_IN }}
             JWT_DEVICE_REFRESH_EXPIRES_IN=${{ vars.JWT_DEVICE_REFRESH_EXPIRES_IN }}
             JWT_INVITE_USER_EXPIRES_IN=${{ vars.JWT_INVITE_USER_EXPIRES_IN }}
+            JWT_2FA_OTP_EXPIRES_IN=${{ vars.JWT_2FA_OTP_EXPIRES_IN }}
+            JWT_2FA_TOTP_SETUP_EXPIRES_IN=${{ vars.JWT_2FA_TOTP_SETUP_EXPIRES_IN }}
+            JWT_2FA_PENDING_LOGIN_EXPIRES_IN=${{ vars.JWT_2FA_PENDING_LOGIN_EXPIRES_IN }}
             JWT_REFRESH_SLIDING_ENABLED=${{ vars.JWT_REFRESH_SLIDING_ENABLED }}
             BCRYPT_ROUNDS=${{ vars.BCRYPT_ROUNDS }}
             API_PREFIX_V1=${{ vars.API_PREFIX_V1 }}
@@ -70,6 +75,10 @@ jobs:
             LICENSE_GRACE_PERIOD_DAYS=${{ vars.LICENSE_GRACE_PERIOD_DAYS }}
             REFRESH_TOKEN_CLEANUP_CRON="${{ vars.REFRESH_TOKEN_CLEANUP_CRON }}"
             LICENSE_STATUS_CHECK_CRON="${{ vars.LICENSE_STATUS_CHECK_CRON }}"
+            MSG91_BASE_URL=${{ vars.MSG91_BASE_URL }}
+            MSG91_AUTH_KEY=${{ secrets.MSG91_AUTH_KEY }}
+            MSG91_SENDER_ID=${{ vars.MSG91_SENDER_ID }}
+            MSG91_OTP_TEMPLATE_ID=${{ vars.MSG91_OTP_TEMPLATE_ID }}
             EOF
 
             echo "📦 Step 5: Installing dependencies..."

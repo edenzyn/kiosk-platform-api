@@ -37,13 +37,39 @@ platformLicenseRouter.patch(
   asyncHandler(licenseController.toggleDiscountRuleStatus),
 );
 
-platformLicenseRouter.get(
-  "/pricing",
+platformLicenseRouter
+  .route("/pricing")
+  .get(
+    accessMiddleware(
+      { platform: PLATFORM_LICENSE_READ_WRITE_PERMS },
+      UserTypeEnums.PLATFORM,
+    ),
+    asyncHandler(licenseController.getPlatformPricingPlans),
+  )
+  .post(
+    accessMiddleware(
+      { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
+      UserTypeEnums.PLATFORM,
+    ),
+    asyncHandler(licenseController.createPricingPlan),
+  );
+
+platformLicenseRouter.patch(
+  "/pricing/:id/status",
   accessMiddleware(
-    { platform: PLATFORM_LICENSE_READ_WRITE_PERMS },
+    { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
     UserTypeEnums.PLATFORM,
   ),
-  asyncHandler(licenseController.getPlatformPricingPlans),
+  asyncHandler(licenseController.togglePricingPlanStatus),
+);
+
+platformLicenseRouter.patch(
+  "/pricing/:id",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(licenseController.updatePricingPlan),
 );
 
 export { platformLicenseRouter };

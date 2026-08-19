@@ -35,6 +35,8 @@ import type {
   CreateLicenseHistoryRepoResult,
   CreateLicensesRepoInput,
   CreateLicensesRepoResult,
+  CreatePricingPlanRepoInput,
+  CreatePricingPlanRepoResult,
   ExtendLicenseRepoInput,
   ExtendLicenseRepoResult,
   FindActiveDiscountRulesRepoInput,
@@ -59,6 +61,8 @@ import type {
   FindOneLicenseRepoResult,
   FindOneDiscountRuleRepoInput,
   FindOneDiscountRuleRepoResult,
+  FindOnePricingPlanRepoInput,
+  FindOnePricingPlanRepoResult,
   FindPaginatedDiscountRulesRepoInput,
   FindPaginatedDiscountRulesRepoResult,
   FindPricingPlansPaginatedRepoInput,
@@ -69,6 +73,8 @@ import type {
   UpdateDiscountRuleRepoResult,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
+  UpdatePricingPlanRepoInput,
+  UpdatePricingPlanRepoResult,
 } from "./license.types";
 import { licenseDiscountRules } from "./schemas/license-discount-rule.schema";
 import { licenseHistory } from "./schemas/license-history.schema";
@@ -903,6 +909,54 @@ export class LicenseRepository {
       .offset((page - 1) * limit);
 
     return { plans, total };
+  }
+
+  async createPricingPlan(
+    input: CreatePricingPlanRepoInput,
+  ): Promise<CreatePricingPlanRepoResult> {
+    const [plan] = await this.database.client
+      .insert(licensePricing)
+      .values({
+        name: input.name,
+        durationDays: input.durationDays,
+        price: String(input.price),
+        currency: input.currency,
+        createdBy: input.createdBy,
+        updatedBy: input.createdBy,
+      })
+      .returning();
+
+    if (!plan) throw new Error("Failed to create pricing plan");
+    return plan;
+  }
+
+  async findPricingPlan(
+    input: FindOnePricingPlanRepoInput,
+  ): Promise<FindOnePricingPlanRepoResult> {
+    const [plan] = await this.database.client
+      .select()
+      .from(licensePricing)
+      .where(eq(licensePricing.id, input.id))
+      .limit(1);
+
+    return plan ?? null;
+  }
+
+  async updatePricingPlan(
+    input: UpdatePricingPlanRepoInput,
+  ): Promise<UpdatePricingPlanRepoResult> {
+    const [updated] = await this.database.client
+      .update(licensePricing)
+      .set({
+        ...input.data,
+        updatedBy: input.updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(licensePricing.id, input.id))
+      .returning();
+
+    if (!updated) throw new Error("Pricing plan not found");
+    return updated;
   }
 
   // ========================================

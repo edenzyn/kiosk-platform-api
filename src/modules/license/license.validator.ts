@@ -188,6 +188,41 @@ export const LicenseValidator = {
       isActive: yup.boolean().optional(),
     })
     .noUnknown(),
+  createPricingPlan: yup
+    .object({
+      name: yup
+        .string()
+        .trim()
+        .min(2, "Name must be at least 2 characters")
+        .max(255, "Name cannot exceed 255 characters")
+        .required("Name is required"),
+      durationDays: yup
+        .number()
+        .typeError("Duration must be a number")
+        .integer("Duration must be an integer")
+        .min(1, "Duration must be at least 1 day")
+        .required("Duration is required"),
+      price: yup
+        .number()
+        .typeError("Price must be a number")
+        .min(0, "Price cannot be negative")
+        .required("Price is required"),
+      currency: yup
+        .string()
+        .trim()
+        .uppercase()
+        .length(3, "Currency must be a 3-letter ISO code")
+        .required("Currency is required"),
+    })
+    .noUnknown(),
+  pricingPlanIdParam: yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid pricing plan ID")
+        .required("Pricing plan ID is required"),
+    })
+    .noUnknown(),
   extendLicense: yup
     .object({
       pricingPlanId: yup.string().uuid().required("Pricing plan ID is required"),

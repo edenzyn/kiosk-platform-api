@@ -190,6 +190,56 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  createPricingPlan = async (req: Request, res: Response): Promise<void> => {
+    const dto = await LicenseValidator.createPricingPlan.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseService.createPricingPlan({
+      dto,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  togglePricingPlanStatus = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const params = await LicenseValidator.pricingPlanIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseService.togglePricingPlanStatus({
+      planId: params.id,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  updatePricingPlan = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.pricingPlanIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const dto = await LicenseValidator.createPricingPlan.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseService.updatePricingPlan({
+      planId: params.id,
+      dto,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getLicenseHistory = async (req: Request, res: Response): Promise<void> => {
     const params = await LicenseValidator.licenseIdParam.validate(req.params, {
       abortEarly: false,

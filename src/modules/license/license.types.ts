@@ -223,6 +223,44 @@ export interface GetPlatformPricingPlansServiceResult {
   plans: LicensePricingEntity[];
 }
 
+export interface CreatePricingPlanServiceInput {
+  dto: {
+    name: string;
+    durationDays: number;
+    price: number;
+    currency: string;
+  };
+  currentUser: UserTokenDto;
+}
+
+export interface CreatePricingPlanServiceResult {
+  plan: LicensePricingEntity;
+}
+
+export interface TogglePricingPlanStatusServiceInput {
+  planId: string;
+  currentUser: UserTokenDto;
+}
+
+export interface TogglePricingPlanStatusServiceResult {
+  plan: LicensePricingEntity;
+}
+
+export interface UpdatePricingPlanServiceInput {
+  planId: string;
+  dto: {
+    name: string;
+    durationDays: number;
+    price: number;
+    currency: string;
+  };
+  currentUser: UserTokenDto;
+}
+
+export interface UpdatePricingPlanServiceResult {
+  plan: LicensePricingEntity;
+}
+
 export interface ExtendLicenseServiceInput {
   licenseId: string;
   dto: {
@@ -514,6 +552,33 @@ export interface FindPricingPlansPaginatedRepoResult {
   plans: LicensePricingEntity[];
   total: number;
 }
+
+export interface CreatePricingPlanRepoInput {
+  name: string;
+  durationDays: number;
+  price: number;
+  currency: string;
+  createdBy: string;
+}
+export type CreatePricingPlanRepoResult = LicensePricingEntity;
+
+export interface FindOnePricingPlanRepoInput {
+  id: string;
+}
+export type FindOnePricingPlanRepoResult = LicensePricingEntity | null;
+
+export interface UpdatePricingPlanRepoInput {
+  id: string;
+  updatedBy: string;
+  data: Partial<{
+    isActive: boolean;
+    name: string;
+    durationDays: number;
+    price: string;
+    currency: string;
+  }>;
+}
+export type UpdatePricingPlanRepoResult = LicensePricingEntity;
 
 // License History Schema
 export interface FindLicenseHistoryRepoInput {

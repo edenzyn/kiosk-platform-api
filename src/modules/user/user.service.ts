@@ -6,8 +6,8 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
@@ -19,7 +19,6 @@ import {
 } from "../../shared/utils/core/bcrypt.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
-import type { BranchRepository } from "../branch/branch.repository";
 import type {
   DisableTwoFactorResponseDto,
   EnableTwoFactorResponseDto,
@@ -27,6 +26,7 @@ import type {
   TwoFactorStatusResponseDto,
 } from "../auth/dtos/two-factor.dtos";
 import type { TwoFactorService } from "../auth/services/two-factor.service";
+import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
@@ -256,7 +256,9 @@ export class UserService {
     return { message: "Password changed successfully" };
   }
 
-  async getTwoFactorStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
+  async getTwoFactorStatus(
+    userId: string,
+  ): Promise<TwoFactorStatusResponseDto> {
     return this.twoFactorService.getStatus(userId);
   }
 

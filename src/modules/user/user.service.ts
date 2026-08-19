@@ -28,6 +28,11 @@ import type {
   InviteUserResponseDto,
 } from "./dtos/invite-user.dtos";
 import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos";
+import type {
+  UpdateUserSettingsRequestDto,
+  UpdateUserSettingsResponseDto,
+} from "./dtos/user-settings.dtos";
+import type { UserSettingsEntity } from "./schemas/user-settings.schema";
 import type { UserRepository } from "./user.repository";
 import type {
   GetInvitationsByTenantServiceInput,
@@ -152,6 +157,7 @@ export class UserService {
     const { password, ...userWithoutPassword } = user;
 
     const userScope = getUserScope(user);
+    const settings = await this.getOrCreateSettings(user.id);
 
     const { permissions, availableScopes } = await this.getPermissionsAndScopes(
       user.id,
@@ -165,6 +171,7 @@ export class UserService {
       return {
         user: userWithoutPassword,
         permissions,
+        settings,
       };
     }
 
@@ -185,7 +192,22 @@ export class UserService {
       permissions,
       availableScopes,
       topRole: topRoleDto,
+      settings,
     };
+  }
+
+  async updateMySettings(
+    userId: string,
+    dto: UpdateUserSettingsRequestDto,
+  ): Promise<UpdateUserSettingsResponseDto> {
+    return this.userRepository.updateSettings({
+      userId,
+      data: dto,
+    });
+  }
+
+  async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
+    return this.userRepository.getOrCreateSettings(userId);
   }
 
   async getUsersByTenantAndScope(

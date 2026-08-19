@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { ThemeModeEnums } from "../../shared/enums/theme/theme-mode.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
@@ -29,6 +30,14 @@ export class UserValidator {
     id: Yup.string()
       .uuid("Invalid invitation ID format")
       .required("Invitation ID is required"),
+  }).noUnknown();
+
+  static updateSettings = Yup.object({
+    themeMode: Yup.mixed<ThemeModeEnums>()
+      .oneOf(Object.values(ThemeModeEnums))
+      .optional(),
+    languageCode: Yup.string().trim().min(2).max(10).optional(),
+    timezone: Yup.string().trim().min(1).max(100).optional(),
   }).noUnknown();
 
   static getUsersQuery = paginationQuerySchema

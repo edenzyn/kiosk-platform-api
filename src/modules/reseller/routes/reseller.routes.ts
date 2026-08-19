@@ -17,5 +17,13 @@ resellerRouter.get(
   ),
   asyncHandler(userController.checkAuth),
 );
+resellerRouter.patch(
+  "/settings",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.updateSettings),
+);
 
 export { resellerRouter };

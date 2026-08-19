@@ -12,6 +12,7 @@ import type {
   UserInvitationEntity,
 } from "./schemas/user-invitations.schema";
 import type { CreateUserEntity, UserEntity } from "./schemas/user.schema";
+import type { UserSettingsEntity } from "./schemas/user-settings.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -203,6 +204,17 @@ export interface CreateUserInvitationRepoInput {
   invitation: CreateUserInvitationEntity;
 }
 export type CreateUserInvitationRepoResult = UserInvitationEntity;
+
+// ========================================
+// ? USER SETTINGS SCHEMA METHODS
+// ========================================
+export interface UpdateUserSettingsRepoInput {
+  userId: string;
+  data: Partial<
+    Pick<UserSettingsEntity, "themeMode" | "languageCode" | "timezone">
+  >;
+}
+export type UpdateUserSettingsRepoResult = UserSettingsEntity;
 
 export interface UpdateUserInvitationRepoInput {
   id: string;

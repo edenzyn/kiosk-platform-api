@@ -90,4 +90,17 @@ export class UserController {
     );
     res.json(result);
   };
+
+  updateSettings = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.updateSettings.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.updateMySettings(
+      userTokenData.id,
+      data,
+    );
+    res.json(result);
+  };
 }

@@ -219,6 +219,7 @@ export class AuthService {
 
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
+    const settings = await this.userService.getOrCreateSettings(user.id);
 
     const userScope = getUserScope(user);
 
@@ -236,6 +237,7 @@ export class AuthService {
       tokens,
       permissions,
       availableScopes,
+      settings,
     };
   }
 
@@ -260,12 +262,14 @@ export class AuthService {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
     const permissions = await this._getUserPermissionKeys(user.id);
+    const settings = await this.userService.getOrCreateSettings(user.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens,
       permissions,
+      settings,
     };
   }
 
@@ -286,12 +290,14 @@ export class AuthService {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
     const permissions = await this._getUserPermissionKeys(user.id);
+    const settings = await this.userService.getOrCreateSettings(user.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
       tokens,
       permissions,
+      settings,
     };
   }
 
@@ -466,6 +472,9 @@ export class AuthService {
         createdUser.branchId,
         userScope,
       );
+    const settings = await this.userService.getOrCreateSettings(
+      createdUser.id,
+    );
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -476,6 +485,7 @@ export class AuthService {
       },
       permissions,
       availableScopes,
+      settings,
     };
   }
 
@@ -560,6 +570,9 @@ export class AuthService {
       null,
       null,
     );
+    const settings = await this.userService.getOrCreateSettings(
+      createdUser.id,
+    );
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -570,6 +583,7 @@ export class AuthService {
       },
       permissions,
       availableScopes: [],
+      settings,
     };
   }
 
@@ -722,12 +736,14 @@ export class AuthService {
           user.branchId,
           userScope,
         );
+      const settings = await this.userService.getOrCreateSettings(user.id);
 
       return {
         clientType: ClientTypeEnum.USER_CLIENT,
         tokens,
         user: userWithoutPassword,
         permissions,
+        settings,
         availableScopes,
       };
     } catch (error) {

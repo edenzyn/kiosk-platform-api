@@ -3,6 +3,7 @@ import type { UserPermissions } from "../../shared/enums/rbac/user-permission.en
 import type { DeviceEntity } from "../device/device.schema";
 import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
+import type { UserSettingsEntity } from "../user/schemas/user-settings.schema";
 import type { UserEntity } from "../user/schemas/user.schema";
 import type { CreateRefreshTokenEntity } from "./schemas/refresh-token.schema";
 
@@ -25,6 +26,7 @@ export interface LoginServiceResult {
   tokens: AuthTokens;
   permissions: UserPermissions[];
   availableScopes: UserScope[];
+  settings: UserSettingsEntity;
 }
 
 export interface LoginPlatformUserServiceInput {
@@ -37,6 +39,7 @@ export interface LoginPlatformUserServiceResult {
   user: Omit<UserEntity, "password">;
   tokens: AuthTokens;
   permissions: UserPermissions[];
+  settings: UserSettingsEntity;
 }
 
 export interface LoginResellerServiceInput {
@@ -49,6 +52,7 @@ export interface LoginResellerServiceResult {
   user: Omit<UserEntity, "password">;
   tokens: AuthTokens;
   permissions: UserPermissions[];
+  settings: UserSettingsEntity;
 }
 
 export interface LoginDeviceServiceInput {

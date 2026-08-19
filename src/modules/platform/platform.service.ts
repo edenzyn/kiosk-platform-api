@@ -48,10 +48,13 @@ export class PlatformService {
         }
       : null;
 
+    const settings = await this.userRepository.getOrCreateSettings(user.id);
+
     return {
       user: userWithoutPassword,
       permissions: Array.from(userPermissions) as UserPermissions[],
       topRole: topRoleDto,
+      settings,
     };
   }
 }

@@ -20,6 +20,14 @@ router.get(
   }),
   asyncHandler(userController.checkAuth),
 );
+router.patch(
+  "/e/settings",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.updateSettings),
+);
 router.get(
   "/",
   accessMiddleware({

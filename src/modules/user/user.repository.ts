@@ -19,6 +19,7 @@ import { organizations } from "../organization/organization.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import type { UserResponseDto } from "./dtos/get-users.dtos";
 import { userInvitations } from "./schemas/user-invitations.schema";
+import { userSettings, type UserSettingsEntity } from "./schemas/user-settings.schema";
 import { users, type UserEntity } from "./schemas/user.schema";
 import type {
   CreateUserInvitationRepoInput,
@@ -41,6 +42,8 @@ import type {
   UpdateUserInvitationRepoResult,
   UpdateUserRepoInput,
   UpdateUserRepoResult,
+  UpdateUserSettingsRepoInput,
+  UpdateUserSettingsRepoResult,
 } from "./user.types";
 
 export class UserRepository {
@@ -552,6 +555,54 @@ export class UserRepository {
       .where(eq(userInvitations.id, id))
       .returning();
 
+    return updated;
+  }
+
+  // ========================================
+  // ? USER SETTINGS SCHEMA METHODS
+  // ========================================
+  async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
+    const [existing] = await this.database.client
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+
+    if (existing) return existing;
+
+    const [created] = await this.database.client
+      .insert(userSettings)
+      .values({ userId })
+      .onConflictDoNothing()
+      .returning();
+
+    if (created) return created;
+
+    // Lost the race to a concurrent insert - read back what it created.
+    const [settings] = await this.database.client
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId))
+      .limit(1);
+
+    if (!settings) throw new Error("Failed to get or create user settings");
+    return settings;
+  }
+
+  async updateSettings(
+    input: UpdateUserSettingsRepoInput,
+  ): Promise<UpdateUserSettingsRepoResult> {
+    const { userId, data } = input;
+    const [updated] = await this.database.client
+      .insert(userSettings)
+      .values({ userId, ...data })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!updated) throw new Error("Failed to update user settings");
     return updated;
   }
 }

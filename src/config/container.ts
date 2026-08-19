@@ -16,10 +16,12 @@ import { ResellerContainer } from "../modules/reseller/reseller.container";
 import { UserContainer } from "../modules/user/user.container";
 import { MailService } from "../shared/services/mail/mail.service";
 import { QrCodeService } from "../shared/services/qrcode/qrcode.service";
+import { RedisService } from "../shared/services/redis/redis.service";
 import { TotpService } from "../shared/services/totp/totp.service";
 import { WhatsAppService } from "../shared/services/whatsapp/whatsapp.service";
 import { initDatabase } from "./db";
 import { mailTransporter } from "./mail";
+import { initRedis } from "./redis";
 
 export const container = createContainer({
   injectionMode: InjectionMode.CLASSIC,
@@ -28,6 +30,8 @@ export const container = createContainer({
 
 container.register({
   database: asFunction(initDatabase).singleton(),
+  redis: asFunction(initRedis).singleton(),
+  redisService: asClass(RedisService).singleton(),
   mailTransporter: asValue(mailTransporter),
   mailService: asClass(MailService).singleton(),
   whatsAppService: asClass(WhatsAppService).singleton(),

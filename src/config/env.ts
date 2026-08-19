@@ -38,6 +38,11 @@ const EnvSchema = Yup.object({
   SMTP_FROM: Yup.string().default(
     '"Kiosk Platform" <noreply@kioskplatform.com>',
   ),
+  REDIS_HOST: Yup.string().default("localhost"),
+  REDIS_PORT: Yup.number().integer().positive().default(6379),
+  REDIS_USERNAME: Yup.string().default(""),
+  REDIS_PASSWORD: Yup.string().default(""),
+  REDIS_DB: Yup.number().integer().min(0).default(0),
   LICENSE_ENCRYPTION_KEY: Yup.string()
     .required()
     .test(

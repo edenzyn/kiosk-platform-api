@@ -3,6 +3,7 @@ import { App } from "./app";
 import { container } from "./config/container";
 import type { Database } from "./config/db";
 import { env } from "./config/env";
+import type { RedisConnection } from "./config/redis";
 import { registerJobs } from "./jobs/register-jobs";
 import { jobScheduler } from "./jobs/scheduler";
 import { logger } from "./shared/utils/core/logger";
@@ -10,6 +11,8 @@ import { logger } from "./shared/utils/core/logger";
 function bootstrap(): void {
   const app = new App();
   const server = createServer(app.instance);
+
+  const redis = container.resolve<RedisConnection>("redis");
 
   registerJobs();
 
@@ -35,6 +38,7 @@ function bootstrap(): void {
         jobScheduler.stop();
         const database = container.resolve<Database>("database");
         await database.close();
+        await redis.close();
         if (serverError) throw serverError;
         clearTimeout(forceShutdownTimer);
         logger.log("Shutdown complete");
@@ -51,4 +55,3 @@ function bootstrap(): void {
 }
 
 bootstrap();
-

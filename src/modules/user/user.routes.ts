@@ -21,7 +21,7 @@ router.get(
   asyncHandler(userController.checkAuth),
 );
 router.patch(
-  "/e/settings",
+  "/settings",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_BASIC],
     branch: [UserPermissions.BRANCH_BASIC],

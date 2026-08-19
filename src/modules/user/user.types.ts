@@ -163,7 +163,7 @@ export interface FindResellersRepoResult {
 
 export interface UpdateUserRepoInput {
   userId: string;
-  data: Partial<Pick<UserEntity, "isActive" | "updatedBy">>;
+  data: Partial<Pick<UserEntity, "isActive" | "updatedBy" | "password">>;
 }
 export type UpdateUserRepoResult = UserEntity;
 
@@ -211,7 +211,10 @@ export type CreateUserInvitationRepoResult = UserInvitationEntity;
 export interface UpdateUserSettingsRepoInput {
   userId: string;
   data: Partial<
-    Pick<UserSettingsEntity, "themeMode" | "languageCode" | "timezone">
+    Pick<
+      UserSettingsEntity,
+      "themeMode" | "primaryColor" | "languageCode" | "timezone"
+    >
   >;
 }
 export type UpdateUserSettingsRepoResult = UserSettingsEntity;
@@ -230,3 +233,20 @@ export interface UpdateUserInvitationRepoInput {
   };
 }
 export type UpdateUserInvitationRepoResult = UserInvitationEntity | undefined;
+
+// ========================================
+// ? USER TWO-FACTOR AUTH FIELDS (on user_settings)
+// ========================================
+export interface UpdateTwoFactorAuthRepoInput {
+  userId: string;
+  data: Partial<
+    Pick<
+      UserSettingsEntity,
+      | "twoFactorEnabled"
+      | "twoFactorMethod"
+      | "twoFactorSecret"
+      | "twoFactorBackupCodeHashes"
+    >
+  >;
+}
+export type UpdateTwoFactorAuthRepoResult = UserSettingsEntity;

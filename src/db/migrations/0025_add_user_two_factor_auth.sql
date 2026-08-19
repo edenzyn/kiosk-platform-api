@@ -1,0 +1,12 @@
+CREATE TABLE "user_two_factor_auth" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"secret" varchar(255) NOT NULL,
+	"is_enabled" boolean DEFAULT false NOT NULL,
+	"backup_code_hashes" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "user_two_factor_auth_user_id_unique" UNIQUE("user_id")
+);
+--> statement-breakpoint
+ALTER TABLE "user_two_factor_auth" ADD CONSTRAINT "user_two_factor_auth_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;

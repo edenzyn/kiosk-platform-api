@@ -1,11 +1,17 @@
 import * as Yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { ThemeModeEnums } from "../../shared/enums/theme/theme-mode.enum";
+import { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+import { passwordValidator } from "../../shared/validators/password.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
+
+const TWO_FACTOR_METHOD_VALUES = Object.values(TwoFactorMethodEnums).filter(
+  (value): value is TwoFactorMethodEnums => typeof value === "number",
+);
 
 export class UserValidator {
   static inviteUser = Yup.object({
@@ -36,8 +42,43 @@ export class UserValidator {
     themeMode: Yup.mixed<ThemeModeEnums>()
       .oneOf(Object.values(ThemeModeEnums))
       .optional(),
+    primaryColor: Yup.string()
+      .trim()
+      .matches(/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/, "Invalid color format")
+      .optional(),
     languageCode: Yup.string().trim().min(2).max(10).optional(),
     timezone: Yup.string().trim().min(1).max(100).optional(),
+  }).noUnknown();
+
+  static changePassword = Yup.object({
+    currentPassword: passwordValidator().required(
+      "Current password is required",
+    ),
+    newPassword: passwordValidator()
+      .required("New password is required")
+      .notOneOf(
+        [Yup.ref("currentPassword")],
+        "New password must be different from your current password",
+      ),
+  }).noUnknown();
+
+  static setupTwoFactor = Yup.object({
+    method: Yup.mixed<TwoFactorMethodEnums>()
+      .oneOf(TWO_FACTOR_METHOD_VALUES, "Choose a valid method")
+      .required("Method is required"),
+  }).noUnknown();
+
+  static enableTwoFactor = Yup.object({
+    otpToken: Yup.string().required("Verification session is required"),
+    code: Yup.string()
+      .trim()
+      .min(4, "Enter a valid code")
+      .max(10, "Enter a valid code")
+      .required("Code is required"),
+  }).noUnknown();
+
+  static disableTwoFactor = Yup.object({
+    password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
   static getUsersQuery = paginationQuerySchema

@@ -27,5 +27,45 @@ router.patch(
   ),
   asyncHandler(userController.updateSettings),
 );
+router.patch(
+  "/password",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.changePassword),
+);
+router.get(
+  "/2fa/status",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.getMyTwoFactorStatus),
+);
+router.post(
+  "/2fa/setup",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.setupTwoFactor),
+);
+router.post(
+  "/2fa/enable",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.enableTwoFactor),
+);
+router.post(
+  "/2fa/disable",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(userController.disableTwoFactor),
+);
 
 export default router;

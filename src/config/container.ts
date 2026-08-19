@@ -15,6 +15,9 @@ import { RbacContainer } from "../modules/rbac/rbac.container";
 import { ResellerContainer } from "../modules/reseller/reseller.container";
 import { UserContainer } from "../modules/user/user.container";
 import { MailService } from "../shared/services/mail/mail.service";
+import { QrCodeService } from "../shared/services/qrcode/qrcode.service";
+import { TotpService } from "../shared/services/totp/totp.service";
+import { WhatsAppService } from "../shared/services/whatsapp/whatsapp.service";
 import { initDatabase } from "./db";
 import { mailTransporter } from "./mail";
 
@@ -27,6 +30,9 @@ container.register({
   database: asFunction(initDatabase).singleton(),
   mailTransporter: asValue(mailTransporter),
   mailService: asClass(MailService).singleton(),
+  whatsAppService: asClass(WhatsAppService).singleton(),
+  qrCodeService: asClass(QrCodeService).singleton(),
+  totpService: asClass(TotpService).singleton(),
 });
 
 UserContainer.register(container);

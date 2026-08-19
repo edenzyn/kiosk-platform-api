@@ -7,17 +7,33 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { MailService } from "../../shared/services/mail/mail.service";
 import { getInviteUserTemplate } from "../../shared/services/mail/templates/invite-user.template";
+import {
+  compareHashedData,
+  hashData,
+} from "../../shared/utils/core/bcrypt.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../branch/branch.repository";
+import type {
+  DisableTwoFactorResponseDto,
+  EnableTwoFactorResponseDto,
+  SetupTwoFactorResponseDto,
+  TwoFactorStatusResponseDto,
+} from "../auth/dtos/two-factor.dtos";
+import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
+import type {
+  ChangePasswordRequestDto,
+  ChangePasswordResponseDto,
+} from "./dtos/change-password.dtos";
 import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
 import type {
   GetUsersRequestDto,
@@ -47,6 +63,7 @@ export class UserService {
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
     private readonly rbacService: RbacService,
+    private readonly twoFactorService: TwoFactorService,
   ) {}
 
   async getPermissionsAndScopes(
@@ -208,6 +225,61 @@ export class UserService {
 
   async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
     return this.userRepository.getOrCreateSettings(userId);
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordRequestDto,
+  ): Promise<ChangePasswordResponseDto> {
+    const user = await this.userRepository.findOne({ id: userId });
+
+    if (!user) {
+      throw new AppError("User not found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    const isMatch = await compareHashedData(dto.currentPassword, user.password);
+    if (!isMatch) {
+      throw new AppError("Current password is incorrect", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const hashedPassword = await hashData(dto.newPassword);
+    await this.userRepository.update({
+      userId,
+      data: { password: hashedPassword },
+    });
+
+    return { message: "Password changed successfully" };
+  }
+
+  async getTwoFactorStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
+    return this.twoFactorService.getStatus(userId);
+  }
+
+  async setupTwoFactor(
+    userId: string,
+    method: TwoFactorMethodEnums,
+  ): Promise<SetupTwoFactorResponseDto> {
+    return this.twoFactorService.setup(userId, method);
+  }
+
+  async enableTwoFactor(
+    userId: string,
+    otpToken: string,
+    code: string,
+  ): Promise<EnableTwoFactorResponseDto> {
+    return this.twoFactorService.enable(userId, otpToken, code);
+  }
+
+  async disableTwoFactor(
+    userId: string,
+    password: string,
+  ): Promise<DisableTwoFactorResponseDto> {
+    return this.twoFactorService.disable(userId, password);
   }
 
   async getUsersByTenantAndScope(

@@ -25,5 +25,45 @@ resellerRouter.patch(
   ),
   asyncHandler(userController.updateSettings),
 );
+resellerRouter.patch(
+  "/password",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.changePassword),
+);
+resellerRouter.get(
+  "/2fa/status",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.getMyTwoFactorStatus),
+);
+resellerRouter.post(
+  "/2fa/setup",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.setupTwoFactor),
+);
+resellerRouter.post(
+  "/2fa/enable",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.enableTwoFactor),
+);
+resellerRouter.post(
+  "/2fa/disable",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.disableTwoFactor),
+);
 
 export { resellerRouter };

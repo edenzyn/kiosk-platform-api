@@ -7,11 +7,30 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
-import type { AuthService } from "./auth.service";
+import type { AuthService } from "./services/auth.service";
 import { AuthValidator } from "./auth.validator";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  private _setUserAuthCookies(
+    res: Response,
+    tokens: { accessToken: string; refreshToken: string },
+  ): void {
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_ACCESS_TOKEN,
+      tokens.accessToken,
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+      { httpOnly: false },
+    );
+    setCookie(
+      res,
+      SecurityTokenEnums.USER_REFRESH_TOKEN,
+      tokens.refreshToken,
+      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
+    );
+  }
 
   // ========================================
   // ? USER CLIENT APIS
@@ -23,24 +42,38 @@ export class AuthController {
     });
     const result = await this.authService.loginUser(data);
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    if ("requiresTwoFactor" in result) {
+      res.json(result);
+      return;
+    }
+
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
       availableScopes: result.availableScopes,
+      settings: result.settings,
+    });
+  };
+
+  verifyTwoFactor = async (req: Request, res: Response): Promise<void> => {
+    const data = await AuthValidator.verifyTwoFactor.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.verifyTwoFactorLogin(
+      data.twoFactorToken,
+      data.code,
+    );
+
+    this._setUserAuthCookies(res, result.tokens);
+
+    res.json({
+      user: result.user,
+      permissions: result.permissions,
+      availableScopes: "availableScopes" in result ? result.availableScopes : undefined,
+      settings: result.settings,
     });
   };
 
@@ -63,24 +96,13 @@ export class AuthController {
       });
     }
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
       availableScopes: result.availableScopes,
+      settings: result.settings,
     });
   };
 
@@ -100,24 +122,13 @@ export class AuthController {
     });
     const result = await this.authService.acceptInvitation(data);
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
       availableScopes: result.availableScopes,
+      settings: result.settings,
     });
   };
 
@@ -129,23 +140,17 @@ export class AuthController {
     });
     const result = await this.authService.loginPlatformUser(data);
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    if ("requiresTwoFactor" in result) {
+      res.json(result);
+      return;
+    }
+
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
+      settings: result.settings,
     });
   };
 
@@ -157,23 +162,17 @@ export class AuthController {
     });
     const result = await this.authService.loginReseller(data);
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    if ("requiresTwoFactor" in result) {
+      res.json(result);
+      return;
+    }
+
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
+      settings: result.settings,
     });
   };
 
@@ -187,23 +186,12 @@ export class AuthController {
     );
     const result = await this.authService.acceptResellerInvitation(data);
 
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_ACCESS_TOKEN,
-      result.tokens.accessToken,
-      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
-    );
-    setCookie(
-      res,
-      SecurityTokenEnums.USER_REFRESH_TOKEN,
-      result.tokens.refreshToken,
-      ms(env.JWT_REFRESH_EXPIRES_IN as ms.StringValue),
-    );
+    this._setUserAuthCookies(res, result.tokens);
 
     res.json({
       user: result.user,
       permissions: result.permissions,
+      settings: result.settings,
     });
   };
 

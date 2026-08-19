@@ -1,12 +1,15 @@
 import {
-  type AnyPgColumn,
+  boolean,
+  jsonb,
   pgTable,
+  smallint,
   timestamp,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-
 import { ThemeModeEnums } from "../../../shared/enums/theme/theme-mode.enum";
+import type { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { users } from "./user.schema";
 
 export const userSettings = pgTable("user_settings", {
@@ -17,9 +20,23 @@ export const userSettings = pgTable("user_settings", {
     .references((): AnyPgColumn => users.id),
   themeMode: varchar("theme_mode", { length: 20 })
     .notNull()
-    .default(ThemeModeEnums.LIGHT),
-  languageCode: varchar("language_code", { length: 10 }).notNull().default("en"),
+    .default(ThemeModeEnums.SYSTEM),
+  primaryColor: varchar("primary_color", { length: 20 })
+    .notNull()
+    .default("#10b981"),
+  languageCode: varchar("language_code", { length: 10 })
+    .notNull()
+    .default("en"),
   timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+  // 2FA settings
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
+  twoFactorMethod: smallint(
+    "two_factor_method",
+  ).$type<TwoFactorMethodEnums | null>(),
+  twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
+  twoFactorBackupCodeHashes: jsonb("two_factor_backup_code_hashes").$type<
+    string[] | null
+  >(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

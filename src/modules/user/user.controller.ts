@@ -103,4 +103,63 @@ export class UserController {
     );
     res.json(result);
   };
+
+  changePassword = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.changePassword.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.changePassword(
+      userTokenData.id,
+      data,
+    );
+    res.json(result);
+  };
+
+  getMyTwoFactorStatus = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const result = await this.userService.getTwoFactorStatus(userTokenData.id);
+    res.json(result);
+  };
+
+  setupTwoFactor = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.setupTwoFactor.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.setupTwoFactor(
+      userTokenData.id,
+      data.method,
+    );
+    res.json(result);
+  };
+
+  enableTwoFactor = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.enableTwoFactor.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.enableTwoFactor(
+      userTokenData.id,
+      data.otpToken,
+      data.code,
+    );
+    res.json(result);
+  };
+
+  disableTwoFactor = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.disableTwoFactor.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.disableTwoFactor(
+      userTokenData.id,
+      data.password,
+    );
+    res.json(result);
+  };
 }

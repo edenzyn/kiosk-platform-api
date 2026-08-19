@@ -38,6 +38,8 @@ import type {
   FindUserByTenantRepoResult,
   FindUsersByRoleIdRepoInput,
   FindUsersByRoleIdRepoResult,
+  UpdateTwoFactorAuthRepoInput,
+  UpdateTwoFactorAuthRepoResult,
   UpdateUserInvitationRepoInput,
   UpdateUserInvitationRepoResult,
   UpdateUserRepoInput,
@@ -603,6 +605,26 @@ export class UserRepository {
       .returning();
 
     if (!updated) throw new Error("Failed to update user settings");
+    return updated;
+  }
+
+  // ========================================
+  // ? USER TWO-FACTOR AUTH FIELDS (on user_settings)
+  // ========================================
+  async updateTwoFactorAuth(
+    input: UpdateTwoFactorAuthRepoInput,
+  ): Promise<UpdateTwoFactorAuthRepoResult> {
+    const { userId, data } = input;
+    const [updated] = await this.database.client
+      .insert(userSettings)
+      .values({ userId, ...data })
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!updated) throw new Error("Failed to update two-factor settings");
     return updated;
   }
 }

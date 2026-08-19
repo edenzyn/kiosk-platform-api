@@ -1,32 +1,36 @@
 import type jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
-import { env } from "../../config/env";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
-import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
-import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
-import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { env } from "../../../config/env";
+import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
+import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
+import { ClientTypeEnum } from "../../../shared/enums/core/client-type.enum";
+import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
+import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
+import type { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
+import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
+import { UserScopeTypeEnums } from "../../../shared/enums/user/user-scope-type.enum";
+import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
+import { AppError } from "../../../shared/errors/app-error";
 import {
   compareHashedData,
   hashData,
-} from "../../shared/utils/core/bcrypt.helper";
-import { hashSha256 } from "../../shared/utils/core/crypto.helper";
-import { generateToken, verifyToken } from "../../shared/utils/core/jwt.helper";
-import { getUserScope } from "../../shared/utils/user/user-scope.helper";
-import type { DeviceRepository } from "../device/device.repository";
-import type { LicenseService } from "../license/license.service";
-import type { RbacRepository } from "../rbac/rbac.repository";
-import type { UserInvitationEntity } from "../user/schemas/user-invitations.schema";
-import type { UserEntity } from "../user/schemas/user.schema";
-import type { UserRepository } from "../user/user.repository";
-import type { UserService } from "../user/user.service";
-import type { AuthRepository } from "./auth.repository";
+} from "../../../shared/utils/core/bcrypt.helper";
+import { hashSha256 } from "../../../shared/utils/core/crypto.helper";
+import {
+  generateToken,
+  verifyToken,
+} from "../../../shared/utils/core/jwt.helper";
+import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
+import type { DeviceRepository } from "../../device/device.repository";
+import type { LicenseService } from "../../license/license.service";
+import type { RbacRepository } from "../../rbac/rbac.repository";
+import type { UserInvitationEntity } from "../../user/schemas/user-invitations.schema";
+import type { UserEntity } from "../../user/schemas/user.schema";
+import type { UserRepository } from "../../user/user.repository";
+import type { UserService } from "../../user/user.service";
+import type { AuthRepository } from "../auth.repository";
 import type {
   AcceptInvitationServiceInput,
   AcceptInvitationServiceResult,
@@ -42,7 +46,16 @@ import type {
   LoginServiceResult,
   LogoutServiceResult,
   RefreshTokenServiceResult,
-} from "./auth.types";
+  RequiresTwoFactorServiceResult,
+  VerifyTwoFactorLoginServiceResult,
+} from "../auth.types";
+import type {
+  DisableTwoFactorResponseDto,
+  EnableTwoFactorResponseDto,
+  SetupTwoFactorResponseDto,
+  TwoFactorStatusResponseDto,
+} from "../dtos/two-factor.dtos";
+import type { TwoFactorService } from "./two-factor.service";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
   user?: { id: string };
@@ -57,7 +70,37 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly deviceRepository: DeviceRepository,
     private readonly licenseService: LicenseService,
+    private readonly twoFactorService: TwoFactorService,
   ) {}
+
+  // ========================================
+  // ? TWO-FACTOR SELF-SERVICE (delegated)
+  // ========================================
+  async getTwoFactorStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
+    return this.twoFactorService.getStatus(userId);
+  }
+
+  async setupTwoFactor(
+    userId: string,
+    method: TwoFactorMethodEnums,
+  ): Promise<SetupTwoFactorResponseDto> {
+    return this.twoFactorService.setup(userId, method);
+  }
+
+  async enableTwoFactor(
+    userId: string,
+    otpToken: string,
+    code: string,
+  ): Promise<EnableTwoFactorResponseDto> {
+    return this.twoFactorService.enable(userId, otpToken, code);
+  }
+
+  async disableTwoFactor(
+    userId: string,
+    password: string,
+  ): Promise<DisableTwoFactorResponseDto> {
+    return this.twoFactorService.disable(userId, password);
+  }
 
   private _generateTokens(
     entityType: ClientTypeEnum,
@@ -191,32 +234,9 @@ export class AuthService {
     return Array.from(permissionKeys) as UserPermissions[];
   }
 
-  // ========================================
-  // ? USER CLIENT SERVICES
-  // ========================================
-  async loginUser(dto: LoginServiceInput): Promise<LoginServiceResult> {
-    const user = await this._authenticateUser(dto.email, dto.password, {
-      afterPasswordCheck: (user) => {
-        if (user.userType === UserTypeEnums.PLATFORM) {
-          throw new AppError(
-            "Platform users must sign in through the platform portal",
-            {
-              statusCode: HttpStatusCodes.FORBIDDEN,
-            },
-          );
-        }
-
-        if (user.userType === UserTypeEnums.RESELLER) {
-          throw new AppError(
-            "Resellers must sign in through the reseller portal",
-            {
-              statusCode: HttpStatusCodes.FORBIDDEN,
-            },
-          );
-        }
-      },
-    });
-
+  private async _completeUserClientLogin(
+    user: UserEntity,
+  ): Promise<LoginServiceResult> {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
     const settings = await this.userService.getOrCreateSettings(user.id);
@@ -241,24 +261,9 @@ export class AuthService {
     };
   }
 
-  // Platform user login (SuperAdmin)
-  async loginPlatformUser(
-    dto: LoginPlatformUserServiceInput,
+  private async _completePlatformLogin(
+    user: UserEntity,
   ): Promise<LoginPlatformUserServiceResult> {
-    const user = await this._authenticateUser(dto.email, dto.password, {
-      beforePasswordCheck: (user) => {
-        if (
-          user.userType !== UserTypeEnums.PLATFORM ||
-          !!user.organizationId ||
-          !!user.branchId
-        ) {
-          throw new AppError("Access Denied, You are not a platform user", {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-          });
-        }
-      },
-    });
-
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
     const permissions = await this._getUserPermissionKeys(user.id);
@@ -273,20 +278,9 @@ export class AuthService {
     };
   }
 
-  // Reseller login
-  async loginReseller(
-    dto: LoginResellerServiceInput,
+  private async _completeResellerLogin(
+    user: UserEntity,
   ): Promise<LoginResellerServiceResult> {
-    const user = await this._authenticateUser(dto.email, dto.password, {
-      beforePasswordCheck: (user) => {
-        if (user.userType !== UserTypeEnums.RESELLER) {
-          throw new AppError("Access Denied, You are not a reseller", {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-          });
-        }
-      },
-    });
-
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user);
     const permissions = await this._getUserPermissionKeys(user.id);
@@ -299,6 +293,125 @@ export class AuthService {
       permissions,
       settings,
     };
+  }
+
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
+  async loginUser(
+    dto: LoginServiceInput,
+  ): Promise<LoginServiceResult | RequiresTwoFactorServiceResult> {
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      afterPasswordCheck: (user) => {
+        if (user.userType === UserTypeEnums.PLATFORM) {
+          throw new AppError(
+            "Platform users must sign in through the platform portal",
+            {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+            },
+          );
+        }
+
+        if (user.userType === UserTypeEnums.RESELLER) {
+          throw new AppError(
+            "Resellers must sign in through the reseller portal",
+            {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+            },
+          );
+        }
+      },
+    });
+
+    const twoFactorStatus = await this.twoFactorService.getStatus(user.id);
+    if (twoFactorStatus.isEnabled) {
+      return this.twoFactorService.requestLoginChallenge(
+        user.id,
+        twoFactorStatus.method,
+      );
+    }
+
+    return this._completeUserClientLogin(user);
+  }
+
+  // Platform user login (SuperAdmin)
+  async loginPlatformUser(
+    dto: LoginPlatformUserServiceInput,
+  ): Promise<LoginPlatformUserServiceResult | RequiresTwoFactorServiceResult> {
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      beforePasswordCheck: (user) => {
+        if (
+          user.userType !== UserTypeEnums.PLATFORM ||
+          !!user.organizationId ||
+          !!user.branchId
+        ) {
+          throw new AppError("Access Denied, You are not a platform user", {
+            statusCode: HttpStatusCodes.FORBIDDEN,
+          });
+        }
+      },
+    });
+
+    const twoFactorStatus = await this.twoFactorService.getStatus(user.id);
+    if (twoFactorStatus.isEnabled) {
+      return this.twoFactorService.requestLoginChallenge(
+        user.id,
+        twoFactorStatus.method,
+      );
+    }
+
+    return this._completePlatformLogin(user);
+  }
+
+  // Reseller login
+  async loginReseller(
+    dto: LoginResellerServiceInput,
+  ): Promise<LoginResellerServiceResult | RequiresTwoFactorServiceResult> {
+    const user = await this._authenticateUser(dto.email, dto.password, {
+      beforePasswordCheck: (user) => {
+        if (user.userType !== UserTypeEnums.RESELLER) {
+          throw new AppError("Access Denied, You are not a reseller", {
+            statusCode: HttpStatusCodes.FORBIDDEN,
+          });
+        }
+      },
+    });
+
+    const twoFactorStatus = await this.twoFactorService.getStatus(user.id);
+    if (twoFactorStatus.isEnabled) {
+      return this.twoFactorService.requestLoginChallenge(
+        user.id,
+        twoFactorStatus.method,
+      );
+    }
+
+    return this._completeResellerLogin(user);
+  }
+
+  async verifyTwoFactorLogin(
+    twoFactorToken: string,
+    code: string,
+  ): Promise<VerifyTwoFactorLoginServiceResult> {
+    const { userId } = await this.twoFactorService.verifyLogin(
+      twoFactorToken,
+      code,
+    );
+
+    const user = await this.userRepository.findOne({ id: userId });
+    if (!user || !user.isActive) {
+      throw new AppError(
+        "Invalid or expired verification session. Please log in again.",
+        { statusCode: HttpStatusCodes.UNAUTHORIZED },
+      );
+    }
+
+    if (user.userType === UserTypeEnums.PLATFORM) {
+      return this._completePlatformLogin(user);
+    }
+    if (user.userType === UserTypeEnums.RESELLER) {
+      return this._completeResellerLogin(user);
+    }
+    return this._completeUserClientLogin(user);
   }
 
   async logout(refreshToken: string): Promise<LogoutServiceResult> {

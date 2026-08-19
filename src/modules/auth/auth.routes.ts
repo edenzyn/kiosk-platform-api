@@ -7,6 +7,7 @@ const router = Router();
 const authController = container.resolve<AuthController>("authController");
 // User routes
 router.post("/login", asyncHandler(authController.loginUser));
+router.post("/2fa/verify", asyncHandler(authController.verifyTwoFactor));
 router.post("/refresh", asyncHandler(authController.refreshUserToken));
 router.post("/logout", asyncHandler(authController.logoutUser));
 router.post("/accept-invite", asyncHandler(authController.acceptInvitation));

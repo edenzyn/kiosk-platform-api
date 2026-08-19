@@ -1,5 +1,6 @@
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import type { DeviceEntity } from "../device/device.schema";
 import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
@@ -96,6 +97,50 @@ export interface LogoutServiceInput {
 }
 
 export type LogoutServiceResult = boolean;
+
+export interface RequiresTwoFactorServiceResult {
+  requiresTwoFactor: true;
+  twoFactorToken: string;
+  method: TwoFactorMethodEnums;
+}
+
+export interface VerifyTwoFactorLoginServiceInput {
+  twoFactorToken: string;
+  code: string;
+}
+
+export type VerifyTwoFactorLoginServiceResult =
+  | LoginServiceResult
+  | LoginPlatformUserServiceResult
+  | LoginResellerServiceResult;
+
+// ========================================
+// ? TWO-FACTOR TOKEN PURPOSES
+// ========================================
+export enum TwoFactorTokenPurposeEnums {
+  OTP_SETUP = 1,
+  OTP_LOGIN = 2,
+  TOTP_SETUP = 3,
+  PENDING_LOGIN = 4,
+}
+
+export interface TwoFactorOtpTokenPayload {
+  purpose: TwoFactorTokenPurposeEnums.OTP_SETUP | TwoFactorTokenPurposeEnums.OTP_LOGIN;
+  userId: string;
+  method: TwoFactorMethodEnums;
+  codeHash: string;
+}
+
+export interface TwoFactorTotpSetupTokenPayload {
+  purpose: TwoFactorTokenPurposeEnums.TOTP_SETUP;
+  userId: string;
+  secret: string;
+}
+
+export interface TwoFactorPendingLoginTokenPayload {
+  purpose: TwoFactorTokenPurposeEnums.PENDING_LOGIN;
+  userId: string;
+}
 
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS

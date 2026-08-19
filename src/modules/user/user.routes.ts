@@ -28,6 +28,46 @@ router.patch(
   }),
   asyncHandler(userController.updateSettings),
 );
+router.patch(
+  "/password",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.changePassword),
+);
+router.get(
+  "/2fa/status",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.getMyTwoFactorStatus),
+);
+router.post(
+  "/2fa/setup",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.setupTwoFactor),
+);
+router.post(
+  "/2fa/enable",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.enableTwoFactor),
+);
+router.post(
+  "/2fa/disable",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.disableTwoFactor),
+);
 router.get(
   "/",
   accessMiddleware({

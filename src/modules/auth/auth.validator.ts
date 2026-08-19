@@ -39,4 +39,13 @@ export class AuthValidator {
       .length(4, "PIN must be exactly 4 digits")
       .matches(/^\d{4}$/, "PIN must contain only numbers"),
   }).noUnknown();
+
+  static readonly verifyTwoFactor = Yup.object({
+    twoFactorToken: Yup.string().required("Verification session is required"),
+    code: Yup.string()
+      .trim()
+      .min(4, "Enter a valid code")
+      .max(10, "Enter a valid code")
+      .required("Code is required"),
+  }).noUnknown();
 }

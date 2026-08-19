@@ -1,43 +1,184 @@
-import type { OrganizationRepository } from "./organization.repository";
-import type { CreateOrganizationRequestDto, CreateOrganizationResponseDto } from "./dtos/create-organization.dtos";
-import type { ListOrganizationRequestDto, ListOrganizationResponseDto } from "./dtos/list-organization.dtos";
-import { AppError } from "../../shared/errors/app-error";
+import dayjs from "dayjs";
+import type jwt from "jsonwebtoken";
+import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
+import { AppError } from "../../shared/errors/app-error";
+import type { MailService } from "../../shared/services/mail/mail.service";
+import { getInviteOrganizationTemplate } from "../../shared/services/mail/templates/invite-organization.template";
+import { generateToken } from "../../shared/utils/core/jwt.helper";
+import type { UserRepository } from "../user/user.repository";
+import type { OrganizationRepository } from "./organization.repository";
+import type {
+  GetOrganizationsServiceInput,
+  GetOrganizationsServiceResult,
+  InviteOrganizationServiceInput,
+  InviteOrganizationServiceResult,
+  ToggleOrganizationStatusServiceInput,
+  ToggleOrganizationStatusServiceResult,
+} from "./organization.types";
 
 export class OrganizationService {
   constructor(
     private readonly organizationRepository: OrganizationRepository,
+    private readonly userRepository: UserRepository,
+    private readonly mailService: MailService,
   ) {}
 
-  async create(
-    dto: CreateOrganizationRequestDto,
-    user?: UserTokenDto,
-  ): Promise<CreateOrganizationResponseDto> {
-    const existingOrg = await this.organizationRepository.findOne({ name: dto.name });
-    if (existingOrg) {
-      throw new AppError("Organization name already exists", {
+  // ========================================
+  // ? PLATFORM CLIENT SERVICES
+  // ========================================
+  async inviteOrganization(
+    input: InviteOrganizationServiceInput,
+  ): Promise<InviteOrganizationServiceResult> {
+    const { dto, currentUser } = input;
+
+    // const existingOrg = await this.organizationRepository.findOne({
+    //   name: dto.organizationName,
+    // });
+    // if (existingOrg) {
+    //   throw new AppError("Organization name already exists", {
+    //     statusCode: HttpStatusCodes.CONFLICT,
+    //     code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+    //   });
+    // }
+
+    const existingUser = await this.userRepository.findOne({
+      email: dto.email,
+    });
+    if (existingUser) {
+      throw new AppError("User already exists with this email address", {
         statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
       });
     }
 
-    const organization = await this.organizationRepository.create({
-      data: {
+    const existingPendingInvitation =
+      await this.userRepository.findOneInvitation({
+        email: dto.email,
+        status: UserInvitationStatusEnum.PENDING,
+      });
+    if (existingPendingInvitation) {
+      throw new AppError(
+        "A pending invitation already exists for this email address",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+        },
+      );
+    }
+
+    const token = generateToken(
+      {
+        email: dto.email,
+        entityType: UserTypeEnums.NORMAL,
+        isOrgRegistration: true,
+        organizationId: null,
+        branchId: null,
+      },
+      env.JWT_INVITE_USER_SECRET,
+      {
+        expiresIn:
+          env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+    const expiresAt = dayjs().add(7, "day").toDate();
+
+    await this.userRepository.createInvitation({
+      invitation: {
+        email: dto.email,
         name: dto.name,
-        createdBy: user?.id,
-        updatedBy: user?.id,
+        entityType: UserTypeEnums.NORMAL,
+        isOrgRegistration: true,
+        organizationName: dto.organizationName,
+        organizationId: null,
+        branchId: null,
+        roleIds: [],
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        createdBy: currentUser.id,
       },
     });
 
-    return { organization };
+    try {
+      const template = getInviteOrganizationTemplate({
+        name: dto.name,
+        organizationName: dto.organizationName,
+        token,
+      });
+
+      await this.mailService.sendMail({
+        to: dto.email,
+        ...template,
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") console.log(error);
+    }
+
+    return {
+      message: "Organization invitation sent successfully",
+    };
   }
 
-  async list(
-    dto: ListOrganizationRequestDto,
-  ): Promise<ListOrganizationResponseDto> {
-    const organizations = await this.organizationRepository.findAll({
-      orgIds: dto.orgIds,
+  async getOrganizations(
+    input: GetOrganizationsServiceInput,
+  ): Promise<GetOrganizationsServiceResult> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy,
+      sortOrder,
+      status,
+    } = input.query;
+
+    const isActive =
+      status === "active" ? true : status === "inactive" ? false : undefined;
+
+    const { organizations, total } =
+      await this.organizationRepository.findPaginated({
+        search,
+        isActive,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+      });
+
+    return {
+      organizations,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async toggleOrganizationStatus(
+    input: ToggleOrganizationStatusServiceInput,
+  ): Promise<ToggleOrganizationStatusServiceResult> {
+    const target = await this.organizationRepository.findOne({
+      id: input.organizationId,
     });
-    return { organizations };
+
+    if (!target) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const updated = await this.organizationRepository.update({
+      id: input.organizationId,
+      data: {
+        isActive: !target.isActive,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    return { organization: updated };
   }
 }

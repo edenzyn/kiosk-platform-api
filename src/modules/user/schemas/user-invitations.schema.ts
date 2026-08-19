@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   pgTable,
   text,
@@ -18,6 +19,8 @@ export const userInvitations = pgTable("user_invitations", {
   email: varchar("email", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
   entityType: integer("entity_type").notNull().default(UserTypeEnums.NORMAL),
+  isOrgRegistration: boolean("is_org_registration").notNull().default(false),
+  organizationName: varchar("organization_name", { length: 255 }),
   organizationId: uuid("organization_id").references(
     (): AnyPgColumn => organizations.id,
   ),

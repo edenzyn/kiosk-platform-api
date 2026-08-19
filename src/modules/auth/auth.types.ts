@@ -6,6 +6,7 @@ import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
 import type { UserSettingsEntity } from "../user/schemas/user-settings.schema";
 import type { UserEntity } from "../user/schemas/user.schema";
+import type { OrganizationEntity } from "../organization/organization.schema";
 import type { CreateRefreshTokenEntity } from "./schemas/refresh-token.schema";
 
 // ========================================
@@ -83,6 +84,18 @@ export interface AcceptResellerInvitationServiceInput {
 }
 
 export type AcceptResellerInvitationServiceResult = LoginServiceResult;
+
+export interface AcceptOrganizationInvitationServiceInput {
+  token: string;
+  name: string;
+  password: string;
+  registeredName: string;
+  registrationNumber: string;
+}
+
+export type AcceptOrganizationInvitationServiceResult = LoginServiceResult & {
+  organization: OrganizationEntity;
+};
 
 export interface RefreshTokenServiceInput {
   refreshToken: string;

@@ -16,7 +16,7 @@ import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
-import organizationRoutes from "./modules/organization/organization.routes";
+import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import platformRoutes from "./modules/platform/platform.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import { platformResellerRouter } from "./modules/reseller/routes/platform-reseller.routes";
@@ -100,6 +100,10 @@ export class App {
       `${this.platformUserApiV1Prefix}/resellers`,
       platformResellerRouter,
     );
+    this.instance.use(
+      `${this.platformUserApiV1Prefix}/organizations`,
+      platformOrganizationRouter,
+    );
   }
 
   private configureResellerRoutes(): void {
@@ -113,10 +117,6 @@ export class App {
   private configureNormalUserRoutes(): void {
     this.instance.use(`${this.normalUserApiV1Prefix}/users`, userRoutes);
     this.instance.use(`${this.normalUserApiV1Prefix}/rbac`, rbacRoutes);
-    this.instance.use(
-      `${this.normalUserApiV1Prefix}/organizations`,
-      organizationRoutes,
-    );
     this.instance.use(`${this.normalUserApiV1Prefix}/branches`, branchRoutes);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/devices`,

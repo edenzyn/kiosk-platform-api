@@ -29,6 +29,25 @@ export class AuthValidator {
     password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
+  static readonly acceptOrganizationInvitation = Yup.object({
+    token: Yup.string().required("Invitation key is required"),
+    name: Yup.string()
+      .min(2, "Name must be at least 2 characters")
+      .max(100, "Name cannot exceed 100 characters")
+      .required("Name is required"),
+    password: passwordValidator().required("Password is required"),
+    registeredName: Yup.string()
+      .trim()
+      .min(2, "Registered name must be at least 2 characters")
+      .max(255, "Registered name cannot exceed 255 characters")
+      .required("Registered name is required"),
+    registrationNumber: Yup.string()
+      .trim()
+      .min(2, "Registration number must be at least 2 characters")
+      .max(100, "Registration number cannot exceed 100 characters")
+      .required("Registration number is required"),
+  }).noUnknown();
+
   static readonly loginDevice = Yup.object({
     deviceCode: deviceCodeValidator(
       "Device code is required",

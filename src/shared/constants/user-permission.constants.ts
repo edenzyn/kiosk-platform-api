@@ -102,3 +102,11 @@ export const PLATFORM_RESELLER_READ_WRITE_PERMS = [
   UserPermissions.PLATFORM_RESELLER_READ,
   UserPermissions.PLATFORM_RESELLER_WRITE,
 ];
+
+//----------------------
+// Organization Module Constants (Platform)
+//----------------------
+export const PLATFORM_ORGANIZATION_READ_WRITE_PERMS = [
+  UserPermissions.PLATFORM_ORGANIZATION_READ,
+  UserPermissions.PLATFORM_ORGANIZATION_WRITE,
+];

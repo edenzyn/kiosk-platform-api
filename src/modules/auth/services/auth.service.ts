@@ -22,9 +22,11 @@ import {
   generateToken,
   verifyToken,
 } from "../../../shared/utils/core/jwt.helper";
+import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/license.service";
+import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";
 import type { UserInvitationEntity } from "../../user/schemas/user-invitations.schema";
 import type { UserEntity } from "../../user/schemas/user.schema";
@@ -34,6 +36,8 @@ import type { AuthRepository } from "../auth.repository";
 import type {
   AcceptInvitationServiceInput,
   AcceptInvitationServiceResult,
+  AcceptOrganizationInvitationServiceInput,
+  AcceptOrganizationInvitationServiceResult,
   AcceptResellerInvitationServiceInput,
   AcceptResellerInvitationServiceResult,
   LoginDeviceServiceInput,
@@ -71,12 +75,15 @@ export class AuthService {
     private readonly deviceRepository: DeviceRepository,
     private readonly licenseService: LicenseService,
     private readonly twoFactorService: TwoFactorService,
+    private readonly organizationRepository: OrganizationRepository,
   ) {}
 
   // ========================================
   // ? TWO-FACTOR SELF-SERVICE (delegated)
   // ========================================
-  async getTwoFactorStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
+  async getTwoFactorStatus(
+    userId: string,
+  ): Promise<TwoFactorStatusResponseDto> {
     return this.twoFactorService.getStatus(userId);
   }
 
@@ -585,9 +592,7 @@ export class AuthService {
         createdUser.branchId,
         userScope,
       );
-    const settings = await this.userService.getOrCreateSettings(
-      createdUser.id,
-    );
+    const settings = await this.userService.getOrCreateSettings(createdUser.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -683,9 +688,7 @@ export class AuthService {
       null,
       null,
     );
-    const settings = await this.userService.getOrCreateSettings(
-      createdUser.id,
-    );
+    const settings = await this.userService.getOrCreateSettings(createdUser.id);
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -696,6 +699,104 @@ export class AuthService {
       },
       permissions,
       availableScopes: [],
+      settings,
+    };
+  }
+
+  async acceptOrganizationInvitation(
+    dto: AcceptOrganizationInvitationServiceInput,
+  ): Promise<AcceptOrganizationInvitationServiceResult> {
+    const invitation = await this._verifyAndGetPendingInvitation(dto.token);
+
+    if (!invitation.isOrgRegistration || !invitation.organizationName) {
+      throw new AppError("This invitation is not an organization invitation.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      email: invitation.email,
+    });
+    if (existingUser) {
+      throw new AppError("Email already registered", {
+        statusCode: HttpStatusCodes.CONFLICT,
+      });
+    }
+
+    // const existingOrg = await this.organizationRepository.findOne({
+    //   name: invitation.organizationName,
+    // });
+    // if (existingOrg) {
+    //   throw new AppError("Organization name already exists", {
+    //     statusCode: HttpStatusCodes.CONFLICT,
+    //   });
+    // }
+
+    const hashedPassword = await hashData(dto.password);
+
+    const allPermissionKeys = Array.from(
+      new Set(DEFAULT_ORGANIZATION_ROLES.flatMap((role) => role.permissions)),
+    );
+    const dbPermissions = await this.rbacRepository.findPermissionsByKeys({
+      keys: allPermissionKeys,
+    });
+    const keyToIdMap = new Map(dbPermissions.map((p) => [p.key, p.id]));
+
+    const { organization, user: createdUser } =
+      await this.organizationRepository.createOrganizationWithOwner({
+        organizationName: invitation.organizationName,
+        registeredName: dto.registeredName,
+        registrationNumber: dto.registrationNumber,
+        invitationId: invitation.id,
+        owner: {
+          name: dto.name,
+          email: invitation.email,
+          hashedPassword,
+        },
+        defaultRoles: DEFAULT_ORGANIZATION_ROLES,
+        keyToIdMap,
+      });
+
+    const tokens = this._generateTokens(ClientTypeEnum.USER_CLIENT, {
+      user: {
+        id: createdUser.id,
+        organizationId: createdUser.organizationId ?? undefined,
+        branchId: createdUser.branchId ?? undefined,
+        userType: createdUser.userType,
+      },
+    });
+
+    await this.authRepository.createRefreshToken({
+      data: {
+        id: tokens.refreshTokenId,
+        userId: createdUser.id,
+        tokenHash: hashSha256(tokens.refreshToken),
+        expiresAt: this._getRefreshTokenExpiry(tokens.refreshToken),
+      },
+    });
+
+    const { password, ...userWithoutPassword } = createdUser;
+
+    const userScope = getUserScope(createdUser);
+    const { permissions, availableScopes } =
+      await this.userService.getPermissionsAndScopes(
+        createdUser.id,
+        createdUser.organizationId,
+        createdUser.branchId,
+        userScope,
+      );
+    const settings = await this.userService.getOrCreateSettings(createdUser.id);
+
+    return {
+      clientType: ClientTypeEnum.USER_CLIENT,
+      user: userWithoutPassword,
+      organization,
+      tokens: {
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
+      permissions,
+      availableScopes,
       settings,
     };
   }

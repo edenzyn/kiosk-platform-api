@@ -7,8 +7,8 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
-import type { AuthService } from "./services/auth.service";
 import { AuthValidator } from "./auth.validator";
+import type { AuthService } from "./services/auth.service";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -72,7 +72,8 @@ export class AuthController {
     res.json({
       user: result.user,
       permissions: result.permissions,
-      availableScopes: "availableScopes" in result ? result.availableScopes : undefined,
+      availableScopes:
+        "availableScopes" in result ? result.availableScopes : undefined,
       settings: result.settings,
     });
   };
@@ -126,6 +127,27 @@ export class AuthController {
 
     res.json({
       user: result.user,
+      permissions: result.permissions,
+      availableScopes: result.availableScopes,
+      settings: result.settings,
+    });
+  };
+
+  acceptOrganizationInvitation = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await AuthValidator.acceptOrganizationInvitation.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.authService.acceptOrganizationInvitation(data);
+
+    this._setUserAuthCookies(res, result.tokens);
+
+    res.json({
+      user: result.user,
+      organization: result.organization,
       permissions: result.permissions,
       availableScopes: result.availableScopes,
       settings: result.settings,

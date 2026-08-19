@@ -11,6 +11,10 @@ router.post("/2fa/verify", asyncHandler(authController.verifyTwoFactor));
 router.post("/refresh", asyncHandler(authController.refreshUserToken));
 router.post("/logout", asyncHandler(authController.logoutUser));
 router.post("/accept-invite", asyncHandler(authController.acceptInvitation));
+router.post(
+  "/o/accept-invite",
+  asyncHandler(authController.acceptOrganizationInvitation),
+);
 
 // Platform routes
 router.post("/p/login", asyncHandler(authController.loginPlatformUser));

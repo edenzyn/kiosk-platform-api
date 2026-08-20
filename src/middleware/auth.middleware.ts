@@ -1,6 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import type jwt from "jsonwebtoken";
+import { container } from "../config/container";
 import { env } from "../config/env";
+import { RedisKeys } from "../shared/constants/redis-keys.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import type { DeviceTokenDto } from "../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../shared/dtos/effective-tenant.dto";
@@ -10,6 +12,8 @@ import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import { AppError } from "../shared/errors/app-error";
+import type { RedisService } from "../shared/services/redis/redis.service";
+import { logger } from "../shared/utils/core/logger";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
 
 declare global {
@@ -24,11 +28,23 @@ declare global {
   }
 }
 
-export function authMiddleware(
+async function isSessionRevoked(sessionId: string): Promise<boolean> {
+  try {
+    const redisService = container.resolve<RedisService>("redisService");
+    return await redisService.exists(RedisKeys.authSessionRevoked(sessionId));
+  } catch (error) {
+    // Fail open: if Redis is unreachable, fall back to the JWT's own expiry
+    // rather than locking every signed-in user out because a cache is down.
+    logger.error("[authMiddleware] Redis revocation check failed", error);
+    return false;
+  }
+}
+
+export async function authMiddleware(
   req: Request,
   _res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   try {
     const apiPrefix = env.API_PREFIX_V1 || "/api/v1";
     const isDeviceRoute = req.originalUrl.startsWith(`${apiPrefix}/pvt/d`);
@@ -58,6 +74,13 @@ export function authMiddleware(
     const decoded = verifyToken<
       jwt.JwtPayload & { user?: UserTokenDto; device?: DeviceTokenDto }
     >(token, env.JWT_ACCESS_SECRET);
+
+    if (decoded.jti && (await isSessionRevoked(decoded.jti))) {
+      throw new AppError("Invalid Session.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
 
     if (isDeviceRoute) {
       if (!decoded?.device?.id) {

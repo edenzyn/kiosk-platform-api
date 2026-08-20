@@ -1,5 +1,9 @@
 import { and, asc, eq, gt, inArray, isNull, lt, ne } from "drizzle-orm";
+import ms from "ms";
 import type { Database } from "../../config/db";
+import { env } from "../../config/env";
+import { RedisKeys } from "../../shared/constants/redis-keys.constants";
+import type { RedisService } from "../../shared/services/redis/redis.service";
 import type {
   CreateRefreshTokenRepoInput,
   CreateRefreshTokenRepoResult,
@@ -21,7 +25,21 @@ import type {
 import { authSessions } from "./schemas/auth-session.schema";
 
 export class AuthRepository {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly redisService: RedisService,
+  ) {}
+
+  private async _denylistSession(sessionId: string): Promise<void> {
+    const ttlSeconds = Math.ceil(
+      ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue) / 1000,
+    );
+    await this.redisService.set(
+      RedisKeys.authSessionRevoked(sessionId),
+      "1",
+      ttlSeconds,
+    );
+  }
 
   async createRefreshToken(
     input: CreateRefreshTokenRepoInput,
@@ -32,41 +50,31 @@ export class AuthRepository {
   async rotateRefreshToken(
     input: RotateRefreshTokenRepoInput,
   ): Promise<RotateRefreshTokenRepoResult> {
-    const { currentTokenId, currentTokenHash, replacement } = input;
-    return this.database.client.transaction(async (transaction) => {
-      const [revoked] = await transaction
-        .update(authSessions)
-        .set({
-          revokedAt: new Date(),
-          replacedByTokenId: replacement.id,
-        })
-        .where(
-          and(
-            eq(authSessions.id, currentTokenId),
-            eq(authSessions.tokenHash, currentTokenHash),
-            isNull(authSessions.revokedAt),
-          ),
-        )
-        .returning();
-
-      if (!revoked) return false;
-
-      await transaction.insert(authSessions).values({
-        ipAddress: revoked.ipAddress,
-        userAgent: revoked.userAgent,
-        deviceName: revoked.deviceName,
-        ...replacement,
+    const [updated] = await this.database.client
+      .update(authSessions)
+      .set({
+        tokenHash: input.newTokenHash,
+        expiresAt: input.newExpiresAt,
         lastUsedAt: new Date(),
-      });
-      return true;
-    });
+      })
+      .where(
+        and(
+          eq(authSessions.id, input.sessionId),
+          eq(authSessions.tokenHash, input.currentTokenHash),
+          isNull(authSessions.revokedAt),
+          gt(authSessions.expiresAt, new Date()),
+        ),
+      )
+      .returning({ id: authSessions.id });
+
+    return Boolean(updated);
   }
 
   async revokeRefreshToken(
     input: RevokeRefreshTokenRepoInput,
   ): Promise<RevokeRefreshTokenRepoResult> {
     const { tokenId, tokenHash } = input;
-    await this.database.client
+    const [revoked] = await this.database.client
       .update(authSessions)
       .set({ revokedAt: new Date() })
       .where(
@@ -75,7 +83,10 @@ export class AuthRepository {
           eq(authSessions.tokenHash, tokenHash),
           isNull(authSessions.revokedAt),
         ),
-      );
+      )
+      .returning({ id: authSessions.id });
+
+    if (revoked) await this._denylistSession(revoked.id);
   }
 
   async removeAuthSessions(
@@ -121,6 +132,7 @@ export class AuthRepository {
       )
       .returning({ id: authSessions.id });
 
+    if (revoked) await this._denylistSession(revoked.id);
     return Boolean(revoked);
   }
 
@@ -139,6 +151,7 @@ export class AuthRepository {
       )
       .returning({ id: authSessions.id });
 
+    await Promise.all(revokedRows.map((row) => this._denylistSession(row.id)));
     return revokedRows.length;
   }
 
@@ -171,5 +184,7 @@ export class AuthRepository {
           oldest.map((row) => row.id),
         ),
       );
+
+    await Promise.all(oldest.map((row) => this._denylistSession(row.id)));
   }
 }

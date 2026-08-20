@@ -180,9 +180,10 @@ export interface CreateRefreshTokenRepoInput {
 export type CreateRefreshTokenRepoResult = void;
 
 export interface RotateRefreshTokenRepoInput {
-  currentTokenId: string;
+  sessionId: string;
   currentTokenHash: string;
-  replacement: CreateAuthSessionEntity;
+  newTokenHash: string;
+  newExpiresAt: Date;
 }
 export type RotateRefreshTokenRepoResult = boolean;
 

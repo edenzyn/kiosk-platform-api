@@ -117,13 +117,17 @@ export class AuthService {
       device?: DeviceTokenDto;
     },
     customRefreshExp?: number,
+    // Reuse an existing session id on rotation so the jti — and the
+    // auth_sessions row it maps to — stays stable for the life of the
+    // session, instead of a new row being minted on every refresh.
+    sessionId?: string,
   ): { accessToken: string; refreshToken: string; refreshTokenId: string } {
     const isDevice = entityType === ClientTypeEnum.DEVICE_CLIENT;
     const accessExpiresIn = (
       isDevice ? env.JWT_DEVICE_ACCESS_EXPIRES_IN : env.JWT_ACCESS_EXPIRES_IN
     ) as jwt.SignOptions["expiresIn"];
 
-    const refreshTokenId = randomUUID();
+    const refreshTokenId = sessionId ?? randomUUID();
 
     const accessToken = generateToken(payload, env.JWT_ACCESS_SECRET, {
       expiresIn: accessExpiresIn as jwt.SignOptions["expiresIn"],
@@ -826,20 +830,16 @@ export class AuthService {
             },
           },
           customRefreshExp,
+          decoded.jti,
         );
 
         const rotated = await this.authRepository.rotateRefreshToken({
-          currentTokenId: decoded.jti,
+          sessionId: decoded.jti,
           currentTokenHash: hashSha256(refreshToken),
-          replacement: {
-            id: generatedTokens.refreshTokenId,
-            deviceId: device.id,
-            userId: null,
-            tokenHash: hashSha256(generatedTokens.refreshToken),
-            expiresAt: this._getRefreshTokenExpiry(
-              generatedTokens.refreshToken,
-            ),
-          },
+          newTokenHash: hashSha256(generatedTokens.refreshToken),
+          newExpiresAt: this._getRefreshTokenExpiry(
+            generatedTokens.refreshToken,
+          ),
         });
 
         if (!rotated) {
@@ -899,18 +899,14 @@ export class AuthService {
           },
         },
         customRefreshExp,
+        decoded.jti,
       );
 
       const rotated = await this.authRepository.rotateRefreshToken({
-        currentTokenId: decoded.jti,
+        sessionId: decoded.jti,
         currentTokenHash: hashSha256(refreshToken),
-        replacement: {
-          id: generatedTokens.refreshTokenId,
-          userId: user.id,
-          deviceId: null,
-          tokenHash: hashSha256(generatedTokens.refreshToken),
-          expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
-        },
+        newTokenHash: hashSha256(generatedTokens.refreshToken),
+        newExpiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
       });
 
       if (!rotated) {

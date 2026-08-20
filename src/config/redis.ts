@@ -9,12 +9,7 @@ export interface RedisConnection {
 }
 
 export function initRedis(): RedisConnection {
-  const client = new Redis({
-    host: env.REDIS_HOST,
-    port: env.REDIS_PORT,
-    username: env.REDIS_USERNAME || undefined,
-    password: env.REDIS_PASSWORD || undefined,
-    db: env.REDIS_DB,
+  const client = new Redis(env.REDIS_URL, {
     lazyConnect: false,
     maxRetriesPerRequest: 3,
   });

@@ -44,11 +44,7 @@ const EnvSchema = Yup.object({
   IS_NORMAL_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_RESELLER_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_PLATFORM_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
-  REDIS_HOST: Yup.string().default("localhost"),
-  REDIS_PORT: Yup.number().integer().positive().default(6379),
-  REDIS_USERNAME: Yup.string().default(""),
-  REDIS_PASSWORD: Yup.string().default(""),
-  REDIS_DB: Yup.number().integer().min(0).default(0),
+  REDIS_URL: Yup.string().default("redis://localhost:6379"),
   LICENSE_ENCRYPTION_KEY: Yup.string()
     .required()
     .test(

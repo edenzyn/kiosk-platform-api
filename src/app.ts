@@ -36,6 +36,7 @@ export class App {
 
   constructor() {
     this.instance = express();
+    this.instance.set("trust proxy", 1);
     this.configureMiddlewares();
     this.configureSwagger();
     this.configureRoutes();

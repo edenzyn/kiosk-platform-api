@@ -3,10 +3,10 @@ import type { Database } from "../../config/db";
 import type {
   CreateRefreshTokenRepoInput,
   CreateRefreshTokenRepoResult,
-  DeleteExpiredRefreshTokensRepoInput,
-  DeleteExpiredRefreshTokensRepoResult,
   ListSessionsRepoInput,
   ListSessionsRepoResult,
+  RemoveAuthSessionsRepoInput,
+  RemoveAuthSessionsRepoResult,
   RevokeOldestSessionsRepoInput,
   RevokeOldestSessionsRepoResult,
   RevokeOtherSessionsRepoInput,
@@ -78,9 +78,9 @@ export class AuthRepository {
       );
   }
 
-  async deleteExpiredRefreshTokens(
-    input?: DeleteExpiredRefreshTokensRepoInput,
-  ): Promise<DeleteExpiredRefreshTokensRepoResult> {
+  async removeAuthSessions(
+    input?: RemoveAuthSessionsRepoInput,
+  ): Promise<RemoveAuthSessionsRepoResult> {
     const referenceDate = input?.now ?? new Date();
     const deletedRows = await this.database.client
       .delete(authSessions)

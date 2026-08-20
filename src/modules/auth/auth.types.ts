@@ -192,10 +192,10 @@ export interface RevokeRefreshTokenRepoInput {
 }
 export type RevokeRefreshTokenRepoResult = void;
 
-export interface DeleteExpiredRefreshTokensRepoInput {
+export interface RemoveAuthSessionsRepoInput {
   now?: Date;
 }
-export type DeleteExpiredRefreshTokensRepoResult = number;
+export type RemoveAuthSessionsRepoResult = number;
 
 export interface ListSessionsRepoInput {
   userId: string;

@@ -128,6 +128,15 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getLicenseExtendInfo = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.licenseService.getLicenseExtendInfo({
+      licenseId: req.params.id as string,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getPricingPlans = async (req: Request, res: Response): Promise<void> => {
     const query = await LicenseValidator.getPricingPlansQuery.validate(
       req.query,
@@ -349,6 +358,25 @@ export class LicenseController {
     });
 
     res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  getAvailableLicensesForRedemption = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto = await LicenseValidator.getLicensesQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result =
+      await this.licenseRedemptionService.getAvailableLicensesForRedemption({
+        resellerId: user.id,
+        filters: queryDto,
+      });
+
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   generateRedemptionCode = async (

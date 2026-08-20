@@ -75,6 +75,15 @@ userLicenseRouter.post(
   licenseController.assignLicenseToDevice,
 );
 
+userLicenseRouter.get(
+  "/:id/extend-info",
+  accessMiddleware({
+    organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
+    branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
+  }),
+  licenseController.getLicenseExtendInfo,
+);
+
 userLicenseRouter.post(
   "/:id/extend",
   accessMiddleware({

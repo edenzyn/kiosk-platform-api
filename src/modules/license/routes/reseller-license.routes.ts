@@ -45,6 +45,15 @@ resellerLicenseRouter.post(
   licenseController.purchaseLicenseAsReseller,
 );
 
+resellerLicenseRouter.get(
+  "/redeemable",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.getAvailableLicensesForRedemption,
+);
+
 resellerLicenseRouter
   .route("/redemption-codes")
   .get(

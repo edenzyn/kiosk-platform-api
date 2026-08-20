@@ -14,6 +14,8 @@ import type { LicenseRedemptionRepository } from "../repositories/license-redemp
 import type {
   GenerateRedemptionCodeServiceInput,
   GenerateRedemptionCodeServiceResult,
+  GetAvailableLicensesForRedemptionServiceInput,
+  GetAvailableLicensesForRedemptionServiceResult,
   GetRedemptionCodeDetailsForResellerServiceInput,
   GetRedemptionCodeDetailsForResellerServiceResult,
   GetRedemptionCodesForResellerServiceInput,
@@ -100,6 +102,33 @@ export class LicenseRedemptionService {
 
     return {
       redemptionCode: { ...created, redeemCode: plaintextCode },
+    };
+  }
+
+  async getAvailableLicensesForRedemption(
+    input: GetAvailableLicensesForRedemptionServiceInput,
+  ): Promise<GetAvailableLicensesForRedemptionServiceResult> {
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { licenses: rows, total } =
+      await this.licenseRedemptionRepository.findAvailableLicensesForRedemption({
+        resellerId: input.resellerId,
+        page,
+        limit,
+      });
+
+    const decryptedRows = rows.map((row) => ({
+      ...row,
+      licenseKey: decryptData(row.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+    }));
+
+    return {
+      licenses: decryptedRows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 

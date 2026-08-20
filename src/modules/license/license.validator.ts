@@ -254,7 +254,7 @@ export const LicenseValidator = {
     .noUnknown(),
   extendLicense: yup
     .object({
-      pricingPlanId: yup.string().uuid().required("Pricing plan ID is required"),
+      pricingPlanId: yup.string().uuid(),
     })
     .noUnknown(),
   licenseIdParam: yup

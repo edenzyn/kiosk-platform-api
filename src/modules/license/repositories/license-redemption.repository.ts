@@ -10,6 +10,7 @@ import {
   isNull,
   notInArray,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../../config/db";
@@ -17,11 +18,18 @@ import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/licen
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
+import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { branches } from "../../branch/branch.schema";
+import { devices } from "../../device/device.schema";
+import { organizations } from "../../organization/organization.schema";
+import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
 import type {
   ClaimRedemptionCodeRepoInput,
   ClaimRedemptionCodeRepoResult,
   CreateRedemptionCodeRepoInput,
   CreateRedemptionCodeRepoResult,
+  FindAvailableLicensesForRedemptionRepoInput,
+  FindAvailableLicensesForRedemptionRepoResult,
   FindLicenseIdsWithActiveRedemptionRepoInput,
   FindLicenseIdsWithActiveRedemptionRepoResult,
   FindRedemptionCodeByHashRepoInput,
@@ -32,15 +40,18 @@ import type {
   FindRedemptionCodeDetailsByIdRepoResult,
   FindRedemptionCodesByResellerRepoInput,
   FindRedemptionCodesByResellerRepoResult,
+  FindRedemptionPricingForLicenseRepoResult,
   RevokeRedemptionCodeRepoInput,
   RevokeRedemptionCodeRepoResult,
   VerifyRedemptionCodeRepoInput,
   VerifyRedemptionCodeRepoResult,
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
+import { licensePricing } from "../schemas/license-pricing.schema";
 import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schema";
 import { licenseRedemptionItems } from "../schemas/license-redemption-item.schema";
 import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
+import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses, type LicenseEntity } from "../schemas/license.schema";
 
 type DbTransaction = Parameters<
@@ -49,6 +60,20 @@ type DbTransaction = Parameters<
 
 export class LicenseRedemptionRepository {
   constructor(private readonly database: Database) {}
+
+  // True when `licenses.id` has no non-revoked/non-expired redemption item,
+  // i.e. it's not already sitting inside an active redemption code. A NOT
+  // EXISTS subquery (rather than a LEFT JOIN + IS NULL) so a license with
+  // multiple historical redemption items is never duplicated by the caller's
+  // outer query.
+  private _noActiveRedemptionCondition(): SQL {
+    return sql`NOT EXISTS (
+      SELECT 1 FROM license_redemption_items lri
+      INNER JOIN license_redemption_codes lrc ON lrc.id = lri.redemption_id
+      WHERE lri.license_id = ${licenses.id}
+        AND lrc.status NOT IN (${LicenseRedemptionStatusEnum.REVOKED}, ${LicenseRedemptionStatusEnum.EXPIRED})
+    )`;
+  }
 
   /**
    * Atomically transitions a redemption code's status, guarded by `where`
@@ -93,6 +118,100 @@ export class LicenseRedemptionRepository {
       );
 
     return rows.map((row) => row.licenseId);
+  }
+
+  async findRedemptionPricingForLicense(
+    licenseId: string,
+  ): Promise<FindRedemptionPricingForLicenseRepoResult | null> {
+    const [row] = await this.database.client
+      .select({
+        pricingId: licenseRedemptionItems.pricingId,
+        planName: licensePricing.name,
+        basePrice: licenseRedemptionItems.basePrice,
+        soldPrice: licenseRedemptionItems.soldPrice,
+        currency: licenseRedemptionItems.currency,
+        durationDays: licenseRedemptionItems.durationDays,
+      })
+      .from(licenseRedemptionItems)
+      .innerJoin(
+        licenseRedemptionCodes,
+        eq(licenseRedemptionCodes.id, licenseRedemptionItems.redemptionId),
+      )
+      .leftJoin(
+        licensePricing,
+        eq(licensePricing.id, licenseRedemptionItems.pricingId),
+      )
+      .where(
+        and(
+          eq(licenseRedemptionItems.licenseId, licenseId),
+          inArray(licenseRedemptionCodes.status, [
+            LicenseRedemptionStatusEnum.CLAIMED,
+            LicenseRedemptionStatusEnum.VERIFIED,
+          ]),
+        ),
+      )
+      .limit(1);
+
+    return row ?? null;
+  }
+
+  async findAvailableLicensesForRedemption(
+    input: FindAvailableLicensesForRedemptionRepoInput,
+  ): Promise<FindAvailableLicensesForRedemptionRepoResult> {
+    const { resellerId, page = 1, limit = 10 } = input;
+
+    const condition = and(
+      eq(licenseResellerMapper.resellerId, resellerId),
+      eq(licenseResellerMapper.isActive, true),
+      eq(licenses.status, LicenseStatusEnum.AVAILABLE),
+      this._noActiveRedemptionCondition(),
+    );
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(licenseResellerMapper)
+      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
+    const rows = await this.database.client
+      .select({
+        id: licenses.id,
+        licenseKey: licenses.licenseKey,
+        organizationId: licenses.organizationId,
+        organizationName: organizations.name,
+        branchId: licenses.branchId,
+        branchName: branches.name,
+        deviceId: licenses.deviceId,
+        deviceName: devices.name,
+        status: licenses.status,
+        activatedAt: licenses.activatedAt,
+        expiresAt: licenses.expiresAt,
+        createdAt: licenses.createdAt,
+        updatedAt: licenses.updatedAt,
+        durationDays: licenseTransactionItems.durationDays,
+      })
+      .from(licenseResellerMapper)
+      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+      .leftJoin(organizations, eq(licenses.organizationId, organizations.id))
+      .leftJoin(branches, eq(licenses.branchId, branches.id))
+      .leftJoin(devices, eq(licenses.deviceId, devices.id))
+      .leftJoin(
+        licenseTransactionItems,
+        and(
+          eq(licenseTransactionItems.licenseId, licenses.id),
+          eq(
+            licenseTransactionItems.actionType,
+            LicenseTransactionActionTypeEnum.PURCHASE,
+          ),
+        ),
+      )
+      .where(condition)
+      .orderBy(desc(licenses.createdAt))
+      .limit(limit)
+      .offset((page - 1) * limit);
+
+    return { licenses: rows as LicenseWithDetails[], total };
   }
 
   async createRedemptionCode(

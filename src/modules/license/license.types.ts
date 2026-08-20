@@ -104,6 +104,17 @@ export interface GetLicensesForResellerServiceInput {
 
 export type GetLicensesForResellerServiceResult = GetLicensesServiceResult;
 
+export interface GetAvailableLicensesForRedemptionServiceInput {
+  resellerId: string;
+  filters: {
+    page?: number;
+    limit?: number;
+  };
+}
+
+export type GetAvailableLicensesForRedemptionServiceResult =
+  GetLicensesServiceResult;
+
 export interface PurchaseLicenseAsResellerServiceInput {
   dto: {
     quantity: number;
@@ -367,7 +378,7 @@ export interface UpdatePricingPlanServiceResult {
 export interface ExtendLicenseServiceInput {
   licenseId: string;
   dto: {
-    pricingPlanId: string;
+    pricingPlanId?: string;
   };
   userId: string;
   effectiveTenant: EffectiveTenant;
@@ -375,6 +386,33 @@ export interface ExtendLicenseServiceInput {
 
 export interface ExtendLicenseServiceResult {
   license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+}
+
+export interface GetLicenseExtendInfoServiceInput {
+  licenseId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface LicenseExtendLockedPricing {
+  planName: string | null;
+  basePrice: string;
+  soldPrice: string | null;
+  currency: string;
+  durationDays: number;
+}
+
+export interface GetLicenseExtendInfoServiceResult {
+  isRedeemed: boolean;
+  lockedPricing: LicenseExtendLockedPricing | null;
+}
+
+export interface FindRedemptionPricingForLicenseRepoResult {
+  pricingId: string | null;
+  planName: string | null;
+  basePrice: string;
+  soldPrice: string | null;
+  currency: string;
+  durationDays: number;
 }
 
 export interface GetLicenseHistoryServiceInput {
@@ -512,6 +550,16 @@ export interface FindLicenseIdsWithActiveRedemptionRepoInput {
   licenseIds: string[];
 }
 export type FindLicenseIdsWithActiveRedemptionRepoResult = string[];
+
+export interface FindAvailableLicensesForRedemptionRepoInput {
+  resellerId: string;
+  page?: number;
+  limit?: number;
+}
+export interface FindAvailableLicensesForRedemptionRepoResult {
+  licenses: LicenseWithDetails[];
+  total: number;
+}
 
 export interface CreateRedemptionCodeRepoInput {
   resellerId: string;

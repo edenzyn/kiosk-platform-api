@@ -34,6 +34,8 @@ import type {
   GetLicenseDetailsForResellerServiceResult,
   GetLicenseDetailsServiceInput,
   GetLicenseDetailsServiceResult,
+  GetLicenseExtendInfoServiceInput,
+  GetLicenseExtendInfoServiceResult,
   GetLicenseForDeviceServiceInput,
   GetLicenseForDeviceServiceResult,
   GetLicenseHistoryForResellerServiceInput,
@@ -51,6 +53,7 @@ import type {
 } from "../license.types";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
+import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
 import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseEntity } from "../schemas/license.schema";
 
@@ -59,6 +62,7 @@ export class LicenseService {
     private readonly licenseRepository: LicenseRepository,
     private readonly licensePricingRepository: LicensePricingRepository,
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
+    private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
   ) {}
 
   private async _checkActiveLicenseExists(
@@ -461,20 +465,44 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const pricingPlans = await this.licensePricingRepository.findPricingPlans({
-      id: input.dto.pricingPlanId,
-    });
-    const plan = pricingPlans[0];
-    if (!plan) {
-      throw new AppError("Pricing plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
+    const lockedPricing =
+      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+        license.id,
+      );
 
-    const durationDays = plan.durationDays;
-    const basePrice = plan.price;
-    const currency = plan.currency;
+    let durationDays: number;
+    let basePrice: string;
+    let currency: string;
+    let planLabel: string;
+
+    if (lockedPricing) {
+      durationDays = lockedPricing.durationDays;
+      basePrice = lockedPricing.soldPrice || lockedPricing.basePrice;
+      currency = lockedPricing.currency;
+      planLabel = lockedPricing.planName || "redeemed plan";
+    } else {
+      if (!input.dto.pricingPlanId) {
+        throw new AppError("Pricing plan ID is required", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+
+      const pricingPlans = await this.licensePricingRepository.findPricingPlans({
+        id: input.dto.pricingPlanId,
+      });
+      const plan = pricingPlans[0];
+      if (!plan) {
+        throw new AppError("Pricing plan not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      durationDays = plan.durationDays;
+      basePrice = plan.price;
+      currency = plan.currency;
+      planLabel = plan.name;
+    }
 
     const {
       subtotal,
@@ -532,7 +560,7 @@ export class LicenseService {
         targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
         previousStatus: license.status,
         previousExpiresAt: license.expiresAt,
-        remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
+        remarks: `License extended by ${durationDays} days via plan: ${planLabel}`,
       },
     });
 
@@ -541,6 +569,41 @@ export class LicenseService {
       license: {
         ...rest,
         licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      },
+    };
+  }
+
+  async getLicenseExtendInfo(
+    input: GetLicenseExtendInfoServiceInput,
+  ): Promise<GetLicenseExtendInfoServiceResult> {
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const lockedPricing =
+      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+        license.id,
+      );
+
+    if (!lockedPricing) {
+      return { isRedeemed: false, lockedPricing: null };
+    }
+
+    return {
+      isRedeemed: true,
+      lockedPricing: {
+        planName: lockedPricing.planName,
+        basePrice: lockedPricing.basePrice,
+        soldPrice: lockedPricing.soldPrice,
+        currency: lockedPricing.currency,
+        durationDays: lockedPricing.durationDays,
       },
     };
   }

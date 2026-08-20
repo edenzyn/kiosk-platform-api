@@ -22,7 +22,12 @@ import {
   generateToken,
   verifyToken,
 } from "../../../shared/utils/core/jwt.helper";
+import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
 import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
+import {
+  getSessionLimitForUserType,
+  isSessionAutoLogoutEnabled,
+} from "../../../shared/utils/auth/auth-session.helper";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/license.service";
@@ -209,30 +214,30 @@ export class AuthService {
     return user;
   }
 
-  private _getSessionLimitForUserType(userType: UserTypeEnums): number {
-    switch (userType) {
-      case UserTypeEnums.PLATFORM:
-        return env.PLATFORM_USER_SESSION_LIMIT;
-      case UserTypeEnums.RESELLER:
-        return env.RESELLER_USER_SESSION_LIMIT;
-      default:
-        return env.NORMAL_USER_SESSION_LIMIT;
-    }
-  }
-
   private async _enforceSessionLimit(
     userId: string,
     userType: UserTypeEnums,
   ): Promise<void> {
-    const limit = this._getSessionLimitForUserType(userType);
+    const limit = getSessionLimitForUserType(userType);
     const activeSessions = await this.authRepository.listSessions({ userId });
 
-    if (activeSessions.length >= limit) {
+    if (activeSessions.length < limit) return;
+
+    if (isSessionAutoLogoutEnabled(userType)) {
       await this.authRepository.revokeOldestSessions({
         userId,
         count: activeSessions.length - limit + 1,
       });
+      return;
     }
+
+    throw new AppError(
+      `You've reached the maximum of ${pluralizeByCount(limit, "active session")} for your account. Please sign out from another device before logging in again.`,
+      {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        code: ErrorCodes.SESSION_LIMIT_REACHED,
+      },
+    );
   }
 
   private async _issueUserSessionTokens(

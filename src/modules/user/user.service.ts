@@ -13,12 +13,15 @@ import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { MailService } from "../../shared/services/mail/mail.service";
 import { getInviteUserTemplate } from "../../shared/services/mail/templates/invite-user.template";
+import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import {
   compareHashedData,
   hashData,
 } from "../../shared/utils/core/bcrypt.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
+import type { AuthRepository } from "../auth/auth.repository";
+import type { SessionDto } from "../auth/auth.types";
 import type {
   DisableTwoFactorResponseDto,
   EnableTwoFactorResponseDto,
@@ -49,8 +52,6 @@ import type {
   UpdateUserSettingsResponseDto,
 } from "./dtos/user-settings.dtos";
 import type { UserSettingsEntity } from "./schemas/user-settings.schema";
-import type { AuthRepository } from "../auth/auth.repository";
-import type { SessionDto } from "../auth/auth.types";
 import type { UserRepository } from "./user.repository";
 import type {
   GetInvitationsByTenantServiceInput,
@@ -173,6 +174,13 @@ export class UserService {
         code: ErrorCodes.FORBIDDEN,
       });
     }
+
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      user.organizationId,
+      user.branchId,
+    );
 
     const { password, ...userWithoutPassword } = user;
 

@@ -88,6 +88,47 @@ export async function runSeedPermissions() {
   const rolesSql = fs.readFileSync(rolesSqlPath, "utf-8");
   await db.execute(sql.raw(rolesSql));
 
+  console.log("Updating SQL function fn_get_license_history_by_user_type...");
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_license_history(UUID, SMALLINT[], INTEGER);`,
+  );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_license_history_by_user_type(UUID, SMALLINT[], INTEGER);`,
+  );
+  const licenseHistorySqlPath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_license_history_by_user_type.sql",
+  );
+  const licenseHistorySql = fs.readFileSync(licenseHistorySqlPath, "utf-8");
+  await db.execute(sql.raw(licenseHistorySql));
+
+  console.log("Updating SQL function fn_get_license_details_by_user_type...");
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_license_details_by_user_type(UUID, INTEGER);`,
+  );
+  const licenseDetailsSqlPath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_license_details_by_user_type.sql",
+  );
+  const licenseDetailsSql = fs.readFileSync(licenseDetailsSqlPath, "utf-8");
+  await db.execute(sql.raw(licenseDetailsSql));
+
+  console.log(
+    "Updating SQL function fn_get_license_transactions_by_user_type...",
+  );
+  await db.execute(
+    sql`DROP FUNCTION IF EXISTS fn_get_license_transactions_by_user_type(UUID, INTEGER);`,
+  );
+  const licenseTransactionsSqlPath = path.join(
+    __dirname,
+    "../sql/functions/fn_get_license_transactions_by_user_type.sql",
+  );
+  const licenseTransactionsSql = fs.readFileSync(
+    licenseTransactionsSqlPath,
+    "utf-8",
+  );
+  await db.execute(sql.raw(licenseTransactionsSql));
+
   console.log("Seeding all permissions from UserPermissions enum...");
 
   const allPermissionKeys = Object.values(UserPermissions);

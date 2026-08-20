@@ -1,16 +1,15 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
+import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
-import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
+import type { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type { LicenseDiscountRuleEntity } from "./schemas/license-discount-rule.schema";
-import type { LicenseHistoryEntity } from "./schemas/license-history.schema";
 import type { LicensePricingEntity } from "./schemas/license-pricing.schema";
 import type { LicenseRedemptionCodeEntity } from "./schemas/license-redemption-code.schema";
 import type { LicenseRedemptionItemEntity } from "./schemas/license-redemption-item.schema";
-import type { LicenseTransactionItemEntity } from "./schemas/license-transaction-item.schema";
 import type { LicenseEntity } from "./schemas/license.schema";
 
 // ========================================
@@ -129,13 +128,17 @@ export interface GetLicenseDetailsForResellerServiceInput {
 export type GetLicenseDetailsForResellerServiceResult =
   GetLicenseDetailsServiceResult;
 
-export interface RedemptionCodeWithItems
-  extends Omit<LicenseRedemptionCodeEntity, "redeemCodeHash"> {
+export interface RedemptionCodeWithItems extends Omit<
+  LicenseRedemptionCodeEntity,
+  "redeemCodeHash"
+> {
   items: LicenseRedemptionItemEntity[];
 }
 
-export interface RedemptionCodeWithItemCount
-  extends Omit<LicenseRedemptionCodeEntity, "redeemCodeHash"> {
+export interface RedemptionCodeWithItemCount extends Omit<
+  LicenseRedemptionCodeEntity,
+  "redeemCodeHash"
+> {
   itemCount: number;
 }
 
@@ -366,10 +369,7 @@ export interface GetLicenseHistoryServiceInput {
 }
 
 export interface GetLicenseHistoryServiceResult {
-  history: (LicenseHistoryEntity & {
-    performedByName: string | null;
-    performedByEmail: string | null;
-  })[];
+  history: LicenseHistoryLogItem[];
 }
 
 export interface GetLicenseDetailsServiceInput {
@@ -378,16 +378,8 @@ export interface GetLicenseDetailsServiceInput {
 }
 
 export interface GetLicenseDetailsServiceResult {
-  license: Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
-    branchName: string | null;
-    deviceName: string | null;
-  };
-  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
-    paymentStatus: number | null;
-    currency: string | null;
-    totalAmount: string | null;
-    performedByName: string | null;
-  })[];
+  license: LicenseDetailsResult;
+  transactions: LicenseDetailsTransactionItem[];
 }
 
 export interface CheckLicenseStatusServiceInput {
@@ -419,21 +411,47 @@ export type FindOneActiveLicenseByDeviceIdRepoResult = LicenseEntity | null;
 
 export interface FindOneLicenseDetailsRepoInput {
   licenseId: string;
+  viewerUserType: UserTypeEnums;
 }
-export interface FindOneLicenseDetailsRepoResult {
-  license:
-    | (Omit<LicenseEntity, "createdBy" | "licenseKeyHash" | "updatedBy"> & {
-        branchName: string | null;
-        deviceName: string | null;
-      })
-    | null;
-  transactions: (Omit<LicenseTransactionItemEntity, "licenseId"> & {
-    paymentStatus: number | null;
-    currency: string | null;
-    totalAmount: string | null;
-    performedByName: string | null;
-  })[];
+
+export type LicenseDetailsResult = {
+  id: string;
+  licenseKey: string;
+  organizationId: string | null;
+  organizationName: string | null;
+  branchId: string | null;
+  branchName: string | null;
+  deviceId: string | null;
+  deviceName: string | null;
+  status: number;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type LicenseDetailsTransactionItem = {
+  id: string;
+  transactionId: string;
+  actionType: number;
+  durationDays: number;
+  baseUnitPrice: string;
+  discountPercentage: string | null;
+  unitPrice: string;
+  createdAt: string;
+  paymentStatus: number | null;
+  currency: string | null;
+  totalAmount: string | null;
+  performedByName: string | null;
+};
+
+export type FindOneLicenseDetailsRepoResult = LicenseDetailsResult | null;
+
+export interface FindLicenseTransactionsRepoInput {
+  licenseId: string;
+  viewerUserType: UserTypeEnums;
 }
+export type FindLicenseTransactionsRepoResult = LicenseDetailsTransactionItem[];
 
 export interface FindLicensesRepoInput {
   organizationId?: string;
@@ -525,7 +543,9 @@ export interface RevokeRedemptionCodeRepoInput {
   id: string;
   resellerId: string;
 }
-export type RevokeRedemptionCodeRepoResult = LicenseRedemptionCodeEntity | undefined;
+export type RevokeRedemptionCodeRepoResult =
+  | LicenseRedemptionCodeEntity
+  | undefined;
 
 export interface FindRedemptionCodeDetailsByIdRepoInput {
   id: string;
@@ -548,7 +568,8 @@ export type VerifyRedemptionCodeRepoResult = boolean;
 export interface FindRedemptionCodeByHashRepoInput {
   redeemCodeHash: string;
 }
-export type FindRedemptionCodeByHashRepoResult = LicenseRedemptionCodeEntity | null;
+export type FindRedemptionCodeByHashRepoResult =
+  LicenseRedemptionCodeEntity | null;
 
 export interface ClaimRedemptionCodeRepoInput {
   redeemCodeHash: string;
@@ -720,7 +741,17 @@ export type FindOneDiscountRuleRepoResult = LicenseDiscountRuleEntity | null;
 export interface UpdateDiscountRuleRepoInput {
   ruleId: string;
   updatedBy: string;
-  data: Partial<Pick<LicenseDiscountRuleEntity, "name" | "isActive" | "minQuantity" | "maxQuantity" | "startsAt" | "endsAt">>;
+  data: Partial<
+    Pick<
+      LicenseDiscountRuleEntity,
+      | "name"
+      | "isActive"
+      | "minQuantity"
+      | "maxQuantity"
+      | "startsAt"
+      | "endsAt"
+    >
+  >;
 }
 export type UpdateDiscountRuleRepoResult = LicenseDiscountRuleEntity;
 
@@ -765,11 +796,27 @@ export type UpdatePricingPlanRepoResult = LicensePricingEntity;
 // License History Schema
 export interface FindLicenseHistoryRepoInput {
   licenseId: string;
+  targetEntityTypes: LicenseHistoryTargetEntityTypeEnum[];
+  viewerType: UserTypeEnums.NORMAL | UserTypeEnums.RESELLER;
 }
-export type FindLicenseHistoryRepoResult = (LicenseHistoryEntity & {
+
+export type LicenseHistoryLogItem = {
+  id: string;
+  licenseId: string;
+  eventType: number;
+  targetEntityType: number;
+  previousStatus: number | null;
+  newStatus: number | null;
+  previousExpiresAt: string | null;
+  newExpiresAt: string | null;
+  transactionId: string | null;
+  remarks: string | null;
+  performedBy: string | null;
   performedByName: string | null;
   performedByEmail: string | null;
-})[];
+  createdAt: string;
+};
+export type FindLicenseHistoryRepoResult = LicenseHistoryLogItem[];
 
 export interface CreateLicenseHistoryRepoInput {
   licenseId: string;

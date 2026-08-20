@@ -82,6 +82,18 @@ export async function runBasicDataSeed() {
       `,
       file: "fn_get_roles_by_tenant_and_scope.sql",
     },
+    {
+      drop: "DROP FUNCTION IF EXISTS fn_get_license_history(UUID, SMALLINT[], INTEGER);\nDROP FUNCTION IF EXISTS fn_get_license_history_by_user_type(UUID, SMALLINT[], INTEGER);",
+      file: "fn_get_license_history_by_user_type.sql",
+    },
+    {
+      drop: "DROP FUNCTION IF EXISTS fn_get_license_details_by_user_type(UUID, INTEGER);",
+      file: "fn_get_license_details_by_user_type.sql",
+    },
+    {
+      drop: "DROP FUNCTION IF EXISTS fn_get_license_transactions_by_user_type(UUID, INTEGER);",
+      file: "fn_get_license_transactions_by_user_type.sql",
+    },
   ];
 
   for (const { drop, file } of sqlFiles) {

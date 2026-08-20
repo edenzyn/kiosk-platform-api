@@ -2,17 +2,22 @@ import type jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
 import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
-import type { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import {
+  getSessionLimitForUserType,
+  isSessionAutoLogoutEnabled,
+} from "../../../shared/utils/auth/auth-session.helper";
+import { isTenantActiveCheck } from "../../../shared/utils/auth/tenant-active-check.helper";
 import {
   compareHashedData,
   hashData,
@@ -23,12 +28,8 @@ import {
   verifyToken,
 } from "../../../shared/utils/core/jwt.helper";
 import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
-import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
-import {
-  getSessionLimitForUserType,
-  isSessionAutoLogoutEnabled,
-} from "../../../shared/utils/auth/auth-session.helper";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
+import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
@@ -59,12 +60,6 @@ import type {
   SessionMeta,
   VerifyTwoFactorLoginServiceResult,
 } from "../auth.types";
-import type {
-  DisableTwoFactorResponseDto,
-  EnableTwoFactorResponseDto,
-  SetupTwoFactorResponseDto,
-  TwoFactorStatusResponseDto,
-} from "../dtos/two-factor.dtos";
 import type { TwoFactorService } from "./two-factor.service";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
@@ -82,38 +77,8 @@ export class AuthService {
     private readonly licenseService: LicenseService,
     private readonly twoFactorService: TwoFactorService,
     private readonly organizationRepository: OrganizationRepository,
+    private readonly branchRepository: BranchRepository,
   ) {}
-
-  // ========================================
-  // ? TWO-FACTOR SELF-SERVICE (delegated)
-  // ========================================
-  async getTwoFactorStatus(
-    userId: string,
-  ): Promise<TwoFactorStatusResponseDto> {
-    return this.twoFactorService.getStatus(userId);
-  }
-
-  async setupTwoFactor(
-    userId: string,
-    method: TwoFactorMethodEnums,
-  ): Promise<SetupTwoFactorResponseDto> {
-    return this.twoFactorService.setup(userId, method);
-  }
-
-  async enableTwoFactor(
-    userId: string,
-    otpToken: string,
-    code: string,
-  ): Promise<EnableTwoFactorResponseDto> {
-    return this.twoFactorService.enable(userId, otpToken, code);
-  }
-
-  async disableTwoFactor(
-    userId: string,
-    password: string,
-  ): Promise<DisableTwoFactorResponseDto> {
-    return this.twoFactorService.disable(userId, password);
-  }
 
   private _generateTokens(
     entityType: ClientTypeEnum,
@@ -210,6 +175,13 @@ export class AuthService {
         },
       );
     }
+
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      user.organizationId,
+      user.branchId,
+    );
 
     return user;
   }
@@ -462,6 +434,13 @@ export class AuthService {
       );
     }
 
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      user.organizationId,
+      user.branchId,
+    );
+
     if (user.userType === UserTypeEnums.PLATFORM) {
       return this._completePlatformLogin(user, meta);
     }
@@ -551,6 +530,13 @@ export class AuthService {
     dto: AcceptInvitationServiceInput,
   ): Promise<AcceptInvitationServiceResult> {
     const invitation = await this._verifyAndGetPendingInvitation(dto.token);
+
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      invitation.organizationId,
+      invitation.branchId,
+    );
 
     const existingUser = await this.userRepository.findOne({
       email: invitation.email,
@@ -819,6 +805,13 @@ export class AuthService {
           });
         }
 
+        await isTenantActiveCheck(
+          this.organizationRepository,
+          this.branchRepository,
+          device.organizationId,
+          device.branchId,
+        );
+
         const customRefreshExp = env.JWT_REFRESH_SLIDING_ENABLED
           ? undefined
           : decoded.exp;
@@ -880,12 +873,19 @@ export class AuthService {
       }
 
       const user = await this.userRepository.findOne({ id: decoded.user.id });
-      if (!user) {
+      if (!user || !user.isActive) {
         throw new AppError("Invalid or expired refresh token", {
           statusCode: HttpStatusCodes.UNAUTHORIZED,
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
+
+      await isTenantActiveCheck(
+        this.organizationRepository,
+        this.branchRepository,
+        user.organizationId,
+        user.branchId,
+      );
 
       const { password, ...userWithoutPassword } = user;
 
@@ -978,6 +978,13 @@ export class AuthService {
         },
       );
     }
+
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      device.organizationId,
+      device.branchId,
+    );
 
     const isMatch = await compareHashedData(String(dto.pin), device.pin);
     if (!isMatch) {

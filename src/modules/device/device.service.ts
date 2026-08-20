@@ -1,9 +1,12 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
+import type { BranchRepository } from "../branch/branch.repository";
 import type { LicenseService } from "../license/services/license.service";
+import type { OrganizationRepository } from "../organization/organization.repository";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
 import type {
@@ -24,6 +27,8 @@ export class DeviceService {
   constructor(
     private readonly deviceRepository: DeviceRepository,
     private readonly licenseService: LicenseService,
+    private readonly organizationRepository: OrganizationRepository,
+    private readonly branchRepository: BranchRepository,
   ) {}
 
   // ========================================
@@ -157,6 +162,13 @@ export class DeviceService {
         },
       );
     }
+
+    await isTenantActiveCheck(
+      this.organizationRepository,
+      this.branchRepository,
+      device.organizationId,
+      device.branchId,
+    );
 
     const { pin, ...deviceWithoutPin } = device;
     const licenseInfo = await this.licenseService.getLicenseForDevice({

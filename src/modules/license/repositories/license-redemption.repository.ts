@@ -17,11 +17,6 @@ import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/licen
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
-import { licenseHistory } from "../schemas/license-history.schema";
-import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schema";
-import { licenseRedemptionItems } from "../schemas/license-redemption-item.schema";
-import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
-import { licenses, type LicenseEntity } from "../schemas/license.schema";
 import type {
   ClaimRedemptionCodeRepoInput,
   ClaimRedemptionCodeRepoResult,
@@ -42,6 +37,11 @@ import type {
   VerifyRedemptionCodeRepoInput,
   VerifyRedemptionCodeRepoResult,
 } from "../license.types";
+import { licenseHistory } from "../schemas/license-history.schema";
+import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schema";
+import { licenseRedemptionItems } from "../schemas/license-redemption-item.schema";
+import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
+import { licenses, type LicenseEntity } from "../schemas/license.schema";
 
 type DbTransaction = Parameters<
   Parameters<Database["client"]["transaction"]>[0]
@@ -136,7 +136,7 @@ export class LicenseRedemptionRepository {
         await tx.insert(licenseHistory).values({
           licenseId: item.licenseId,
           eventType: LicenseHistoryEventTypeEnum.REDEMPTION_CODE_GENERATED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
           performedBy: input.createdBy,
           remarks: "Redemption code generated",
         });
@@ -151,8 +151,14 @@ export class LicenseRedemptionRepository {
   async findRedemptionCodesByReseller(
     input: FindRedemptionCodesByResellerRepoInput,
   ): Promise<FindRedemptionCodesByResellerRepoResult> {
-    const { resellerId, page = 1, limit = 10, status, sortBy, sortOrder } =
-      input;
+    const {
+      resellerId,
+      page = 1,
+      limit = 10,
+      status,
+      sortBy,
+      sortOrder,
+    } = input;
 
     const conditions = [eq(licenseRedemptionCodes.resellerId, resellerId)];
     if (status !== undefined && status !== null) {
@@ -317,7 +323,10 @@ export class LicenseRedemptionRepository {
         and(
           eq(licenseRedemptionCodes.id, input.id),
           eq(licenseRedemptionCodes.resellerId, input.resellerId),
-          eq(licenseRedemptionCodes.status, LicenseRedemptionStatusEnum.CLAIMED),
+          eq(
+            licenseRedemptionCodes.status,
+            LicenseRedemptionStatusEnum.CLAIMED,
+          ),
         ) as SQL,
         {
           status: LicenseRedemptionStatusEnum.VERIFIED,
@@ -342,7 +351,7 @@ export class LicenseRedemptionRepository {
         await tx.insert(licenseHistory).values({
           licenseId: item.licenseId,
           eventType: LicenseHistoryEventTypeEnum.REDEMPTION_VERIFIED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
           remarks: "Redemption sold price verified",
         });
       }
@@ -379,7 +388,7 @@ export class LicenseRedemptionRepository {
         await tx.insert(licenseHistory).values({
           licenseId: item.licenseId,
           eventType: LicenseHistoryEventTypeEnum.REDEEM_CODE_REVOKED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
           remarks: "Redemption code revoked",
         });
       }
@@ -481,7 +490,10 @@ export class LicenseRedemptionRepository {
         return { ok: true, licenses: claimedLicenses };
       })
       .catch((error) => {
-        if (error instanceof Error && error.message === "LICENSES_UNAVAILABLE") {
+        if (
+          error instanceof Error &&
+          error.message === "LICENSES_UNAVAILABLE"
+        ) {
           return { ok: false, reason: "licenses_unavailable" };
         }
         throw error;

@@ -8,6 +8,7 @@ import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/licens
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
+import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
 import {
   decryptData,
@@ -16,9 +17,6 @@ import {
 } from "../../../shared/utils/core/crypto.helper";
 import { calculateLicensePurchasePricing } from "../../../shared/utils/license/calculate-license-purchase-pricing.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
-import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
-import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
-import type { LicenseRepository } from "../repositories/license.repository";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
@@ -50,6 +48,9 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
 } from "../license.types";
+import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
+import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
+import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseEntity } from "../schemas/license.schema";
 
 export class LicenseService {
@@ -476,6 +477,11 @@ export class LicenseService {
 
     const history = await this.licenseRepository.findHistory({
       licenseId: input.licenseId,
+      targetEntityTypes: [
+        LicenseHistoryTargetEntityTypeEnum.NORMAL,
+        LicenseHistoryTargetEntityTypeEnum.COMMON,
+      ],
+      viewerType: UserTypeEnums.NORMAL,
     });
 
     return { history };
@@ -484,11 +490,12 @@ export class LicenseService {
   async getLicenseDetails(
     input: GetLicenseDetailsServiceInput,
   ): Promise<GetLicenseDetailsServiceResult> {
-    const details = await this.licenseRepository.findOneDetails({
+    const license = await this.licenseRepository.findOneDetails({
       licenseId: input.licenseId,
+      viewerUserType: UserTypeEnums.NORMAL,
     });
 
-    if (!details.license) {
+    if (!license) {
       throw new AppError("License not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
         code: ErrorCodes.RESOURCE_NOT_FOUND,
@@ -497,24 +504,26 @@ export class LicenseService {
 
     if (
       input.effectiveTenant.organizationId &&
-      details.license.organizationId !== input.effectiveTenant.organizationId
+      license.organizationId !== input.effectiveTenant.organizationId
     ) {
       throw new AppError("Access denied to license", {
         statusCode: HttpStatusCodes.FORBIDDEN,
       });
     }
 
+    const transactions = await this.licenseRepository.findLicenseTransactions({
+      licenseId: input.licenseId,
+      viewerUserType: UserTypeEnums.NORMAL,
+    });
+
     const decryptedLicense = {
-      ...details.license,
-      licenseKey: decryptData(
-        details.license.licenseKey,
-        env.LICENSE_ENCRYPTION_KEY,
-      ),
+      ...license,
+      licenseKey: decryptData(license.licenseKey, env.LICENSE_ENCRYPTION_KEY),
     };
 
     return {
       license: decryptedLicense,
-      transactions: details.transactions,
+      transactions,
     };
   }
 
@@ -586,13 +595,15 @@ export class LicenseService {
   async getLicenseHistoryForReseller(
     input: GetLicenseHistoryForResellerServiceInput,
   ): Promise<GetLicenseHistoryForResellerServiceResult> {
-    await this._checkLicenseOwnedByReseller(
-      input.licenseId,
-      input.resellerId,
-    );
+    await this._checkLicenseOwnedByReseller(input.licenseId, input.resellerId);
 
     const history = await this.licenseRepository.findHistory({
       licenseId: input.licenseId,
+      targetEntityTypes: [
+        LicenseHistoryTargetEntityTypeEnum.RESELLER,
+        LicenseHistoryTargetEntityTypeEnum.COMMON,
+      ],
+      viewerType: UserTypeEnums.RESELLER,
     });
 
     return { history };
@@ -601,33 +612,33 @@ export class LicenseService {
   async getLicenseDetailsForReseller(
     input: GetLicenseDetailsForResellerServiceInput,
   ): Promise<GetLicenseDetailsForResellerServiceResult> {
-    await this._checkLicenseOwnedByReseller(
-      input.licenseId,
-      input.resellerId,
-    );
+    await this._checkLicenseOwnedByReseller(input.licenseId, input.resellerId);
 
-    const details = await this.licenseRepository.findOneDetails({
+    const license = await this.licenseRepository.findOneDetails({
       licenseId: input.licenseId,
+      viewerUserType: UserTypeEnums.RESELLER,
     });
 
-    if (!details.license) {
+    if (!license) {
       throw new AppError("License not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,
         code: ErrorCodes.RESOURCE_NOT_FOUND,
       });
     }
 
+    const transactions = await this.licenseRepository.findLicenseTransactions({
+      licenseId: input.licenseId,
+      viewerUserType: UserTypeEnums.RESELLER,
+    });
+
     const decryptedLicense = {
-      ...details.license,
-      licenseKey: decryptData(
-        details.license.licenseKey,
-        env.LICENSE_ENCRYPTION_KEY,
-      ),
+      ...license,
+      licenseKey: decryptData(license.licenseKey, env.LICENSE_ENCRYPTION_KEY),
     };
 
     return {
       license: decryptedLicense,
-      transactions: details.transactions,
+      transactions,
     };
   }
 

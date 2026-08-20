@@ -3,6 +3,7 @@ import type { LicenseEntity } from "../schemas/license.schema";
 export interface PurchaseLicenseRequestDto {
   quantity: number;
   pricingPlanId: string;
+  discountRuleId?: string;
 }
 
 export interface PurchaseLicenseResponseDto {

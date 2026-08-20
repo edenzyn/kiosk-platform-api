@@ -1,10 +1,19 @@
+import { LicenseDiscountTypeEnum } from "../../enums/license/license-discount-type.enum";
+
 export function calculateLicensePurchasePricing(
   basePrice: number,
   qty: number,
-  discountPercentage: number = 0,
+  discountValue: number = 0,
+  discountType: LicenseDiscountTypeEnum = LicenseDiscountTypeEnum.PERCENTAGE,
 ) {
   const subtotal = basePrice * qty;
-  const discountAmount = subtotal * (discountPercentage / 100);
+  const isFlat = discountType === LicenseDiscountTypeEnum.FLAT;
+  const discountAmount = isFlat
+    ? Math.min(discountValue, subtotal)
+    : subtotal * (discountValue / 100);
+  // Flat discounts don't have a meaningful percentage of their own, matching
+  // how the frontend's calculateRuleDiscount treats them.
+  const discountPercentage = isFlat ? 0 : discountValue;
   const totalAmount = subtotal - discountAmount;
   const unitPrice = totalAmount / qty;
 

@@ -3,6 +3,7 @@ import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
+import { LicenseDiscountTypeEnum } from "../../../shared/enums/license/license-discount-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
@@ -74,6 +75,88 @@ export class LicenseService {
     }
   }
 
+  // Re-validates a client-selected discount rule against the actual purchase
+  // (quantity, plan, reseller) rather than trusting the client's own math,
+  // since the client only ever sends a rule id, never a discount amount.
+  private async _resolveDiscountRule(params: {
+    discountRuleId: string;
+    discountTargetEntity: number;
+    quantity: number;
+    pricingPlanId: string;
+    resellerId?: string;
+  }): Promise<{ discountValue: number; discountType: number; ruleId: string }> {
+    const rule = await this.licenseDiscountRepository.findDiscountRule({
+      ruleId: params.discountRuleId,
+    });
+
+    const invalidDiscountError = () =>
+      new AppError(
+        "Selected discount is no longer valid. Please review and try again.",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+
+    const now = new Date();
+    const isWithinActiveWindow =
+      !!rule &&
+      rule.isActive &&
+      (!rule.startsAt || new Date(rule.startsAt) <= now) &&
+      (!rule.endsAt || new Date(rule.endsAt) >= now);
+
+    if (!rule || !isWithinActiveWindow) {
+      throw invalidDiscountError();
+    }
+
+    const inQuantityRange =
+      params.quantity >= rule.minQuantity &&
+      (rule.maxQuantity === null || params.quantity <= rule.maxQuantity);
+
+    let isApplicable = false;
+
+    if (rule.targetEntity === params.discountTargetEntity) {
+      isApplicable = inQuantityRange;
+    } else if (
+      rule.targetEntity ===
+        LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL &&
+      params.resellerId &&
+      inQuantityRange
+    ) {
+      const targetsMap = await this.licenseDiscountRepository.findDiscountRuleTargets(
+        {
+          ruleIds: [rule.id],
+          targetEntity:
+            LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL,
+        },
+      );
+      isApplicable = (targetsMap.get(rule.id) ?? []).some(
+        (target) => target.id === params.resellerId,
+      );
+    } else if (
+      rule.targetEntity ===
+      LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
+    ) {
+      const targetsMap = await this.licenseDiscountRepository.findDiscountRuleTargets(
+        {
+          ruleIds: [rule.id],
+          targetEntity:
+            LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL,
+        },
+      );
+      isApplicable = (targetsMap.get(rule.id) ?? []).some(
+        (target) => target.id === params.pricingPlanId,
+      );
+    }
+
+    if (!isApplicable) {
+      throw invalidDiscountError();
+    }
+
+    return {
+      discountValue: Number(rule.discountValue),
+      discountType: rule.discountType,
+      ruleId: rule.id,
+    };
+  }
+
   private async _purchaseLicenses(params: {
     quantity: number;
     pricingPlanId: string;
@@ -82,6 +165,7 @@ export class LicenseService {
     userId: string;
     resellerId?: string;
     discountTargetEntity: number;
+    discountRuleId?: string;
     historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
@@ -101,22 +185,21 @@ export class LicenseService {
     const basePrice = Number(selectedPlan.price);
     const currency = selectedPlan.currency;
 
-    const rules = await this.licenseDiscountRepository.findActiveDiscountRules({
-      targetEntity: params.discountTargetEntity,
-    });
-
-    const matchedRule = rules.find(
-      (rule) =>
-        qty >= rule.minQuantity &&
-        (rule.maxQuantity === null || qty <= rule.maxQuantity),
-    );
-
-    let discountPct = 0.0;
+    let discountValue = 0;
+    let discountType = LicenseDiscountTypeEnum.PERCENTAGE;
     let appliedDiscountRuleId: string | null = null;
 
-    if (matchedRule) {
-      discountPct = Number(matchedRule.discountValue);
-      appliedDiscountRuleId = matchedRule.id;
+    if (params.discountRuleId) {
+      const resolved = await this._resolveDiscountRule({
+        discountRuleId: params.discountRuleId,
+        discountTargetEntity: params.discountTargetEntity,
+        quantity: qty,
+        pricingPlanId: params.pricingPlanId,
+        resellerId: params.resellerId,
+      });
+      discountValue = resolved.discountValue;
+      discountType = resolved.discountType;
+      appliedDiscountRuleId = resolved.ruleId;
     }
 
     const {
@@ -126,7 +209,7 @@ export class LicenseService {
       totalAmount,
       unitPrice,
       baseUnitPrice,
-    } = calculateLicensePurchasePricing(basePrice, qty, discountPct);
+    } = calculateLicensePurchasePricing(basePrice, qty, discountValue, discountType);
 
     const newLicenses = [];
     for (let i = 0; i < qty; i++) {
@@ -235,6 +318,7 @@ export class LicenseService {
       userId: input.userId,
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
+      discountRuleId: input.dto.discountRuleId,
     });
   }
 
@@ -573,6 +657,7 @@ export class LicenseService {
       resellerId: input.resellerId,
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
+      discountRuleId: input.dto.discountRuleId,
     });
   }
 

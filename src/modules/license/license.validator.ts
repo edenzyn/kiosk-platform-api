@@ -37,6 +37,7 @@ export const LicenseValidator = {
         .min(1, "Quantity must be at least 1")
         .required("Quantity is required"),
       pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      discountRuleId: yup.string().uuid().optional(),
     })
     .noUnknown(),
   redeemLicenseCode: yup

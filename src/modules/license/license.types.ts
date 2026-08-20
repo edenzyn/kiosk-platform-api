@@ -65,6 +65,7 @@ export interface PurchaseLicenseServiceInput {
   dto: {
     quantity: number;
     pricingPlanId: string;
+    discountRuleId?: string;
   };
   effectiveTenant: EffectiveTenant;
   userId: string;
@@ -107,6 +108,7 @@ export interface PurchaseLicenseAsResellerServiceInput {
   dto: {
     quantity: number;
     pricingPlanId: string;
+    discountRuleId?: string;
   };
   resellerId: string;
 }

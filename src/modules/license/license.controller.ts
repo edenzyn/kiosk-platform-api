@@ -308,6 +308,95 @@ export class LicenseController {
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
+  generateRedemptionCode = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await LicenseValidator.generateRedemptionCode.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.generateRedemptionCode({
+      resellerId: user.id,
+      dto: data,
+    });
+
+    res.status(HttpStatusCodes.CREATED).json(result);
+  };
+
+  getRedemptionCodesForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto = await LicenseValidator.getRedemptionCodesQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getRedemptionCodesForReseller({
+      resellerId: user.id,
+      filters: queryDto,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  revokeRedemptionCode = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.redemptionCodeIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    await this.licenseService.revokeRedemptionCode({
+      resellerId: user.id,
+      redemptionId: params.id,
+    });
+
+    res.status(HttpStatusCodes.OK).json({ success: true });
+  };
+
+  getRedemptionCodeDetails = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const params = await LicenseValidator.redemptionCodeIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getRedemptionCodeDetailsForReseller({
+      resellerId: user.id,
+      redemptionId: params.id,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  verifyRedemptionCode = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.redemptionCodeIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const data = await LicenseValidator.verifyRedemptionCode.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    await this.licenseService.verifyRedemptionCode({
+      resellerId: user.id,
+      redemptionId: params.id,
+      dto: data,
+    });
+
+    res.status(HttpStatusCodes.OK).json({ success: true });
+  };
+
   getResellerDiscountRules = async (
     _req: Request,
     res: Response,

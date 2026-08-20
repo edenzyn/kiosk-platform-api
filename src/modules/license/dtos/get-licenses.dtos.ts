@@ -17,6 +17,8 @@ export interface LicenseWithDetails extends Omit<
   branchName: string | null;
   deviceName: string | null;
   organizationName?: string | null;
+  // Only populated for reseller-owned license listings (findByReseller).
+  durationDays?: number | null;
 }
 
 export interface GetLicensesResponseDto {

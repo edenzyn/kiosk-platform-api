@@ -4,10 +4,11 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
+import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
+import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
 import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
-import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import {
   decryptData,
@@ -33,6 +34,8 @@ import type {
   CreatePricingPlanServiceResult,
   ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
+  GenerateRedemptionCodeServiceInput,
+  GenerateRedemptionCodeServiceResult,
   GetDiscountRulesServiceInput,
   GetDiscountRulesServiceResult,
   GetLicenseDetailsForResellerServiceInput,
@@ -55,16 +58,24 @@ import type {
   GetPlatformDiscountRulesServiceResult,
   GetPlatformPricingPlansServiceInput,
   GetPlatformPricingPlansServiceResult,
+  GetRedemptionCodeDetailsForResellerServiceInput,
+  GetRedemptionCodeDetailsForResellerServiceResult,
+  GetRedemptionCodesForResellerServiceInput,
+  GetRedemptionCodesForResellerServiceResult,
   PurchaseLicenseAsResellerServiceInput,
   PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
+  RevokeRedemptionCodeServiceInput,
+  RevokeRedemptionCodeServiceResult,
   ToggleDiscountRuleStatusServiceInput,
   ToggleDiscountRuleStatusServiceResult,
   TogglePricingPlanStatusServiceInput,
   TogglePricingPlanStatusServiceResult,
   UpdatePricingPlanServiceInput,
   UpdatePricingPlanServiceResult,
+  VerifyRedemptionCodeServiceInput,
+  VerifyRedemptionCodeServiceResult,
 } from "./license.types";
 import type { LicenseEntity } from "./schemas/license.schema";
 
@@ -93,7 +104,7 @@ export class LicenseService {
     userId: string;
     resellerId?: string;
     discountTargetEntity: number;
-    historyTargetEntityType?: UserTypeEnums;
+    historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
 
@@ -287,7 +298,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ASSIGNMENT,
-      targetEntityType: UserTypeEnums.NORMAL,
+      targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
       previousStatus: license.status,
       newStatus: license.status,
       previousExpiresAt: license.expiresAt,
@@ -353,7 +364,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
-      targetEntityType: UserTypeEnums.NORMAL,
+      targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
       previousStatus: license.status,
       newStatus: LicenseStatusEnum.ACTIVE,
       previousExpiresAt: license.expiresAt,
@@ -656,7 +667,7 @@ export class LicenseService {
       },
       historyEvent: {
         eventType: LicenseHistoryEventTypeEnum.EXTEND,
-        targetEntityType: UserTypeEnums.NORMAL,
+        targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
         previousStatus: license.status,
         previousExpiresAt: license.expiresAt,
         remarks: `License extended by ${durationDays} days via plan: ${plan.name}`,
@@ -775,8 +786,214 @@ export class LicenseService {
       userId: input.resellerId,
       resellerId: input.resellerId,
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
-      historyTargetEntityType: UserTypeEnums.RESELLER,
+      historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
     });
+  }
+
+  async generateRedemptionCode(
+    input: GenerateRedemptionCodeServiceInput,
+  ): Promise<GenerateRedemptionCodeServiceResult> {
+    const { licenseIds, redeemExpiresAt, remarks } = input.dto;
+
+    const ownedAvailable = await this.licenseRepository.findOwnedAvailableLicenses({
+      resellerId: input.resellerId,
+      licenseIds,
+    });
+
+    if (ownedAvailable.length !== licenseIds.length) {
+      throw new AppError(
+        "One or more selected licenses are unavailable or not owned by you",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const blockedLicenseIds =
+      await this.licenseRepository.findLicenseIdsWithActiveRedemption({
+        licenseIds,
+      });
+    if (blockedLicenseIds.length > 0) {
+      throw new AppError(
+        "One or more selected licenses already have an active redemption code",
+        { statusCode: HttpStatusCodes.CONFLICT },
+      );
+    }
+
+    const items = await Promise.all(
+      ownedAvailable.map(async (license) => {
+        const snapshot = await this.licenseRepository.findLatestPurchaseSnapshot(
+          license.id,
+        );
+        if (!snapshot) {
+          throw new AppError(
+            `No purchase record found for license ${license.id}`,
+            { statusCode: HttpStatusCodes.BAD_REQUEST },
+          );
+        }
+        return {
+          licenseId: license.id,
+          basePrice: snapshot.baseUnitPrice,
+          // Not known until the reseller verifies the code after it's claimed.
+          soldPrice: null,
+          currency: snapshot.currency,
+          durationDays: snapshot.durationDays,
+        };
+      }),
+    );
+
+    const plaintextCode = generateReadableLicenseKey("RDM");
+    const encryptedCode = encryptData(plaintextCode, env.LICENSE_ENCRYPTION_KEY);
+    const codeHash = hashSha256(plaintextCode);
+
+    const created = await this.licenseRepository.createRedemptionCode({
+      resellerId: input.resellerId,
+      redeemCode: encryptedCode,
+      redeemCodeHash: codeHash,
+      status: LicenseRedemptionStatusEnum.GENERATED,
+      redeemExpiresAt,
+      remarks,
+      createdBy: input.resellerId,
+      updatedBy: input.resellerId,
+      items,
+    });
+
+    return {
+      redemptionCode: { ...created, redeemCode: plaintextCode },
+    };
+  }
+
+  async getRedemptionCodesForReseller(
+    input: GetRedemptionCodesForResellerServiceInput,
+  ): Promise<GetRedemptionCodesForResellerServiceResult> {
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { redemptionCodes: rows, total } =
+      await this.licenseRepository.findRedemptionCodesByReseller({
+        resellerId: input.resellerId,
+        page,
+        limit,
+        search: input.filters.search,
+        status: input.filters.status,
+        sortBy: input.filters.sortBy,
+        sortOrder: input.filters.sortOrder,
+      });
+
+    const decryptedRows = rows.map((row) => ({
+      ...row,
+      redeemCode: decryptData(row.redeemCode, env.LICENSE_ENCRYPTION_KEY),
+    }));
+
+    return {
+      redemptionCodes: decryptedRows,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getRedemptionCodeDetailsForReseller(
+    input: GetRedemptionCodeDetailsForResellerServiceInput,
+  ): Promise<GetRedemptionCodeDetailsForResellerServiceResult> {
+    const details = await this.licenseRepository.findRedemptionCodeDetailsById({
+      id: input.redemptionId,
+      resellerId: input.resellerId,
+    });
+
+    if (!details) {
+      throw new AppError("Redemption code not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return {
+      redemptionCode: {
+        ...details.code,
+        redeemCode: decryptData(details.code.redeemCode, env.LICENSE_ENCRYPTION_KEY),
+        items: details.items.map((item) => ({
+          ...item,
+          licenseKey: decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+        })),
+      },
+    };
+  }
+
+  async verifyRedemptionCode(
+    input: VerifyRedemptionCodeServiceInput,
+  ): Promise<VerifyRedemptionCodeServiceResult> {
+    const { totalSoldPrice, currency, items } = input.dto;
+
+    const details = await this.licenseRepository.findRedemptionCodeDetailsById({
+      id: input.redemptionId,
+      resellerId: input.resellerId,
+    });
+
+    if (!details) {
+      throw new AppError("Redemption code not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const bundledLicenseIds = new Set(details.items.map((item) => item.licenseId));
+    const submittedLicenseIds = new Set(items.map((item) => item.licenseId));
+    const sameLicenseSet =
+      bundledLicenseIds.size === submittedLicenseIds.size &&
+      [...bundledLicenseIds].every((id) => submittedLicenseIds.has(id));
+
+    if (!sameLicenseSet) {
+      throw new AppError(
+        "Submitted licenses do not match this redemption code's bundled licenses",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const itemsSum = items.reduce((sum, item) => sum + item.soldPrice, 0);
+    if (Math.abs(itemsSum - totalSoldPrice) > 0.01) {
+      throw new AppError(
+        "Per-license sold prices must add up to the total sold price",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const verified = await this.licenseRepository.verifyRedemptionCode({
+      id: input.redemptionId,
+      resellerId: input.resellerId,
+      totalSoldPrice: totalSoldPrice.toFixed(2),
+      currency,
+      items: items.map((item) => ({
+        licenseId: item.licenseId,
+        soldPrice: item.soldPrice.toFixed(2),
+      })),
+    });
+
+    if (!verified) {
+      throw new AppError(
+        "Redemption code is not in a claimed state and cannot be verified",
+        { statusCode: HttpStatusCodes.CONFLICT, code: ErrorCodes.RESOURCE_NOT_FOUND },
+      );
+    }
+
+    return true;
+  }
+
+  async revokeRedemptionCode(
+    input: RevokeRedemptionCodeServiceInput,
+  ): Promise<RevokeRedemptionCodeServiceResult> {
+    const revoked = await this.licenseRepository.revokeRedemptionCode({
+      id: input.redemptionId,
+      resellerId: input.resellerId,
+    });
+
+    if (!revoked) {
+      throw new AppError(
+        "Redemption code not found or already claimed/revoked",
+        { statusCode: HttpStatusCodes.CONFLICT, code: ErrorCodes.RESOURCE_NOT_FOUND },
+      );
+    }
+
+    return true;
   }
 
   private async _checkLicenseOwnedByReseller(
@@ -878,7 +1095,7 @@ export class LicenseService {
         await this._createLicenseHistory({
           licenseId: license.id,
           eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
-          targetEntityType: UserTypeEnums.NORMAL,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
           previousStatus: LicenseStatusEnum.ACTIVE,
           newStatus: LicenseStatusEnum.EXPIRED,
           previousExpiresAt: expiresAtDate,
@@ -898,7 +1115,7 @@ export class LicenseService {
       await this._createLicenseHistory({
         licenseId: license.id,
         eventType: LicenseHistoryEventTypeEnum.GRACE_PERIOD,
-        targetEntityType: UserTypeEnums.NORMAL,
+        targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
         previousStatus: LicenseStatusEnum.ACTIVE,
         newStatus: LicenseStatusEnum.GRACE_PERIOD,
         previousExpiresAt: expiresAtDate,
@@ -923,7 +1140,7 @@ export class LicenseService {
         await this._createLicenseHistory({
           licenseId: license.id,
           eventType: LicenseHistoryEventTypeEnum.EXPIRATION,
-          targetEntityType: UserTypeEnums.NORMAL,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
           previousStatus: LicenseStatusEnum.GRACE_PERIOD,
           newStatus: LicenseStatusEnum.EXPIRED,
           previousExpiresAt: expiresAtDate,
@@ -1079,7 +1296,7 @@ export class LicenseService {
     await this._createLicenseHistory({
       licenseId: license.id,
       eventType: LicenseHistoryEventTypeEnum.ACTIVATION,
-      targetEntityType: UserTypeEnums.NORMAL,
+      targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
       previousStatus: license.status,
       newStatus: LicenseStatusEnum.ACTIVE,
       previousExpiresAt: license.expiresAt,

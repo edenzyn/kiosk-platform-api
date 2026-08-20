@@ -1,0 +1,2 @@
+ALTER TABLE "license_redemption_items" DROP CONSTRAINT "license_redemption_items_license_id_unique";--> statement-breakpoint
+ALTER TABLE "license_redemption_items" ALTER COLUMN "sold_price" DROP NOT NULL;

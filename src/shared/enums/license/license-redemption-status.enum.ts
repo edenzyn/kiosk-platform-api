@@ -3,4 +3,5 @@ export enum LicenseRedemptionStatusEnum {
   CLAIMED = 2,
   REVOKED = 3,
   EXPIRED = 4,
+  VERIFIED = 5,
 }

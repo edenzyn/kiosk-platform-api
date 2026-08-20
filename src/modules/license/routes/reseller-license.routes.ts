@@ -45,6 +45,49 @@ resellerLicenseRouter.post(
   licenseController.purchaseLicenseAsReseller,
 );
 
+resellerLicenseRouter
+  .route("/redemption-codes")
+  .get(
+    accessMiddleware(
+      { reseller: [UserPermissions.RESELLER_BASIC] },
+      UserTypeEnums.RESELLER,
+    ),
+    licenseController.getRedemptionCodesForReseller,
+  )
+  .post(
+    accessMiddleware(
+      { reseller: [UserPermissions.RESELLER_BASIC] },
+      UserTypeEnums.RESELLER,
+    ),
+    licenseController.generateRedemptionCode,
+  );
+
+resellerLicenseRouter
+  .route("/redemption-codes/:id")
+  .get(
+    accessMiddleware(
+      { reseller: [UserPermissions.RESELLER_BASIC] },
+      UserTypeEnums.RESELLER,
+    ),
+    licenseController.getRedemptionCodeDetails,
+  )
+  .delete(
+    accessMiddleware(
+      { reseller: [UserPermissions.RESELLER_BASIC] },
+      UserTypeEnums.RESELLER,
+    ),
+    licenseController.revokeRedemptionCode,
+  );
+
+resellerLicenseRouter.patch(
+  "/redemption-codes/:id/verify",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.verifyRedemptionCode,
+);
+
 resellerLicenseRouter.get(
   "/:id/history",
   accessMiddleware(

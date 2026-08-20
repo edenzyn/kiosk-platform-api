@@ -6,7 +6,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
+import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { licenseTransactions } from "./license-transaction.schema";
 import { users } from "../../user/schemas/user.schema";
 import { licenses } from "./license.schema";
@@ -17,12 +17,9 @@ export const licenseHistory = pgTable("license_history", {
     .notNull()
     .references((): AnyPgColumn => licenses.id),
   eventType: smallint("event_type").notNull(),
-  // UserTypeEnums - which audience this row belongs to (org vs reseller vs
-  // platform), so the same table can be filtered per portal when listing
-  // history. Not who performed it - that's performedBy.
   targetEntityType: smallint("target_entity_type")
     .notNull()
-    .default(UserTypeEnums.NORMAL),
+    .default(LicenseHistoryTargetEntityTypeEnum.NORMAL),
   previousStatus: smallint("previous_status"),
   newStatus: smallint("new_status"),
   previousExpiresAt: timestamp("previous_expires_at", { withTimezone: true }),

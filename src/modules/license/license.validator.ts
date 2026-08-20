@@ -2,6 +2,7 @@ import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
+import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
 export const LicenseValidator = {
@@ -231,6 +232,74 @@ export const LicenseValidator = {
   licenseIdParam: yup
     .object({
       id: yup.string().uuid("Invalid license ID").required("License ID is required"),
+    })
+    .noUnknown(),
+  generateRedemptionCode: yup
+    .object({
+      licenseIds: yup
+        .array()
+        .of(yup.string().uuid().required())
+        .min(1, "Select at least one license")
+        .required("At least one license is required"),
+      redeemExpiresAt: yup.date().nullable().optional(),
+      remarks: yup.string().trim().max(500, "Remarks cannot exceed 500 characters").optional(),
+    })
+    .noUnknown(),
+  verifyRedemptionCode: yup
+    .object({
+      totalSoldPrice: yup
+        .number()
+        .typeError("Total sold price must be a number")
+        .min(0, "Total sold price cannot be negative")
+        .required("Total sold price is required"),
+      currency: yup
+        .string()
+        .trim()
+        .uppercase()
+        .length(3, "Currency must be a 3-letter ISO code")
+        .required("Currency is required"),
+      items: yup
+        .array()
+        .of(
+          yup
+            .object({
+              licenseId: yup.string().uuid().required(),
+              soldPrice: yup
+                .number()
+                .typeError("Sold price must be a number")
+                .min(0, "Sold price cannot be negative")
+                .required("Sold price is required"),
+            })
+            .required(),
+        )
+        .min(1, "At least one license price is required")
+        .required("Item prices are required"),
+    })
+    .noUnknown(),
+  getRedemptionCodesQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().optional().trim(),
+      status: yup
+        .number()
+        .typeError("Status must be a number")
+        .oneOf(Object.values(LicenseRedemptionStatusEnum) as number[], "Invalid status")
+        .optional(),
+      sortBy: yup
+        .string()
+        .oneOf(["generatedAt", "redeemExpiresAt", "status"])
+        .optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
+    })
+    .noUnknown(),
+  redemptionCodeIdParam: yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid redemption code ID")
+        .required("Redemption code ID is required"),
     })
     .noUnknown(),
 };

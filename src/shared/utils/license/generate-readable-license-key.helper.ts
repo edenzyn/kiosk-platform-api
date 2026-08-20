@@ -1,7 +1,7 @@
 import * as crypto from "crypto";
 import { HASH_ALPHABET_CODE } from "../core/crypto.helper";
 
-export function generateReadableLicenseKey(): string {
+export function generateReadableLicenseKey(prefix: string = "LIC"): string {
   const generateSegment = (length: number) => {
     let result = "";
     const randomBytes = crypto.randomBytes(length);
@@ -13,5 +13,5 @@ export function generateReadableLicenseKey(): string {
     }
     return result;
   };
-  return `LIC-${generateSegment(5)}-${generateSegment(5)}-${generateSegment(5)}`;
+  return `${prefix}-${generateSegment(5)}-${generateSegment(5)}-${generateSegment(5)}`;
 }

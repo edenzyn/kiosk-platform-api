@@ -11,4 +11,5 @@ export enum LicenseHistoryEventTypeEnum {
   REDEEMED = 10,
   REDEEM_CODE_REVOKED = 11,
   REDEEM_CODE_EXPIRED = 12,
+  REDEMPTION_VERIFIED = 13,
 }

@@ -66,6 +66,8 @@ import type {
   PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
+  RedeemLicenseCodeServiceInput,
+  RedeemLicenseCodeServiceResult,
   RevokeRedemptionCodeServiceInput,
   RevokeRedemptionCodeServiceResult,
   ToggleDiscountRuleStatusServiceInput,
@@ -258,6 +260,77 @@ export class LicenseService {
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
     });
+  }
+
+  async redeemLicenseCode(
+    input: RedeemLicenseCodeServiceInput,
+  ): Promise<RedeemLicenseCodeServiceResult> {
+    const codeHash = hashSha256(input.dto.redeemCode.trim());
+
+    const existing = await this.licenseRepository.findRedemptionCodeByHash({
+      redeemCodeHash: codeHash,
+    });
+
+    if (!existing) {
+      throw new AppError("Invalid redeem code.", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (existing.status !== LicenseRedemptionStatusEnum.GENERATED) {
+      const messages: Partial<Record<number, string>> = {
+        [LicenseRedemptionStatusEnum.CLAIMED]:
+          "This code has already been redeemed.",
+        [LicenseRedemptionStatusEnum.VERIFIED]:
+          "This code has already been redeemed.",
+        [LicenseRedemptionStatusEnum.REVOKED]:
+          "This code has been revoked.",
+        [LicenseRedemptionStatusEnum.EXPIRED]: "This code has expired.",
+      };
+      throw new AppError(
+        messages[existing.status] ?? "This code can no longer be redeemed.",
+        { statusCode: HttpStatusCodes.CONFLICT },
+      );
+    }
+
+    if (
+      existing.redeemExpiresAt &&
+      new Date(existing.redeemExpiresAt) < new Date()
+    ) {
+      throw new AppError("This code has expired.", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const result = await this.licenseRepository.claimRedemptionCode({
+      redeemCodeHash: codeHash,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
+      claimedByUserId: input.userId,
+    });
+
+    if (!result.ok) {
+      if (result.reason === "licenses_unavailable") {
+        throw new AppError(
+          "One or more licenses in this code are no longer available.",
+          { statusCode: HttpStatusCodes.CONFLICT },
+        );
+      }
+      throw new AppError(
+        "This code was just redeemed or is no longer valid.",
+        { statusCode: HttpStatusCodes.CONFLICT },
+      );
+    }
+
+    const decryptedLicenses = result.licenses.map(
+      ({ createdBy, updatedBy, ...rest }) => ({
+        ...rest,
+        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+      }),
+    );
+
+    return { licenses: decryptedLicenses };
   }
 
   async assignLicenseToBranch(

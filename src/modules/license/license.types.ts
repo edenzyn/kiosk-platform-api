@@ -75,6 +75,18 @@ export interface PurchaseLicenseServiceResult {
   licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
 }
 
+export interface RedeemLicenseCodeServiceInput {
+  dto: {
+    redeemCode: string;
+  };
+  effectiveTenant: EffectiveTenant;
+  userId: string;
+}
+
+export interface RedeemLicenseCodeServiceResult {
+  licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
+}
+
 // ========================================
 // ? RESELLER CLIENT SERVICES
 // ========================================
@@ -532,6 +544,21 @@ export interface VerifyRedemptionCodeRepoInput {
   items: Array<{ licenseId: string; soldPrice: string }>;
 }
 export type VerifyRedemptionCodeRepoResult = boolean;
+
+export interface FindRedemptionCodeByHashRepoInput {
+  redeemCodeHash: string;
+}
+export type FindRedemptionCodeByHashRepoResult = LicenseRedemptionCodeEntity | null;
+
+export interface ClaimRedemptionCodeRepoInput {
+  redeemCodeHash: string;
+  organizationId: string;
+  branchId: string | null;
+  claimedByUserId: string;
+}
+export type ClaimRedemptionCodeRepoResult =
+  | { ok: true; licenses: LicenseEntity[] }
+  | { ok: false; reason: "not_claimable" | "licenses_unavailable" };
 
 export type FindLatestPurchaseSnapshotRepoResult = {
   durationDays: number;

@@ -39,6 +39,11 @@ export const LicenseValidator = {
       pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
     })
     .noUnknown(),
+  redeemLicenseCode: yup
+    .object({
+      redeemCode: yup.string().trim().required("Redeem code is required"),
+    })
+    .noUnknown(),
   assignToBranch: yup
     .object({
       branchId: yup.string().uuid().required("Branch ID is required"),

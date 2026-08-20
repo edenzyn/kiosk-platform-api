@@ -47,6 +47,22 @@ export class LicenseController {
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
+  redeemLicenseCode = async (req: Request, res: Response): Promise<void> => {
+    const data = await LicenseValidator.redeemLicenseCode.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.redeemLicenseCode({
+      dto: data,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      userId: user.id,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   assignLicenseToBranch = async (
     req: Request,
     res: Response,

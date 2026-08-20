@@ -49,6 +49,15 @@ userLicenseRouter.post(
 );
 
 userLicenseRouter.post(
+  "/redeem",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.redeemLicenseCode,
+);
+
+userLicenseRouter.post(
   "/:id/assign-branch",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],

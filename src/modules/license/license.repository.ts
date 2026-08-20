@@ -31,6 +31,8 @@ import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type {
   ActivateLicenseRepoInput,
   ActivateLicenseRepoResult,
+  ClaimRedemptionCodeRepoInput,
+  ClaimRedemptionCodeRepoResult,
   CreateDiscountRuleWithTargetsRepoInput,
   CreateDiscountRuleWithTargetsRepoResult,
   CreateLicenseHistoryRepoInput,
@@ -78,6 +80,8 @@ import type {
   FindPaginatedDiscountRulesRepoResult,
   FindPricingPlansPaginatedRepoInput,
   FindPricingPlansPaginatedRepoResult,
+  FindRedemptionCodeByHashRepoInput,
+  FindRedemptionCodeByHashRepoResult,
   FindRedemptionCodeByIdRepoInput,
   FindRedemptionCodeByIdRepoResult,
   FindRedemptionCodesByResellerRepoInput,
@@ -104,7 +108,7 @@ import { licenseRedemptionItems } from "./schemas/license-redemption-item.schema
 import { licenseResellerMapper } from "./schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "./schemas/license-transaction-item.schema";
 import { licenseTransactions } from "./schemas/license-transaction.schema";
-import { licenses } from "./schemas/license.schema";
+import { licenses, type LicenseEntity } from "./schemas/license.schema";
 
 export class LicenseRepository {
   constructor(private readonly database: Database) {}
@@ -1377,6 +1381,104 @@ export class LicenseRepository {
       }
 
       return revoked;
+    });
+  }
+
+  async findRedemptionCodeByHash(
+    input: FindRedemptionCodeByHashRepoInput,
+  ): Promise<FindRedemptionCodeByHashRepoResult> {
+    const [code] = await this.database.client
+      .select()
+      .from(licenseRedemptionCodes)
+      .where(eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash))
+      .limit(1);
+
+    return code || null;
+  }
+
+  async claimRedemptionCode(
+    input: ClaimRedemptionCodeRepoInput,
+  ): Promise<ClaimRedemptionCodeRepoResult> {
+    return this.database.client.transaction(async (tx): Promise<ClaimRedemptionCodeRepoResult> => {
+      const [claimed] = await tx
+        .update(licenseRedemptionCodes)
+        .set({
+          status: LicenseRedemptionStatusEnum.CLAIMED,
+          claimedAt: new Date(),
+          claimedByOrganizationId: input.organizationId,
+          claimedByUserId: input.claimedByUserId,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash),
+            eq(licenseRedemptionCodes.status, LicenseRedemptionStatusEnum.GENERATED),
+            or(
+              isNull(licenseRedemptionCodes.redeemExpiresAt),
+              gt(licenseRedemptionCodes.redeemExpiresAt, new Date()),
+            ),
+          ),
+        )
+        .returning();
+
+      if (!claimed) return { ok: false, reason: "not_claimable" };
+
+      const items = await tx
+        .select({ licenseId: licenseRedemptionItems.licenseId })
+        .from(licenseRedemptionItems)
+        .where(eq(licenseRedemptionItems.redemptionId, claimed.id));
+
+      const claimedLicenses: LicenseEntity[] = [];
+      for (const item of items) {
+        const [updatedLicense] = await tx
+          .update(licenses)
+          .set({
+            organizationId: input.organizationId,
+            branchId: input.branchId,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(licenses.id, item.licenseId),
+              eq(licenses.status, LicenseStatusEnum.AVAILABLE),
+            ),
+          )
+          .returning();
+
+        if (!updatedLicense) {
+          throw new Error("LICENSES_UNAVAILABLE");
+        }
+        claimedLicenses.push(updatedLicense);
+      }
+
+      await tx
+        .update(licenseResellerMapper)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(
+          inArray(
+            licenseResellerMapper.licenseId,
+            items.map((item) => item.licenseId),
+          ),
+        );
+
+      for (const license of claimedLicenses) {
+        await tx.insert(licenseHistory).values({
+          licenseId: license.id,
+          eventType: LicenseHistoryEventTypeEnum.REDEEMED,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
+          previousStatus: LicenseStatusEnum.AVAILABLE,
+          newStatus: LicenseStatusEnum.AVAILABLE,
+          performedBy: input.claimedByUserId,
+          remarks: "License redeemed via redemption code",
+        });
+      }
+
+      return { ok: true, licenses: claimedLicenses };
+    }).catch((error) => {
+      if (error instanceof Error && error.message === "LICENSES_UNAVAILABLE") {
+        return { ok: false, reason: "licenses_unavailable" };
+      }
+      throw error;
     });
   }
 

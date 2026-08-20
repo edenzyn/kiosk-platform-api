@@ -2,7 +2,7 @@ import { container } from "../../../config/container";
 import { env } from "../../../config/env";
 import type { ScheduledJob } from "../../../jobs/scheduler";
 import { logger } from "../../../shared/utils/core/logger";
-import type { LicenseService } from "../license.service";
+import type { LicenseService } from "../services/license.service";
 
 export async function checkLicenseStatusTask(
   licenseService?: LicenseService,

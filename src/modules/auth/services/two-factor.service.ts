@@ -77,7 +77,7 @@ export class TwoFactorService {
     }
 
     if (!user.mobile) {
-      throw new AppError("No phone number on file for WhatsApp verification.", {
+      throw new AppError("No phone number linked to your account", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
       });
     }

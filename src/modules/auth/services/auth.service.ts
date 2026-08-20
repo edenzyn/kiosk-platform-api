@@ -30,7 +30,7 @@ import {
 } from "../../../shared/utils/auth/auth-session.helper";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { DeviceRepository } from "../../device/device.repository";
-import type { LicenseService } from "../../license/license.service";
+import type { LicenseService } from "../../license/services/license.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";
 import type { UserInvitationEntity } from "../../user/schemas/user-invitations.schema";

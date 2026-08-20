@@ -5,11 +5,19 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
-import type { LicenseService } from "./license.service";
 import { LicenseValidator } from "./license.validator";
+import type { LicenseDiscountService } from "./services/license-discount.service";
+import type { LicensePricingService } from "./services/license-pricing.service";
+import type { LicenseRedemptionService } from "./services/license-redemption.service";
+import type { LicenseService } from "./services/license.service";
 
 export class LicenseController {
-  constructor(private readonly licenseService: LicenseService) {}
+  constructor(
+    private readonly licenseService: LicenseService,
+    private readonly licensePricingService: LicensePricingService,
+    private readonly licenseDiscountService: LicenseDiscountService,
+    private readonly licenseRedemptionService: LicenseRedemptionService,
+  ) {}
 
   // ========================================
   // ? USER CLIENT APIS
@@ -54,7 +62,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.redeemLicenseCode({
+    const result = await this.licenseRedemptionService.redeemLicenseCode({
       dto: data,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       userId: user.id,
@@ -129,14 +137,14 @@ export class LicenseController {
       },
     );
 
-    const result = await this.licenseService.getLicensePricingPlans({
+    const result = await this.licensePricingService.getLicensePricingPlans({
       id: query.id,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
   getDiscountRules = async (_req: Request, res: Response): Promise<void> => {
-    const result = await this.licenseService.getDiscountRules({
+    const result = await this.licenseDiscountService.getDiscountRules({
       targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
     });
     res.status(HttpStatusCodes.OK).json(result);
@@ -154,7 +162,7 @@ export class LicenseController {
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.licenseService.getPlatformDiscountRules({
+    const result = await this.licenseDiscountService.getPlatformDiscountRules({
       query,
     });
     res.status(HttpStatusCodes.OK).json(result);
@@ -167,7 +175,7 @@ export class LicenseController {
     });
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licenseService.createDiscountRule({
+    const result = await this.licenseDiscountService.createDiscountRule({
       dto,
       currentUser,
     });
@@ -184,7 +192,7 @@ export class LicenseController {
     );
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licenseService.toggleDiscountRuleStatus({
+    const result = await this.licenseDiscountService.toggleDiscountRuleStatus({
       ruleId: params.id,
       currentUser,
     });
@@ -200,7 +208,7 @@ export class LicenseController {
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.licenseService.getPlatformPricingPlans({
+    const result = await this.licensePricingService.getPlatformPricingPlans({
       query,
     });
     res.status(HttpStatusCodes.OK).json(result);
@@ -213,7 +221,7 @@ export class LicenseController {
     });
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licenseService.createPricingPlan({
+    const result = await this.licensePricingService.createPricingPlan({
       dto,
       currentUser,
     });
@@ -230,7 +238,7 @@ export class LicenseController {
     );
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licenseService.togglePricingPlanStatus({
+    const result = await this.licensePricingService.togglePricingPlanStatus({
       planId: params.id,
       currentUser,
     });
@@ -248,7 +256,7 @@ export class LicenseController {
     });
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licenseService.updatePricingPlan({
+    const result = await this.licensePricingService.updatePricingPlan({
       planId: params.id,
       dto,
       currentUser,
@@ -334,7 +342,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.generateRedemptionCode({
+    const result = await this.licenseRedemptionService.generateRedemptionCode({
       resellerId: user.id,
       dto: data,
     });
@@ -352,7 +360,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.getRedemptionCodesForReseller({
+    const result = await this.licenseRedemptionService.getRedemptionCodesForReseller({
       resellerId: user.id,
       filters: queryDto,
     });
@@ -367,7 +375,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    await this.licenseService.revokeRedemptionCode({
+    await this.licenseRedemptionService.revokeRedemptionCode({
       resellerId: user.id,
       redemptionId: params.id,
     });
@@ -385,7 +393,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.getRedemptionCodeDetailsForReseller({
+    const result = await this.licenseRedemptionService.getRedemptionCodeDetailsForReseller({
       resellerId: user.id,
       redemptionId: params.id,
     });
@@ -404,7 +412,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    await this.licenseService.verifyRedemptionCode({
+    await this.licenseRedemptionService.verifyRedemptionCode({
       resellerId: user.id,
       redemptionId: params.id,
       dto: data,
@@ -417,7 +425,7 @@ export class LicenseController {
     _req: Request,
     res: Response,
   ): Promise<void> => {
-    const result = await this.licenseService.getDiscountRules({
+    const result = await this.licenseDiscountService.getDiscountRules({
       targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
     });
     res.status(HttpStatusCodes.OK).json(result);

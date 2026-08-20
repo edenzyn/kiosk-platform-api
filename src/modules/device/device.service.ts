@@ -3,7 +3,7 @@ import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.
 import { AppError } from "../../shared/errors/app-error";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
-import type { LicenseService } from "../license/license.service";
+import type { LicenseService } from "../license/services/license.service";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
 import type {

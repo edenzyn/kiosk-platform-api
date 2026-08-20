@@ -1,23 +1,24 @@
 import dayjs from "dayjs";
-import { env } from "../../config/env";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
-import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
-import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
-import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
-import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
-import { LicenseTransactionActionTypeEnum } from "../../shared/enums/license/license-transaction-action-type.enum";
-import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { env } from "../../../config/env";
+import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
+import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/license-history-event-type.enum";
+import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
+import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
+import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
+import { AppError } from "../../../shared/errors/app-error";
 import {
   decryptData,
   encryptData,
   hashSha256,
-} from "../../shared/utils/core/crypto.helper";
-import { calculateLicensePurchasePricing } from "../../shared/utils/license/calculate-license-purchase-pricing.helper";
-import { generateReadableLicenseKey } from "../../shared/utils/license/generate-readable-license-key.helper";
-import type { LicenseRepository } from "./license.repository";
+} from "../../../shared/utils/core/crypto.helper";
+import { calculateLicensePurchasePricing } from "../../../shared/utils/license/calculate-license-purchase-pricing.helper";
+import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
+import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
+import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
+import type { LicenseRepository } from "../repositories/license.repository";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
@@ -27,17 +28,9 @@ import type {
   AssignLicenseToDeviceServiceResult,
   CheckLicenseStatusServiceInput,
   CheckLicenseStatusServiceResult,
-  CreateDiscountRuleServiceInput,
-  CreateDiscountRuleServiceResult,
   CreateLicenseHistoryRepoInput,
-  CreatePricingPlanServiceInput,
-  CreatePricingPlanServiceResult,
   ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
-  GenerateRedemptionCodeServiceInput,
-  GenerateRedemptionCodeServiceResult,
-  GetDiscountRulesServiceInput,
-  GetDiscountRulesServiceResult,
   GetLicenseDetailsForResellerServiceInput,
   GetLicenseDetailsForResellerServiceResult,
   GetLicenseDetailsServiceInput,
@@ -48,41 +41,23 @@ import type {
   GetLicenseHistoryForResellerServiceResult,
   GetLicenseHistoryServiceInput,
   GetLicenseHistoryServiceResult,
-  GetLicensePricingPlansServiceInput,
-  GetLicensePricingPlansServiceResult,
   GetLicensesForResellerServiceInput,
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
-  GetPlatformDiscountRulesServiceInput,
-  GetPlatformDiscountRulesServiceResult,
-  GetPlatformPricingPlansServiceInput,
-  GetPlatformPricingPlansServiceResult,
-  GetRedemptionCodeDetailsForResellerServiceInput,
-  GetRedemptionCodeDetailsForResellerServiceResult,
-  GetRedemptionCodesForResellerServiceInput,
-  GetRedemptionCodesForResellerServiceResult,
   PurchaseLicenseAsResellerServiceInput,
   PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
-  RedeemLicenseCodeServiceInput,
-  RedeemLicenseCodeServiceResult,
-  RevokeRedemptionCodeServiceInput,
-  RevokeRedemptionCodeServiceResult,
-  ToggleDiscountRuleStatusServiceInput,
-  ToggleDiscountRuleStatusServiceResult,
-  TogglePricingPlanStatusServiceInput,
-  TogglePricingPlanStatusServiceResult,
-  UpdatePricingPlanServiceInput,
-  UpdatePricingPlanServiceResult,
-  VerifyRedemptionCodeServiceInput,
-  VerifyRedemptionCodeServiceResult,
-} from "./license.types";
-import type { LicenseEntity } from "./schemas/license.schema";
+} from "../license.types";
+import type { LicenseEntity } from "../schemas/license.schema";
 
 export class LicenseService {
-  constructor(private readonly licenseRepository: LicenseRepository) {}
+  constructor(
+    private readonly licenseRepository: LicenseRepository,
+    private readonly licensePricingRepository: LicensePricingRepository,
+    private readonly licenseDiscountRepository: LicenseDiscountRepository,
+  ) {}
 
   private async _checkActiveLicenseExists(
     deviceId: string,
@@ -110,10 +85,10 @@ export class LicenseService {
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
 
-    const plansResult = await this.getLicensePricingPlans({
+    const plans = await this.licensePricingRepository.findPricingPlans({
       id: params.pricingPlanId,
     });
-    const selectedPlan = plansResult.plans[0];
+    const selectedPlan = plans[0];
 
     if (!selectedPlan) {
       throw new AppError("Selected pricing plan not found", {
@@ -125,7 +100,7 @@ export class LicenseService {
     const basePrice = Number(selectedPlan.price);
     const currency = selectedPlan.currency;
 
-    const rules = await this.licenseRepository.findActiveDiscountRules({
+    const rules = await this.licenseDiscountRepository.findActiveDiscountRules({
       targetEntity: params.discountTargetEntity,
     });
 
@@ -262,77 +237,6 @@ export class LicenseService {
     });
   }
 
-  async redeemLicenseCode(
-    input: RedeemLicenseCodeServiceInput,
-  ): Promise<RedeemLicenseCodeServiceResult> {
-    const codeHash = hashSha256(input.dto.redeemCode.trim());
-
-    const existing = await this.licenseRepository.findRedemptionCodeByHash({
-      redeemCodeHash: codeHash,
-    });
-
-    if (!existing) {
-      throw new AppError("Invalid redeem code.", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    if (existing.status !== LicenseRedemptionStatusEnum.GENERATED) {
-      const messages: Partial<Record<number, string>> = {
-        [LicenseRedemptionStatusEnum.CLAIMED]:
-          "This code has already been redeemed.",
-        [LicenseRedemptionStatusEnum.VERIFIED]:
-          "This code has already been redeemed.",
-        [LicenseRedemptionStatusEnum.REVOKED]:
-          "This code has been revoked.",
-        [LicenseRedemptionStatusEnum.EXPIRED]: "This code has expired.",
-      };
-      throw new AppError(
-        messages[existing.status] ?? "This code can no longer be redeemed.",
-        { statusCode: HttpStatusCodes.CONFLICT },
-      );
-    }
-
-    if (
-      existing.redeemExpiresAt &&
-      new Date(existing.redeemExpiresAt) < new Date()
-    ) {
-      throw new AppError("This code has expired.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    const result = await this.licenseRepository.claimRedemptionCode({
-      redeemCodeHash: codeHash,
-      organizationId: input.effectiveTenant.organizationId,
-      branchId: input.effectiveTenant.branchId || null,
-      claimedByUserId: input.userId,
-    });
-
-    if (!result.ok) {
-      if (result.reason === "licenses_unavailable") {
-        throw new AppError(
-          "One or more licenses in this code are no longer available.",
-          { statusCode: HttpStatusCodes.CONFLICT },
-        );
-      }
-      throw new AppError(
-        "This code was just redeemed or is no longer valid.",
-        { statusCode: HttpStatusCodes.CONFLICT },
-      );
-    }
-
-    const decryptedLicenses = result.licenses.map(
-      ({ createdBy, updatedBy, ...rest }) => ({
-        ...rest,
-        licenseKey: decryptData(rest.licenseKey, env.LICENSE_ENCRYPTION_KEY),
-      }),
-    );
-
-    return { licenses: decryptedLicenses };
-  }
-
   async assignLicenseToBranch(
     input: AssignLicenseToBranchServiceInput,
   ): Promise<AssignLicenseToBranchServiceResult> {
@@ -454,206 +358,6 @@ export class LicenseService {
     };
   }
 
-  async getLicensePricingPlans(
-    input: GetLicensePricingPlansServiceInput,
-  ): Promise<GetLicensePricingPlansServiceResult> {
-    const plans = await this.licenseRepository.findPricingPlans({
-      id: input.id,
-    });
-    return { plans };
-  }
-
-  async getDiscountRules(
-    input: GetDiscountRulesServiceInput,
-  ): Promise<GetDiscountRulesServiceResult> {
-    const rules = await this.licenseRepository.findActiveDiscountRules({
-      targetEntity: input.targetEntity,
-    });
-    return { rules };
-  }
-
-  // ========================================
-  // ? PLATFORM CLIENT SERVICES (Discount Rules & Pricing)
-  // ========================================
-  async getPlatformDiscountRules(
-    input: GetPlatformDiscountRulesServiceInput,
-  ): Promise<GetPlatformDiscountRulesServiceResult> {
-    const { page = 1, limit = 10, search, targetEntity, isActive, sortBy, sortOrder } =
-      input.query;
-
-    const { rules, total } = await this.licenseRepository.findPaginatedDiscountRules(
-      { page, limit, search, targetEntity, isActive, sortBy, sortOrder },
-    );
-
-    const individualRuleIdsByEntity = new Map<number, string[]>();
-    for (const rule of rules) {
-      if (
-        rule.targetEntity ===
-          LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL ||
-        rule.targetEntity ===
-          LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
-      ) {
-        const existing = individualRuleIdsByEntity.get(rule.targetEntity) ?? [];
-        existing.push(rule.id);
-        individualRuleIdsByEntity.set(rule.targetEntity, existing);
-      }
-    }
-
-    const targetsByRuleId = new Map<string, { id: string; name: string }[]>();
-    for (const [targetEntity, ruleIds] of individualRuleIdsByEntity) {
-      const targets = await this.licenseRepository.findDiscountRuleTargets({
-        ruleIds,
-        targetEntity,
-      });
-      for (const [ruleId, ruleTargets] of targets) {
-        targetsByRuleId.set(ruleId, ruleTargets);
-      }
-    }
-
-    const rulesWithTargets = rules.map((rule) => ({
-      ...rule,
-      targets: targetsByRuleId.get(rule.id) ?? [],
-    }));
-
-    return {
-      rules: rulesWithTargets,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-  }
-
-  async createDiscountRule(
-    input: CreateDiscountRuleServiceInput,
-  ): Promise<CreateDiscountRuleServiceResult> {
-    const { dto, currentUser } = input;
-
-    const rule = await this.licenseRepository.createDiscountRuleWithTargets({
-      name: dto.name,
-      targetEntity: dto.targetEntity,
-      discountType: dto.discountType,
-      discountValue: dto.discountValue,
-      minQuantity: dto.minQuantity,
-      maxQuantity: dto.maxQuantity,
-      startsAt: dto.startsAt,
-      endsAt: dto.endsAt,
-      resellerIds: dto.resellerIds,
-      pricingPlanIds: dto.pricingPlanIds,
-      createdBy: currentUser.id,
-    });
-
-    let targets: { id: string; name: string }[] = [];
-    if (
-      rule.targetEntity ===
-        LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL ||
-      rule.targetEntity ===
-        LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
-    ) {
-      const targetsMap = await this.licenseRepository.findDiscountRuleTargets({
-        ruleIds: [rule.id],
-        targetEntity: rule.targetEntity,
-      });
-      targets = targetsMap.get(rule.id) ?? [];
-    }
-
-    return { rule: { ...rule, targets } };
-  }
-
-  async toggleDiscountRuleStatus(
-    input: ToggleDiscountRuleStatusServiceInput,
-  ): Promise<ToggleDiscountRuleStatusServiceResult> {
-    const existing = await this.licenseRepository.findDiscountRule({
-      ruleId: input.ruleId,
-    });
-    if (!existing) {
-      throw new AppError("Discount rule not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    const rule = await this.licenseRepository.updateDiscountRule({
-      ruleId: input.ruleId,
-      updatedBy: input.currentUser.id,
-      data: { isActive: !existing.isActive },
-    });
-    return { rule };
-  }
-
-  async getPlatformPricingPlans(
-    input: GetPlatformPricingPlansServiceInput,
-  ): Promise<GetPlatformPricingPlansServiceResult> {
-    const { isActive } = input.query;
-
-    const plans = await this.licenseRepository.findPricingPlans({
-      isActive: isActive ?? true,
-    });
-
-    return { plans };
-  }
-
-  async createPricingPlan(
-    input: CreatePricingPlanServiceInput,
-  ): Promise<CreatePricingPlanServiceResult> {
-    const plan = await this.licenseRepository.createPricingPlan({
-      name: input.dto.name,
-      durationDays: input.dto.durationDays,
-      price: input.dto.price,
-      currency: input.dto.currency,
-      createdBy: input.currentUser.id,
-    });
-
-    return { plan };
-  }
-
-  async togglePricingPlanStatus(
-    input: TogglePricingPlanStatusServiceInput,
-  ): Promise<TogglePricingPlanStatusServiceResult> {
-    const existing = await this.licenseRepository.findPricingPlan({
-      id: input.planId,
-    });
-    if (!existing) {
-      throw new AppError("Pricing plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    const plan = await this.licenseRepository.updatePricingPlan({
-      id: input.planId,
-      updatedBy: input.currentUser.id,
-      data: { isActive: !existing.isActive },
-    });
-    return { plan };
-  }
-
-  async updatePricingPlan(
-    input: UpdatePricingPlanServiceInput,
-  ): Promise<UpdatePricingPlanServiceResult> {
-    const existing = await this.licenseRepository.findPricingPlan({
-      id: input.planId,
-    });
-    if (!existing) {
-      throw new AppError("Pricing plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    const plan = await this.licenseRepository.updatePricingPlan({
-      id: input.planId,
-      updatedBy: input.currentUser.id,
-      data: {
-        name: input.dto.name,
-        durationDays: input.dto.durationDays,
-        price: String(input.dto.price),
-        currency: input.dto.currency,
-      },
-    });
-    return { plan };
-  }
-
   async extendLicense(
     input: ExtendLicenseServiceInput,
   ): Promise<ExtendLicenseServiceResult> {
@@ -672,7 +376,7 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const pricingPlans = await this.licenseRepository.findPricingPlans({
+    const pricingPlans = await this.licensePricingRepository.findPricingPlans({
       id: input.dto.pricingPlanId,
     });
     const plan = pricingPlans[0];
@@ -861,212 +565,6 @@ export class LicenseService {
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
     });
-  }
-
-  async generateRedemptionCode(
-    input: GenerateRedemptionCodeServiceInput,
-  ): Promise<GenerateRedemptionCodeServiceResult> {
-    const { licenseIds, redeemExpiresAt, remarks } = input.dto;
-
-    const ownedAvailable = await this.licenseRepository.findOwnedAvailableLicenses({
-      resellerId: input.resellerId,
-      licenseIds,
-    });
-
-    if (ownedAvailable.length !== licenseIds.length) {
-      throw new AppError(
-        "One or more selected licenses are unavailable or not owned by you",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
-      );
-    }
-
-    const blockedLicenseIds =
-      await this.licenseRepository.findLicenseIdsWithActiveRedemption({
-        licenseIds,
-      });
-    if (blockedLicenseIds.length > 0) {
-      throw new AppError(
-        "One or more selected licenses already have an active redemption code",
-        { statusCode: HttpStatusCodes.CONFLICT },
-      );
-    }
-
-    const items = await Promise.all(
-      ownedAvailable.map(async (license) => {
-        const snapshot = await this.licenseRepository.findLatestPurchaseSnapshot(
-          license.id,
-        );
-        if (!snapshot) {
-          throw new AppError(
-            `No purchase record found for license ${license.id}`,
-            { statusCode: HttpStatusCodes.BAD_REQUEST },
-          );
-        }
-        return {
-          licenseId: license.id,
-          basePrice: snapshot.baseUnitPrice,
-          // Not known until the reseller verifies the code after it's claimed.
-          soldPrice: null,
-          currency: snapshot.currency,
-          durationDays: snapshot.durationDays,
-        };
-      }),
-    );
-
-    const plaintextCode = generateReadableLicenseKey("RDM");
-    const encryptedCode = encryptData(plaintextCode, env.LICENSE_ENCRYPTION_KEY);
-    const codeHash = hashSha256(plaintextCode);
-
-    const created = await this.licenseRepository.createRedemptionCode({
-      resellerId: input.resellerId,
-      redeemCode: encryptedCode,
-      redeemCodeHash: codeHash,
-      status: LicenseRedemptionStatusEnum.GENERATED,
-      redeemExpiresAt,
-      remarks,
-      createdBy: input.resellerId,
-      updatedBy: input.resellerId,
-      items,
-    });
-
-    return {
-      redemptionCode: { ...created, redeemCode: plaintextCode },
-    };
-  }
-
-  async getRedemptionCodesForReseller(
-    input: GetRedemptionCodesForResellerServiceInput,
-  ): Promise<GetRedemptionCodesForResellerServiceResult> {
-    const page = input.filters.page || 1;
-    const limit = input.filters.limit || 10;
-
-    const { redemptionCodes: rows, total } =
-      await this.licenseRepository.findRedemptionCodesByReseller({
-        resellerId: input.resellerId,
-        page,
-        limit,
-        search: input.filters.search,
-        status: input.filters.status,
-        sortBy: input.filters.sortBy,
-        sortOrder: input.filters.sortOrder,
-      });
-
-    const decryptedRows = rows.map((row) => ({
-      ...row,
-      redeemCode: decryptData(row.redeemCode, env.LICENSE_ENCRYPTION_KEY),
-    }));
-
-    return {
-      redemptionCodes: decryptedRows,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-  }
-
-  async getRedemptionCodeDetailsForReseller(
-    input: GetRedemptionCodeDetailsForResellerServiceInput,
-  ): Promise<GetRedemptionCodeDetailsForResellerServiceResult> {
-    const details = await this.licenseRepository.findRedemptionCodeDetailsById({
-      id: input.redemptionId,
-      resellerId: input.resellerId,
-    });
-
-    if (!details) {
-      throw new AppError("Redemption code not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    return {
-      redemptionCode: {
-        ...details.code,
-        redeemCode: decryptData(details.code.redeemCode, env.LICENSE_ENCRYPTION_KEY),
-        items: details.items.map((item) => ({
-          ...item,
-          licenseKey: decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY),
-        })),
-      },
-    };
-  }
-
-  async verifyRedemptionCode(
-    input: VerifyRedemptionCodeServiceInput,
-  ): Promise<VerifyRedemptionCodeServiceResult> {
-    const { totalSoldPrice, currency, items } = input.dto;
-
-    const details = await this.licenseRepository.findRedemptionCodeDetailsById({
-      id: input.redemptionId,
-      resellerId: input.resellerId,
-    });
-
-    if (!details) {
-      throw new AppError("Redemption code not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    const bundledLicenseIds = new Set(details.items.map((item) => item.licenseId));
-    const submittedLicenseIds = new Set(items.map((item) => item.licenseId));
-    const sameLicenseSet =
-      bundledLicenseIds.size === submittedLicenseIds.size &&
-      [...bundledLicenseIds].every((id) => submittedLicenseIds.has(id));
-
-    if (!sameLicenseSet) {
-      throw new AppError(
-        "Submitted licenses do not match this redemption code's bundled licenses",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
-      );
-    }
-
-    const itemsSum = items.reduce((sum, item) => sum + item.soldPrice, 0);
-    if (Math.abs(itemsSum - totalSoldPrice) > 0.01) {
-      throw new AppError(
-        "Per-license sold prices must add up to the total sold price",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
-      );
-    }
-
-    const verified = await this.licenseRepository.verifyRedemptionCode({
-      id: input.redemptionId,
-      resellerId: input.resellerId,
-      totalSoldPrice: totalSoldPrice.toFixed(2),
-      currency,
-      items: items.map((item) => ({
-        licenseId: item.licenseId,
-        soldPrice: item.soldPrice.toFixed(2),
-      })),
-    });
-
-    if (!verified) {
-      throw new AppError(
-        "Redemption code is not in a claimed state and cannot be verified",
-        { statusCode: HttpStatusCodes.CONFLICT, code: ErrorCodes.RESOURCE_NOT_FOUND },
-      );
-    }
-
-    return true;
-  }
-
-  async revokeRedemptionCode(
-    input: RevokeRedemptionCodeServiceInput,
-  ): Promise<RevokeRedemptionCodeServiceResult> {
-    const revoked = await this.licenseRepository.revokeRedemptionCode({
-      id: input.redemptionId,
-      resellerId: input.resellerId,
-    });
-
-    if (!revoked) {
-      throw new AppError(
-        "Redemption code not found or already claimed/revoked",
-        { statusCode: HttpStatusCodes.CONFLICT, code: ErrorCodes.RESOURCE_NOT_FOUND },
-      );
-    }
-
-    return true;
   }
 
   private async _checkLicenseOwnedByReseller(

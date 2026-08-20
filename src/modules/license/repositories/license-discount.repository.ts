@@ -28,25 +28,78 @@ export class LicenseDiscountRepository {
     input: FindActiveDiscountRulesRepoInput,
   ): Promise<FindActiveDiscountRulesRepoResult> {
     const now = new Date();
-    const rules = await this.database.client
+    const activeWindow = and(
+      eq(licenseDiscountRules.isActive, true),
+      or(
+        isNull(licenseDiscountRules.startsAt),
+        lte(licenseDiscountRules.startsAt, now),
+      ),
+      or(
+        isNull(licenseDiscountRules.endsAt),
+        gte(licenseDiscountRules.endsAt, now),
+      ),
+    );
+
+    const bucketRules = await this.database.client
       .select()
       .from(licenseDiscountRules)
       .where(
+        and(eq(licenseDiscountRules.targetEntity, input.targetEntity), activeWindow),
+      );
+
+    // Plan-specific discounts apply regardless of who's buying, so they're
+    // always included alongside the caller's own bucket — but only while at
+    // least one of the plans they target is still active.
+    const planIndividualRules = await this.database.client
+      .selectDistinct({ rule: licenseDiscountRules })
+      .from(licenseDiscountRules)
+      .innerJoin(
+        licensePricingDiscountRuleMapper,
+        eq(licensePricingDiscountRuleMapper.discountRuleId, licenseDiscountRules.id),
+      )
+      .innerJoin(
+        licensePricing,
+        eq(licensePricingDiscountRuleMapper.pricingId, licensePricing.id),
+      )
+      .where(
         and(
-          eq(licenseDiscountRules.targetEntity, input.targetEntity),
-          eq(licenseDiscountRules.isActive, true),
-          or(
-            isNull(licenseDiscountRules.startsAt),
-            lte(licenseDiscountRules.startsAt, now),
+          eq(
+            licenseDiscountRules.targetEntity,
+            LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL,
           ),
-          or(
-            isNull(licenseDiscountRules.endsAt),
-            gte(licenseDiscountRules.endsAt, now),
-          ),
+          eq(licensePricing.isActive, true),
+          activeWindow,
         ),
       );
 
-    return rules;
+    const rules = [
+      ...bucketRules,
+      ...planIndividualRules.map((row) => row.rule),
+    ];
+
+    if (!input.resellerId) {
+      return rules;
+    }
+
+    const resellerIndividualRules = await this.database.client
+      .select({ rule: licenseDiscountRules })
+      .from(licenseDiscountRules)
+      .innerJoin(
+        resellerDiscountRuleMapper,
+        eq(resellerDiscountRuleMapper.discountRuleId, licenseDiscountRules.id),
+      )
+      .where(
+        and(
+          eq(
+            licenseDiscountRules.targetEntity,
+            LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL,
+          ),
+          eq(resellerDiscountRuleMapper.resellerId, input.resellerId),
+          activeWindow,
+        ),
+      );
+
+    return [...rules, ...resellerIndividualRules.map((row) => row.rule)];
   }
 
   async findDiscountRule(

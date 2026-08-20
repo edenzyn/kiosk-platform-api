@@ -422,11 +422,13 @@ export class LicenseController {
   };
 
   getResellerDiscountRules = async (
-    _req: Request,
+    req: Request,
     res: Response,
   ): Promise<void> => {
+    const user = req.user as UserTokenDto;
     const result = await this.licenseDiscountService.getDiscountRules({
       targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+      resellerId: user.id,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

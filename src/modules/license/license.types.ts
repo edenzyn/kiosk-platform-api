@@ -235,10 +235,11 @@ export interface GetLicensePricingPlansServiceResult {
 
 export interface GetDiscountRulesServiceInput {
   targetEntity: number;
+  resellerId?: string;
 }
 
 export interface GetDiscountRulesServiceResult {
-  rules: LicenseDiscountRuleEntity[];
+  rules: DiscountRuleWithTargets[];
 }
 
 // ========================================
@@ -692,6 +693,7 @@ export type FindLicensePricingPlansRepoResult = LicensePricingEntity[];
 
 export interface FindActiveDiscountRulesRepoInput {
   targetEntity: number;
+  resellerId?: string;
 }
 export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
 

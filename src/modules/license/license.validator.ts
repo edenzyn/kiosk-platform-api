@@ -121,6 +121,18 @@ export const LicenseValidator = {
         .number()
         .typeError("Discount value must be a number")
         .moreThan(0, "Discount value must be greater than 0")
+        .test(
+          "max-percentage",
+          "Percentage discount cannot exceed 100",
+          function (value) {
+            if (value === undefined || value === null) return true;
+            const { discountType } = this.parent as { discountType?: number };
+            if (discountType === LicenseDiscountTypeEnum.PERCENTAGE) {
+              return value <= 100;
+            }
+            return true;
+          },
+        )
         .required("Discount value is required"),
       minQuantity: yup
         .number()

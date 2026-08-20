@@ -135,6 +135,16 @@ export const LicenseValidator = {
           },
         )
         .required("Discount value is required"),
+      currency: yup
+        .string()
+        .trim()
+        .uppercase()
+        .length(3, "Currency must be a 3-letter ISO code")
+        .when("discountType", {
+          is: LicenseDiscountTypeEnum.FLAT,
+          then: (schema) => schema.required("Currency is required for flat discounts"),
+          otherwise: (schema) => schema.strip(),
+        }),
       minQuantity: yup
         .number()
         .typeError("Minimum quantity must be a number")

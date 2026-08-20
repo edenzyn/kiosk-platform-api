@@ -16,6 +16,8 @@ import type {
   FindPaginatedDiscountRulesRepoResult,
   UpdateDiscountRuleRepoInput,
   UpdateDiscountRuleRepoResult,
+  UpdateDiscountRuleWithTargetsRepoInput,
+  UpdateDiscountRuleWithTargetsRepoResult,
 } from "../license.types";
 import { licenseDiscountRules } from "../schemas/license-discount-rule.schema";
 import { licensePricingDiscountRuleMapper } from "../schemas/license-pricing-discount-rule-mapper.schema";
@@ -237,6 +239,7 @@ export class LicenseDiscountRepository {
           targetEntity: input.targetEntity,
           discountType: input.discountType,
           discountValue: String(input.discountValue),
+          currency: input.currency ?? null,
           minQuantity: input.minQuantity,
           maxQuantity: input.maxQuantity ?? null,
           startsAt: input.startsAt ?? null,
@@ -276,6 +279,76 @@ export class LicenseDiscountRepository {
             discountRuleId: rule.id,
             createdBy: input.createdBy,
             updatedBy: input.createdBy,
+          })),
+        );
+      }
+
+      return rule;
+    });
+  }
+
+  async updateDiscountRuleWithTargets(
+    input: UpdateDiscountRuleWithTargetsRepoInput,
+  ): Promise<UpdateDiscountRuleWithTargetsRepoResult> {
+    return this.database.client.transaction(async (tx) => {
+      const [rule] = await tx
+        .update(licenseDiscountRules)
+        .set({
+          name: input.name,
+          targetEntity: input.targetEntity,
+          discountType: input.discountType,
+          discountValue: String(input.discountValue),
+          currency: input.currency ?? null,
+          minQuantity: input.minQuantity,
+          maxQuantity: input.maxQuantity ?? null,
+          startsAt: input.startsAt ?? null,
+          endsAt: input.endsAt ?? null,
+          updatedBy: input.updatedBy,
+          updatedAt: new Date(),
+        })
+        .where(eq(licenseDiscountRules.id, input.ruleId))
+        .returning();
+
+      if (!rule) throw new Error("Discount rule not found");
+
+      // Simplest correct way to keep target mappings in sync with the
+      // possibly-changed targetEntity/resellerIds/pricingPlanIds: clear
+      // everything for this rule, then re-insert for the new state.
+      await tx
+        .delete(resellerDiscountRuleMapper)
+        .where(eq(resellerDiscountRuleMapper.discountRuleId, rule.id));
+      await tx
+        .delete(licensePricingDiscountRuleMapper)
+        .where(eq(licensePricingDiscountRuleMapper.discountRuleId, rule.id));
+
+      if (
+        input.targetEntity ===
+          LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL &&
+        input.resellerIds &&
+        input.resellerIds.length > 0
+      ) {
+        await tx.insert(resellerDiscountRuleMapper).values(
+          input.resellerIds.map((resellerId) => ({
+            resellerId,
+            discountRuleId: rule.id,
+            createdBy: input.updatedBy,
+            updatedBy: input.updatedBy,
+          })),
+        );
+      }
+
+      if (
+        input.targetEntity ===
+          LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL &&
+        input.pricingPlanIds &&
+        input.pricingPlanIds.length > 0
+      ) {
+        await tx.insert(licensePricingDiscountRuleMapper).values(
+          input.pricingPlanIds.map((pricingId) => ({
+            pricingId,
+            discountRuleId: rule.id,
+            createdBy: input.updatedBy,
+            updatedBy: input.updatedBy,
           })),
         );
       }

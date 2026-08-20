@@ -282,6 +282,7 @@ export interface CreateDiscountRuleServiceInput {
     targetEntity: number;
     discountType: number;
     discountValue: number;
+    currency?: string;
     minQuantity: number;
     maxQuantity?: number | null;
     startsAt?: Date | null;
@@ -293,6 +294,16 @@ export interface CreateDiscountRuleServiceInput {
 }
 
 export interface CreateDiscountRuleServiceResult {
+  rule: DiscountRuleWithTargets;
+}
+
+export interface UpdateDiscountRuleServiceInput {
+  ruleId: string;
+  dto: CreateDiscountRuleServiceInput["dto"];
+  currentUser: UserTokenDto;
+}
+
+export interface UpdateDiscountRuleServiceResult {
   rule: DiscountRuleWithTargets;
 }
 
@@ -727,6 +738,7 @@ export interface CreateDiscountRuleWithTargetsRepoInput {
   targetEntity: number;
   discountType: number;
   discountValue: number;
+  currency?: string | null;
   minQuantity: number;
   maxQuantity?: number | null;
   startsAt?: Date | null;
@@ -736,6 +748,23 @@ export interface CreateDiscountRuleWithTargetsRepoInput {
   createdBy: string;
 }
 export type CreateDiscountRuleWithTargetsRepoResult = LicenseDiscountRuleEntity;
+
+export interface UpdateDiscountRuleWithTargetsRepoInput {
+  ruleId: string;
+  name: string;
+  targetEntity: number;
+  discountType: number;
+  discountValue: number;
+  currency?: string | null;
+  minQuantity: number;
+  maxQuantity?: number | null;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+  resellerIds?: string[];
+  pricingPlanIds?: string[];
+  updatedBy: string;
+}
+export type UpdateDiscountRuleWithTargetsRepoResult = LicenseDiscountRuleEntity;
 
 export interface FindOneDiscountRuleRepoInput {
   ruleId: string;

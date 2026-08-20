@@ -1,0 +1,1 @@
+ALTER TABLE "license_discount_rules" ADD COLUMN "currency" varchar(10);

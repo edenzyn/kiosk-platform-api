@@ -199,6 +199,25 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  updateDiscountRule = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.discountRuleIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const dto = await LicenseValidator.createDiscountRule.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.licenseDiscountService.updateDiscountRule({
+      ruleId: params.id,
+      dto,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getPlatformPricingPlans = async (
     req: Request,
     res: Response,

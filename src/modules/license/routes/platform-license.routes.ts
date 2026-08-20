@@ -37,6 +37,15 @@ platformLicenseRouter.patch(
   asyncHandler(licenseController.toggleDiscountRuleStatus),
 );
 
+platformLicenseRouter.patch(
+  "/discount-rules/:id",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(licenseController.updateDiscountRule),
+);
+
 platformLicenseRouter
   .route("/pricing")
   .get(

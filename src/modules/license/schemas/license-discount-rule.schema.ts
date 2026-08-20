@@ -17,6 +17,7 @@ export const licenseDiscountRules = pgTable("license_discount_rules", {
   targetEntity: smallint("target_entity").notNull(), // LicenseDiscountRuleTargetEntityTypeEnum: 1 = ORGANIZATIONS, 2 = RESELLERS, 3 = RESELLER_INDIVIDUAL, 4 = LICENSE_PLAN_INDIVIDUAL
   discountType: smallint("discount_type").notNull(), // e.g. PERCENTAGE = 1, FLAT = 2
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 10 }), // Only meaningful for FLAT discounts
   minQuantity: integer("min_quantity").notNull().default(1),
   maxQuantity: integer("max_quantity"), // NULL means no upper limit
   isActive: boolean("is_active").default(true).notNull(),

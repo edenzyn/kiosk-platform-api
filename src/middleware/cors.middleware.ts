@@ -11,7 +11,9 @@ export function applyCors(app: Express): void {
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || whiteList.includes(origin)) {
+        const isSelfOrigin =
+          env.NODE_ENV !== "production" && origin?.endsWith(`:${env.PORT}`);
+        if (!origin || isSelfOrigin || whiteList.includes(origin)) {
           callback(null, true);
         } else {
           callback(new AppError("Not allowed by CORS", { statusCode: 403 }));

@@ -1,26 +1,21 @@
 export const organizationSwaggerPaths: Record<string, unknown> = {
-  "/pvt/organizations": {
-    get: {
-      tags: ["Organizations"],
-      summary: "List all organizations",
-      responses: {
-        "200": {
-          description: "List of organizations",
-        },
-      },
-    },
+  "/pvt/p/organizations/invite": {
     post: {
       tags: ["Organizations"],
-      summary: "Create a new organization",
+      summary: "Invite a new organization owner",
+      description:
+        "Sends an invitation email; the organization and its first admin user are only created once the owner accepts via POST /auth/o/accept-invite.",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name"],
+              required: ["organizationName", "name", "email"],
               properties: {
-                name: { type: "string", minLength: 2, maxLength: 255 },
+                organizationName: { type: "string", minLength: 2, maxLength: 255 },
+                name: { type: "string", minLength: 2, maxLength: 100, description: "Owner's name" },
+                email: { type: "string", format: "email", description: "Owner's email" },
               },
             },
           },
@@ -28,90 +23,86 @@ export const organizationSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "201": {
-          description: "Organization successfully created",
+          description: "Invitation sent",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
+            },
+          },
         },
-        "409": {
-          description: "Organization name already exists",
-        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "409": { description: "Email already invited or already belongs to an organization" },
       },
     },
   },
-  "/pvt/organizations/{id}": {
+  "/pvt/p/organizations": {
     get: {
       tags: ["Organizations"],
-      summary: "Get organization by ID",
+      summary: "List organizations",
       parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        { name: "search", in: "query", schema: { type: "string" } },
         {
-          name: "id",
-          in: "path",
-          required: true,
-          schema: { type: "string", format: "uuid" },
+          name: "status",
+          in: "query",
+          schema: { type: "string", enum: ["active", "inactive", "all"] },
+        },
+        {
+          name: "sortBy",
+          in: "query",
+          schema: { type: "string", enum: ["name", "isActive", "createdAt"] },
+        },
+        {
+          name: "sortOrder",
+          in: "query",
+          schema: { type: "string", enum: ["asc", "desc"] },
         },
       ],
       responses: {
         "200": {
-          description: "Organization details",
-        },
-        "404": {
-          description: "Organization not found",
-        },
-      },
-    },
-    patch: {
-      tags: ["Organizations"],
-      summary: "Update organization details",
-      parameters: [
-        {
-          name: "id",
-          in: "path",
-          required: true,
-          schema: { type: "string", format: "uuid" },
-        },
-      ],
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              properties: {
-                name: { type: "string", minLength: 2, maxLength: 255 },
-                isActive: { type: "boolean" },
+          description: "Paginated list of organizations",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  organizations: { type: "array", items: { type: "object" } },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
               },
             },
           },
         },
       },
-      responses: {
-        "200": {
-          description: "Organization successfully updated",
-        },
-        "404": {
-          description: "Organization not found",
-        },
-        "409": {
-          description: "Organization name already exists",
-        },
-      },
     },
-    delete: {
+  },
+  "/pvt/p/organizations/{id}/status": {
+    patch: {
       tags: ["Organizations"],
-      summary: "Delete an organization",
+      summary: "Toggle an organization's active status",
       parameters: [
-        {
-          name: "id",
-          in: "path",
-          required: true,
-          schema: { type: "string", format: "uuid" },
-        },
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
       ],
       responses: {
         "200": {
-          description: "Organization successfully deleted",
+          description: "Status toggled; returns the updated organization",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { organization: { type: "object" } },
+              },
+            },
+          },
         },
-        "404": {
-          description: "Organization not found",
-        },
+        "404": { $ref: "#/components/responses/NotFound" },
       },
     },
   },

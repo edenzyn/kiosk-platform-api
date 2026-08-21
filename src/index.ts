@@ -1,4 +1,6 @@
 import { createServer } from "node:http";
+import type { Worker } from "bullmq";
+import type Redis from "ioredis";
 import { App } from "./app";
 import { container } from "./config/container";
 import type { Database } from "./config/db";
@@ -6,6 +8,7 @@ import { env } from "./config/env";
 import type { RedisConnection } from "./config/redis";
 import { registerJobs } from "./jobs/register-jobs";
 import { jobScheduler } from "./jobs/scheduler";
+import { registerWorkers } from "./shared/services/queue/register-workers";
 import { logger } from "./shared/utils/core/logger";
 
 function bootstrap(): void {
@@ -15,6 +18,7 @@ function bootstrap(): void {
   const redis = container.resolve<RedisConnection>("redis");
 
   registerJobs();
+  const workers = registerWorkers();
 
   server.listen(env.PORT, () => {
     logger.log(`Server running on port ${env.PORT}`);
@@ -36,6 +40,9 @@ function bootstrap(): void {
     server.close(async (serverError) => {
       try {
         jobScheduler.stop();
+        await Promise.all(workers.map((worker: Worker) => worker.close()));
+        const queueConnection = container.resolve<Redis>("queueConnection");
+        await queueConnection.quit();
         const database = container.resolve<Database>("database");
         await database.close();
         await redis.close();

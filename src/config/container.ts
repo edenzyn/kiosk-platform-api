@@ -16,6 +16,8 @@ import { ResellerContainer } from "../modules/reseller/reseller.container";
 import { UserContainer } from "../modules/user/user.container";
 import { MailService } from "../shared/services/mail/mail.service";
 import { QrCodeService } from "../shared/services/qrcode/qrcode.service";
+import { createEmailQueue } from "../shared/services/queue/email/email.queue";
+import { createQueueConnection } from "../shared/services/queue/queue-connection";
 import { RedisService } from "../shared/services/redis/redis.service";
 import { TotpService } from "../shared/services/totp/totp.service";
 import { WhatsAppService } from "../shared/services/whatsapp/whatsapp.service";
@@ -32,6 +34,8 @@ container.register({
   database: asFunction(initDatabase).singleton(),
   redis: asFunction(initRedis).singleton(),
   redisService: asClass(RedisService).singleton(),
+  queueConnection: asFunction(createQueueConnection).singleton(),
+  emailQueue: asFunction(createEmailQueue).singleton(),
   mailTransporter: asValue(mailTransporter),
   mailService: asClass(MailService).singleton(),
   whatsAppService: asClass(WhatsAppService).singleton(),

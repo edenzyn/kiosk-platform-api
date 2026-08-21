@@ -33,6 +33,7 @@
     "awesome-phonenumber": "^7.8.0",
     "awilix": "^13.0.5",
     "bcrypt": "^6.0.0",
+    "bullmq": "^6.1.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dayjs": "^1.11.21",

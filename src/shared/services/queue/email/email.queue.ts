@@ -1,12 +1,10 @@
 import { Queue } from "bullmq";
 import type Redis from "ioredis";
-import type { SendMailOptions } from "../../mail/mail.service";
 import { QueueNames } from "../../../enums/core/queue-names.enum";
+import type { SendMailOptions } from "../../mail/mail.service";
 
 export type EmailJobData = SendMailOptions;
 
-// Param name must be `queueConnection` — awilix (CLASSIC mode) resolves
-// asFunction dependencies by matching parameter names against container keys.
 export function createEmailQueue(queueConnection: Redis): Queue<EmailJobData> {
   return new Queue<EmailJobData>(QueueNames.EMAIL, {
     connection: queueConnection,

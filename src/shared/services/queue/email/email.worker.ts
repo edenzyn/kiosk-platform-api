@@ -1,14 +1,11 @@
 import { Worker, type Job } from "bullmq";
 import type Redis from "ioredis";
 import { container } from "../../../../config/container";
+import { QueueNames } from "../../../enums/core/queue-names.enum";
 import { logger } from "../../../utils/core/logger";
 import type { MailService } from "../../mail/mail.service";
 import type { EmailJobData } from "./email.queue";
-import { QueueNames } from "../../../enums/core/queue-names.enum";
 
-// Self-resolves its dependencies from the container, matching the existing
-// cron job convention (see modules/license/jobs/check-license-status.job.ts)
-// rather than taking them as constructor/factory params.
 export function createEmailWorker(): Worker<EmailJobData> {
   const queueConnection = container.resolve<Redis>("queueConnection");
   const mailService = container.resolve<MailService>("mailService");

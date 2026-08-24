@@ -51,6 +51,7 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
 } from "../license.types";
+import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
 import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
@@ -63,6 +64,7 @@ export class LicenseService {
     private readonly licensePricingRepository: LicensePricingRepository,
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
+    private readonly deviceRepository: DeviceRepository,
   ) {}
 
   private async _checkActiveLicenseExists(
@@ -176,6 +178,7 @@ export class LicenseService {
 
     const plans = await this.licensePricingRepository.findPricingPlans({
       id: params.pricingPlanId,
+      isActive: true,
     });
     const selectedPlan = plans[0];
 
@@ -229,6 +232,7 @@ export class LicenseService {
         licenseKeyHash: keyHash,
         organizationId: params.organizationId,
         branchId: params.branchId,
+        deviceType: selectedPlan.deviceType,
         status: LicenseStatusEnum.AVAILABLE,
         expiresAt: null,
         createdBy: params.userId,
@@ -291,6 +295,7 @@ export class LicenseService {
       limit,
       search: input.filters.search,
       status: input.filters.status,
+      deviceType: input.filters.deviceType,
       sortBy: input.filters.sortBy,
       sortOrder: input.filters.sortOrder,
     });
@@ -408,6 +413,23 @@ export class LicenseService {
       });
     }
 
+    const device = await this.deviceRepository.findOne({
+      id: input.deviceId,
+      organizationId: orgId,
+    });
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (license.deviceType !== device.deviceType) {
+      throw new AppError(
+        "This license was purchased for a different device type and cannot be assigned to this device.",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
     await this._checkActiveLicenseExists(input.deviceId);
 
     const purchaseItem = await this.licenseRepository.findOneLatestPurchaseItem(
@@ -489,6 +511,7 @@ export class LicenseService {
 
       const pricingPlans = await this.licensePricingRepository.findPricingPlans({
         id: input.dto.pricingPlanId,
+        isActive: true,
       });
       const plan = pricingPlans[0];
       if (!plan) {
@@ -688,6 +711,7 @@ export class LicenseService {
         limit,
         search: input.filters.search,
         status: input.filters.status,
+        deviceType: input.filters.deviceType,
         sortBy: input.filters.sortBy,
         sortOrder: input.filters.sortOrder,
       });
@@ -1008,6 +1032,13 @@ export class LicenseService {
         statusCode: HttpStatusCodes.FORBIDDEN,
         code: ErrorCodes.FORBIDDEN,
       });
+    }
+
+    if (license.deviceType !== input.deviceType) {
+      throw new AppError(
+        "This license was purchased for a different device type and cannot be activated on this device.",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
     }
 
     const purchaseItem = await this.licenseRepository.findOneLatestPurchaseItem(

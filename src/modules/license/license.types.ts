@@ -1,5 +1,6 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
@@ -34,6 +35,7 @@ export interface ActivateLicenseServiceInput {
   };
   deviceId: string;
   deviceBranchId: string;
+  deviceType: DeviceTypeEnum;
 }
 
 export interface ActivateLicenseServiceResult {
@@ -47,6 +49,7 @@ export interface GetLicensesServiceInput {
     limit?: number;
     search?: string;
     status?: number;
+    deviceType?: DeviceTypeEnum;
     branchId?: string;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
@@ -97,6 +100,7 @@ export interface GetLicensesForResellerServiceInput {
     limit?: number;
     search?: string;
     status?: LicenseStatusEnum;
+    deviceType?: number;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   };
@@ -340,6 +344,7 @@ export interface GetPlatformPricingPlansServiceResult {
 export interface CreatePricingPlanServiceInput {
   dto: {
     name: string;
+    deviceType: DeviceTypeEnum;
     durationDays: number;
     price: number;
     currency: string;
@@ -364,6 +369,7 @@ export interface UpdatePricingPlanServiceInput {
   planId: string;
   dto: {
     name: string;
+    deviceType: DeviceTypeEnum;
     durationDays: number;
     price: number;
     currency: string;
@@ -512,6 +518,7 @@ export interface FindLicensesRepoInput {
   limit?: number;
   search?: string;
   status?: number;
+  deviceType?: DeviceTypeEnum;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -526,6 +533,7 @@ export interface FindLicensesByResellerRepoInput {
   limit?: number;
   search?: string;
   status?: number;
+  deviceType?: DeviceTypeEnum;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -849,6 +857,7 @@ export interface FindPricingPlansPaginatedRepoResult {
 
 export interface CreatePricingPlanRepoInput {
   name: string;
+  deviceType: DeviceTypeEnum;
   durationDays: number;
   price: number;
   currency: string;
@@ -867,6 +876,7 @@ export interface UpdatePricingPlanRepoInput {
   data: Partial<{
     isActive: boolean;
     name: string;
+    deviceType: DeviceTypeEnum;
     durationDays: number;
     price: string;
     currency: string;

@@ -146,6 +146,7 @@ export class LicenseRepository {
       limit = 10,
       search,
       status,
+      deviceType,
       sortBy,
       sortOrder,
     } = input;
@@ -162,6 +163,10 @@ export class LicenseRepository {
 
     if (status !== undefined && status !== null) {
       conditions.push(eq(licenses.status, status));
+    }
+
+    if (deviceType !== undefined && deviceType !== null) {
+      conditions.push(eq(licenses.deviceType, deviceType));
     }
 
     if (search) {
@@ -197,6 +202,7 @@ export class LicenseRepository {
         branchName: branches.name,
         deviceId: licenses.deviceId,
         deviceName: devices.name,
+        deviceType: licenses.deviceType,
         status: licenses.status,
         activatedAt: licenses.activatedAt,
         expiresAt: licenses.expiresAt,
@@ -245,6 +251,7 @@ export class LicenseRepository {
       page = 1,
       limit = 10,
       status,
+      deviceType,
       sortBy,
       sortOrder,
     } = input;
@@ -253,6 +260,10 @@ export class LicenseRepository {
 
     if (status !== undefined && status !== null) {
       conditions.push(eq(licenses.status, status));
+    }
+
+    if (deviceType !== undefined && deviceType !== null) {
+      conditions.push(eq(licenses.deviceType, deviceType));
     }
 
     // License keys are stored encrypted/hashed, so there is no plaintext
@@ -277,6 +288,7 @@ export class LicenseRepository {
         branchName: branches.name,
         deviceId: licenses.deviceId,
         deviceName: devices.name,
+        deviceType: licenses.deviceType,
         status: licenses.status,
         activatedAt: licenses.activatedAt,
         expiresAt: licenses.expiresAt,

@@ -184,6 +184,7 @@ export class LicenseRedemptionRepository {
         branchName: branches.name,
         deviceId: licenses.deviceId,
         deviceName: devices.name,
+        deviceType: licenses.deviceType,
         status: licenses.status,
         activatedAt: licenses.activatedAt,
         expiresAt: licenses.expiresAt,

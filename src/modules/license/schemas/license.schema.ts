@@ -6,6 +6,7 @@ import {
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 import { branches } from "../../branch/branch.schema";
 import { devices } from "../../device/device.schema";
 import { organizations } from "../../organization/organization.schema";
@@ -20,6 +21,7 @@ export const licenses = pgTable("licenses", {
   ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
+  deviceType: smallint("device_type").default(DeviceTypeEnum.KIOSK).notNull(),
   status: smallint("status").notNull(),
   activatedAt: timestamp("activated_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

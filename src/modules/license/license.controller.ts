@@ -529,6 +529,7 @@ export class LicenseController {
       dto: data as ActivateLicenseRequestDto,
       deviceId: device.id,
       deviceBranchId: device.branchId,
+      deviceType: device.type,
     });
 
     res.status(HttpStatusCodes.OK).json(result);

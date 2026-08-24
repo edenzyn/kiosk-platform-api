@@ -225,6 +225,13 @@
       "when": 1787251910763,
       "tag": "0031_add-currency-to-discount-rules",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1787547374833,
+      "tag": "0032_add-device-type-to-licenses-and-pricing",
+      "breakpoints": true
     }
   ]
 }

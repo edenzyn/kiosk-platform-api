@@ -26,8 +26,9 @@ export class LicensePricingRepository {
       conditions.push(eq(licensePricing.id, input.id));
     }
 
-    const isActiveFilter = input.isActive ?? true;
-    conditions.push(eq(licensePricing.isActive, isActiveFilter));
+    if (input.isActive !== undefined) {
+      conditions.push(eq(licensePricing.isActive, input.isActive));
+    }
 
     const plans = await this.database.client
       .select()
@@ -76,6 +77,7 @@ export class LicensePricingRepository {
       .insert(licensePricing)
       .values({
         name: input.name,
+        deviceType: input.deviceType,
         durationDays: input.durationDays,
         price: String(input.price),
         currency: input.currency,

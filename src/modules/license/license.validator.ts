@@ -1,5 +1,6 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
@@ -19,6 +20,11 @@ export const LicenseValidator = {
         .number()
         .typeError("Status must be a number")
         .integer("Status must be an integer")
+        .optional(),
+      deviceType: yup
+        .number()
+        .typeError("Device type must be a number")
+        .oneOf(Object.values(DeviceTypeEnum) as number[], "Invalid device type")
         .optional(),
       branchId: yup.string().uuid().optional(),
       sortBy: yup.string().optional(),
@@ -225,6 +231,11 @@ export const LicenseValidator = {
         .min(2, "Name must be at least 2 characters")
         .max(255, "Name cannot exceed 255 characters")
         .required("Name is required"),
+      deviceType: yup
+        .number()
+        .typeError("Device type must be a number")
+        .oneOf(Object.values(DeviceTypeEnum) as number[], "Invalid device type")
+        .required("Device type is required"),
       durationDays: yup
         .number()
         .typeError("Duration must be a number")

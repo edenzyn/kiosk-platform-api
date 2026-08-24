@@ -1,7 +1,6 @@
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
 import type {
   CreatePricingPlanServiceInput,
   CreatePricingPlanServiceResult,
@@ -14,6 +13,7 @@ import type {
   UpdatePricingPlanServiceInput,
   UpdatePricingPlanServiceResult,
 } from "../license.types";
+import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
 
 export class LicensePricingService {
   constructor(
@@ -25,6 +25,7 @@ export class LicensePricingService {
   ): Promise<GetLicensePricingPlansServiceResult> {
     const plans = await this.licensePricingRepository.findPricingPlans({
       id: input.id,
+      isActive: true,
     });
     return { plans };
   }
@@ -35,7 +36,7 @@ export class LicensePricingService {
     const { isActive } = input.query;
 
     const plans = await this.licensePricingRepository.findPricingPlans({
-      isActive: isActive ?? true,
+      isActive,
     });
 
     return { plans };
@@ -46,6 +47,7 @@ export class LicensePricingService {
   ): Promise<CreatePricingPlanServiceResult> {
     const plan = await this.licensePricingRepository.createPricingPlan({
       name: input.dto.name,
+      deviceType: input.dto.deviceType,
       durationDays: input.dto.durationDays,
       price: input.dto.price,
       currency: input.dto.currency,
@@ -94,6 +96,7 @@ export class LicensePricingService {
       updatedBy: input.currentUser.id,
       data: {
         name: input.dto.name,
+        deviceType: input.dto.deviceType,
         durationDays: input.dto.durationDays,
         price: String(input.dto.price),
         currency: input.dto.currency,

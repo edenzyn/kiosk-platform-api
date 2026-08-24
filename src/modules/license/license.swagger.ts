@@ -8,6 +8,8 @@ const licenseIdParam = {
 const licenseStatusDescription =
   "1=AVAILABLE, 2=ACTIVE, 3=GRACE_PERIOD, 4=EXPIRED, 5=REVOKED";
 
+const deviceTypeDescription = "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY";
+
 const discountRuleRequestSchema = {
   type: "object",
   required: ["name", "targetEntity", "discountType", "discountValue"],
@@ -49,9 +51,10 @@ const discountRuleRequestSchema = {
 
 const pricingPlanRequestSchema = {
   type: "object",
-  required: ["name", "durationDays", "price", "currency"],
+  required: ["name", "deviceType", "durationDays", "price", "currency"],
   properties: {
     name: { type: "string", minLength: 2, maxLength: 255 },
+    deviceType: { type: "integer", description: deviceTypeDescription },
     durationDays: { type: "integer", minimum: 1 },
     price: { type: "number", minimum: 0 },
     currency: { type: "string", minLength: 3, maxLength: 3, description: "3-letter ISO code" },
@@ -200,6 +203,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
         ...paginationParams,
         { name: "search", in: "query", schema: { type: "string" } },
         { name: "status", in: "query", schema: { type: "integer" }, description: licenseStatusDescription },
+        { name: "deviceType", in: "query", schema: { type: "integer" }, description: deviceTypeDescription },
         { name: "sortBy", in: "query", schema: { type: "string" } },
         { name: "sortOrder", in: "query", schema: { type: "string", enum: ["asc", "desc"] } },
       ],
@@ -401,6 +405,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
         ...paginationParams,
         { name: "search", in: "query", schema: { type: "string" } },
         { name: "status", in: "query", schema: { type: "integer" }, description: licenseStatusDescription },
+        { name: "deviceType", in: "query", schema: { type: "integer" }, description: deviceTypeDescription },
         { name: "branchId", in: "query", schema: { type: "string", format: "uuid" } },
         { name: "sortBy", in: "query", schema: { type: "string" } },
         { name: "sortOrder", in: "query", schema: { type: "string", enum: ["asc", "desc"] } },

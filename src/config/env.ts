@@ -41,6 +41,11 @@ const EnvSchema = Yup.object({
   META_WHATSAPP_ACCESS_TOKEN: Yup.string().required(),
   META_WHATSAPP_VERIFY_TOKEN: Yup.string().required(),
   META_WHATSAPP_APP_SECRET: Yup.string().required(),
+  META_WHATSAPP_PHONE_NUMBER_ID: Yup.string().required(),
+  META_WHATSAPP_API_VERSION: Yup.string().required(),
+  META_WHATSAPP_API_BASE_URL: Yup.string().default(
+    "https://graph.facebook.com",
+  ),
   NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),

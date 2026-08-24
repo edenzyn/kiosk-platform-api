@@ -85,6 +85,9 @@ jobs:
             META_WHATSAPP_ACCESS_TOKEN=${{ secrets.META_WHATSAPP_ACCESS_TOKEN }}
             META_WHATSAPP_VERIFY_TOKEN=${{ secrets.META_WHATSAPP_VERIFY_TOKEN }}
             META_WHATSAPP_APP_SECRET=${{ secrets.META_WHATSAPP_APP_SECRET }}
+            META_WHATSAPP_PHONE_NUMBER_ID=${{ vars.META_WHATSAPP_PHONE_NUMBER_ID }}
+            META_WHATSAPP_API_VERSION=${{ vars.META_WHATSAPP_API_VERSION }}
+            META_WHATSAPP_API_BASE_URL=${{ vars.META_WHATSAPP_API_BASE_URL }}
             EOF
 
             echo "📦 Step 5: Installing dependencies..."

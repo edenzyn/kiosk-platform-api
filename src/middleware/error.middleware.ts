@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 import { ValidationError } from "yup";
 import { env } from "../config/env";
+import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
@@ -42,10 +43,15 @@ export const errorHandler: ErrorRequestHandler = (
     logger.warn(normalized.message, context);
   }
 
+  const clientMessage =
+    normalized.statusCode >= HttpStatusCodes.INTERNAL_SERVER_ERROR
+      ? ERROR_MESSAGES.INTERNAL_SERVER
+      : normalized.message;
+
   response.status(normalized.statusCode).json({
     error: {
       code: normalized.code,
-      message: normalized.message,
+      message: clientMessage,
       ...(normalized.details !== undefined && {
         details: normalized.details,
       }),

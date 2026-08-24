@@ -11,8 +11,8 @@ import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitatio
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import type { MailService } from "../../shared/services/mail/mail.service";
-import { getInviteUserTemplate } from "../../shared/services/mail/templates/invite-user.template";
+import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
+import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import {
   compareHashedData,
@@ -31,6 +31,7 @@ import type {
 import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { NotificationService } from "../notification/notification.service";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
 import type {
@@ -62,7 +63,7 @@ export class UserService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly rbacRepository: RbacRepository,
-    private readonly mailService: MailService,
+    private readonly notificationService: NotificationService,
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
     private readonly rbacService: RbacService,
@@ -443,7 +444,7 @@ export class UserService {
         token,
       });
 
-      await this.mailService.sendMail({
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
         to: dto.email,
         ...template,
       });
@@ -599,7 +600,7 @@ export class UserService {
         token,
       });
 
-      await this.mailService.sendMail({
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
         to: invitation.email,
         ...template,
       });

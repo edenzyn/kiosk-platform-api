@@ -12,7 +12,7 @@ import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import { AppError } from "../shared/errors/app-error";
-import type { RedisService } from "../shared/services/redis/redis.service";
+import type { RedisProvider } from "../shared/providers/redis/redis.provider";
 import { logger } from "../shared/utils/core/logger";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
 
@@ -30,8 +30,8 @@ declare global {
 
 async function isSessionRevoked(sessionId: string): Promise<boolean> {
   try {
-    const redisService = container.resolve<RedisService>("redisService");
-    return await redisService.exists(RedisKeys.authSessionRevoked(sessionId));
+    const redisProvider = container.resolve<RedisProvider>("redisProvider");
+    return await redisProvider.exists(RedisKeys.authSessionRevoked(sessionId));
   } catch (error) {
     // Fail open: if Redis is unreachable, fall back to the JWT's own expiry
     // rather than locking every signed-in user out because a cache is down.

@@ -1,5 +1,5 @@
 import cookieParser from "cookie-parser";
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import helmet from "helmet";
 import swaggerUi from "swagger-ui-express";
 import { env } from "./config/env";
@@ -17,6 +17,7 @@ import { deviceLicenseRouter } from "./modules/license/routes/device-license.rou
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
+import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import platformRoutes from "./modules/platform/platform.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
@@ -50,7 +51,14 @@ export class App {
     this.instance.use(helmet());
     applyCors(this.instance);
     this.instance.use(cookieParser());
-    this.instance.use(express.json({ limit: "1mb" }));
+    this.instance.use(
+      express.json({
+        limit: "1mb",
+        verify: (req, _res, buf) => {
+          (req as Request).rawBody = buf;
+        },
+      }),
+    );
     this.instance.use(express.urlencoded({ extended: false, limit: "1mb" }));
     this.instance.use(rateLimitMiddleware);
     this.instance.use(`${this.apiV1Prefix}/pvt`, authMiddleware);
@@ -77,6 +85,7 @@ export class App {
   private configureRoutes(): void {
     this.configureHealthRoute();
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
+    this.instance.use(this.apiV1Prefix, notificationRoutes);
     this.configurePlatformUserRoutes();
     this.configureResellerRoutes();
     this.configureNormalUserRoutes();

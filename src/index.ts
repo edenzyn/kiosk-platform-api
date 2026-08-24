@@ -8,7 +8,7 @@ import { env } from "./config/env";
 import type { RedisConnection } from "./config/redis";
 import { registerJobs } from "./jobs/register-jobs";
 import { jobScheduler } from "./jobs/scheduler";
-import { registerWorkers } from "./shared/services/queue/register-workers";
+import { registerWorkers } from "./shared/queue/register-workers";
 import { logger } from "./shared/utils/core/logger";
 
 function bootstrap(): void {

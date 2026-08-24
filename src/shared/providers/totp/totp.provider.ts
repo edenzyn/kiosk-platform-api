@@ -1,9 +1,9 @@
 import { authenticator } from "otplib";
 import { env } from "../../../config/env";
-import type { QrCodeService } from "../qrcode/qrcode.service";
+import type { QrCodeProvider } from "../qrcode/qrcode.provider";
 
-export class TotpService {
-  constructor(private readonly qrCodeService: QrCodeService) {}
+export class TotpProvider {
+  constructor(private readonly qrCodeProvider: QrCodeProvider) {}
 
   generateSecret(): string {
     return authenticator.generateSecret();
@@ -14,7 +14,7 @@ export class TotpService {
   }
 
   async generateQrCodeDataUrl(keyUri: string): Promise<string> {
-    return this.qrCodeService.generateDataUrl(keyUri);
+    return this.qrCodeProvider.generateDataUrl(keyUri);
   }
 
   verify(code: string, secret: string): boolean {

@@ -3,11 +3,10 @@ import crypto from "node:crypto";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
+import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import type { MailService } from "../../../shared/services/mail/mail.service";
-import { getTwoFactorOtpTemplate } from "../../../shared/services/mail/templates/two-factor-otp.template";
-import type { TotpService } from "../../../shared/services/totp/totp.service";
-import type { WhatsAppService } from "../../../shared/services/whatsapp/whatsapp.service";
+import { getTwoFactorOtpTemplate } from "../../notification/channels/email/templates/two-factor-otp.template";
+import type { TotpProvider } from "../../../shared/providers/totp/totp.provider";
 import { compareHashedData } from "../../../shared/utils/core/bcrypt.helper";
 import {
   createRandomReadableCode,
@@ -17,6 +16,7 @@ import {
   generateToken,
   verifyToken,
 } from "../../../shared/utils/core/jwt.helper";
+import type { NotificationService } from "../../notification/notification.service";
 import type { UserEntity } from "../../user/schemas/user.schema";
 import type { UserRepository } from "../../user/user.repository";
 import {
@@ -48,9 +48,8 @@ type PeekedTwoFactorToken = jwt.JwtPayload & {
 export class TwoFactorService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly mailService: MailService,
-    private readonly whatsAppService: WhatsAppService,
-    private readonly totpService: TotpService,
+    private readonly notificationService: NotificationService,
+    private readonly totpProvider: TotpProvider,
   ) {}
 
   private static readonly OTP_LENGTH = 6;
@@ -72,7 +71,10 @@ export class TwoFactorService {
   ): Promise<void> {
     if (method === TwoFactorMethodEnums.EMAIL) {
       const template = getTwoFactorOtpTemplate({ code });
-      await this.mailService.sendMail({ to: user.email, ...template });
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
+        to: user.email,
+        ...template,
+      });
       return;
     }
 
@@ -82,7 +84,7 @@ export class TwoFactorService {
       });
     }
 
-    await this.whatsAppService.sendMessage({
+    await this.notificationService.send(NotificationChannelEnum.WHATSAPP, {
       to: user.mobile,
       message: `Your ${env.APP_NAME} verification code is ${code}. It expires in 10 minutes.`,
     });
@@ -149,9 +151,9 @@ export class TwoFactorService {
       });
     }
 
-    const secret = this.totpService.generateSecret();
-    const keyUri = this.totpService.buildKeyUri(user.email, secret);
-    const qrCodeDataUrl = await this.totpService.generateQrCodeDataUrl(keyUri);
+    const secret = this.totpProvider.generateSecret();
+    const keyUri = this.totpProvider.buildKeyUri(user.email, secret);
+    const qrCodeDataUrl = await this.totpProvider.generateQrCodeDataUrl(keyUri);
 
     const payload: TwoFactorTotpSetupTokenPayload = {
       purpose: TwoFactorTokenPurposeEnums.TOTP_SETUP,
@@ -218,7 +220,7 @@ export class TwoFactorService {
         });
       }
 
-      if (!this.totpService.verify(code, peeked.secret)) {
+      if (!this.totpProvider.verify(code, peeked.secret)) {
         throw new AppError("Invalid verification code", {
           statusCode: HttpStatusCodes.BAD_REQUEST,
         });
@@ -388,7 +390,7 @@ export class TwoFactorService {
         peeked.userId,
       );
       const isValidTotp = settings.twoFactorSecret
-        ? this.totpService.verify(code, settings.twoFactorSecret)
+        ? this.totpProvider.verify(code, settings.twoFactorSecret)
         : false;
 
       if (!isValidTotp) {

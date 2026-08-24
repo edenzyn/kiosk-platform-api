@@ -3,7 +3,7 @@ import ms from "ms";
 import type { Database } from "../../config/db";
 import { env } from "../../config/env";
 import { RedisKeys } from "../../shared/constants/redis-keys.constants";
-import type { RedisService } from "../../shared/services/redis/redis.service";
+import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
 import type {
   CreateRefreshTokenRepoInput,
   CreateRefreshTokenRepoResult,
@@ -27,14 +27,14 @@ import { authSessions } from "./schemas/auth-session.schema";
 export class AuthRepository {
   constructor(
     private readonly database: Database,
-    private readonly redisService: RedisService,
+    private readonly redisProvider: RedisProvider,
   ) {}
 
   private async _denylistSession(sessionId: string): Promise<void> {
     const ttlSeconds = Math.ceil(
       ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue) / 1000,
     );
-    await this.redisService.set(
+    await this.redisProvider.set(
       RedisKeys.authSessionRevoked(sessionId),
       "1",
       ttlSeconds,

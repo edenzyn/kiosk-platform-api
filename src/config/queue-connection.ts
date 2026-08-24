@@ -1,6 +1,6 @@
 import Redis, { type RedisOptions } from "ioredis";
-import { env } from "../../../config/env";
-import { logger } from "../../utils/core/logger";
+import { logger } from "../shared/utils/core/logger";
+import { env } from "./env";
 
 const queueRedisOptions: RedisOptions = {
   maxRetriesPerRequest: null,

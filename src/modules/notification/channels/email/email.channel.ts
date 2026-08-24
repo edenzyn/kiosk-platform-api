@@ -1,15 +1,10 @@
 import type { Transporter } from "nodemailer";
-import { env } from "../../../config/env";
+import { env } from "../../../../config/env";
+import type { SendMailOptions } from "../../../../shared/queue/email/email.queue";
 
-export interface SendMailOptions {
-  to: string | string[];
-  subject: string;
-  html: string;
-  text?: string;
-  from?: string;
-}
+export type { SendMailOptions };
 
-export class MailService {
+export class EmailChannel {
   constructor(private readonly mailTransporter: Transporter) {}
 
   async sendMail(options: SendMailOptions): Promise<void> {

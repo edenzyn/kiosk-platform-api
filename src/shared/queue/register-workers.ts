@@ -1,5 +1,5 @@
 import type { Worker } from "bullmq";
-import { logger } from "../../utils/core/logger";
+import { logger } from "../utils/core/logger";
 import { createEmailWorker } from "./email/email.worker";
 
 export function registerWorkers(): Worker[] {

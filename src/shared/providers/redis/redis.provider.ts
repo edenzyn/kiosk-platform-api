@@ -1,6 +1,6 @@
 import type { RedisConnection } from "../../../config/redis";
 
-export class RedisService {
+export class RedisProvider {
   constructor(private readonly redis: RedisConnection) {}
 
   async get(key: string): Promise<string | null> {

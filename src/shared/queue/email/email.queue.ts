@@ -1,7 +1,14 @@
 import { Queue } from "bullmq";
 import type Redis from "ioredis";
-import { QueueNames } from "../../../enums/core/queue-names.enum";
-import type { SendMailOptions } from "../../mail/mail.service";
+import { QueueNames } from "../../enums/core/queue-names.enum";
+
+export interface SendMailOptions {
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+  from?: string;
+}
 
 export type EmailJobData = SendMailOptions;
 

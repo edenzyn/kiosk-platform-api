@@ -6,9 +6,10 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import type { MailService } from "../../shared/services/mail/mail.service";
-import { getInviteResellerTemplate } from "../../shared/services/mail/templates/invite-reseller.template";
+import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
+import { getInviteResellerTemplate } from "../notification/channels/email/templates/invite-reseller.template";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
+import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type {
   GetResellerInvitationsServiceInput,
@@ -24,7 +25,7 @@ import type {
 export class ResellerService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly mailService: MailService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // ========================================
@@ -96,7 +97,7 @@ export class ResellerService {
         token,
       });
 
-      await this.mailService.sendMail({
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
         to: dto.email,
         ...template,
       });

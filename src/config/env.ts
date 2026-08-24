@@ -38,6 +38,9 @@ const EnvSchema = Yup.object({
   SMTP_FROM: Yup.string().default(
     '"Kiosk Platform" <noreply@kioskplatform.com>',
   ),
+  META_WHATSAPP_ACCESS_TOKEN: Yup.string().required(),
+  META_WHATSAPP_VERIFY_TOKEN: Yup.string().required(),
+  META_WHATSAPP_APP_SECRET: Yup.string().required(),
   NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),

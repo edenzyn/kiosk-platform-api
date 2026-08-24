@@ -2,6 +2,7 @@ import { authSwaggerPaths } from "../../../modules/auth/auth.swagger";
 import { branchSwaggerPaths } from "../../../modules/branch/branch.swagger";
 import { deviceSwaggerPaths } from "../../../modules/device/device.swagger";
 import { licenseSwaggerPaths } from "../../../modules/license/license.swagger";
+import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
 import { rbacSwaggerPaths } from "../../../modules/rbac/rbac.swagger";
@@ -35,6 +36,7 @@ export const swaggerDocument = {
     { name: "RBAC", description: "Role and permission management within an organization or branch" },
     { name: "Resellers", description: "Reseller account self-service and platform-side reseller management" },
     { name: "Platform", description: "Platform super-admin self-service account" },
+    { name: "Notifications", description: "Outbound email/WhatsApp sending and inbound WhatsApp webhook" },
   ],
   // Cookie-based auth is the primary mechanism (see auth.middleware.ts); a
   // Bearer header is accepted as a fallback. Individual operations override
@@ -124,5 +126,6 @@ export const swaggerDocument = {
     ...rbacSwaggerPaths,
     ...resellerSwaggerPaths,
     ...platformSwaggerPaths,
+    ...notificationSwaggerPaths,
   },
 };

@@ -3,8 +3,8 @@ import crypto from "node:crypto";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import {
+  WHATSAPP_TEMPLATE_LANGUAGE,
   WHATSAPP_TEMPLATES,
-  resolveWhatsAppLanguageCode,
 } from "../../../shared/constants/whatsapp-templates.constants";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
@@ -72,7 +72,6 @@ export class TwoFactorService {
     user: UserEntity,
     method: TwoFactorMethodEnums,
     code: string,
-    languageCode: string,
   ): Promise<void> {
     if (method === TwoFactorMethodEnums.EMAIL) {
       const template = getTwoFactorOtpTemplate({ code });
@@ -93,7 +92,7 @@ export class TwoFactorService {
       to: user.mobile,
       template: {
         name: WHATSAPP_TEMPLATES.OTP,
-        languageCode: resolveWhatsAppLanguageCode(languageCode),
+        languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
         bodyParams: [code, "2FA"],
         buttons: [{ index: 0, param: code }],
       },
@@ -112,7 +111,6 @@ export class TwoFactorService {
       });
     }
 
-    const settings = await this.userRepository.getOrCreateSettings(user.id);
     const code = createRandomReadableCode(TwoFactorService.OTP_LENGTH);
     const payload: TwoFactorOtpTokenPayload = {
       purpose,
@@ -124,7 +122,7 @@ export class TwoFactorService {
       expiresIn: env.JWT_2FA_OTP_EXPIRES_IN as jwt.SignOptions["expiresIn"],
     });
 
-    await this._deliverCode(user, method, code, settings.languageCode);
+    await this._deliverCode(user, method, code);
 
     return { otpToken };
   }

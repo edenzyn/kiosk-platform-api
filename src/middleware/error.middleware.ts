@@ -31,8 +31,8 @@ export const errorHandler: ErrorRequestHandler = (
         ? error
         : new AppError("An unexpected error occurred", {
             isOperational: false,
+            details: error,
           });
-
   const context = {
     err: error,
     code: normalized.code,

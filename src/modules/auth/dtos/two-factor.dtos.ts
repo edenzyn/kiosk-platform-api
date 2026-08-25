@@ -10,21 +10,18 @@ export interface SetupTwoFactorRequestDto {
 }
 
 export interface SetupTwoFactorResponseDto {
-  otpToken: string;
+  verificationId: string;
   method: TwoFactorMethodEnums;
-  qrCodeDataUrl?: string;
-  manualEntryCode?: string;
 }
 
 export interface EnableTwoFactorRequestDto {
-  otpToken: string;
+  verificationId: string;
   code: string;
 }
 
 export interface EnableTwoFactorResponseDto {
   message: string;
   method: TwoFactorMethodEnums;
-  backupCodes?: string[];
 }
 
 export interface DisableTwoFactorRequestDto {
@@ -36,6 +33,6 @@ export interface DisableTwoFactorResponseDto {
 }
 
 export interface VerifyTwoFactorLoginRequestDto {
-  twoFactorToken: string;
+  verificationId: string;
   code: string;
 }

@@ -1,3 +1,5 @@
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
+
 export const resellerSwaggerPaths: Record<string, unknown> = {
   // ========================================
   // ? RESELLER SELF-SERVICE (mounted /pvt/r)
@@ -212,7 +214,7 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
                   method: {
                     type: "integer",
                     nullable: true,
-                    description: "TwoFactorMethodEnums: 1=EMAIL, 2=WHATSAPP, 3=AUTHENTICATOR",
+                    description: "TwoFactorMethodEnums: 1=EMAIL, 2=WHATSAPP",
                   },
                 },
               },
@@ -238,8 +240,8 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
               properties: {
                 method: {
                   type: "integer",
-                  enum: [1, 2, 3],
-                  description: "TwoFactorMethodEnums: 1=EMAIL, 2=WHATSAPP, 3=AUTHENTICATOR",
+                  enum: [1, 2],
+                  description: "TwoFactorMethodEnums: 1=EMAIL, 2=WHATSAPP",
                 },
               },
             },
@@ -249,16 +251,14 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Setup session started; otpToken must be echoed back on /2fa/enable. qrCodeDataUrl/manualEntryCode are present for the AUTHENTICATOR method",
+            "Setup session started; verificationId must be echoed back on /2fa/enable",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  otpToken: { type: "string" },
+                  verificationId: { type: "string", format: "uuid" },
                   method: { type: "integer" },
-                  qrCodeDataUrl: { type: "string" },
-                  manualEntryCode: { type: "string" },
                 },
               },
             },
@@ -280,10 +280,14 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["otpToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                otpToken: { type: "string", description: "Token returned by /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                verificationId: { type: "string", format: "uuid" },
+                code: {
+                  type: "string",
+                  minLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                  maxLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },
@@ -291,7 +295,7 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Two-factor enabled; backupCodes returned once for the AUTHENTICATOR method",
+          description: "Two-factor enabled",
           content: {
             "application/json": {
               schema: {
@@ -299,7 +303,6 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   message: { type: "string" },
                   method: { type: "integer" },
-                  backupCodes: { type: "array", items: { type: "string" } },
                 },
               },
             },

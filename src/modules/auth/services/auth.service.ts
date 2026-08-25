@@ -3,10 +3,16 @@ import { randomUUID } from "node:crypto";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
+import {
+  WHATSAPP_TEMPLATE_LANGUAGE,
+  WHATSAPP_TEMPLATES,
+} from "../../../shared/constants/whatsapp-templates.constants";
 import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
+import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
 import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
@@ -32,6 +38,8 @@ import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
+import { getForgotPasswordTemplate } from "../../notification/channels/email/templates/forgot-password.template";
+import type { NotificationService } from "../../notification/notification.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";
 import type { UserInvitationEntity } from "../../user/schemas/user-invitations.schema";
@@ -60,6 +68,13 @@ import type {
   SessionMeta,
   VerifyTwoFactorLoginServiceResult,
 } from "../auth.types";
+import type {
+  ForgotPasswordRequestDto,
+  ForgotPasswordResponseDto,
+  ResetPasswordRequestDto,
+  ResetPasswordResponseDto,
+} from "../dtos/forgot-password.dtos";
+import type { OneTimeTokenService } from "./one-time-token.service";
 import type { TwoFactorService } from "./two-factor.service";
 
 interface RefreshTokenPayload extends jwt.JwtPayload {
@@ -78,6 +93,8 @@ export class AuthService {
     private readonly twoFactorService: TwoFactorService,
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
+    private readonly oneTimeTokenService: OneTimeTokenService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   private _generateTokens(
@@ -417,12 +434,12 @@ export class AuthService {
   }
 
   async verifyTwoFactorLogin(
-    twoFactorToken: string,
+    verificationId: string,
     code: string,
     meta: SessionMeta,
   ): Promise<VerifyTwoFactorLoginServiceResult> {
     const { userId } = await this.twoFactorService.verifyLogin(
-      twoFactorToken,
+      verificationId,
       code,
     );
 
@@ -1027,6 +1044,98 @@ export class AuthService {
         refreshToken: generatedTokens.refreshToken,
       },
       license: licenseInfo.license,
+    };
+  }
+
+  // ========================================
+  // ? PASSWORD RESET
+  // ========================================
+
+  async forgotPassword(
+    dto: ForgotPasswordRequestDto,
+  ): Promise<ForgotPasswordResponseDto> {
+    const genericResponse = {
+      message: "A password reset link has been sent.",
+    };
+
+    const user = dto.email
+      ? await this.userRepository.findOne({ email: dto.email })
+      : await this.userRepository.findOne({ mobile: dto.mobile });
+
+    if (!user || !user.isActive) return genericResponse;
+
+    const { verificationId, code } = await this.oneTimeTokenService.issue({
+      userId: user.id,
+      type: OneTimeTokenTypeEnum.PASSWORD_RESET,
+      channel: dto.email
+        ? NotificationChannelEnum.EMAIL
+        : NotificationChannelEnum.WHATSAPP,
+      destination: (dto.email ?? dto.mobile) as string,
+    });
+
+    const token = `${verificationId}.${code}`;
+
+    if (dto.email) {
+      const baseUrl = env.USER_CLIENT_BASE_URL.replace(/\/$/, "");
+      const template = getForgotPasswordTemplate({
+        name: user.name,
+        resetLink: `${baseUrl}/reset-password?token=${token}`,
+      });
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
+        to: dto.email,
+        ...template,
+      });
+    } else {
+      await this.notificationService.send(NotificationChannelEnum.WHATSAPP, {
+        to: dto.mobile as string,
+        template: {
+          name: WHATSAPP_TEMPLATES.FORGOT_PASSWORD,
+          languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+          bodyParams: [user.name, env.APP_NAME],
+          buttons: [{ index: 0, param: token }],
+        },
+      });
+    }
+
+    return genericResponse;
+  }
+
+  async resetPassword(
+    dto: ResetPasswordRequestDto,
+  ): Promise<ResetPasswordResponseDto> {
+    const [verificationId, code] = dto.token.split(".");
+
+    if (!verificationId || !code) {
+      throw new AppError("This reset link is invalid or has expired.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    const { userId } = await this.oneTimeTokenService.verify({
+      verificationId,
+      type: OneTimeTokenTypeEnum.PASSWORD_RESET,
+      code,
+    });
+
+    const user = await this.userRepository.findOne({ id: userId });
+    if (!user) {
+      throw new AppError("This reset link is invalid or has expired.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    const hashedPassword = await hashData(dto.newPassword);
+    await this.userRepository.update({
+      userId,
+      data: { password: hashedPassword },
+    });
+
+    await this.authRepository.revokeOtherSessions({ userId });
+
+    return {
+      message:
+        "Password reset successfully. Please sign in with your new password.",
+      userType: user.userType as UserTypeEnums,
     };
   }
 }

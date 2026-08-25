@@ -1,3 +1,5 @@
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
+
 export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/e": {
     get: {
@@ -199,9 +201,9 @@ export const platformSwaggerPaths: Record<string, unknown> = {
                   isEnabled: { type: "boolean" },
                   method: {
                     type: "integer",
-                    enum: [1, 2, 3],
+                    enum: [1, 2],
                     nullable: true,
-                    description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                    description: "1 = Email, 2 = WhatsApp",
                   },
                 },
               },
@@ -226,8 +228,8 @@ export const platformSwaggerPaths: Record<string, unknown> = {
               properties: {
                 method: {
                   type: "integer",
-                  enum: [1, 2, 3],
-                  description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                  enum: [1, 2],
+                  description: "1 = Email, 2 = WhatsApp",
                 },
               },
             },
@@ -237,22 +239,14 @@ export const platformSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Setup started; returns an otpToken to submit alongside the verification code to POST /2fa/enable",
+            "Setup started; returns a verificationId to submit alongside the verification code to POST /2fa/enable",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  otpToken: { type: "string" },
+                  verificationId: { type: "string", format: "uuid" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  qrCodeDataUrl: {
-                    type: "string",
-                    description: "Data URL of a QR code, present for the authenticator method",
-                  },
-                  manualEntryCode: {
-                    type: "string",
-                    description: "Manual entry key, present for the authenticator method",
-                  },
                 },
               },
             },
@@ -273,10 +267,14 @@ export const platformSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["otpToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                otpToken: { type: "string", description: "Token returned by POST /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                verificationId: { type: "string", format: "uuid" },
+                code: {
+                  type: "string",
+                  minLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                  maxLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },
@@ -292,7 +290,6 @@ export const platformSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   message: { type: "string" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  backupCodes: { type: "array", items: { type: "string" } },
                 },
               },
             },

@@ -1,60 +1,31 @@
-import type jwt from "jsonwebtoken";
-import crypto from "node:crypto";
-import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
+import {
+  WHATSAPP_TEMPLATE_LANGUAGE,
+  WHATSAPP_TEMPLATES,
+} from "../../../shared/constants/whatsapp-templates.constants";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
+import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
+import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import { getTwoFactorOtpTemplate } from "../../notification/channels/email/templates/two-factor-otp.template";
-import type { TotpProvider } from "../../../shared/providers/totp/totp.provider";
 import { compareHashedData } from "../../../shared/utils/core/bcrypt.helper";
-import {
-  createRandomReadableCode,
-  hashSha256,
-} from "../../../shared/utils/core/crypto.helper";
-import {
-  generateToken,
-  verifyToken,
-} from "../../../shared/utils/core/jwt.helper";
+import { getTwoFactorOtpTemplate } from "../../notification/channels/email/templates/two-factor-otp.template";
 import type { NotificationService } from "../../notification/notification.service";
-import type { UserEntity } from "../../user/schemas/user.schema";
 import type { UserRepository } from "../../user/user.repository";
-import {
-  TwoFactorTokenPurposeEnums,
-  type RequiresTwoFactorServiceResult,
-  type TwoFactorOtpTokenPayload,
-  type TwoFactorPendingLoginTokenPayload,
-  type TwoFactorTotpSetupTokenPayload,
-} from "../auth.types";
+import type { RequiresTwoFactorServiceResult } from "../auth.types";
 import type {
   DisableTwoFactorResponseDto,
   EnableTwoFactorResponseDto,
   SetupTwoFactorResponseDto,
   TwoFactorStatusResponseDto,
 } from "../dtos/two-factor.dtos";
-
-type OtpPurpose =
-  | TwoFactorTokenPurposeEnums.OTP_SETUP
-  | TwoFactorTokenPurposeEnums.OTP_LOGIN;
-
-type PeekedTwoFactorToken = jwt.JwtPayload & {
-  purpose?: TwoFactorTokenPurposeEnums;
-  userId?: string;
-  secret?: string;
-  method?: TwoFactorMethodEnums;
-  codeHash?: string;
-};
+import type { OneTimeTokenService } from "./one-time-token.service";
 
 export class TwoFactorService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
-    private readonly totpProvider: TotpProvider,
+    private readonly oneTimeTokenService: OneTimeTokenService,
   ) {}
-
-  private static readonly OTP_LENGTH = 6;
-  private static readonly BACKUP_CODE_COUNT = 8;
-  private static readonly BACKUP_CODE_LENGTH = 8;
 
   async getStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
     const settings = await this.userRepository.getOrCreateSettings(userId);
@@ -64,37 +35,37 @@ export class TwoFactorService {
     };
   }
 
+  /** Delivers to the destination already resolved by the caller. */
   private async _deliverCode(
-    user: UserEntity,
     method: TwoFactorMethodEnums,
+    destination: string,
     code: string,
   ): Promise<void> {
     if (method === TwoFactorMethodEnums.EMAIL) {
       const template = getTwoFactorOtpTemplate({ code });
       await this.notificationService.send(NotificationChannelEnum.EMAIL, {
-        to: user.email,
+        to: destination,
         ...template,
       });
       return;
     }
 
-    if (!user.mobile) {
-      throw new AppError("No phone number linked to your account", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
     await this.notificationService.send(NotificationChannelEnum.WHATSAPP, {
-      to: user.mobile,
-      message: `Your ${env.APP_NAME} verification code is ${code}. It expires in 10 minutes.`,
+      to: destination,
+      template: {
+        name: WHATSAPP_TEMPLATES.OTP,
+        languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+        bodyParams: [code, "2FA"],
+        buttons: [{ index: 0, param: code }],
+      },
     });
   }
 
   private async _requestOtp(
     userId: string,
     method: TwoFactorMethodEnums,
-    purpose: OtpPurpose,
-  ): Promise<{ otpToken: string }> {
+    type: OneTimeTokenTypeEnum,
+  ): Promise<{ verificationId: string }> {
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
       throw new AppError("User not found", {
@@ -102,205 +73,68 @@ export class TwoFactorService {
       });
     }
 
-    const code = createRandomReadableCode(TwoFactorService.OTP_LENGTH);
-    const payload: TwoFactorOtpTokenPayload = {
-      purpose,
+    const isEmail = method === TwoFactorMethodEnums.EMAIL;
+    const channel = isEmail
+      ? NotificationChannelEnum.EMAIL
+      : NotificationChannelEnum.WHATSAPP;
+    const destination = isEmail ? user.email : user.mobile;
+
+    if (!destination) {
+      throw new AppError(
+        isEmail
+          ? "No email address linked to your account"
+          : "No phone number linked to your account",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const { verificationId, code } = await this.oneTimeTokenService.issue({
       userId: user.id,
-      method,
-      codeHash: hashSha256(code),
-    };
-    const otpToken = generateToken(payload, env.JWT_2FA_SECRET, {
-      expiresIn: env.JWT_2FA_OTP_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      type,
+      channel,
+      destination,
     });
 
-    await this._deliverCode(user, method, code);
+    await this._deliverCode(method, destination, code);
 
-    return { otpToken };
-  }
-
-  private _extractOtpPayload(
-    peeked: PeekedTwoFactorToken,
-    code: string,
-    purpose: OtpPurpose,
-  ): { userId: string; method: TwoFactorMethodEnums } {
-    if (
-      peeked.purpose !== purpose ||
-      !peeked.userId ||
-      !peeked.method ||
-      !peeked.codeHash
-    ) {
-      throw new AppError("Invalid verification session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (hashSha256(code.trim().toUpperCase()) !== peeked.codeHash) {
-      throw new AppError("Invalid verification code", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    return { userId: peeked.userId, method: peeked.method };
-  }
-
-  private async _setupTotp(userId: string): Promise<SetupTwoFactorResponseDto> {
-    const user = await this.userRepository.findOne({ id: userId });
-    if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    const secret = this.totpProvider.generateSecret();
-    const keyUri = this.totpProvider.buildKeyUri(user.email, secret);
-    const qrCodeDataUrl = await this.totpProvider.generateQrCodeDataUrl(keyUri);
-
-    const payload: TwoFactorTotpSetupTokenPayload = {
-      purpose: TwoFactorTokenPurposeEnums.TOTP_SETUP,
-      userId,
-      secret,
-    };
-    const otpToken = generateToken(payload, env.JWT_2FA_SECRET, {
-      expiresIn:
-        env.JWT_2FA_TOTP_SETUP_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-    });
-
-    return {
-      otpToken,
-      method: TwoFactorMethodEnums.AUTHENTICATOR,
-      qrCodeDataUrl,
-      manualEntryCode: secret,
-    };
+    return { verificationId };
   }
 
   async setup(
     userId: string,
     method: TwoFactorMethodEnums,
   ): Promise<SetupTwoFactorResponseDto> {
-    if (method === TwoFactorMethodEnums.AUTHENTICATOR) {
-      return this._setupTotp(userId);
-    }
-
-    const { otpToken } = await this._requestOtp(
+    const { verificationId } = await this._requestOtp(
       userId,
       method,
-      TwoFactorTokenPurposeEnums.OTP_SETUP,
+      OneTimeTokenTypeEnum.TWO_FACTOR_SETUP,
     );
-    return { otpToken, method };
-  }
-
-  private _generateBackupCodes(): { codes: string[]; hashes: string[] } {
-    const codes = Array.from(
-      { length: TwoFactorService.BACKUP_CODE_COUNT },
-      () => createRandomReadableCode(TwoFactorService.BACKUP_CODE_LENGTH),
-    );
-    const hashes = codes.map((code) => hashSha256(code));
-    return { codes, hashes };
+    return { verificationId, method };
   }
 
   async enable(
     userId: string,
-    otpToken: string,
+    verificationId: string,
     code: string,
   ): Promise<EnableTwoFactorResponseDto> {
-    let peeked: PeekedTwoFactorToken;
-    try {
-      peeked = verifyToken(otpToken, env.JWT_2FA_SECRET);
-    } catch {
-      throw new AppError(
-        "This verification session has expired. Please start over.",
-        { statusCode: HttpStatusCodes.UNAUTHORIZED },
-      );
-    }
-
-    if (peeked.purpose === TwoFactorTokenPurposeEnums.TOTP_SETUP) {
-      if (peeked.userId !== userId || !peeked.secret) {
-        throw new AppError("Invalid verification session.", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
-        });
-      }
-
-      if (!this.totpProvider.verify(code, peeked.secret)) {
-        throw new AppError("Invalid verification code", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
-
-      const { codes, hashes } = this._generateBackupCodes();
-
-      await this.userRepository.updateTwoFactorAuth({
-        userId,
-        data: {
-          twoFactorEnabled: true,
-          twoFactorMethod: TwoFactorMethodEnums.AUTHENTICATOR,
-          twoFactorSecret: peeked.secret,
-          twoFactorBackupCodeHashes: hashes,
-        },
-      });
-
-      return {
-        message: "Two-factor authentication enabled",
-        method: TwoFactorMethodEnums.AUTHENTICATOR,
-        backupCodes: codes,
-      };
-    }
-
-    const { userId: verifiedUserId, method } = this._extractOtpPayload(
-      peeked,
+    const { channel } = await this.oneTimeTokenService.verify({
+      verificationId,
+      userId,
+      type: OneTimeTokenTypeEnum.TWO_FACTOR_SETUP,
       code,
-      TwoFactorTokenPurposeEnums.OTP_SETUP,
-    );
+    });
 
-    if (verifiedUserId !== userId) {
-      throw new AppError("Invalid verification session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
+    const method =
+      channel === NotificationChannelEnum.EMAIL
+        ? TwoFactorMethodEnums.EMAIL
+        : TwoFactorMethodEnums.WHATSAPP;
 
     await this.userRepository.updateTwoFactorAuth({
       userId,
-      data: {
-        twoFactorEnabled: true,
-        twoFactorMethod: method,
-        twoFactorSecret: null,
-        twoFactorBackupCodeHashes: null,
-      },
+      data: { twoFactorEnabled: true, twoFactorMethod: method },
     });
 
     return { message: "Two-factor authentication enabled", method };
-  }
-
-  private async _consumeBackupCodeIfValid(
-    userId: string,
-    code: string,
-    hashes: string[] | null,
-  ): Promise<boolean> {
-    if (!hashes?.length) return false;
-
-    const codeHash = hashSha256(code.trim().toUpperCase());
-
-    const index = hashes.findIndex((storedHash) => {
-      const storedBuffer = Buffer.from(storedHash, "hex");
-      const providedBuffer = Buffer.from(codeHash, "hex");
-
-      return (
-        storedBuffer.length === providedBuffer.length &&
-        crypto.timingSafeEqual(storedBuffer, providedBuffer)
-      );
-    });
-
-    if (index === -1) return false;
-
-    const remaining = hashes.filter((_, i) => i !== index);
-
-    await this.userRepository.updateTwoFactorAuth({
-      userId,
-      data: {
-        twoFactorBackupCodeHashes: remaining,
-      },
-    });
-
-    return true;
   }
 
   async disable(
@@ -323,12 +157,7 @@ export class TwoFactorService {
 
     await this.userRepository.updateTwoFactorAuth({
       userId,
-      data: {
-        twoFactorEnabled: false,
-        twoFactorMethod: null,
-        twoFactorSecret: null,
-        twoFactorBackupCodeHashes: null,
-      },
+      data: { twoFactorEnabled: false, twoFactorMethod: null },
     });
 
     return { message: "Two-factor authentication disabled" };
@@ -339,81 +168,28 @@ export class TwoFactorService {
     method: TwoFactorMethodEnums | null,
   ): Promise<RequiresTwoFactorServiceResult> {
     if (!method) {
-      throw new AppError(
-        "Two-factor authentication method is not configured.",
-        { statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR },
-      );
-    }
-
-    if (method === TwoFactorMethodEnums.AUTHENTICATOR) {
-      const payload: TwoFactorPendingLoginTokenPayload = {
-        purpose: TwoFactorTokenPurposeEnums.PENDING_LOGIN,
-        userId,
-      };
-      const twoFactorToken = generateToken(payload, env.JWT_2FA_SECRET, {
-        expiresIn:
-          env.JWT_2FA_PENDING_LOGIN_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      throw new AppError("Two-factor authentication method is not configured.", {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       });
-      return { requiresTwoFactor: true, twoFactorToken, method };
     }
 
-    const { otpToken } = await this._requestOtp(
+    const { verificationId } = await this._requestOtp(
       userId,
       method,
-      TwoFactorTokenPurposeEnums.OTP_LOGIN,
+      OneTimeTokenTypeEnum.TWO_FACTOR_LOGIN,
     );
-    return { requiresTwoFactor: true, twoFactorToken: otpToken, method };
+    return { requiresTwoFactor: true, verificationId, method };
   }
 
   async verifyLogin(
-    twoFactorToken: string,
+    verificationId: string,
     code: string,
   ): Promise<{ userId: string }> {
-    let peeked: PeekedTwoFactorToken;
-    try {
-      peeked = verifyToken(twoFactorToken, env.JWT_2FA_SECRET);
-    } catch {
-      throw new AppError(
-        "Invalid or expired verification session. Please log in again.",
-        { statusCode: HttpStatusCodes.UNAUTHORIZED },
-      );
-    }
-
-    if (peeked.purpose === TwoFactorTokenPurposeEnums.PENDING_LOGIN) {
-      if (!peeked.userId) {
-        throw new AppError("Invalid verification session.", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
-        });
-      }
-
-      const settings = await this.userRepository.getOrCreateSettings(
-        peeked.userId,
-      );
-      const isValidTotp = settings.twoFactorSecret
-        ? this.totpProvider.verify(code, settings.twoFactorSecret)
-        : false;
-
-      if (!isValidTotp) {
-        const usedBackupCode = await this._consumeBackupCodeIfValid(
-          peeked.userId,
-          code,
-          settings.twoFactorBackupCodeHashes,
-        );
-        if (!usedBackupCode) {
-          throw new AppError("Invalid verification code", {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-          });
-        }
-      }
-
-      return { userId: peeked.userId };
-    }
-
-    const verified = this._extractOtpPayload(
-      peeked,
+    const { userId } = await this.oneTimeTokenService.verify({
+      verificationId,
+      type: OneTimeTokenTypeEnum.TWO_FACTOR_LOGIN,
       code,
-      TwoFactorTokenPurposeEnums.OTP_LOGIN,
-    );
-    return { userId: verified.userId };
+    });
+    return { userId };
   }
 }

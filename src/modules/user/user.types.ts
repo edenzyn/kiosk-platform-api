@@ -163,9 +163,29 @@ export interface FindResellersRepoResult {
 
 export interface UpdateUserRepoInput {
   userId: string;
-  data: Partial<Pick<UserEntity, "isActive" | "updatedBy" | "password">>;
+  data: Partial<
+    Pick<
+      UserEntity,
+      "isActive" | "updatedBy" | "password" | "name" | "email" | "mobile"
+    >
+  >;
 }
 export type UpdateUserRepoResult = UserEntity;
+
+// ========================================
+// ? PROFILE CONTACT CHANGE (EMAIL / MOBILE)
+// ========================================
+export enum ContactChangeTokenPurposeEnums {
+  EMAIL_CHANGE = 1,
+  MOBILE_CHANGE = 2,
+}
+
+export interface ContactChangeTokenPayload {
+  purpose: ContactChangeTokenPurposeEnums;
+  userId: string;
+  newValue: string;
+  tokenHash: string;
+}
 
 export interface CreateUserRepoInput {
   user: CreateUserEntity;
@@ -240,13 +260,7 @@ export type UpdateUserInvitationRepoResult = UserInvitationEntity | undefined;
 export interface UpdateTwoFactorAuthRepoInput {
   userId: string;
   data: Partial<
-    Pick<
-      UserSettingsEntity,
-      | "twoFactorEnabled"
-      | "twoFactorMethod"
-      | "twoFactorSecret"
-      | "twoFactorBackupCodeHashes"
-    >
+    Pick<UserSettingsEntity, "twoFactorEnabled" | "twoFactorMethod">
   >;
 }
 export type UpdateTwoFactorAuthRepoResult = UserSettingsEntity;

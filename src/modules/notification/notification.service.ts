@@ -4,10 +4,8 @@ import type {
   EmailChannel,
   SendMailOptions,
 } from "./channels/email/email.channel";
-import type {
-  SendWhatsAppMessageOptions,
-  WhatsAppChannel,
-} from "./channels/whatsapp/whatsapp.channel";
+import type { WhatsAppChannel } from "./channels/whatsapp/whatsapp.channel";
+import { SendWhatsAppMessageOptions } from "./notification.types";
 
 export class NotificationService {
   constructor(

@@ -152,6 +152,73 @@ export class UserController {
     res.json(result);
   };
 
+  updateProfile = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.updateProfile.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.updateProfile(
+      userTokenData.id,
+      data,
+    );
+    res.json(result);
+  };
+
+  requestEmailChange = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.requestEmailChange.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.requestEmailChange(
+      userTokenData.id,
+      data,
+    );
+    res.json(result);
+  };
+
+  confirmEmailChange = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.confirmContactChange.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.confirmEmailChange(
+      userTokenData.id,
+      data.verificationId,
+      data.code,
+    );
+    res.json(result);
+  };
+
+  requestMobileChange = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.requestMobileChange.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.requestMobileChange(
+      userTokenData.id,
+      data,
+    );
+    res.json(result);
+  };
+
+  confirmMobileChange = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.confirmContactChange.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.confirmMobileChange(
+      userTokenData.id,
+      data.verificationId,
+      data.code,
+    );
+    res.json(result);
+  };
+
   getMyTwoFactorStatus = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
     const result = await this.userService.getTwoFactorStatus(userTokenData.id);
@@ -179,7 +246,7 @@ export class UserController {
     });
     const result = await this.userService.enableTwoFactor(
       userTokenData.id,
-      data.otpToken,
+      data.verificationId,
       data.code,
     );
     res.json(result);

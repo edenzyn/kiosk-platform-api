@@ -1,3 +1,5 @@
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
+
 export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/e": {
     get: {
@@ -127,6 +129,214 @@ export const userSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/users/profile": {
+    patch: {
+      tags: ["Users"],
+      summary: "Update the current user's profile details (name)",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["name"],
+              properties: { name: { type: "string", minLength: 2, maxLength: 100 } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Updated user (password omitted)",
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/profile/email/request-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Request an email change; sends a verification code to the new email",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["newEmail", "password"],
+              properties: {
+                newEmail: { type: "string", format: "email" },
+                password: {
+                  type: "string",
+                  description: "The account's current password, re-entered to authorise the change",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Verification id to submit alongside the code to POST /profile/email/confirm-change",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  verificationId: { type: "string", format: "uuid" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "409": {
+          description: "Email is already in use",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+      },
+    },
+  },
+  "/pvt/u/users/profile/email/confirm-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Confirm an email change with the verification code",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["verificationId", "code"],
+              properties: {
+                verificationId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Id returned by POST /profile/email/request-change",
+                },
+                code: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Email updated",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  user: { type: "object", description: "The updated user (password omitted)" },
+                },
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Validation error, or invalid verification code",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/profile/mobile/request-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Request a mobile number change; sends a verification code via WhatsApp to the new number",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["newMobile", "password"],
+              properties: {
+                newMobile: { type: "string" },
+                password: {
+                  type: "string",
+                  description: "The account's current password, re-entered to authorise the change",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Verification id to submit alongside the code to POST /profile/mobile/confirm-change",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  verificationId: { type: "string", format: "uuid" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "409": {
+          description: "Mobile number is already in use",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+      },
+    },
+  },
+  "/pvt/u/users/profile/mobile/confirm-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Confirm a mobile number change with the verification code",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["verificationId", "code"],
+              properties: {
+                verificationId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Id returned by POST /profile/mobile/request-change",
+                },
+                code: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Mobile number updated",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  user: { type: "object", description: "The updated user (password omitted)" },
+                },
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Validation error, or invalid verification code",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
   "/pvt/u/users/sessions": {
     get: {
       tags: ["Users"],
@@ -215,9 +425,9 @@ export const userSwaggerPaths: Record<string, unknown> = {
                   isEnabled: { type: "boolean" },
                   method: {
                     type: "integer",
-                    enum: [1, 2, 3],
+                    enum: [1, 2],
                     nullable: true,
-                    description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                    description: "1 = Email, 2 = WhatsApp",
                   },
                 },
               },
@@ -242,8 +452,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
               properties: {
                 method: {
                   type: "integer",
-                  enum: [1, 2, 3],
-                  description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                  enum: [1, 2],
+                  description: "1 = Email, 2 = WhatsApp",
                 },
               },
             },
@@ -253,22 +463,14 @@ export const userSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Setup started; returns an otpToken to submit alongside the verification code to POST /2fa/enable",
+            "Setup started; returns a verificationId to submit alongside the verification code to POST /2fa/enable",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  otpToken: { type: "string" },
+                  verificationId: { type: "string", format: "uuid" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  qrCodeDataUrl: {
-                    type: "string",
-                    description: "Data URL of a QR code, present for the authenticator method",
-                  },
-                  manualEntryCode: {
-                    type: "string",
-                    description: "Manual entry key, present for the authenticator method",
-                  },
                 },
               },
             },
@@ -289,10 +491,14 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["otpToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                otpToken: { type: "string", description: "Token returned by POST /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                verificationId: { type: "string", format: "uuid" },
+                code: {
+                  type: "string",
+                  minLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                  maxLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },
@@ -308,7 +514,6 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   message: { type: "string" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  backupCodes: { type: "array", items: { type: "string" } },
                 },
               },
             },

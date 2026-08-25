@@ -60,6 +60,46 @@ router.delete(
   }),
   asyncHandler(userController.revokeSession),
 );
+router.patch(
+  "/profile",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.updateProfile),
+);
+router.post(
+  "/profile/email/request-change",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.requestEmailChange),
+);
+router.post(
+  "/profile/email/confirm-change",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.confirmEmailChange),
+);
+router.post(
+  "/profile/mobile/request-change",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.requestMobileChange),
+);
+router.post(
+  "/profile/mobile/confirm-change",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.confirmMobileChange),
+);
 router.get(
   "/2fa/status",
   accessMiddleware({

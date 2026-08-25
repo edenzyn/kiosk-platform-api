@@ -5,7 +5,6 @@ import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
-import { logger } from "../shared/utils/core/logger";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
@@ -38,9 +37,9 @@ export const errorHandler: ErrorRequestHandler = (
     code: normalized.code,
   };
   if (normalized.statusCode >= HttpStatusCodes.INTERNAL_SERVER_ERROR) {
-    logger.error(normalized.message, context);
+    console.error(normalized.message, context);
   } else {
-    logger.warn(normalized.message, context);
+    console.warn(normalized.message, context);
   }
 
   const clientMessage =

@@ -2,6 +2,7 @@ import type jwt from "jsonwebtoken";
 import crypto from "node:crypto";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { OTP_CONSTANTS } from "../../../shared/constants/otp.constants";
 import {
   WHATSAPP_TEMPLATE_LANGUAGE,
   WHATSAPP_TEMPLATES,
@@ -56,10 +57,6 @@ export class TwoFactorService {
     private readonly totpProvider: TotpProvider,
   ) {}
 
-  private static readonly OTP_LENGTH = 6;
-  private static readonly BACKUP_CODE_COUNT = 8;
-  private static readonly BACKUP_CODE_LENGTH = 8;
-
   async getStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
     const settings = await this.userRepository.getOrCreateSettings(userId);
     return {
@@ -111,7 +108,9 @@ export class TwoFactorService {
       });
     }
 
-    const code = createRandomReadableCode(TwoFactorService.OTP_LENGTH);
+    const code = createRandomReadableCode(OTP_CONSTANTS.CODE_LENGTH, {
+      isNumeric: true,
+    });
     const payload: TwoFactorOtpTokenPayload = {
       purpose,
       userId: user.id,
@@ -199,9 +198,8 @@ export class TwoFactorService {
   }
 
   private _generateBackupCodes(): { codes: string[]; hashes: string[] } {
-    const codes = Array.from(
-      { length: TwoFactorService.BACKUP_CODE_COUNT },
-      () => createRandomReadableCode(TwoFactorService.BACKUP_CODE_LENGTH),
+    const codes = Array.from({ length: OTP_CONSTANTS.BACKUP_CODE_COUNT }, () =>
+      createRandomReadableCode(OTP_CONSTANTS.BACKUP_CODE_LENGTH),
     );
     const hashes = codes.map((code) => hashSha256(code));
     return { codes, hashes };

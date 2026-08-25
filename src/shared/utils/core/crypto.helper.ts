@@ -1,6 +1,7 @@
 import crypto, { createHash, randomInt } from "node:crypto";
 
 export const HASH_ALPHABET_CODE = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+export const NUMERIC_CODE_ALPHABET = "0123456789";
 
 const ALGORITHM = "aes-256-gcm";
 
@@ -14,10 +15,20 @@ export function hashSha256(data: string): string {
 // ========================================
 // ? RANDOM CODE GENERATION
 // ========================================
-export function createRandomReadableCode(length: number): string {
+export interface CreateRandomReadableCodeOptions {
+  isNumeric?: boolean;
+}
+
+export function createRandomReadableCode(
+  length: number,
+  options: CreateRandomReadableCodeOptions = {},
+): string {
+  const alphabet = options.isNumeric
+    ? NUMERIC_CODE_ALPHABET
+    : HASH_ALPHABET_CODE;
   return Array.from(
     { length },
-    () => HASH_ALPHABET_CODE[randomInt(HASH_ALPHABET_CODE.length)],
+    () => alphabet[randomInt(alphabet.length)],
   ).join("");
 }
 

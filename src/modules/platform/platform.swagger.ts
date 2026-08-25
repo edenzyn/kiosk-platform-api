@@ -1,3 +1,5 @@
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+
 export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/e": {
     get: {
@@ -276,7 +278,11 @@ export const platformSwaggerPaths: Record<string, unknown> = {
               required: ["otpToken", "code"],
               properties: {
                 otpToken: { type: "string", description: "Token returned by POST /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                code: {
+                  type: "string",
+                  minLength: OTP_CONSTANTS.CODE_LENGTH,
+                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },

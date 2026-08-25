@@ -1,4 +1,5 @@
 import * as Yup from "yup";
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { ThemeModeEnums } from "../../shared/enums/theme/theme-mode.enum";
 import { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
@@ -7,6 +8,7 @@ import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { passwordValidator } from "../../shared/validators/password.validator";
+import validateMobileNumber from "../../shared/validators/phone.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
 
 const TWO_FACTOR_METHOD_VALUES = Object.values(TwoFactorMethodEnums).filter(
@@ -79,13 +81,41 @@ export class UserValidator {
     otpToken: Yup.string().required("Verification session is required"),
     code: Yup.string()
       .trim()
-      .min(4, "Enter a valid code")
-      .max(10, "Enter a valid code")
+      .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
       .required("Code is required"),
   }).noUnknown();
 
   static disableTwoFactor = Yup.object({
     password: passwordValidator().required("Password is required"),
+  }).noUnknown();
+
+  static updateProfile = Yup.object({
+    name: Yup.string().required("Name is required").trim().min(2).max(100),
+  }).noUnknown();
+
+  static requestEmailChange = Yup.object({
+    newEmail: emailValidator("Invalid email address").required(
+      "Email is required",
+    ),
+  }).noUnknown();
+
+  static requestMobileChange = Yup.object({
+    newMobile: Yup.string()
+      .trim()
+      .max(20, "Mobile number must be less than 20 characters")
+      .required("Mobile number is required")
+      .test("is-mobile", "Invalid mobile number", (value) => {
+        if (!value) return true;
+        return validateMobileNumber(value);
+      }),
+  }).noUnknown();
+
+  static confirmContactChange = Yup.object({
+    changeToken: Yup.string().required("Verification session is required"),
+    code: Yup.string()
+      .trim()
+      .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
+      .required("Code is required"),
   }).noUnknown();
 
   static getUsersQuery = paginationQuerySchema

@@ -1,3 +1,4 @@
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
 const loginRequestBody = {
   required: true,
   content: {
@@ -58,7 +59,11 @@ export const authSwaggerPaths: Record<string, unknown> = {
               required: ["twoFactorToken", "code"],
               properties: {
                 twoFactorToken: { type: "string" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                code: {
+                  type: "string",
+                  minLength: OTP_CONSTANTS.CODE_LENGTH,
+                  maxLength: OTP_CONSTANTS.BACKUP_CODE_LENGTH,
+                },
               },
             },
           },

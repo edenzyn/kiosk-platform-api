@@ -1,3 +1,5 @@
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+
 export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/e": {
     get: {
@@ -121,6 +123,184 @@ export const userSwaggerPaths: Record<string, unknown> = {
         },
         "400": {
           description: "Validation error, or the current password is incorrect",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/profile": {
+    patch: {
+      tags: ["Users"],
+      summary: "Update the current user's profile details (name)",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["name"],
+              properties: { name: { type: "string", minLength: 2, maxLength: 100 } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Updated user (password omitted)",
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/profile/email/request-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Request an email change; sends a verification code to the new email",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["newEmail"],
+              properties: { newEmail: { type: "string", format: "email" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Verification session token to submit alongside the code to POST /profile/email/confirm-change",
+          content: {
+            "application/json": {
+              schema: { type: "object", properties: { changeToken: { type: "string" } } },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "409": {
+          description: "Email is already in use",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+      },
+    },
+  },
+  "/pvt/u/users/profile/email/confirm-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Confirm an email change with the verification code",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["changeToken", "code"],
+              properties: {
+                changeToken: { type: "string", description: "Token returned by POST /profile/email/request-change" },
+                code: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Email updated",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  user: { type: "object", description: "The updated user (password omitted)" },
+                },
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Validation error, or invalid verification code",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/profile/mobile/request-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Request a mobile number change; sends a verification code via WhatsApp to the new number",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["newMobile"],
+              properties: { newMobile: { type: "string" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Verification session token to submit alongside the code to POST /profile/mobile/confirm-change",
+          content: {
+            "application/json": {
+              schema: { type: "object", properties: { changeToken: { type: "string" } } },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "409": {
+          description: "Mobile number is already in use",
+          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        },
+      },
+    },
+  },
+  "/pvt/u/users/profile/mobile/confirm-change": {
+    post: {
+      tags: ["Users"],
+      summary: "Confirm a mobile number change with the verification code",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["changeToken", "code"],
+              properties: {
+                changeToken: { type: "string", description: "Token returned by POST /profile/mobile/request-change" },
+                code: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Mobile number updated",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  user: { type: "object", description: "The updated user (password omitted)" },
+                },
+              },
+            },
+          },
+        },
+        "400": {
+          description: "Validation error, or invalid verification code",
           content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
@@ -292,7 +472,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
               required: ["otpToken", "code"],
               properties: {
                 otpToken: { type: "string", description: "Token returned by POST /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                code: {
+                  type: "string",
+                  minLength: OTP_CONSTANTS.CODE_LENGTH,
+                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },

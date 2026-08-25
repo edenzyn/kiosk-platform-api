@@ -1,3 +1,5 @@
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+
 export const resellerSwaggerPaths: Record<string, unknown> = {
   // ========================================
   // ? RESELLER SELF-SERVICE (mounted /pvt/r)
@@ -283,7 +285,11 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
               required: ["otpToken", "code"],
               properties: {
                 otpToken: { type: "string", description: "Token returned by /2fa/setup" },
-                code: { type: "string", minLength: 4, maxLength: 10 },
+                code: {
+                  type: "string",
+                  minLength: OTP_CONSTANTS.CODE_LENGTH,
+                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
+                },
               },
             },
           },

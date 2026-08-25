@@ -2,23 +2,31 @@ import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+import {
+  WHATSAPP_TEMPLATE_LANGUAGE,
+  WHATSAPP_TEMPLATES,
+} from "../../shared/constants/whatsapp-templates.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import {
   compareHashedData,
   hashData,
 } from "../../shared/utils/core/bcrypt.helper";
-import { generateToken } from "../../shared/utils/core/jwt.helper";
+import {
+  createRandomReadableCode,
+  hashSha256,
+} from "../../shared/utils/core/crypto.helper";
+import { generateToken, verifyToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { AuthRepository } from "../auth/auth.repository";
 import type { SessionDto } from "../auth/auth.types";
@@ -30,8 +38,10 @@ import type {
 } from "../auth/dtos/two-factor.dtos";
 import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { BranchRepository } from "../branch/branch.repository";
-import type { OrganizationRepository } from "../organization/organization.repository";
+import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
+import { getTwoFactorOtpTemplate } from "../notification/channels/email/templates/two-factor-otp.template";
 import type { NotificationService } from "../notification/notification.service";
+import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
 import type {
@@ -49,14 +59,22 @@ import type {
 } from "./dtos/invite-user.dtos";
 import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos";
 import type {
+  ConfirmContactChangeResponseDto,
+  RequestContactChangeResponseDto,
+  UpdateProfileRequestDto,
+  UpdateProfileResponseDto,
+} from "./dtos/update-profile.dtos";
+import type {
   UpdateUserSettingsRequestDto,
   UpdateUserSettingsResponseDto,
 } from "./dtos/user-settings.dtos";
 import type { UserSettingsEntity } from "./schemas/user-settings.schema";
 import type { UserRepository } from "./user.repository";
-import type {
-  GetInvitationsByTenantServiceInput,
-  GetInvitationsByTenantServiceResult,
+import {
+  ContactChangeTokenPurposeEnums,
+  type ContactChangeTokenPayload,
+  type GetInvitationsByTenantServiceInput,
+  type GetInvitationsByTenantServiceResult,
 } from "./user.types";
 
 export class UserService {
@@ -298,6 +316,207 @@ export class UserService {
     });
 
     return { message: "Password changed successfully" };
+  }
+
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileRequestDto,
+  ): Promise<UpdateProfileResponseDto> {
+    const updated = await this.userRepository.update({
+      userId,
+      data: { name: dto.name },
+    });
+    const { password, ...safeUser } = updated;
+    return safeUser;
+  }
+
+  private _generateContactChangeToken(
+    purpose: ContactChangeTokenPurposeEnums,
+    userId: string,
+    newValue: string,
+    code: string,
+  ): string {
+    const payload: ContactChangeTokenPayload = {
+      purpose,
+      userId,
+      newValue,
+      codeHash: hashSha256(code),
+    };
+    return generateToken(payload, env.JWT_PROFILE_VERIFICATION_SECRET, {
+      expiresIn:
+        env.JWT_PROFILE_VERIFICATION_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+    });
+  }
+
+  private _verifyContactChangeToken(
+    changeToken: string,
+    userId: string,
+    purpose: ContactChangeTokenPurposeEnums,
+    code: string,
+  ): ContactChangeTokenPayload {
+    let payload: ContactChangeTokenPayload;
+    try {
+      payload = verifyToken(changeToken, env.JWT_PROFILE_VERIFICATION_SECRET);
+    } catch {
+      throw new AppError(
+        "This verification session has expired. Please start over.",
+        { statusCode: HttpStatusCodes.UNAUTHORIZED },
+      );
+    }
+
+    if (payload.purpose !== purpose || payload.userId !== userId) {
+      throw new AppError("Invalid verification session.", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (hashSha256(code.trim().toUpperCase()) !== payload.codeHash) {
+      throw new AppError("Invalid verification code", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    return payload;
+  }
+
+  async requestEmailChange(
+    userId: string,
+    newEmail: string,
+  ): Promise<RequestContactChangeResponseDto> {
+    const user = await this.userRepository.findOne({ id: userId });
+    if (!user) {
+      throw new AppError("User not found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (newEmail === user.email) {
+      throw new AppError(
+        "New email address cannot be same as current email address",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const existing = await this.userRepository.findOne({ email: newEmail });
+    if (existing) {
+      throw new AppError("Email is already in use", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+      });
+    }
+
+    const code = createRandomReadableCode(OTP_CONSTANTS.CODE_LENGTH, {
+      isNumeric: true,
+    });
+    const changeToken = this._generateContactChangeToken(
+      ContactChangeTokenPurposeEnums.EMAIL_CHANGE,
+      userId,
+      newEmail,
+      code,
+    );
+
+    const template = getTwoFactorOtpTemplate({ code });
+    await this.notificationService.send(NotificationChannelEnum.EMAIL, {
+      to: newEmail,
+      ...template,
+    });
+
+    return { changeToken };
+  }
+
+  async confirmEmailChange(
+    userId: string,
+    changeToken: string,
+    code: string,
+  ): Promise<ConfirmContactChangeResponseDto> {
+    const payload = this._verifyContactChangeToken(
+      changeToken,
+      userId,
+      ContactChangeTokenPurposeEnums.EMAIL_CHANGE,
+      code,
+    );
+
+    const updated = await this.userRepository.update({
+      userId,
+      data: { email: payload.newValue },
+    });
+    const { password, ...safeUser } = updated;
+    return { message: "Email updated successfully", user: safeUser };
+  }
+
+  async requestMobileChange(
+    userId: string,
+    newMobile: string,
+  ): Promise<RequestContactChangeResponseDto> {
+    const user = await this.userRepository.findOne({ id: userId });
+    if (!user) {
+      throw new AppError("User not found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    if (newMobile === user.mobile) {
+      throw new AppError(
+        "New mobile number cannot be same as current mobile number",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const existing = await this.userRepository.findOne({ mobile: newMobile });
+    if (existing) {
+      throw new AppError("Mobile number is already in use", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+      });
+    }
+
+    const code = createRandomReadableCode(OTP_CONSTANTS.CODE_LENGTH, {
+      isNumeric: true,
+    });
+    const changeToken = this._generateContactChangeToken(
+      ContactChangeTokenPurposeEnums.MOBILE_CHANGE,
+      userId,
+      newMobile,
+      code,
+    );
+
+    await this.notificationService.send(NotificationChannelEnum.WHATSAPP, {
+      to: newMobile,
+      template: {
+        name: WHATSAPP_TEMPLATES.OTP,
+        languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+        bodyParams: [code, "verify mobile"],
+        buttons: [{ index: 0, param: code }],
+      },
+    });
+
+    return { changeToken };
+  }
+
+  async confirmMobileChange(
+    userId: string,
+    changeToken: string,
+    code: string,
+  ): Promise<ConfirmContactChangeResponseDto> {
+    const payload = this._verifyContactChangeToken(
+      changeToken,
+      userId,
+      ContactChangeTokenPurposeEnums.MOBILE_CHANGE,
+      code,
+    );
+
+    const updated = await this.userRepository.update({
+      userId,
+      data: { mobile: payload.newValue },
+    });
+    const { password, ...safeUser } = updated;
+    return { message: "Mobile number updated successfully", user: safeUser };
   }
 
   async getTwoFactorStatus(

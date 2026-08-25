@@ -57,6 +57,46 @@ resellerRouter.delete(
   ),
   asyncHandler(userController.revokeSession),
 );
+resellerRouter.patch(
+  "/profile",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.updateProfile),
+);
+resellerRouter.post(
+  "/profile/email/request-change",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.requestEmailChange),
+);
+resellerRouter.post(
+  "/profile/email/confirm-change",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.confirmEmailChange),
+);
+resellerRouter.post(
+  "/profile/mobile/request-change",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.requestMobileChange),
+);
+resellerRouter.post(
+  "/profile/mobile/confirm-change",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  asyncHandler(userController.confirmMobileChange),
+);
 resellerRouter.get(
   "/2fa/status",
   accessMiddleware(

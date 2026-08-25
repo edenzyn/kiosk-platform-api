@@ -23,6 +23,8 @@ const EnvSchema = Yup.object({
   JWT_2FA_OTP_EXPIRES_IN: Yup.string().default("10m"),
   JWT_2FA_TOTP_SETUP_EXPIRES_IN: Yup.string().default("10m"),
   JWT_2FA_PENDING_LOGIN_EXPIRES_IN: Yup.string().default("5m"),
+  JWT_PROFILE_VERIFICATION_SECRET: Yup.string().required().min(16),
+  JWT_PROFILE_VERIFICATION_EXPIRES_IN: Yup.string().default("10m"),
   JWT_REFRESH_SLIDING_ENABLED: Yup.boolean().default(true),
   BCRYPT_ROUNDS: Yup.number().integer().min(10).max(15).default(12),
   API_PREFIX_V1: Yup.string().default("/api/v1"),

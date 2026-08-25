@@ -163,9 +163,29 @@ export interface FindResellersRepoResult {
 
 export interface UpdateUserRepoInput {
   userId: string;
-  data: Partial<Pick<UserEntity, "isActive" | "updatedBy" | "password">>;
+  data: Partial<
+    Pick<
+      UserEntity,
+      "isActive" | "updatedBy" | "password" | "name" | "email" | "mobile"
+    >
+  >;
 }
 export type UpdateUserRepoResult = UserEntity;
+
+// ========================================
+// ? PROFILE CONTACT CHANGE (EMAIL / MOBILE)
+// ========================================
+export enum ContactChangeTokenPurposeEnums {
+  EMAIL_CHANGE = 1,
+  MOBILE_CHANGE = 2,
+}
+
+export interface ContactChangeTokenPayload {
+  purpose: ContactChangeTokenPurposeEnums;
+  userId: string;
+  newValue: string;
+  codeHash: string;
+}
 
 export interface CreateUserRepoInput {
   user: CreateUserEntity;

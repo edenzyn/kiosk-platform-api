@@ -1,4 +1,5 @@
 import * as Yup from "yup";
+import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
 import { deviceCodeValidator } from "../../shared/validators/device-code.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { passwordValidator } from "../../shared/validators/password.validator";
@@ -63,8 +64,8 @@ export class AuthValidator {
     twoFactorToken: Yup.string().required("Verification session is required"),
     code: Yup.string()
       .trim()
-      .min(4, "Enter a valid code")
-      .max(10, "Enter a valid code")
+      .min(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
+      .max(OTP_CONSTANTS.BACKUP_CODE_LENGTH, "Enter a valid code")
       .required("Code is required"),
   }).noUnknown();
 }

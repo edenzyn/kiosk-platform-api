@@ -7,9 +7,11 @@ export type UpdateProfileResponseDto = Omit<UserEntity, "password">;
 
 export interface RequestEmailChangeRequestDto {
   newEmail: string;
+  password: string;
 }
 export interface RequestMobileChangeRequestDto {
   newMobile: string;
+  password: string;
 }
 export interface RequestContactChangeResponseDto {
   verificationId: string;

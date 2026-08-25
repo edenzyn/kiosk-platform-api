@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { ThemeModeEnums } from "../../shared/enums/theme/theme-mode.enum";
 import { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
@@ -83,7 +83,7 @@ export class UserValidator {
       .required("Verification session is required"),
     code: Yup.string()
       .trim()
-      .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
+      .length(ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH, "Enter a valid code")
       .required("Code is required"),
   }).noUnknown();
 
@@ -99,6 +99,7 @@ export class UserValidator {
     newEmail: emailValidator("Invalid email address").required(
       "Email is required",
     ),
+    password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
   static requestMobileChange = Yup.object({
@@ -110,6 +111,7 @@ export class UserValidator {
         if (!value) return true;
         return validateMobileNumber(value);
       }),
+    password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
   static confirmContactChange = Yup.object({
@@ -118,7 +120,7 @@ export class UserValidator {
       .required("Verification session is required"),
     code: Yup.string()
       .trim()
-      .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
+      .length(ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH, "Enter a valid code")
       .required("Code is required"),
   }).noUnknown();
 

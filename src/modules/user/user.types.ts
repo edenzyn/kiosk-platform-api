@@ -184,7 +184,7 @@ export interface ContactChangeTokenPayload {
   purpose: ContactChangeTokenPurposeEnums;
   userId: string;
   newValue: string;
-  codeHash: string;
+  tokenHash: string;
 }
 
 export interface CreateUserRepoInput {

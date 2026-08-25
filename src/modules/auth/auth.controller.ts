@@ -71,6 +71,24 @@ export class AuthController {
     });
   };
 
+  forgotPassword = async (req: Request, res: Response): Promise<void> => {
+    const data = await AuthValidator.forgotPassword.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.forgotPassword(data);
+    res.json(result);
+  };
+
+  resetPassword = async (req: Request, res: Response): Promise<void> => {
+    const data = await AuthValidator.resetPassword.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.authService.resetPassword(data);
+    res.json(result);
+  };
+
   verifyTwoFactor = async (req: Request, res: Response): Promise<void> => {
     const data = await AuthValidator.verifyTwoFactor.validate(req.body, {
       abortEarly: false,

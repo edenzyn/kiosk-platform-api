@@ -4,7 +4,7 @@ import {
   WHATSAPP_TEMPLATES,
 } from "../../../shared/constants/whatsapp-templates.constants";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
-import { OtpTypeEnum } from "../../../shared/enums/otp/otp-type.enum";
+import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { AppError } from "../../../shared/errors/app-error";
 import { compareHashedData } from "../../../shared/utils/core/bcrypt.helper";
@@ -18,13 +18,13 @@ import type {
   SetupTwoFactorResponseDto,
   TwoFactorStatusResponseDto,
 } from "../dtos/two-factor.dtos";
-import type { OtpService } from "./otp.service";
+import type { OneTimeTokenService } from "./one-time-token.service";
 
 export class TwoFactorService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
-    private readonly otpService: OtpService,
+    private readonly oneTimeTokenService: OneTimeTokenService,
   ) {}
 
   async getStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
@@ -64,7 +64,7 @@ export class TwoFactorService {
   private async _requestOtp(
     userId: string,
     method: TwoFactorMethodEnums,
-    type: OtpTypeEnum,
+    type: OneTimeTokenTypeEnum,
   ): Promise<{ verificationId: string }> {
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
@@ -88,7 +88,7 @@ export class TwoFactorService {
       );
     }
 
-    const { verificationId, code } = await this.otpService.issue({
+    const { verificationId, code } = await this.oneTimeTokenService.issue({
       userId: user.id,
       type,
       channel,
@@ -107,7 +107,7 @@ export class TwoFactorService {
     const { verificationId } = await this._requestOtp(
       userId,
       method,
-      OtpTypeEnum.TWO_FACTOR_SETUP,
+      OneTimeTokenTypeEnum.TWO_FACTOR_SETUP,
     );
     return { verificationId, method };
   }
@@ -117,10 +117,10 @@ export class TwoFactorService {
     verificationId: string,
     code: string,
   ): Promise<EnableTwoFactorResponseDto> {
-    const { channel } = await this.otpService.verify({
+    const { channel } = await this.oneTimeTokenService.verify({
       verificationId,
       userId,
-      type: OtpTypeEnum.TWO_FACTOR_SETUP,
+      type: OneTimeTokenTypeEnum.TWO_FACTOR_SETUP,
       code,
     });
 
@@ -176,7 +176,7 @@ export class TwoFactorService {
     const { verificationId } = await this._requestOtp(
       userId,
       method,
-      OtpTypeEnum.TWO_FACTOR_LOGIN,
+      OneTimeTokenTypeEnum.TWO_FACTOR_LOGIN,
     );
     return { requiresTwoFactor: true, verificationId, method };
   }
@@ -185,9 +185,9 @@ export class TwoFactorService {
     verificationId: string,
     code: string,
   ): Promise<{ userId: string }> {
-    const { userId } = await this.otpService.verify({
+    const { userId } = await this.oneTimeTokenService.verify({
       verificationId,
-      type: OtpTypeEnum.TWO_FACTOR_LOGIN,
+      type: OneTimeTokenTypeEnum.TWO_FACTOR_LOGIN,
       code,
     });
     return { userId };

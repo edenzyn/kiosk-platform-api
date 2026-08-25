@@ -10,7 +10,7 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import { OtpTypeEnum } from "../../shared/enums/otp/otp-type.enum";
+import { OneTimeTokenTypeEnum } from "../../shared/enums/one-time-token/one-time-token-type.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
@@ -37,7 +37,7 @@ import type { BranchRepository } from "../branch/branch.repository";
 import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
 import { getTwoFactorOtpTemplate } from "../notification/channels/email/templates/two-factor-otp.template";
 import type { NotificationService } from "../notification/notification.service";
-import type { OtpService } from "../auth/services/otp.service";
+import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
@@ -58,6 +58,8 @@ import type { RevokeInvitationResponseDto } from "./dtos/revoke-invitation.dtos"
 import type {
   ConfirmContactChangeResponseDto,
   RequestContactChangeResponseDto,
+  RequestEmailChangeRequestDto,
+  RequestMobileChangeRequestDto,
   UpdateProfileRequestDto,
   UpdateProfileResponseDto,
 } from "./dtos/update-profile.dtos";
@@ -82,7 +84,7 @@ export class UserService {
     private readonly rbacService: RbacService,
     private readonly twoFactorService: TwoFactorService,
     private readonly authRepository: AuthRepository,
-    private readonly otpService: OtpService,
+    private readonly oneTimeTokenService: OneTimeTokenService,
   ) {}
 
   async getPermissionsAndScopes(
@@ -326,10 +328,25 @@ export class UserService {
     return safeUser;
   }
 
+  /** Re-authenticates the caller before a sensitive profile change. */
+  private async _assertPassword(
+    hashedPassword: string,
+    suppliedPassword: string,
+  ): Promise<void> {
+    const isMatch = await compareHashedData(suppliedPassword, hashedPassword);
+    if (!isMatch) {
+      throw new AppError("Incorrect password", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+  }
+
   async requestEmailChange(
     userId: string,
-    newEmail: string,
+    dto: RequestEmailChangeRequestDto,
   ): Promise<RequestContactChangeResponseDto> {
+    const newEmail = dto.newEmail;
+
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
       throw new AppError("User not found", {
@@ -337,6 +354,8 @@ export class UserService {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
+
+    await this._assertPassword(user.password, dto.password);
 
     if (newEmail === user.email) {
       throw new AppError(
@@ -355,9 +374,9 @@ export class UserService {
       });
     }
 
-    const { verificationId, code } = await this.otpService.issue({
+    const { verificationId, code } = await this.oneTimeTokenService.issue({
       userId,
-      type: OtpTypeEnum.EMAIL_CHANGE,
+      type: OneTimeTokenTypeEnum.EMAIL_CHANGE,
       channel: NotificationChannelEnum.EMAIL,
       destination: newEmail,
     });
@@ -376,10 +395,10 @@ export class UserService {
     verificationId: string,
     code: string,
   ): Promise<ConfirmContactChangeResponseDto> {
-    const { destination } = await this.otpService.verify({
+    const { destination } = await this.oneTimeTokenService.verify({
       verificationId,
       userId,
-      type: OtpTypeEnum.EMAIL_CHANGE,
+      type: OneTimeTokenTypeEnum.EMAIL_CHANGE,
       code,
     });
 
@@ -393,8 +412,10 @@ export class UserService {
 
   async requestMobileChange(
     userId: string,
-    newMobile: string,
+    dto: RequestMobileChangeRequestDto,
   ): Promise<RequestContactChangeResponseDto> {
+    const newMobile = dto.newMobile;
+
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
       throw new AppError("User not found", {
@@ -402,6 +423,8 @@ export class UserService {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
+
+    await this._assertPassword(user.password, dto.password);
 
     if (newMobile === user.mobile) {
       throw new AppError(
@@ -420,9 +443,9 @@ export class UserService {
       });
     }
 
-    const { verificationId, code } = await this.otpService.issue({
+    const { verificationId, code } = await this.oneTimeTokenService.issue({
       userId,
-      type: OtpTypeEnum.MOBILE_CHANGE,
+      type: OneTimeTokenTypeEnum.MOBILE_CHANGE,
       channel: NotificationChannelEnum.WHATSAPP,
       destination: newMobile,
     });
@@ -445,10 +468,10 @@ export class UserService {
     verificationId: string,
     code: string,
   ): Promise<ConfirmContactChangeResponseDto> {
-    const { destination } = await this.otpService.verify({
+    const { destination } = await this.oneTimeTokenService.verify({
       verificationId,
       userId,
-      type: OtpTypeEnum.MOBILE_CHANGE,
+      type: OneTimeTokenTypeEnum.MOBILE_CHANGE,
       code,
     });
 

@@ -21,19 +21,19 @@ import type {
   RevokeSessionRepoResult,
   RotateRefreshTokenRepoInput,
   RotateRefreshTokenRepoResult,
-  CountOtpGenerationsRepoInput,
-  DeleteOtpsRepoInput,
-  FindActiveOtpRepoInput,
-  FindActiveOtpRepoResult,
-  UpdateOtpsRepoInput,
-  UpdateOtpsRepoResult,
+  CountOneTimeTokenGenerationsRepoInput,
+  DeleteOneTimeTokensRepoInput,
+  FindActiveOneTimeTokenRepoInput,
+  FindActiveOneTimeTokenRepoResult,
+  UpdateOneTimeTokensRepoInput,
+  UpdateOneTimeTokensRepoResult,
 } from "./auth.types";
 import { authSessions } from "./schemas/auth-session.schema";
 import {
-  otps,
-  type CreateOtpEntity,
-  type OtpEntity,
-} from "./schemas/otp.schema";
+  oneTimeTokens,
+  type CreateOneTimeTokenEntity,
+  type OneTimeTokenEntity,
+} from "./schemas/one-time-token.schema";
 
 export class AuthRepository {
   constructor(
@@ -156,7 +156,9 @@ export class AuthRepository {
       .where(
         and(
           eq(authSessions.userId, input.userId),
-          ne(authSessions.id, input.keepSessionId),
+          ...(input.keepSessionId
+            ? [ne(authSessions.id, input.keepSessionId)]
+            : []),
           isNull(authSessions.revokedAt),
         ),
       )
@@ -200,52 +202,52 @@ export class AuthRepository {
   }
 
   // ========================================
-  // ? OTP
+  // ? ONE-TIME TOKENS
   // ========================================
-  async createOtp(data: CreateOtpEntity): Promise<OtpEntity> {
+  async createOneTimeToken(data: CreateOneTimeTokenEntity): Promise<OneTimeTokenEntity> {
     const [created] = await this.database.client
-      .insert(otps)
+      .insert(oneTimeTokens)
       .values(data)
       .returning();
 
     if (!created) {
-      throw new Error("Failed to create OTP");
+      throw new Error("Failed to create one-time token");
     }
     return created;
   }
 
-  /** An OTP is active while it is unconsumed and unexpired. */
-  async findActiveOtp(
-    input: FindActiveOtpRepoInput,
-  ): Promise<FindActiveOtpRepoResult> {
-    const [otp] = await this.database.client
+  /** A token is active while it is unconsumed and unexpired. */
+  async findActiveOneTimeToken(
+    input: FindActiveOneTimeTokenRepoInput,
+  ): Promise<FindActiveOneTimeTokenRepoResult> {
+    const [record] = await this.database.client
       .select()
-      .from(otps)
+      .from(oneTimeTokens)
       .where(
         and(
-          eq(otps.id, input.id),
-          eq(otps.type, input.type),
-          ...(input.userId ? [eq(otps.userId, input.userId)] : []),
-          isNull(otps.consumedAt),
-          gt(otps.expiresAt, new Date()),
+          eq(oneTimeTokens.id, input.id),
+          eq(oneTimeTokens.type, input.type),
+          ...(input.userId ? [eq(oneTimeTokens.userId, input.userId)] : []),
+          isNull(oneTimeTokens.consumedAt),
+          gt(oneTimeTokens.expiresAt, new Date()),
         ),
       )
       .limit(1);
 
-    return otp;
+    return record;
   }
 
-  async countOtpGenerations(
-    input: CountOtpGenerationsRepoInput,
+  async countOneTimeTokenGenerations(
+    input: CountOneTimeTokenGenerationsRepoInput,
   ): Promise<number> {
     const [row] = await this.database.client
       .select({ value: count() })
-      .from(otps)
+      .from(oneTimeTokens)
       .where(
         and(
-          eq(otps.userId, input.userId),
-          eq(otps.type, input.type),
-          gte(otps.createdAt, input.since),
+          eq(oneTimeTokens.userId, input.userId),
+          eq(oneTimeTokens.type, input.type),
+          gte(oneTimeTokens.createdAt, input.since),
         ),
       );
 
@@ -253,38 +255,38 @@ export class AuthRepository {
   }
 
   /**
-   * Consuming a single OTP, burning every active OTP for a user+type, and
+   * Consuming a single token, burning every active token for a user+type, and
    * bumping the attempt counter are all the same write - one `where`, one
    * `set` - so they share this method.
    */
-  async updateOtps(input: UpdateOtpsRepoInput): Promise<UpdateOtpsRepoResult> {
+  async updateOneTimeTokens(input: UpdateOneTimeTokensRepoInput): Promise<UpdateOneTimeTokensRepoResult> {
     const { where, data } = input;
 
     return this.database.client
-      .update(otps)
+      .update(oneTimeTokens)
       .set({
         ...(data.consumedAt !== undefined && { consumedAt: data.consumedAt }),
         ...(data.incrementAttempt && {
-          attemptCount: sql`${otps.attemptCount} + 1`,
+          attemptCount: sql`${oneTimeTokens.attemptCount} + 1`,
         }),
       })
       .where(
         and(
-          ...(where.id ? [eq(otps.id, where.id)] : []),
-          ...(where.userId ? [eq(otps.userId, where.userId)] : []),
-          ...(where.type ? [eq(otps.type, where.type)] : []),
-          ...(where.activeOnly ? [isNull(otps.consumedAt)] : []),
+          ...(where.id ? [eq(oneTimeTokens.id, where.id)] : []),
+          ...(where.userId ? [eq(oneTimeTokens.userId, where.userId)] : []),
+          ...(where.type ? [eq(oneTimeTokens.type, where.type)] : []),
+          ...(where.activeOnly ? [isNull(oneTimeTokens.consumedAt)] : []),
         ),
       )
       .returning();
   }
 
   /** Removes rows past their expiry. Driven by the cleanup job. */
-  async deleteOtps(input: DeleteOtpsRepoInput): Promise<number> {
+  async deleteOneTimeTokens(input: DeleteOneTimeTokensRepoInput): Promise<number> {
     const rows = await this.database.client
-      .delete(otps)
-      .where(lt(otps.expiresAt, input.expiredBefore))
-      .returning({ id: otps.id });
+      .delete(oneTimeTokens)
+      .where(lt(oneTimeTokens.expiresAt, input.expiredBefore))
+      .returning({ id: oneTimeTokens.id });
 
     return rows.length;
   }

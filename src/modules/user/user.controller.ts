@@ -173,7 +173,7 @@ export class UserController {
     });
     const result = await this.userService.requestEmailChange(
       userTokenData.id,
-      data.newEmail,
+      data,
     );
     res.json(result);
   };
@@ -200,7 +200,7 @@ export class UserController {
     });
     const result = await this.userService.requestMobileChange(
       userTokenData.id,
-      data.newMobile,
+      data,
     );
     res.json(result);
   };

@@ -1,9 +1,9 @@
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import type { OtpTypeEnum } from "../../shared/enums/otp/otp-type.enum";
+import type { OneTimeTokenTypeEnum } from "../../shared/enums/one-time-token/one-time-token-type.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
-import type { OtpEntity } from "./schemas/otp.schema";
+import type { OneTimeTokenEntity } from "./schemas/one-time-token.schema";
 import type { DeviceEntity } from "../device/device.schema";
 import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
@@ -190,7 +190,8 @@ export type RevokeSessionRepoResult = boolean;
 
 export interface RevokeOtherSessionsRepoInput {
   userId: string;
-  keepSessionId: string;
+  /** Omit to revoke every session for the user (e.g. after a password reset). */
+  keepSessionId?: string;
 }
 export type RevokeOtherSessionsRepoResult = number;
 
@@ -233,27 +234,27 @@ export interface RevokeOtherSessionsServiceInput {
 export type RevokeOtherSessionsServiceResult = number;
 
 // ========================================
-// ? OTP
+// ? ONE-TIME TOKENS
 // ========================================
 // ========================================
 // ? SERVICE INPUTS & RESULTS
 // ========================================
-export interface IssueOtpServiceInput {
+export interface IssueOneTimeTokenServiceInput {
   userId: string;
-  type: OtpTypeEnum;
+  type: OneTimeTokenTypeEnum;
   channel: NotificationChannelEnum;
   destination: string;
 }
-export interface IssueOtpServiceResult {
+export interface IssueOneTimeTokenServiceResult {
   /** Opaque id the client echoes back when verifying. */
   verificationId: string;
   /** Plaintext code — only ever handed to the delivery channel, never stored. */
   code: string;
 }
 
-export interface VerifyOtpServiceInput {
+export interface VerifyOneTimeTokenServiceInput {
   verificationId: string;
-  type: OtpTypeEnum;
+  type: OneTimeTokenTypeEnum;
   code: string;
   /**
    * Optional defence-in-depth filter. Omitted by the 2FA login flow, where the
@@ -262,10 +263,10 @@ export interface VerifyOtpServiceInput {
    */
   userId?: string;
 }
-export interface VerifyOtpServiceResult {
-  /** Owner of the verified OTP. */
+export interface VerifyOneTimeTokenServiceResult {
+  /** Owner of the verified token. */
   userId: string;
-  /** The value the OTP was issued against (e.g. the pending new email). */
+  /** The value the token was issued against (e.g. the pending new email). */
   destination: string;
   /** Channel the code was delivered over. */
   channel: NotificationChannelEnum;
@@ -274,24 +275,24 @@ export interface VerifyOtpServiceResult {
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================
-export interface FindActiveOtpRepoInput {
+export interface FindActiveOneTimeTokenRepoInput {
   id: string;
-  type: OtpTypeEnum;
+  type: OneTimeTokenTypeEnum;
   userId?: string;
 }
-export type FindActiveOtpRepoResult = OtpEntity | undefined;
+export type FindActiveOneTimeTokenRepoResult = OneTimeTokenEntity | undefined;
 
-export interface CountOtpGenerationsRepoInput {
+export interface CountOneTimeTokenGenerationsRepoInput {
   userId: string;
-  type: OtpTypeEnum;
+  type: OneTimeTokenTypeEnum;
   since: Date;
 }
 
-export interface UpdateOtpsRepoInput {
+export interface UpdateOneTimeTokensRepoInput {
   where: {
     id?: string;
     userId?: string;
-    type?: OtpTypeEnum;
+    type?: OneTimeTokenTypeEnum;
     /** Restrict to rows that have not been consumed yet. */
     activeOnly?: boolean;
   };
@@ -301,9 +302,9 @@ export interface UpdateOtpsRepoInput {
     incrementAttempt?: boolean;
   };
 }
-export type UpdateOtpsRepoResult = OtpEntity[];
+export type UpdateOneTimeTokensRepoResult = OneTimeTokenEntity[];
 
-export interface DeleteOtpsRepoInput {
+export interface DeleteOneTimeTokensRepoInput {
   expiredBefore: Date;
 }
 

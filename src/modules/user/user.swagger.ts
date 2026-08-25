@@ -1,4 +1,4 @@
-import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
 
 export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/e": {
@@ -165,8 +165,14 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["newEmail"],
-              properties: { newEmail: { type: "string", format: "email" } },
+              required: ["newEmail", "password"],
+              properties: {
+                newEmail: { type: "string", format: "email" },
+                password: {
+                  type: "string",
+                  description: "The account's current password, re-entered to authorise the change",
+                },
+              },
             },
           },
         },
@@ -250,8 +256,14 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["newMobile"],
-              properties: { newMobile: { type: "string" } },
+              required: ["newMobile", "password"],
+              properties: {
+                newMobile: { type: "string" },
+                password: {
+                  type: "string",
+                  description: "The account's current password, re-entered to authorise the change",
+                },
+              },
             },
           },
         },
@@ -484,8 +496,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 verificationId: { type: "string", format: "uuid" },
                 code: {
                   type: "string",
-                  minLength: OTP_CONSTANTS.CODE_LENGTH,
-                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
+                  minLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                  maxLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
                 },
               },
             },

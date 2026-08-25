@@ -19,7 +19,7 @@ const EnvSchema = Yup.object({
   JWT_DEVICE_ACCESS_EXPIRES_IN: Yup.string().default("15m"),
   JWT_DEVICE_REFRESH_EXPIRES_IN: Yup.string().default("90d"),
   JWT_INVITE_USER_EXPIRES_IN: Yup.string().default("7d"),
-  OTP_CODE_SECRET: Yup.string().required().min(16),
+  ONE_TIME_TOKEN_SECRET: Yup.string().required().min(16),
   JWT_REFRESH_SLIDING_ENABLED: Yup.boolean().default(true),
   BCRYPT_ROUNDS: Yup.number().integer().min(10).max(15).default(12),
   API_PREFIX_V1: Yup.string().default("/api/v1"),
@@ -68,7 +68,7 @@ const EnvSchema = Yup.object({
   LICENSE_GRACE_PERIOD_DAYS: Yup.number().integer().min(0).default(7),
   AUTH_SESSION_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
   LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
-  OTP_CLEANUP_CRON: Yup.string().default("0 * * * *"),
+  ONE_TIME_TOKEN_CLEANUP_CRON: Yup.string().default("0 * * * *"),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

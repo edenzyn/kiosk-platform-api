@@ -8,13 +8,15 @@ const authController = container.resolve<AuthController>("authController");
 // User routes
 router.post("/login", asyncHandler(authController.loginUser));
 router.post("/2fa/verify", asyncHandler(authController.verifyTwoFactor));
-router.post("/refresh", asyncHandler(authController.refreshUserToken));
-router.post("/logout", asyncHandler(authController.logoutUser));
 router.post("/accept-invite", asyncHandler(authController.acceptInvitation));
 router.post(
   "/o/accept-invite",
   asyncHandler(authController.acceptOrganizationInvitation),
 );
+router.post("/forgot-password", asyncHandler(authController.forgotPassword));
+router.post("/reset-password", asyncHandler(authController.resetPassword));
+router.post("/refresh", asyncHandler(authController.refreshUserToken));
+router.post("/logout", asyncHandler(authController.logoutUser));
 
 // Platform routes
 router.post("/p/login", asyncHandler(authController.loginPlatformUser));

@@ -1,4 +1,4 @@
-import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
 const loginRequestBody = {
   required: true,
   content: {
@@ -61,8 +61,8 @@ export const authSwaggerPaths: Record<string, unknown> = {
                 verificationId: { type: "string", format: "uuid" },
                 code: {
                   type: "string",
-                  minLength: OTP_CONSTANTS.CODE_LENGTH,
-                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
+                  minLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
+                  maxLength: ONE_TIME_TOKEN_CONSTANTS.CODE_LENGTH,
                 },
               },
             },

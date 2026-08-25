@@ -1,6 +1,9 @@
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
+import type { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
+import type { OtpTypeEnum } from "../../shared/enums/otp/otp-type.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
+import type { OtpEntity } from "./schemas/otp.schema";
 import type { DeviceEntity } from "../device/device.schema";
 import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
@@ -128,12 +131,12 @@ export type LogoutServiceResult = boolean;
 
 export interface RequiresTwoFactorServiceResult {
   requiresTwoFactor: true;
-  twoFactorToken: string;
+  verificationId: string;
   method: TwoFactorMethodEnums;
 }
 
 export interface VerifyTwoFactorLoginServiceInput {
-  twoFactorToken: string;
+  verificationId: string;
   code: string;
   meta: SessionMeta;
 }
@@ -146,30 +149,6 @@ export type VerifyTwoFactorLoginServiceResult =
 // ========================================
 // ? TWO-FACTOR TOKEN PURPOSES
 // ========================================
-export enum TwoFactorTokenPurposeEnums {
-  OTP_SETUP = 1,
-  OTP_LOGIN = 2,
-  TOTP_SETUP = 3,
-  PENDING_LOGIN = 4,
-}
-
-export interface TwoFactorOtpTokenPayload {
-  purpose: TwoFactorTokenPurposeEnums.OTP_SETUP | TwoFactorTokenPurposeEnums.OTP_LOGIN;
-  userId: string;
-  method: TwoFactorMethodEnums;
-  codeHash: string;
-}
-
-export interface TwoFactorTotpSetupTokenPayload {
-  purpose: TwoFactorTokenPurposeEnums.TOTP_SETUP;
-  userId: string;
-  secret: string;
-}
-
-export interface TwoFactorPendingLoginTokenPayload {
-  purpose: TwoFactorTokenPurposeEnums.PENDING_LOGIN;
-  userId: string;
-}
 
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
@@ -252,3 +231,79 @@ export interface RevokeOtherSessionsServiceInput {
   currentSessionId: string;
 }
 export type RevokeOtherSessionsServiceResult = number;
+
+// ========================================
+// ? OTP
+// ========================================
+// ========================================
+// ? SERVICE INPUTS & RESULTS
+// ========================================
+export interface IssueOtpServiceInput {
+  userId: string;
+  type: OtpTypeEnum;
+  channel: NotificationChannelEnum;
+  destination: string;
+}
+export interface IssueOtpServiceResult {
+  /** Opaque id the client echoes back when verifying. */
+  verificationId: string;
+  /** Plaintext code — only ever handed to the delivery channel, never stored. */
+  code: string;
+}
+
+export interface VerifyOtpServiceInput {
+  verificationId: string;
+  type: OtpTypeEnum;
+  code: string;
+  /**
+   * Optional defence-in-depth filter. Omitted by the 2FA login flow, where the
+   * caller has no authenticated user yet and the (unguessable) verificationId
+   * is itself the session handle.
+   */
+  userId?: string;
+}
+export interface VerifyOtpServiceResult {
+  /** Owner of the verified OTP. */
+  userId: string;
+  /** The value the OTP was issued against (e.g. the pending new email). */
+  destination: string;
+  /** Channel the code was delivered over. */
+  channel: NotificationChannelEnum;
+}
+
+// ========================================
+// ? REPOSITORY INPUTS & RESULTS
+// ========================================
+export interface FindActiveOtpRepoInput {
+  id: string;
+  type: OtpTypeEnum;
+  userId?: string;
+}
+export type FindActiveOtpRepoResult = OtpEntity | undefined;
+
+export interface CountOtpGenerationsRepoInput {
+  userId: string;
+  type: OtpTypeEnum;
+  since: Date;
+}
+
+export interface UpdateOtpsRepoInput {
+  where: {
+    id?: string;
+    userId?: string;
+    type?: OtpTypeEnum;
+    /** Restrict to rows that have not been consumed yet. */
+    activeOnly?: boolean;
+  };
+  data: {
+    consumedAt?: Date;
+    /** Bumps attemptCount by one; the updated rows are returned. */
+    incrementAttempt?: boolean;
+  };
+}
+export type UpdateOtpsRepoResult = OtpEntity[];
+
+export interface DeleteOtpsRepoInput {
+  expiredBefore: Date;
+}
+

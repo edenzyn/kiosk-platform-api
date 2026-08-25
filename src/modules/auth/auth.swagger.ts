@@ -18,7 +18,7 @@ const loginRequestBody = {
 const loginResponses = {
   "200": {
     description:
-      "Authenticated, or 2FA required. On success, sets the `ur_acs`/`ur_ref` auth cookies and returns the user/permissions payload. If the account has 2FA enabled, returns `{ requiresTwoFactor: true, twoFactorToken }` instead, with no cookies set — call POST /auth/2fa/verify next.",
+      "Authenticated, or 2FA required. On success, sets the `ur_acs`/`ur_ref` auth cookies and returns the user/permissions payload. If the account has 2FA enabled, returns `{ requiresTwoFactor: true, verificationId }` instead, with no cookies set — call POST /auth/2fa/verify next.",
   },
   "400": { $ref: "#/components/responses/ValidationError" },
   "401": { description: "Invalid credentials" },
@@ -48,7 +48,7 @@ export const authSwaggerPaths: Record<string, unknown> = {
       tags: ["Auth"],
       summary: "Complete login with a two-factor code",
       description:
-        "Submits the TOTP/backup code following a login response that returned `requiresTwoFactor: true`. Works for any user type (normal, platform, reseller) — the `twoFactorToken` identifies which login flow is being completed.",
+        "Submits the emailed/WhatsApp code following a login response that returned `requiresTwoFactor: true`. Works for any user type (normal, platform, reseller) — the `verificationId` identifies which login flow is being completed.",
       security: [],
       requestBody: {
         required: true,
@@ -56,13 +56,13 @@ export const authSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["twoFactorToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                twoFactorToken: { type: "string" },
+                verificationId: { type: "string", format: "uuid" },
                 code: {
                   type: "string",
                   minLength: OTP_CONSTANTS.CODE_LENGTH,
-                  maxLength: OTP_CONSTANTS.BACKUP_CODE_LENGTH,
+                  maxLength: OTP_CONSTANTS.CODE_LENGTH,
                 },
               },
             },

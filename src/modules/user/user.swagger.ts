@@ -173,10 +173,15 @@ export const userSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Verification session token to submit alongside the code to POST /profile/email/confirm-change",
+          description: "Verification id to submit alongside the code to POST /profile/email/confirm-change",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { changeToken: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: {
+                  verificationId: { type: "string", format: "uuid" },
+                },
+              },
             },
           },
         },
@@ -199,9 +204,13 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["changeToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                changeToken: { type: "string", description: "Token returned by POST /profile/email/request-change" },
+                verificationId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Id returned by POST /profile/email/request-change",
+                },
                 code: { type: "string" },
               },
             },
@@ -249,10 +258,15 @@ export const userSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Verification session token to submit alongside the code to POST /profile/mobile/confirm-change",
+          description: "Verification id to submit alongside the code to POST /profile/mobile/confirm-change",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { changeToken: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: {
+                  verificationId: { type: "string", format: "uuid" },
+                },
+              },
             },
           },
         },
@@ -275,9 +289,13 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["changeToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                changeToken: { type: "string", description: "Token returned by POST /profile/mobile/request-change" },
+                verificationId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Id returned by POST /profile/mobile/request-change",
+                },
                 code: { type: "string" },
               },
             },
@@ -395,9 +413,9 @@ export const userSwaggerPaths: Record<string, unknown> = {
                   isEnabled: { type: "boolean" },
                   method: {
                     type: "integer",
-                    enum: [1, 2, 3],
+                    enum: [1, 2],
                     nullable: true,
-                    description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                    description: "1 = Email, 2 = WhatsApp",
                   },
                 },
               },
@@ -422,8 +440,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
               properties: {
                 method: {
                   type: "integer",
-                  enum: [1, 2, 3],
-                  description: "1 = Email, 2 = WhatsApp, 3 = Authenticator app",
+                  enum: [1, 2],
+                  description: "1 = Email, 2 = WhatsApp",
                 },
               },
             },
@@ -433,22 +451,14 @@ export const userSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Setup started; returns an otpToken to submit alongside the verification code to POST /2fa/enable",
+            "Setup started; returns a verificationId to submit alongside the verification code to POST /2fa/enable",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  otpToken: { type: "string" },
+                  verificationId: { type: "string", format: "uuid" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  qrCodeDataUrl: {
-                    type: "string",
-                    description: "Data URL of a QR code, present for the authenticator method",
-                  },
-                  manualEntryCode: {
-                    type: "string",
-                    description: "Manual entry key, present for the authenticator method",
-                  },
                 },
               },
             },
@@ -469,9 +479,9 @@ export const userSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["otpToken", "code"],
+              required: ["verificationId", "code"],
               properties: {
-                otpToken: { type: "string", description: "Token returned by POST /2fa/setup" },
+                verificationId: { type: "string", format: "uuid" },
                 code: {
                   type: "string",
                   minLength: OTP_CONSTANTS.CODE_LENGTH,
@@ -492,7 +502,6 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   message: { type: "string" },
                   method: { type: "integer", enum: [1, 2, 3] },
-                  backupCodes: { type: "array", items: { type: "string" } },
                 },
               },
             },

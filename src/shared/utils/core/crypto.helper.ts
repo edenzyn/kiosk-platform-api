@@ -12,6 +12,10 @@ export function hashSha256(data: string): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
+export function hmacSha256(data: string, secret: string): string {
+  return crypto.createHmac("sha256", secret).update(data).digest("hex");
+}
+
 // ========================================
 // ? RANDOM CODE GENERATION
 // ========================================

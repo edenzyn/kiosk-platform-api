@@ -260,13 +260,7 @@ export type UpdateUserInvitationRepoResult = UserInvitationEntity | undefined;
 export interface UpdateTwoFactorAuthRepoInput {
   userId: string;
   data: Partial<
-    Pick<
-      UserSettingsEntity,
-      | "twoFactorEnabled"
-      | "twoFactorMethod"
-      | "twoFactorSecret"
-      | "twoFactorBackupCodeHashes"
-    >
+    Pick<UserSettingsEntity, "twoFactorEnabled" | "twoFactorMethod">
   >;
 }
 export type UpdateTwoFactorAuthRepoResult = UserSettingsEntity;

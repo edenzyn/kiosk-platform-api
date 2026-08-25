@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, isNull, lt, ne } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import ms from "ms";
 import type { Database } from "../../config/db";
 import { env } from "../../config/env";
@@ -21,8 +21,19 @@ import type {
   RevokeSessionRepoResult,
   RotateRefreshTokenRepoInput,
   RotateRefreshTokenRepoResult,
+  CountOtpGenerationsRepoInput,
+  DeleteOtpsRepoInput,
+  FindActiveOtpRepoInput,
+  FindActiveOtpRepoResult,
+  UpdateOtpsRepoInput,
+  UpdateOtpsRepoResult,
 } from "./auth.types";
 import { authSessions } from "./schemas/auth-session.schema";
+import {
+  otps,
+  type CreateOtpEntity,
+  type OtpEntity,
+} from "./schemas/otp.schema";
 
 export class AuthRepository {
   constructor(
@@ -186,5 +197,95 @@ export class AuthRepository {
       );
 
     await Promise.all(oldest.map((row) => this._denylistSession(row.id)));
+  }
+
+  // ========================================
+  // ? OTP
+  // ========================================
+  async createOtp(data: CreateOtpEntity): Promise<OtpEntity> {
+    const [created] = await this.database.client
+      .insert(otps)
+      .values(data)
+      .returning();
+
+    if (!created) {
+      throw new Error("Failed to create OTP");
+    }
+    return created;
+  }
+
+  /** An OTP is active while it is unconsumed and unexpired. */
+  async findActiveOtp(
+    input: FindActiveOtpRepoInput,
+  ): Promise<FindActiveOtpRepoResult> {
+    const [otp] = await this.database.client
+      .select()
+      .from(otps)
+      .where(
+        and(
+          eq(otps.id, input.id),
+          eq(otps.type, input.type),
+          ...(input.userId ? [eq(otps.userId, input.userId)] : []),
+          isNull(otps.consumedAt),
+          gt(otps.expiresAt, new Date()),
+        ),
+      )
+      .limit(1);
+
+    return otp;
+  }
+
+  async countOtpGenerations(
+    input: CountOtpGenerationsRepoInput,
+  ): Promise<number> {
+    const [row] = await this.database.client
+      .select({ value: count() })
+      .from(otps)
+      .where(
+        and(
+          eq(otps.userId, input.userId),
+          eq(otps.type, input.type),
+          gte(otps.createdAt, input.since),
+        ),
+      );
+
+    return row?.value ?? 0;
+  }
+
+  /**
+   * Consuming a single OTP, burning every active OTP for a user+type, and
+   * bumping the attempt counter are all the same write - one `where`, one
+   * `set` - so they share this method.
+   */
+  async updateOtps(input: UpdateOtpsRepoInput): Promise<UpdateOtpsRepoResult> {
+    const { where, data } = input;
+
+    return this.database.client
+      .update(otps)
+      .set({
+        ...(data.consumedAt !== undefined && { consumedAt: data.consumedAt }),
+        ...(data.incrementAttempt && {
+          attemptCount: sql`${otps.attemptCount} + 1`,
+        }),
+      })
+      .where(
+        and(
+          ...(where.id ? [eq(otps.id, where.id)] : []),
+          ...(where.userId ? [eq(otps.userId, where.userId)] : []),
+          ...(where.type ? [eq(otps.type, where.type)] : []),
+          ...(where.activeOnly ? [isNull(otps.consumedAt)] : []),
+        ),
+      )
+      .returning();
+  }
+
+  /** Removes rows past their expiry. Driven by the cleanup job. */
+  async deleteOtps(input: DeleteOtpsRepoInput): Promise<number> {
+    const rows = await this.database.client
+      .delete(otps)
+      .where(lt(otps.expiresAt, input.expiredBefore))
+      .returning({ id: otps.id });
+
+    return rows.length;
   }
 }

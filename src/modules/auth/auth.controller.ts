@@ -77,7 +77,7 @@ export class AuthController {
       stripUnknown: true,
     });
     const result = await this.authService.verifyTwoFactorLogin(
-      data.twoFactorToken,
+      data.verificationId,
       data.code,
       this._getSessionMeta(req),
     );

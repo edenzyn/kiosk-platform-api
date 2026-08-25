@@ -417,12 +417,12 @@ export class AuthService {
   }
 
   async verifyTwoFactorLogin(
-    twoFactorToken: string,
+    verificationId: string,
     code: string,
     meta: SessionMeta,
   ): Promise<VerifyTwoFactorLoginServiceResult> {
     const { userId } = await this.twoFactorService.verifyLogin(
-      twoFactorToken,
+      verificationId,
       code,
     );
 

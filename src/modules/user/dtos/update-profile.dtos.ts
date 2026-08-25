@@ -12,11 +12,11 @@ export interface RequestMobileChangeRequestDto {
   newMobile: string;
 }
 export interface RequestContactChangeResponseDto {
-  changeToken: string;
+  verificationId: string;
 }
 
 export interface ConfirmContactChangeRequestDto {
-  changeToken: string;
+  verificationId: string;
   code: string;
 }
 export interface ConfirmContactChangeResponseDto {

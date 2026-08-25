@@ -61,11 +61,12 @@ export class AuthValidator {
   }).noUnknown();
 
   static readonly verifyTwoFactor = Yup.object({
-    twoFactorToken: Yup.string().required("Verification session is required"),
+    verificationId: Yup.string()
+      .uuid("Invalid verification session")
+      .required("Verification session is required"),
     code: Yup.string()
       .trim()
-      .min(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
-      .max(OTP_CONSTANTS.BACKUP_CODE_LENGTH, "Enter a valid code")
+      .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
       .required("Code is required"),
   }).noUnknown();
 }

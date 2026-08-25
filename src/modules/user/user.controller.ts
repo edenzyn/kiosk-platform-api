@@ -186,7 +186,7 @@ export class UserController {
     });
     const result = await this.userService.confirmEmailChange(
       userTokenData.id,
-      data.changeToken,
+      data.verificationId,
       data.code,
     );
     res.json(result);
@@ -213,7 +213,7 @@ export class UserController {
     });
     const result = await this.userService.confirmMobileChange(
       userTokenData.id,
-      data.changeToken,
+      data.verificationId,
       data.code,
     );
     res.json(result);
@@ -246,7 +246,7 @@ export class UserController {
     });
     const result = await this.userService.enableTwoFactor(
       userTokenData.id,
-      data.otpToken,
+      data.verificationId,
       data.code,
     );
     res.json(result);

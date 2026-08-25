@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { OTP_CONSTANTS } from "../../shared/constants/otp.constants";
 import {
   WHATSAPP_TEMPLATE_LANGUAGE,
   WHATSAPP_TEMPLATES,
@@ -11,6 +10,7 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
+import { OtpTypeEnum } from "../../shared/enums/otp/otp-type.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
@@ -22,11 +22,7 @@ import {
   compareHashedData,
   hashData,
 } from "../../shared/utils/core/bcrypt.helper";
-import {
-  createRandomReadableCode,
-  hashSha256,
-} from "../../shared/utils/core/crypto.helper";
-import { generateToken, verifyToken } from "../../shared/utils/core/jwt.helper";
+import { generateToken } from "../../shared/utils/core/jwt.helper";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { AuthRepository } from "../auth/auth.repository";
 import type { SessionDto } from "../auth/auth.types";
@@ -41,6 +37,7 @@ import type { BranchRepository } from "../branch/branch.repository";
 import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
 import { getTwoFactorOtpTemplate } from "../notification/channels/email/templates/two-factor-otp.template";
 import type { NotificationService } from "../notification/notification.service";
+import type { OtpService } from "../auth/services/otp.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
@@ -70,11 +67,9 @@ import type {
 } from "./dtos/user-settings.dtos";
 import type { UserSettingsEntity } from "./schemas/user-settings.schema";
 import type { UserRepository } from "./user.repository";
-import {
-  ContactChangeTokenPurposeEnums,
-  type ContactChangeTokenPayload,
-  type GetInvitationsByTenantServiceInput,
-  type GetInvitationsByTenantServiceResult,
+import type {
+  GetInvitationsByTenantServiceInput,
+  GetInvitationsByTenantServiceResult,
 } from "./user.types";
 
 export class UserService {
@@ -87,6 +82,7 @@ export class UserService {
     private readonly rbacService: RbacService,
     private readonly twoFactorService: TwoFactorService,
     private readonly authRepository: AuthRepository,
+    private readonly otpService: OtpService,
   ) {}
 
   async getPermissionsAndScopes(
@@ -330,55 +326,6 @@ export class UserService {
     return safeUser;
   }
 
-  private _generateContactChangeToken(
-    purpose: ContactChangeTokenPurposeEnums,
-    userId: string,
-    newValue: string,
-    code: string,
-  ): string {
-    const payload: ContactChangeTokenPayload = {
-      purpose,
-      userId,
-      newValue,
-      codeHash: hashSha256(code),
-    };
-    return generateToken(payload, env.JWT_PROFILE_VERIFICATION_SECRET, {
-      expiresIn:
-        env.JWT_PROFILE_VERIFICATION_EXPIRES_IN as jwt.SignOptions["expiresIn"],
-    });
-  }
-
-  private _verifyContactChangeToken(
-    changeToken: string,
-    userId: string,
-    purpose: ContactChangeTokenPurposeEnums,
-    code: string,
-  ): ContactChangeTokenPayload {
-    let payload: ContactChangeTokenPayload;
-    try {
-      payload = verifyToken(changeToken, env.JWT_PROFILE_VERIFICATION_SECRET);
-    } catch {
-      throw new AppError(
-        "This verification session has expired. Please start over.",
-        { statusCode: HttpStatusCodes.UNAUTHORIZED },
-      );
-    }
-
-    if (payload.purpose !== purpose || payload.userId !== userId) {
-      throw new AppError("Invalid verification session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
-    }
-
-    if (hashSha256(code.trim().toUpperCase()) !== payload.codeHash) {
-      throw new AppError("Invalid verification code", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
-    }
-
-    return payload;
-  }
-
   async requestEmailChange(
     userId: string,
     newEmail: string,
@@ -408,15 +355,12 @@ export class UserService {
       });
     }
 
-    const code = createRandomReadableCode(OTP_CONSTANTS.CODE_LENGTH, {
-      isNumeric: true,
-    });
-    const changeToken = this._generateContactChangeToken(
-      ContactChangeTokenPurposeEnums.EMAIL_CHANGE,
+    const { verificationId, code } = await this.otpService.issue({
       userId,
-      newEmail,
-      code,
-    );
+      type: OtpTypeEnum.EMAIL_CHANGE,
+      channel: NotificationChannelEnum.EMAIL,
+      destination: newEmail,
+    });
 
     const template = getTwoFactorOtpTemplate({ code });
     await this.notificationService.send(NotificationChannelEnum.EMAIL, {
@@ -424,24 +368,24 @@ export class UserService {
       ...template,
     });
 
-    return { changeToken };
+    return { verificationId };
   }
 
   async confirmEmailChange(
     userId: string,
-    changeToken: string,
+    verificationId: string,
     code: string,
   ): Promise<ConfirmContactChangeResponseDto> {
-    const payload = this._verifyContactChangeToken(
-      changeToken,
+    const { destination } = await this.otpService.verify({
+      verificationId,
       userId,
-      ContactChangeTokenPurposeEnums.EMAIL_CHANGE,
+      type: OtpTypeEnum.EMAIL_CHANGE,
       code,
-    );
+    });
 
     const updated = await this.userRepository.update({
       userId,
-      data: { email: payload.newValue },
+      data: { email: destination },
     });
     const { password, ...safeUser } = updated;
     return { message: "Email updated successfully", user: safeUser };
@@ -476,15 +420,12 @@ export class UserService {
       });
     }
 
-    const code = createRandomReadableCode(OTP_CONSTANTS.CODE_LENGTH, {
-      isNumeric: true,
-    });
-    const changeToken = this._generateContactChangeToken(
-      ContactChangeTokenPurposeEnums.MOBILE_CHANGE,
+    const { verificationId, code } = await this.otpService.issue({
       userId,
-      newMobile,
-      code,
-    );
+      type: OtpTypeEnum.MOBILE_CHANGE,
+      channel: NotificationChannelEnum.WHATSAPP,
+      destination: newMobile,
+    });
 
     await this.notificationService.send(NotificationChannelEnum.WHATSAPP, {
       to: newMobile,
@@ -496,24 +437,24 @@ export class UserService {
       },
     });
 
-    return { changeToken };
+    return { verificationId };
   }
 
   async confirmMobileChange(
     userId: string,
-    changeToken: string,
+    verificationId: string,
     code: string,
   ): Promise<ConfirmContactChangeResponseDto> {
-    const payload = this._verifyContactChangeToken(
-      changeToken,
+    const { destination } = await this.otpService.verify({
+      verificationId,
       userId,
-      ContactChangeTokenPurposeEnums.MOBILE_CHANGE,
+      type: OtpTypeEnum.MOBILE_CHANGE,
       code,
-    );
+    });
 
     const updated = await this.userRepository.update({
       userId,
-      data: { mobile: payload.newValue },
+      data: { mobile: destination },
     });
     const { password, ...safeUser } = updated;
     return { message: "Mobile number updated successfully", user: safeUser };
@@ -534,10 +475,10 @@ export class UserService {
 
   async enableTwoFactor(
     userId: string,
-    otpToken: string,
+    verificationId: string,
     code: string,
   ): Promise<EnableTwoFactorResponseDto> {
-    return this.twoFactorService.enable(userId, otpToken, code);
+    return this.twoFactorService.enable(userId, verificationId, code);
   }
 
   async disableTwoFactor(

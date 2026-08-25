@@ -78,7 +78,9 @@ export class UserValidator {
   }).noUnknown();
 
   static enableTwoFactor = Yup.object({
-    otpToken: Yup.string().required("Verification session is required"),
+    verificationId: Yup.string()
+      .uuid("Invalid verification session")
+      .required("Verification session is required"),
     code: Yup.string()
       .trim()
       .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")
@@ -111,7 +113,9 @@ export class UserValidator {
   }).noUnknown();
 
   static confirmContactChange = Yup.object({
-    changeToken: Yup.string().required("Verification session is required"),
+    verificationId: Yup.string()
+      .uuid("Invalid verification session")
+      .required("Verification session is required"),
     code: Yup.string()
       .trim()
       .length(OTP_CONSTANTS.CODE_LENGTH, "Enter a valid code")

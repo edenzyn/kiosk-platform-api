@@ -14,17 +14,12 @@ const EnvSchema = Yup.object({
   JWT_ACCESS_SECRET: Yup.string().required().min(6),
   JWT_REFRESH_SECRET: Yup.string().required().min(32),
   JWT_INVITE_USER_SECRET: Yup.string().default("invite_secret_key_default"),
-  JWT_2FA_SECRET: Yup.string().required().min(16),
   JWT_ACCESS_EXPIRES_IN: Yup.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: Yup.string().default("7d"),
   JWT_DEVICE_ACCESS_EXPIRES_IN: Yup.string().default("15m"),
   JWT_DEVICE_REFRESH_EXPIRES_IN: Yup.string().default("90d"),
   JWT_INVITE_USER_EXPIRES_IN: Yup.string().default("7d"),
-  JWT_2FA_OTP_EXPIRES_IN: Yup.string().default("10m"),
-  JWT_2FA_TOTP_SETUP_EXPIRES_IN: Yup.string().default("10m"),
-  JWT_2FA_PENDING_LOGIN_EXPIRES_IN: Yup.string().default("5m"),
-  JWT_PROFILE_VERIFICATION_SECRET: Yup.string().required().min(16),
-  JWT_PROFILE_VERIFICATION_EXPIRES_IN: Yup.string().default("10m"),
+  OTP_CODE_SECRET: Yup.string().required().min(16),
   JWT_REFRESH_SLIDING_ENABLED: Yup.boolean().default(true),
   BCRYPT_ROUNDS: Yup.number().integer().min(10).max(15).default(12),
   API_PREFIX_V1: Yup.string().default("/api/v1"),
@@ -73,6 +68,7 @@ const EnvSchema = Yup.object({
   LICENSE_GRACE_PERIOD_DAYS: Yup.number().integer().min(0).default(7),
   AUTH_SESSION_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
   LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
+  OTP_CLEANUP_CRON: Yup.string().default("0 * * * *"),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

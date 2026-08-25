@@ -1,6 +1,5 @@
 import {
   boolean,
-  jsonb,
   pgTable,
   smallint,
   timestamp,
@@ -36,10 +35,6 @@ export const userSettings = pgTable("user_settings", {
   twoFactorMethod: smallint(
     "two_factor_method",
   ).$type<TwoFactorMethodEnums | null>(),
-  twoFactorSecret: varchar("two_factor_secret", { length: 255 }),
-  twoFactorBackupCodeHashes: jsonb("two_factor_backup_code_hashes").$type<
-    string[] | null
-  >(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -249,6 +249,8 @@ export interface IssueOtpServiceResult {
   verificationId: string;
   /** Plaintext code — only ever handed to the delivery channel, never stored. */
   code: string;
+  /** Further codes this user may request for this type in the current window. */
+  resendsRemaining: number;
 }
 
 export interface VerifyOtpServiceInput {

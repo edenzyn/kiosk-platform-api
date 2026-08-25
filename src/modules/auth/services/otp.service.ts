@@ -74,12 +74,16 @@ export class OtpService {
       channel: input.channel,
       destination: input.destination,
       codeHash: this._hashCode(code),
-      expiresAt: dayjs()
-        .add(OTP_CONSTANTS.EXPIRY_MINUTES, "minute")
-        .toDate(),
+      expiresAt: dayjs().add(OTP_CONSTANTS.EXPIRY_MINUTES, "minute").toDate(),
     });
 
-    return { verificationId: otp.id, code };
+    return {
+      verificationId: otp.id,
+      code,
+      // `generations` was counted before this insert, so add it back in.
+      resendsRemaining:
+        OTP_CONSTANTS.MAX_GENERATIONS_PER_WINDOW - (generations + 1),
+    };
   }
 
   /**

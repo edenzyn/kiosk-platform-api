@@ -1,7 +1,7 @@
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import {
-  WHATSAPP_TEMPLATE_LANGUAGE,
   WHATSAPP_TEMPLATES,
+  WHATSAPP_TEMPLATE_LANGUAGES,
 } from "../../../shared/constants/whatsapp-templates.constants";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
@@ -54,7 +54,7 @@ export class TwoFactorService {
       to: destination,
       template: {
         name: WHATSAPP_TEMPLATES.OTP,
-        languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+        languageCode: WHATSAPP_TEMPLATE_LANGUAGES.ENGLISH_US,
         bodyParams: [code, "2FA"],
         buttons: [{ index: 0, param: code }],
       },
@@ -168,9 +168,12 @@ export class TwoFactorService {
     method: TwoFactorMethodEnums | null,
   ): Promise<RequiresTwoFactorServiceResult> {
     if (!method) {
-      throw new AppError("Two-factor authentication method is not configured.", {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      });
+      throw new AppError(
+        "Two-factor authentication method is not configured.",
+        {
+          statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        },
+      );
     }
 
     const { verificationId } = await this._requestOtp(

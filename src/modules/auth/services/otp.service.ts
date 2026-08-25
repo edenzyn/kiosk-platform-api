@@ -8,6 +8,7 @@ import {
   createRandomReadableCode,
   hmacSha256,
 } from "../../../shared/utils/core/crypto.helper";
+import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
 import type { AuthRepository } from "../auth.repository";
 import type {
   IssueOtpServiceInput,
@@ -51,7 +52,7 @@ export class OtpService {
 
     if (generations >= OTP_CONSTANTS.MAX_GENERATIONS_PER_WINDOW) {
       throw new AppError(
-        `Too many verification codes requested. Please try again in ${OTP_CONSTANTS.GENERATION_WINDOW_MINUTES} minutes.`,
+        "Too many verification codes requested. Please try again later.",
         {
           statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
           code: ErrorCodes.TOO_MANY_REQUESTS,
@@ -77,13 +78,7 @@ export class OtpService {
       expiresAt: dayjs().add(OTP_CONSTANTS.EXPIRY_MINUTES, "minute").toDate(),
     });
 
-    return {
-      verificationId: otp.id,
-      code,
-      // `generations` was counted before this insert, so add it back in.
-      resendsRemaining:
-        OTP_CONSTANTS.MAX_GENERATIONS_PER_WINDOW - (generations + 1),
-    };
+    return { verificationId: otp.id, code };
   }
 
   /**
@@ -122,7 +117,12 @@ export class OtpService {
         data: { incrementAttempt: true },
       });
 
-      if ((updated?.attemptCount ?? 0) >= OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS) {
+      const attemptsRemaining = Math.max(
+        0,
+        OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS - (updated?.attemptCount ?? 0),
+      );
+
+      if (attemptsRemaining === 0) {
         await this._burn(otp.id);
         throw new AppError(
           "Too many incorrect attempts. Please request a new code.",
@@ -133,9 +133,16 @@ export class OtpService {
         );
       }
 
-      throw new AppError("Invalid verification code", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new AppError(
+        `Invalid verification code. ${pluralizeByCount(
+          attemptsRemaining,
+          "attempt",
+        )} remaining.`,
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          details: { attemptsRemaining },
+        },
+      );
     }
 
     await this._burn(otp.id);

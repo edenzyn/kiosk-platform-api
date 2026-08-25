@@ -3,8 +3,8 @@ import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import {
-  WHATSAPP_TEMPLATE_LANGUAGE,
   WHATSAPP_TEMPLATES,
+  WHATSAPP_TEMPLATE_LANGUAGES,
 } from "../../shared/constants/whatsapp-templates.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
@@ -32,12 +32,12 @@ import type {
   SetupTwoFactorResponseDto,
   TwoFactorStatusResponseDto,
 } from "../auth/dtos/two-factor.dtos";
+import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
 import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { BranchRepository } from "../branch/branch.repository";
 import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
 import { getTwoFactorOtpTemplate } from "../notification/channels/email/templates/two-factor-otp.template";
 import type { NotificationService } from "../notification/notification.service";
-import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { RbacService } from "../rbac/rbac.service";
@@ -454,7 +454,7 @@ export class UserService {
       to: newMobile,
       template: {
         name: WHATSAPP_TEMPLATES.OTP,
-        languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+        languageCode: WHATSAPP_TEMPLATE_LANGUAGES.ENGLISH_US,
         bodyParams: [code, "verify mobile"],
         buttons: [{ index: 0, param: code }],
       },

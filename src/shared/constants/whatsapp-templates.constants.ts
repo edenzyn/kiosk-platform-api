@@ -3,4 +3,7 @@ export const WHATSAPP_TEMPLATES = {
   FORGOT_PASSWORD: "kiosk_forgot_password",
 } as const;
 
-export const WHATSAPP_TEMPLATE_LANGUAGE = "en_US";
+export const WHATSAPP_TEMPLATE_LANGUAGES = {
+  ENGLISH_US: "en_US",
+  ENGLISH: "en",
+};

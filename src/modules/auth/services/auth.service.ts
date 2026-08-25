@@ -4,7 +4,7 @@ import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
 import {
-  WHATSAPP_TEMPLATE_LANGUAGE,
+  WHATSAPP_TEMPLATE_LANGUAGES,
   WHATSAPP_TEMPLATES,
 } from "../../../shared/constants/whatsapp-templates.constants";
 import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
@@ -1090,7 +1090,7 @@ export class AuthService {
         to: dto.mobile as string,
         template: {
           name: WHATSAPP_TEMPLATES.FORGOT_PASSWORD,
-          languageCode: WHATSAPP_TEMPLATE_LANGUAGE,
+          languageCode: WHATSAPP_TEMPLATE_LANGUAGES.ENGLISH,
           bodyParams: [user.name, env.APP_NAME],
           buttons: [{ index: 0, param: token }],
         },

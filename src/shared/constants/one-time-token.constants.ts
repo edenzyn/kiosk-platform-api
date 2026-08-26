@@ -21,5 +21,5 @@ export const ONE_TIME_TOKEN_CONSTANTS = {
 
   RESET_TOKEN_LENGTH: 32,
   /** How long a password-reset link stays valid. */
-  RESET_TOKEN_EXPIRY_MINUTES: 10,
+  RESET_TOKEN_EXPIRY_MINUTES: 5,
 } as const;

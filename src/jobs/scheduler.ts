@@ -4,6 +4,7 @@ import { logger } from "../shared/utils/core/logger";
 export interface ScheduledJob {
   name: string;
   cronExpression: string;
+  timezone?: string;
   enabled?: boolean;
   runOnStartup?: boolean;
   handler: () => Promise<void>;
@@ -78,6 +79,7 @@ export class JobScheduler {
       },
       {
         name: job.name,
+        timezone: job.timezone,
       },
     );
 

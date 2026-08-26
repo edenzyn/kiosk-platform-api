@@ -10,4 +10,7 @@ export const RedisKeys = {
   /** Marks an auth session (jti) as revoked ahead of its access token's natural expiry. */
   authSessionRevoked: (sessionId: string): string =>
     `auth:session:revoked:${sessionId}`,
+
+  /** Latest cached currency exchange-rate table (single global entry - one base currency per deployment). */
+  financeExchangeRatesLatest: "finance:exchange-rates:latest",
 } as const;

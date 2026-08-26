@@ -78,7 +78,7 @@ const EnvSchema = Yup.object({
   FINANCE_EXCHANGE_RATE_CACHE_TTL_HOURS: Yup.number()
     .integer()
     .positive()
-    .default(48),
+    .default(24),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

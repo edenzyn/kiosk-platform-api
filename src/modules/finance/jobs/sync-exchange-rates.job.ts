@@ -59,7 +59,7 @@ export const syncExchangeRatesJob: ScheduledJob = {
     try {
       await runWithRetries(0);
     } catch (error) {
-      logger.error("[Job:SyncExchangeRates] Failed", { err: error });
+      logger.error("[Job:SyncExchangeRates] Failed", error);
     }
   },
 };
@@ -72,7 +72,7 @@ if (require.main === module) {
       logger.log(`[Script] Completed. Result: ${JSON.stringify(result)}`);
       process.exit(0);
     } catch (error) {
-      logger.error("[Script] Error syncing exchange rates:", { err: error });
+      logger.error("[Script] Error syncing exchange rates:", error);
       process.exit(1);
     }
   })();

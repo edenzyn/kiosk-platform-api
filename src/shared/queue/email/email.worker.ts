@@ -21,11 +21,11 @@ export function createEmailWorker(): Worker<EmailJobData> {
   );
 
   worker.on("failed", (job, err) => {
-    logger.error(`Email job ${job?.id} failed`, { err: err.message });
+    logger.error(`Email job ${job?.id} failed`, err);
   });
 
   worker.on("error", (err) => {
-    logger.error("Email worker error", { err: err.message });
+    logger.error("Email worker error", err);
   });
 
   return worker;

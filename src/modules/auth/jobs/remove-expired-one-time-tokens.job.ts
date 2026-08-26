@@ -41,7 +41,7 @@ if (require.main === module) {
       logger.log(`[Script] Successfully removed ${count} token(s).`);
       process.exit(0);
     } catch (error) {
-      logger.error("[Script] Error removing expired one-time tokens:", { err: error });
+      logger.error("[Script] Error removing expired one-time tokens:", error);
       process.exit(1);
     }
   })();

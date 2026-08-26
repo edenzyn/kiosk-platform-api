@@ -30,7 +30,7 @@ export function initRedis(): RedisConnection {
   });
 
   client.on("error", (err) => {
-    logger.error("Redis connection error", { err: err.message });
+    logger.error("Redis connection error", err);
   });
 
   return {

@@ -51,7 +51,7 @@ function bootstrap(): void {
         logger.log("Shutdown complete");
         process.exit(0);
       } catch (error) {
-        logger.error("Shutdown failed", { err: error });
+        logger.error("Shutdown failed", error);
         process.exit(1);
       }
     });

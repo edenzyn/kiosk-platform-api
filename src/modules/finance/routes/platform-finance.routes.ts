@@ -10,7 +10,7 @@ const financeController =
   container.resolve<FinanceController>("financeController");
 
 platformFinanceRouter.get(
-  "/exchange-rates",
+  "/ex-rates",
   accessMiddleware(
     { platform: [UserPermissions.PLATFORM_BASIC] },
     UserTypeEnums.PLATFORM,

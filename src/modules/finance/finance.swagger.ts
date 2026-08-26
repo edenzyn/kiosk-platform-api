@@ -54,7 +54,7 @@ const exchangeRatesOperation = {
 // calls it from its own axios instance/route namespace rather than a
 // shared cross-actor path, so the docs mirror that per-prefix mounting.
 export const financeSwaggerPaths: Record<string, unknown> = {
-  "/pvt/u/finance/exchange-rates": { get: exchangeRatesOperation },
-  "/pvt/p/finance/exchange-rates": { get: exchangeRatesOperation },
-  "/pvt/r/finance/exchange-rates": { get: exchangeRatesOperation },
+  "/pvt/u/finance/ex-rates": { get: exchangeRatesOperation },
+  "/pvt/p/finance/ex-rates": { get: exchangeRatesOperation },
+  "/pvt/r/finance/ex-rates": { get: exchangeRatesOperation },
 };

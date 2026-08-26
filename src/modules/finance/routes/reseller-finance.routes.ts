@@ -10,7 +10,7 @@ const financeController =
   container.resolve<FinanceController>("financeController");
 
 resellerFinanceRouter.get(
-  "/exchange-rates",
+  "/ex-rates",
   accessMiddleware(
     { reseller: [UserPermissions.RESELLER_BASIC] },
     UserTypeEnums.RESELLER,

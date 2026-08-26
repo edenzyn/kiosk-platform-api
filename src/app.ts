@@ -13,6 +13,9 @@ import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
+import { platformFinanceRouter } from "./modules/finance/routes/platform-finance.routes";
+import { resellerFinanceRouter } from "./modules/finance/routes/reseller-finance.routes";
+import { userFinanceRouter } from "./modules/finance/routes/user-finance.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
@@ -119,6 +122,10 @@ export class App {
       `${this.platformUserApiV1Prefix}/licenses`,
       platformLicenseRouter,
     );
+    this.instance.use(
+      `${this.platformUserApiV1Prefix}/finance`,
+      platformFinanceRouter,
+    );
   }
 
   private configureResellerRoutes(): void {
@@ -126,6 +133,10 @@ export class App {
     this.instance.use(
       `${this.resellerApiV1Prefix}/licenses`,
       resellerLicenseRouter,
+    );
+    this.instance.use(
+      `${this.resellerApiV1Prefix}/finance`,
+      resellerFinanceRouter,
     );
   }
 
@@ -140,6 +151,10 @@ export class App {
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,
+    );
+    this.instance.use(
+      `${this.normalUserApiV1Prefix}/finance`,
+      userFinanceRouter,
     );
   }
 

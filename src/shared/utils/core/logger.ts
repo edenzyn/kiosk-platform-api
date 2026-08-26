@@ -56,7 +56,13 @@ class Logger {
    */
   error(content: string, ex?: any) {
     if (ex) {
-      this._pinoLogger.error(ex, `${content}: ${ex?.message || ex}`);
+      const detail =
+        ex instanceof Error
+          ? ex.stack || ex.message
+          : typeof ex === "object"
+            ? JSON.stringify(ex)
+            : String(ex);
+      this._pinoLogger.error(ex, `${content}: ${detail}`);
     } else {
       this._pinoLogger.error(content);
     }

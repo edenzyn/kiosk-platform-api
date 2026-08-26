@@ -11,7 +11,7 @@ export function createQueueConnection(): Redis {
   const client = new Redis(env.REDIS_URL, queueRedisOptions);
 
   client.on("error", (err) => {
-    logger.error("Queue Redis connection error", { err: err.message });
+    logger.error("Queue Redis connection error", err);
   });
 
   return client;

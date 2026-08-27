@@ -38,7 +38,7 @@ BEGIN
     CASE WHEN p_viewer_user_type = 2 THEN NULL ELSE u.name END AS "performedByName"
   FROM license_transaction_items lti
   LEFT JOIN license_transactions lt ON lt.id = lti.transaction_id
-  LEFT JOIN users u ON u.id = lt.user_id
+  LEFT JOIN users u ON u.id = lt.created_by
   WHERE lti.license_id = p_license_id
     AND u.user_type = p_viewer_user_type
   ORDER BY lti.created_at DESC;

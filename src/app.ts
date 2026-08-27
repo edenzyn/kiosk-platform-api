@@ -13,6 +13,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
+import { financeWebhookRouter } from "./modules/finance/routes/finance-webhook.routes";
 import { platformFinanceRouter } from "./modules/finance/routes/platform-finance.routes";
 import { resellerFinanceRouter } from "./modules/finance/routes/reseller-finance.routes";
 import { userFinanceRouter } from "./modules/finance/routes/user-finance.routes";
@@ -89,6 +90,7 @@ export class App {
     this.configureHealthRoute();
     this.instance.use(`${this.apiV1Prefix}/auth`, authRoutes);
     this.instance.use(this.apiV1Prefix, notificationRoutes);
+    this.instance.use(this.apiV1Prefix, financeWebhookRouter);
     this.configurePlatformUserRoutes();
     this.configureResellerRoutes();
     this.configureNormalUserRoutes();

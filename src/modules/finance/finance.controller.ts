@@ -12,4 +12,15 @@ export class FinanceController {
     const result = await this.financeService.getLatestRates();
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  // ========================================
+  // ? WEBHOOKS
+  // ========================================
+  razorpayWebhook = async (req: Request, res: Response): Promise<void> => {
+    await this.financeService.handleRazorpayWebhook({
+      headers: req.headers,
+      body: req.body,
+    });
+    res.sendStatus(HttpStatusCodes.OK);
+  };
 }

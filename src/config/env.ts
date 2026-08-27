@@ -2,15 +2,26 @@ import "dotenv/config";
 import * as Yup from "yup";
 
 const EnvSchema = Yup.object({
+  // ==============================
+  // App
+  // ==============================
   APP_NAME: Yup.string().default("Kiosk Platform"),
   NODE_ENV: Yup.string()
     .oneOf(["development", "test", "production"])
     .default("development"),
   PORT: Yup.number().integer().positive().max(65535).default(3000),
+
+  // ==============================
+  // Database
+  // ==============================
   DATABASE_URL: Yup.string().required().min(1),
   DATABASE_SSL_MODE: Yup.string()
     .oneOf(["disable", "require", "verify-full"])
     .default("disable"),
+
+  // ==============================
+  // Auth / JWT
+  // ==============================
   JWT_ACCESS_SECRET: Yup.string().required().min(6),
   JWT_REFRESH_SECRET: Yup.string().required().min(32),
   JWT_INVITE_USER_SECRET: Yup.string().default("invite_secret_key_default"),
@@ -19,15 +30,27 @@ const EnvSchema = Yup.object({
   JWT_DEVICE_ACCESS_EXPIRES_IN: Yup.string().default("15m"),
   JWT_DEVICE_REFRESH_EXPIRES_IN: Yup.string().default("90d"),
   JWT_INVITE_USER_EXPIRES_IN: Yup.string().default("7d"),
-  ONE_TIME_TOKEN_SECRET: Yup.string().required().min(16),
   JWT_REFRESH_SLIDING_ENABLED: Yup.boolean().default(true),
+  ONE_TIME_TOKEN_SECRET: Yup.string().required().min(16),
   BCRYPT_ROUNDS: Yup.number().integer().min(10).max(15).default(12),
+
+  // ==============================
+  // API & CORS
+  // ==============================
   API_PREFIX_V1: Yup.string().default("/api/v1"),
   CORS_ORIGIN_1: Yup.string().required().min(1),
   CORS_ORIGIN_2: Yup.string(),
   USER_CLIENT_BASE_URL: Yup.string().default("http://localhost:5000"),
+
+  // ==============================
+  // Rate Limiting
+  // ==============================
   RATE_LIMIT_WINDOW_MINUTES: Yup.number().integer().positive().default(1),
   RATE_LIMIT_MAX_REQUESTS: Yup.number().integer().positive().default(100),
+
+  // ==============================
+  // Mail / SMTP
+  // ==============================
   SMTP_HOST: Yup.string().default("smtp.gmail.com"),
   SMTP_PORT: Yup.number().integer().positive().default(465),
   SMTP_USER: Yup.string().default(""),
@@ -35,6 +58,10 @@ const EnvSchema = Yup.object({
   SMTP_FROM: Yup.string().default(
     '"Kiosk Platform" <noreply@kioskplatform.com>',
   ),
+
+  // ==============================
+  // WhatsApp (Meta Cloud API)
+  // ==============================
   META_WHATSAPP_ACCESS_TOKEN: Yup.string().required(),
   META_WHATSAPP_VERIFY_TOKEN: Yup.string().required(),
   META_WHATSAPP_APP_SECRET: Yup.string().required(),
@@ -43,13 +70,25 @@ const EnvSchema = Yup.object({
   META_WHATSAPP_API_BASE_URL: Yup.string().default(
     "https://graph.facebook.com",
   ),
+
+  // ==============================
+  // Session Management
+  // ==============================
   NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   IS_NORMAL_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_RESELLER_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_PLATFORM_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
+
+  // ==============================
+  // Redis
+  // ==============================
   REDIS_URL: Yup.string().default("redis://localhost:6379"),
+
+  // ==============================
+  // License
+  // ==============================
   LICENSE_ENCRYPTION_KEY: Yup.string()
     .required()
     .test(
@@ -66,9 +105,17 @@ const EnvSchema = Yup.object({
       },
     ),
   LICENSE_GRACE_PERIOD_DAYS: Yup.number().integer().min(0).default(7),
+
+  // ==============================
+  // Cron Jobs
+  // ==============================
   AUTH_SESSION_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
   LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
   ONE_TIME_TOKEN_CLEANUP_CRON: Yup.string().default("0 * * * *"),
+
+  // ==============================
+  // Finance / Exchange Rate (Frankfurter)
+  // ==============================
   FRANKFURTER_API_BASE_URL: Yup.string().default(
     "https://api.frankfurter.dev/v2",
   ),
@@ -79,6 +126,13 @@ const EnvSchema = Yup.object({
     .integer()
     .positive()
     .default(24),
+
+  // ==============================
+  // Payment (Razorpay)
+  // ==============================
+  RAZORPAY_KEY_ID: Yup.string().required().min(1),
+  RAZORPAY_KEY_SECRET: Yup.string().required().min(1),
+  RAZORPAY_WEBHOOK_SECRET: Yup.string().required().min(1),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

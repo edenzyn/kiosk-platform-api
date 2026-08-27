@@ -8,16 +8,24 @@ import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/licen
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { PaymentProviderEnum } from "../../../shared/enums/license/payment-provider.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
 import {
   decryptData,
   encryptData,
   hashSha256,
 } from "../../../shared/utils/core/crypto.helper";
+import { generatePrefixedId } from "../../../shared/utils/core/id.helper";
+import { logger } from "../../../shared/utils/core/logger";
+import { convertCurrencyAmount } from "../../../shared/utils/finance/convert-currency.helper";
 import { calculateLicensePurchasePricing } from "../../../shared/utils/license/calculate-license-purchase-pricing.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
+import type { DeviceRepository } from "../../device/device.repository";
+import type { FinanceService } from "../../finance/finance.service";
+import type { UserRepository } from "../../user/user.repository";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
@@ -46,12 +54,14 @@ import type {
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
+  InitiateLicensePurchaseServiceInput,
+  InitiateLicensePurchaseServiceResult,
   PurchaseLicenseAsResellerServiceInput,
   PurchaseLicenseAsResellerServiceResult,
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
+  ResolvedPurchasePricing,
 } from "../license.types";
-import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
 import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
@@ -65,6 +75,9 @@ export class LicenseService {
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly deviceRepository: DeviceRepository,
+    private readonly razorpayProvider: RazorpayProvider,
+    private readonly userRepository: UserRepository,
+    private readonly financeService: FinanceService,
   ) {}
 
   private async _checkActiveLicenseExists(
@@ -81,9 +94,6 @@ export class LicenseService {
     }
   }
 
-  // Re-validates a client-selected discount rule against the actual purchase
-  // (quantity, plan, reseller) rather than trusting the client's own math,
-  // since the client only ever sends a rule id, never a discount amount.
   private async _resolveDiscountRule(params: {
     discountRuleId: string;
     discountTargetEntity: number;
@@ -126,13 +136,12 @@ export class LicenseService {
       params.resellerId &&
       inQuantityRange
     ) {
-      const targetsMap = await this.licenseDiscountRepository.findDiscountRuleTargets(
-        {
+      const targetsMap =
+        await this.licenseDiscountRepository.findDiscountRuleTargets({
           ruleIds: [rule.id],
           targetEntity:
             LicenseDiscountRuleTargetEntityTypeEnum.RESELLER_INDIVIDUAL,
-        },
-      );
+        });
       isApplicable = (targetsMap.get(rule.id) ?? []).some(
         (target) => target.id === params.resellerId,
       );
@@ -140,13 +149,12 @@ export class LicenseService {
       rule.targetEntity ===
       LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
     ) {
-      const targetsMap = await this.licenseDiscountRepository.findDiscountRuleTargets(
-        {
+      const targetsMap =
+        await this.licenseDiscountRepository.findDiscountRuleTargets({
           ruleIds: [rule.id],
           targetEntity:
             LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL,
-        },
-      );
+        });
       isApplicable = (targetsMap.get(rule.id) ?? []).some(
         (target) => target.id === params.pricingPlanId,
       );
@@ -163,19 +171,13 @@ export class LicenseService {
     };
   }
 
-  private async _purchaseLicenses(params: {
+  private async _resolvePurchasePricing(params: {
     quantity: number;
     pricingPlanId: string;
-    organizationId: string | null;
-    branchId: string | null;
-    userId: string;
     resellerId?: string;
     discountTargetEntity: number;
     discountRuleId?: string;
-    historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
-  }): Promise<PurchaseLicenseServiceResult> {
-    const qty = params.quantity;
-
+  }): Promise<ResolvedPurchasePricing> {
     const plans = await this.licensePricingRepository.findPricingPlans({
       id: params.pricingPlanId,
       isActive: true,
@@ -200,7 +202,7 @@ export class LicenseService {
       const resolved = await this._resolveDiscountRule({
         discountRuleId: params.discountRuleId,
         discountTargetEntity: params.discountTargetEntity,
-        quantity: qty,
+        quantity: params.quantity,
         pricingPlanId: params.pricingPlanId,
         resellerId: params.resellerId,
       });
@@ -209,14 +211,148 @@ export class LicenseService {
       appliedDiscountRuleId = resolved.ruleId;
     }
 
+    const pricing = calculateLicensePurchasePricing(
+      basePrice,
+      params.quantity,
+      discountValue,
+      discountType,
+    );
+
+    return {
+      selectedPlan,
+      durationDays,
+      currency,
+      appliedDiscountRuleId,
+      ...pricing,
+    };
+  }
+
+  private async _convertPricingToUserCurrency(
+    pricing: ResolvedPurchasePricing,
+    userId: string,
+  ): Promise<ResolvedPurchasePricing> {
+    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const targetCurrency = settings.currencyCode;
+
+    if (targetCurrency === pricing.currency) {
+      return pricing;
+    }
+
+    const exchangeRates = await this.financeService
+      .getLatestRates()
+      .catch(() => null);
+
+    if (!exchangeRates) {
+      logger.warn(
+        `[LicenseService] Exchange rates unavailable; charging in ${pricing.currency} instead of ${targetCurrency}`,
+      );
+      return pricing;
+    }
+
+    const convert = (amount: string): string | null => {
+      const converted = convertCurrencyAmount({
+        amount: Number(amount),
+        sourceCurrency: pricing.currency,
+        targetCurrency,
+        exchangeRates,
+      });
+      return converted === null ? null : converted.toFixed(2);
+    };
+
+    const convertedSubtotal = convert(pricing.subtotal);
+    const convertedDiscountAmount = convert(pricing.discountAmount);
+    const convertedTotalAmount = convert(pricing.totalAmount);
+    const convertedUnitPrice = convert(pricing.unitPrice);
+    const convertedBaseUnitPrice = convert(pricing.baseUnitPrice);
+
+    if (
+      convertedSubtotal === null ||
+      convertedDiscountAmount === null ||
+      convertedTotalAmount === null ||
+      convertedUnitPrice === null ||
+      convertedBaseUnitPrice === null
+    ) {
+      logger.warn(
+        `[LicenseService] Could not convert pricing from ${pricing.currency} to ${targetCurrency}; charging in ${pricing.currency}`,
+      );
+      return pricing;
+    }
+
+    return {
+      ...pricing,
+      currency: targetCurrency,
+      subtotal: convertedSubtotal,
+      discountAmount: convertedDiscountAmount,
+      totalAmount: convertedTotalAmount,
+      unitPrice: convertedUnitPrice,
+      baseUnitPrice: convertedBaseUnitPrice,
+    };
+  }
+
+  private async _verifyRazorpayPayment(params: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+    expectedAmount: string;
+    expectedCurrency: string;
+  }): Promise<void> {
+    const isSignatureValid = this.razorpayProvider.verifyPaymentSignature({
+      orderId: params.razorpayOrderId,
+      paymentId: params.razorpayPaymentId,
+      signature: params.razorpaySignature,
+    });
+    if (!isSignatureValid) {
+      throw new AppError("Payment verification failed", {
+        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
+        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
+      });
+    }
+
+    const order = await this.razorpayProvider.fetchOrder(
+      params.razorpayOrderId,
+    );
+
+    const expectedAmountInSubunits = Math.round(
+      Number(params.expectedAmount) * 100,
+    );
+    const isValid =
+      order.status === "paid" &&
+      order.amount === expectedAmountInSubunits &&
+      order.currency === params.expectedCurrency;
+
+    if (!isValid) {
+      throw new AppError("Payment verification failed", {
+        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
+        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
+      });
+    }
+  }
+
+  private async _purchaseLicenses(params: {
+    pricing: ResolvedPurchasePricing;
+    quantity: number;
+    organizationId: string | null;
+    branchId: string | null;
+    userId: string;
+    resellerId?: string;
+    historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
+    paymentProvider?: number;
+    paymentReference?: string;
+  }): Promise<PurchaseLicenseServiceResult> {
+    const qty = params.quantity;
+
     const {
+      selectedPlan,
+      durationDays,
+      currency,
+      appliedDiscountRuleId,
       subtotal,
       discountPercentage,
       discountAmount,
       totalAmount,
       unitPrice,
       baseUnitPrice,
-    } = calculateLicensePurchasePricing(basePrice, qty, discountValue, discountType);
+    } = params.pricing;
 
     const newLicenses = [];
     for (let i = 0; i < qty; i++) {
@@ -253,6 +389,8 @@ export class LicenseService {
         totalAmount: totalAmount,
         currency,
         paymentStatus: PaymentStatusEnum.COMPLETED,
+        paymentProvider: params.paymentProvider,
+        paymentReference: params.paymentReference,
       },
       transactionItems: newLicenses.map(() => ({
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
@@ -316,18 +454,76 @@ export class LicenseService {
     };
   }
 
-  async purchaseLicense(
-    input: PurchaseLicenseServiceInput,
-  ): Promise<PurchaseLicenseServiceResult> {
-    return this._purchaseLicenses({
+  async initiateLicensePurchase(
+    input: InitiateLicensePurchaseServiceInput,
+  ): Promise<InitiateLicensePurchaseServiceResult> {
+    const basePricing = await this._resolvePurchasePricing({
       quantity: input.dto.quantity,
       pricingPlanId: input.dto.pricingPlanId,
-      organizationId: input.effectiveTenant.organizationId,
-      branchId: input.effectiveTenant.branchId || null,
-      userId: input.userId,
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
       discountRuleId: input.dto.discountRuleId,
+    });
+
+    const pricing = await this._convertPricingToUserCurrency(
+      basePricing,
+      input.userId,
+    );
+
+    const order = await this.razorpayProvider.createOrder({
+      amount: Number(pricing.totalAmount),
+      currency: pricing.currency,
+      receipt: generatePrefixedId("rec_lic_"),
+      notes: {
+        userId: input.userId,
+        pricingPlanId: input.dto.pricingPlanId,
+        quantity: String(input.dto.quantity),
+      },
+    });
+
+    return {
+      razorpayOrderId: order.orderId,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      subtotalAmount: pricing.subtotal,
+      discountAmount: pricing.discountAmount,
+      totalAmount: pricing.totalAmount,
+    };
+  }
+
+  async purchaseLicense(
+    input: PurchaseLicenseServiceInput,
+  ): Promise<PurchaseLicenseServiceResult> {
+    const basePricing = await this._resolvePurchasePricing({
+      quantity: input.dto.quantity,
+      pricingPlanId: input.dto.pricingPlanId,
+      discountTargetEntity:
+        LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
+      discountRuleId: input.dto.discountRuleId,
+    });
+
+    const pricing = await this._convertPricingToUserCurrency(
+      basePricing,
+      input.userId,
+    );
+
+    await this._verifyRazorpayPayment({
+      razorpayOrderId: input.dto.razorpayOrderId,
+      razorpayPaymentId: input.dto.razorpayPaymentId,
+      razorpaySignature: input.dto.razorpaySignature,
+      expectedAmount: pricing.totalAmount,
+      expectedCurrency: pricing.currency,
+    });
+
+    return this._purchaseLicenses({
+      pricing,
+      quantity: input.dto.quantity,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
+      userId: input.userId,
+      paymentProvider: PaymentProviderEnum.RAZORPAY,
+      paymentReference: input.dto.razorpayPaymentId,
     });
   }
 
@@ -509,10 +705,12 @@ export class LicenseService {
         });
       }
 
-      const pricingPlans = await this.licensePricingRepository.findPricingPlans({
-        id: input.dto.pricingPlanId,
-        isActive: true,
-      });
+      const pricingPlans = await this.licensePricingRepository.findPricingPlans(
+        {
+          id: input.dto.pricingPlanId,
+          isActive: true,
+        },
+      );
       const plan = pricingPlans[0];
       if (!plan) {
         throw new AppError("Pricing plan not found", {
@@ -735,16 +933,22 @@ export class LicenseService {
   async purchaseLicenseAsReseller(
     input: PurchaseLicenseAsResellerServiceInput,
   ): Promise<PurchaseLicenseAsResellerServiceResult> {
-    return this._purchaseLicenses({
+    const pricing = await this._resolvePurchasePricing({
       quantity: input.dto.quantity,
       pricingPlanId: input.dto.pricingPlanId,
+      resellerId: input.resellerId,
+      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+      discountRuleId: input.dto.discountRuleId,
+    });
+
+    return this._purchaseLicenses({
+      pricing,
+      quantity: input.dto.quantity,
       organizationId: null,
       branchId: null,
       userId: input.resellerId,
       resellerId: input.resellerId,
-      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
-      discountRuleId: input.dto.discountRuleId,
     });
   }
 

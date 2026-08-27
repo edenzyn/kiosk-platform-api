@@ -15,3 +15,8 @@ export type GetLatestExchangeRatesServiceResult = CachedExchangeRatesEntity;
 
 export type RefreshExchangeRatesServiceResult =
   CachedExchangeRatesEntity | null;
+
+export interface HandleRazorpayWebhookServiceInput {
+  headers: Record<string, string | string[] | undefined>;
+  body: unknown;
+}

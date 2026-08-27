@@ -8,6 +8,7 @@ import { FinanceRepository } from "./finance.repository";
 import type {
   CachedExchangeRatesEntity,
   GetLatestExchangeRatesServiceResult,
+  HandleRazorpayWebhookServiceInput,
   RefreshExchangeRatesServiceResult,
 } from "./finance.types";
 
@@ -71,5 +72,19 @@ export class FinanceService {
     );
 
     return updated;
+  }
+
+  // ========================================
+  // ? PAYMENT WEBHOOKS
+  // ========================================
+  async handleRazorpayWebhook(
+    input: HandleRazorpayWebhookServiceInput,
+  ): Promise<void> {
+    logger.log(
+      `[FinanceService] Razorpay webhook received: ${JSON.stringify({
+        headers: input.headers,
+        body: input.body,
+      })}`,
+    );
   }
 }

@@ -40,6 +40,15 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.post(
+  "/purchase/order",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.initiateLicensePurchase,
+);
+
+userLicenseRouter.post(
   "/purchase",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],

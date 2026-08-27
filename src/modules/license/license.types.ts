@@ -69,6 +69,9 @@ export interface PurchaseLicenseServiceInput {
     quantity: number;
     pricingPlanId: string;
     discountRuleId?: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
   };
   effectiveTenant: EffectiveTenant;
   userId: string;
@@ -76,6 +79,38 @@ export interface PurchaseLicenseServiceInput {
 
 export interface PurchaseLicenseServiceResult {
   licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
+}
+
+export interface ResolvedPurchasePricing {
+  selectedPlan: LicensePricingEntity;
+  durationDays: number;
+  currency: string;
+  appliedDiscountRuleId: string | null;
+  subtotal: string;
+  discountPercentage: string;
+  discountAmount: string;
+  totalAmount: string;
+  unitPrice: string;
+  baseUnitPrice: string;
+}
+
+export interface InitiateLicensePurchaseServiceInput {
+  dto: {
+    quantity: number;
+    pricingPlanId: string;
+    discountRuleId?: string;
+  };
+  userId: string;
+}
+
+export interface InitiateLicensePurchaseServiceResult {
+  razorpayOrderId: string;
+  razorpayKeyId: string;
+  amount: number;
+  currency: string;
+  subtotalAmount: string;
+  discountAmount: string;
+  totalAmount: string;
 }
 
 export interface RedeemLicenseCodeServiceInput {
@@ -684,6 +719,8 @@ export interface CreateLicensesRepoInput {
     totalAmount: string;
     currency: string;
     paymentStatus: number;
+    paymentProvider?: number;
+    paymentReference?: string;
   };
   transactionItems?: Array<{
     actionType: number;

@@ -154,7 +154,7 @@ export interface GetAvailableLicensesForRedemptionServiceInput {
 export type GetAvailableLicensesForRedemptionServiceResult =
   GetLicensesServiceResult;
 
-export interface PurchaseLicenseAsResellerServiceInput {
+export interface InitiateLicensePurchaseAsResellerServiceInput {
   dto: {
     quantity: number;
     pricingPlanId: string;
@@ -163,8 +163,29 @@ export interface PurchaseLicenseAsResellerServiceInput {
   resellerId: string;
 }
 
+export type InitiateLicensePurchaseAsResellerServiceResult =
+  InitiateLicensePurchaseServiceResult;
+
+export interface PurchaseLicenseAsResellerServiceInput {
+  dto: {
+    quantity: number;
+    pricingPlanId: string;
+    discountRuleId?: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  };
+  resellerId: string;
+}
+
 export type PurchaseLicenseAsResellerServiceResult =
   PurchaseLicenseServiceResult;
+
+export interface CancelLicensePurchaseServiceInput {
+  razorpayOrderId: string;
+  userId: string;
+  reason?: string;
+}
 
 export interface GetLicenseHistoryForResellerServiceInput {
   licenseId: string;
@@ -697,32 +718,42 @@ export interface FindLicensesForStatusCheckRepoInput {
 }
 export type FindLicensesForStatusCheckRepoResult = LicenseEntity[];
 
-export interface CreateLicensesRepoInput {
+export interface CreatePendingLicenseTransactionRepoInput {
+  userId: string;
+  subtotalAmount: string;
+  discountAmount: string;
+  discountPercentage?: string;
+  appliedDiscountRuleId?: string | null;
+  totalAmount: string;
+  currency: string;
+  paymentStatus: number;
+  paymentProvider: number;
+  paymentProviderOrderId: string;
+  intentPayload?: unknown;
+}
+export interface CreatePendingLicenseTransactionRepoResult {
+  id: string;
+}
+
+export interface FinalizeLicensePurchaseRepoInput {
+  paymentProviderOrderId: string;
+  userId: string;
+  paymentReference: string;
+  currentPaymentStatus: number;
+  newPaymentStatus: number;
+  resellerId?: string;
+  historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
   licenses: Array<{
     licenseKey: string;
     licenseKeyHash: string;
     organizationId: string | null;
     branchId: string | null;
+    deviceType: number;
     status: number;
     expiresAt?: Date | null;
     createdBy: string;
     updatedBy: string;
   }>;
-  resellerId?: string;
-  historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
-  transaction?: {
-    userId: string;
-    subtotalAmount: string;
-    discountAmount: string;
-    discountPercentage?: string;
-    appliedDiscountRuleId?: string | null;
-    totalAmount: string;
-    currency: string;
-    paymentStatus: number;
-    paymentProvider?: number;
-    paymentReference?: string;
-    paymentProviderOrderId?: string;
-  };
   transactionItems?: Array<{
     actionType: number;
     durationDays: number;
@@ -731,7 +762,16 @@ export interface CreateLicensesRepoInput {
     unitPrice: string;
   }>;
 }
-export type CreateLicensesRepoResult = LicenseEntity[];
+export type FinalizeLicensePurchaseRepoResult = LicenseEntity[] | null;
+
+export interface CancelPendingLicenseTransactionRepoInput {
+  paymentProviderOrderId: string;
+  userId: string;
+  currentPaymentStatus: number;
+  newPaymentStatus: number;
+  failureReason?: string;
+}
+export type CancelPendingLicenseTransactionRepoResult = boolean;
 
 export interface ActivateLicenseRepoInput {
   licenseId: string;

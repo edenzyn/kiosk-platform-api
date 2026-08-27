@@ -76,6 +76,25 @@ export class LicenseController {
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
+  cancelLicensePurchase = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await LicenseValidator.cancelLicensePurchase.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    await this.licenseService.cancelLicensePurchase({
+      razorpayOrderId: data.razorpayOrderId,
+      userId: user.id,
+      reason: data.reason,
+    });
+
+    res.status(HttpStatusCodes.OK).json({ success: true });
+  };
+
   redeemLicenseCode = async (req: Request, res: Response): Promise<void> => {
     const data = await LicenseValidator.redeemLicenseCode.validate(
       req.body,
@@ -363,17 +382,39 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  purchaseLicenseAsReseller = async (
+  initiateLicensePurchaseAsReseller = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const data = await LicenseValidator.purchaseLicense.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+    const data =
+      await LicenseValidator.initiateLicensePurchaseAsReseller.validate(
+        req.body,
+        { abortEarly: false, stripUnknown: true },
+      );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.purchaseLicenseAsReseller({
+    const result = await this.licenseService.initiateLicensePurchaseAsReseller(
+      {
+        dto: data,
+        resellerId: user.id,
+      },
+    );
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  verifyLicensePurchaseAsReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data =
+      await LicenseValidator.verifyLicensePurchaseAsReseller.validate(
+        req.body,
+        { abortEarly: false, stripUnknown: true },
+      );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.verifyLicensePurchaseAsReseller({
       dto: data,
       resellerId: user.id,
     });

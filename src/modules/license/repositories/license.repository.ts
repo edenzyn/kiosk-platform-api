@@ -24,11 +24,15 @@ import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
 import type {
   ActivateLicenseRepoInput,
   ActivateLicenseRepoResult,
+  CancelPendingLicenseTransactionRepoInput,
+  CancelPendingLicenseTransactionRepoResult,
   CreateLicenseHistoryRepoInput,
   CreateLicenseHistoryRepoResult,
-  CreateLicensesRepoInput,
-  CreateLicensesRepoResult,
+  CreatePendingLicenseTransactionRepoInput,
+  CreatePendingLicenseTransactionRepoResult,
   ExtendLicenseRepoInput,
+  FinalizeLicensePurchaseRepoInput,
+  FinalizeLicensePurchaseRepoResult,
   ExtendLicenseRepoResult,
   FindLatestPurchaseSnapshotRepoResult,
   FindLicenseHistoryRepoInput,
@@ -396,96 +400,141 @@ export class LicenseRepository {
       );
   }
 
-  async createLicenses(
-    input: CreateLicensesRepoInput,
-  ): Promise<CreateLicensesRepoResult> {
-    if (input.transaction) {
-      const result = await this.database.client.transaction(async (tx) => {
-        const [insertedTx] = await tx
-          .insert(licenseTransactions)
-          .values({
-            userId: input.transaction!.userId,
-            subtotalAmount: input.transaction!.subtotalAmount,
-            discountAmount: input.transaction!.discountAmount,
-            discountPercentage: input.transaction!.discountPercentage,
-            appliedDiscountRuleId: input.transaction!.appliedDiscountRuleId,
-            totalAmount: input.transaction!.totalAmount,
-            currency: input.transaction!.currency,
-            paymentStatus: input.transaction!.paymentStatus,
-            paymentProvider: input.transaction!.paymentProvider,
-            paymentReference: input.transaction!.paymentReference,
-            paymentProviderOrderId: input.transaction!.paymentProviderOrderId,
-            transactionAt: new Date(),
-            createdBy: input.transaction!.userId,
-            updatedBy: input.transaction!.userId,
-          })
-          .returning();
+  async createPendingTransaction(
+    input: CreatePendingLicenseTransactionRepoInput,
+  ): Promise<CreatePendingLicenseTransactionRepoResult> {
+    const [insertedTx] = await this.database.client
+      .insert(licenseTransactions)
+      .values({
+        userId: input.userId,
+        subtotalAmount: input.subtotalAmount,
+        discountAmount: input.discountAmount,
+        discountPercentage: input.discountPercentage,
+        appliedDiscountRuleId: input.appliedDiscountRuleId,
+        totalAmount: input.totalAmount,
+        currency: input.currency,
+        paymentStatus: input.paymentStatus,
+        paymentProvider: input.paymentProvider,
+        paymentProviderOrderId: input.paymentProviderOrderId,
+        intentPayload: input.intentPayload,
+        createdBy: input.userId,
+        updatedBy: input.userId,
+      })
+      .returning({ id: licenseTransactions.id });
 
-        if (!insertedTx) {
-          throw new Error("Failed to create license transaction record");
-        }
-
-        const createdLicenses = await tx
-          .insert(licenses)
-          .values(input.licenses)
-          .returning();
-
-        for (let i = 0; i < createdLicenses.length; i++) {
-          const license = createdLicenses[i];
-          const itemSpec =
-            input.transactionItems?.[i] || input.transactionItems?.[0];
-
-          if (itemSpec && license) {
-            await tx.insert(licenseTransactionItems).values({
-              transactionId: insertedTx.id,
-              licenseId: license.id,
-              actionType: itemSpec.actionType,
-              durationDays: itemSpec.durationDays,
-              baseUnitPrice: itemSpec.baseUnitPrice,
-              discountPercentage: itemSpec.discountPercentage,
-              unitPrice: itemSpec.unitPrice,
-            });
-          }
-
-          if (license) {
-            await tx.insert(licenseHistory).values({
-              licenseId: license.id,
-              eventType: LicenseHistoryEventTypeEnum.PURCHASE,
-              targetEntityType:
-                input.historyTargetEntityType ??
-                LicenseHistoryTargetEntityTypeEnum.NORMAL,
-              newStatus: license.status,
-              newExpiresAt: license.expiresAt,
-              transactionId: insertedTx.id,
-              performedBy: input.transaction!.userId,
-              remarks: "Purchased via pricing plan",
-            });
-
-            if (input.resellerId) {
-              await tx.insert(licenseResellerMapper).values({
-                licenseId: license.id,
-                resellerId: input.resellerId,
-                assignedAt: new Date(),
-                isActive: true,
-                createdBy: input.transaction!.userId,
-                updatedBy: input.transaction!.userId,
-              });
-            }
-          }
-        }
-
-        return createdLicenses;
-      });
-
-      return result;
+    if (!insertedTx) {
+      throw new Error("Failed to create pending license transaction record");
     }
 
-    const created = await this.database.client
-      .insert(licenses)
-      .values(input.licenses)
-      .returning();
+    return insertedTx;
+  }
 
-    return created;
+  async finalizeLicensePurchase(
+    input: FinalizeLicensePurchaseRepoInput,
+  ): Promise<FinalizeLicensePurchaseRepoResult> {
+    return this.database.client.transaction(async (tx) => {
+      const [finalizedTx] = await tx
+        .update(licenseTransactions)
+        .set({
+          paymentStatus: input.newPaymentStatus,
+          paymentReference: input.paymentReference,
+          transactionAt: new Date(),
+          updatedBy: input.userId,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(
+              licenseTransactions.paymentProviderOrderId,
+              input.paymentProviderOrderId,
+            ),
+            eq(licenseTransactions.userId, input.userId),
+            eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
+          ),
+        )
+        .returning();
+
+      if (!finalizedTx) {
+        return null;
+      }
+
+      const createdLicenses = await tx
+        .insert(licenses)
+        .values(input.licenses)
+        .returning();
+
+      for (let i = 0; i < createdLicenses.length; i++) {
+        const license = createdLicenses[i];
+        const itemSpec =
+          input.transactionItems?.[i] || input.transactionItems?.[0];
+
+        if (itemSpec && license) {
+          await tx.insert(licenseTransactionItems).values({
+            transactionId: finalizedTx.id,
+            licenseId: license.id,
+            actionType: itemSpec.actionType,
+            durationDays: itemSpec.durationDays,
+            baseUnitPrice: itemSpec.baseUnitPrice,
+            discountPercentage: itemSpec.discountPercentage,
+            unitPrice: itemSpec.unitPrice,
+          });
+        }
+
+        if (license) {
+          await tx.insert(licenseHistory).values({
+            licenseId: license.id,
+            eventType: LicenseHistoryEventTypeEnum.PURCHASE,
+            targetEntityType:
+              input.historyTargetEntityType ??
+              LicenseHistoryTargetEntityTypeEnum.NORMAL,
+            newStatus: license.status,
+            newExpiresAt: license.expiresAt,
+            transactionId: finalizedTx.id,
+            performedBy: input.userId,
+            remarks: "Purchased via pricing plan",
+          });
+
+          if (input.resellerId) {
+            await tx.insert(licenseResellerMapper).values({
+              licenseId: license.id,
+              resellerId: input.resellerId,
+              assignedAt: new Date(),
+              isActive: true,
+              createdBy: input.userId,
+              updatedBy: input.userId,
+            });
+          }
+        }
+      }
+
+      return createdLicenses;
+    });
+  }
+
+  async cancelPendingTransaction(
+    input: CancelPendingLicenseTransactionRepoInput,
+  ): Promise<CancelPendingLicenseTransactionRepoResult> {
+    const [cancelledTx] = await this.database.client
+      .update(licenseTransactions)
+      .set({
+        paymentStatus: input.newPaymentStatus,
+        failureReason: input.failureReason,
+        updatedBy: input.userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(
+            licenseTransactions.paymentProviderOrderId,
+            input.paymentProviderOrderId,
+          ),
+          eq(licenseTransactions.userId, input.userId),
+          eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
+        ),
+      )
+      .returning({ id: licenseTransactions.id });
+
+    return !!cancelledTx;
   }
 
   async activate(

@@ -58,6 +58,15 @@ userLicenseRouter.post(
 );
 
 userLicenseRouter.post(
+  "/purchase/cancel",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.cancelLicensePurchase,
+);
+
+userLicenseRouter.post(
   "/redeem",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],

@@ -365,8 +365,13 @@ export class LicenseService {
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
 
-    const { selectedPlan, durationDays, discountPercentage, unitPrice, baseUnitPrice } =
-      params.pricing;
+    const {
+      selectedPlan,
+      durationDays,
+      discountPercentage,
+      unitPrice,
+      baseUnitPrice,
+    } = params.pricing;
 
     const newLicenses = [];
     for (let i = 0; i < qty; i++) {
@@ -555,23 +560,13 @@ export class LicenseService {
   async cancelLicensePurchase(
     input: CancelLicensePurchaseServiceInput,
   ): Promise<void> {
-    const cancelled = await this.licenseRepository.cancelPendingTransaction({
+    await this.licenseRepository.cancelPendingTransaction({
       paymentProviderOrderId: input.razorpayOrderId,
       userId: input.userId,
       currentPaymentStatus: PaymentStatusEnum.PENDING,
       newPaymentStatus: PaymentStatusEnum.CANCELLED,
       failureReason: input.reason ?? "Cancelled by user",
     });
-
-    if (!cancelled) {
-      throw new AppError(
-        "This purchase order was not found or has already been processed",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        },
-      );
-    }
   }
 
   async assignLicenseToBranch(

@@ -91,6 +91,9 @@ jobs:
             FINANCE_EXCHANGE_RATE_SYNC_CRON="${{ vars.FINANCE_EXCHANGE_RATE_SYNC_CRON }}"
             FINANCE_EXCHANGE_RATE_SYNC_TIMEZONE=${{ vars.FINANCE_EXCHANGE_RATE_SYNC_TIMEZONE }}
             FINANCE_EXCHANGE_RATE_CACHE_TTL_HOURS=${{ vars.FINANCE_EXCHANGE_RATE_CACHE_TTL_HOURS }}
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            RAZORPAY_WEBHOOK_SECRET=${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
             EOF
 
             echo "📦 Step 5: Installing dependencies..."

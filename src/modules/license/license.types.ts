@@ -100,6 +100,7 @@ export interface InitiateLicensePurchaseServiceInput {
     pricingPlanId: string;
     discountRuleId?: string;
   };
+  effectiveTenant: EffectiveTenant;
   userId: string;
 }
 
@@ -511,6 +512,97 @@ export interface GetLicenseDetailsServiceResult {
   transactions: LicenseDetailsTransactionItem[];
 }
 
+export interface LicenseTransactionListItem {
+  id: string;
+  userId: string | null;
+  performedByName: string | null;
+  subtotalAmount: string;
+  discountAmount: string;
+  discountPercentage: string | null;
+  totalAmount: string;
+  currency: string;
+  paymentStatus: number | null;
+  transactionAt: string | null;
+  createdAt: string;
+  itemCount: number;
+}
+
+export interface GetLicenseTransactionsServiceInput {
+  effectiveTenant: EffectiveTenant;
+  filters: {
+    page?: number;
+    limit?: number;
+  };
+}
+
+export interface GetLicenseTransactionsServiceResult {
+  transactions: LicenseTransactionListItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface GetLicenseTransactionsForResellerServiceInput {
+  resellerId: string;
+  filters: {
+    page?: number;
+    limit?: number;
+  };
+}
+
+export type GetLicenseTransactionsForResellerServiceResult =
+  GetLicenseTransactionsServiceResult;
+
+export interface LicenseTransactionDetail {
+  id: string;
+  userId: string | null;
+  performedByName: string | null;
+  subtotalAmount: string;
+  discountAmount: string;
+  discountPercentage: string | null;
+  totalAmount: string;
+  currency: string;
+  paymentStatus: number | null;
+  paymentProvider: number | null;
+  paymentReference: string | null;
+  failureReason: string | null;
+  transactionAt: string | null;
+  createdAt: string;
+}
+
+export interface LicenseTransactionItemDetail {
+  id: string;
+  // Null until the purchase is finalized and a license is actually created.
+  licenseId: string | null;
+  licenseKey: string | null;
+  deviceType: number | null;
+  actionType: number;
+  durationDays: number;
+  baseUnitPrice: string;
+  discountPercentage: string | null;
+  unitPrice: string;
+  createdAt: string;
+}
+
+export interface GetLicenseTransactionItemsServiceInput {
+  transactionId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface GetLicenseTransactionItemsServiceResult {
+  transaction: LicenseTransactionDetail;
+  items: LicenseTransactionItemDetail[];
+}
+
+export interface GetLicenseTransactionItemsForResellerServiceInput {
+  transactionId: string;
+  resellerId: string;
+}
+
+export type GetLicenseTransactionItemsForResellerServiceResult =
+  GetLicenseTransactionItemsServiceResult;
+
 export interface CheckLicenseStatusServiceInput {
   licenseId?: string;
 }
@@ -581,6 +673,85 @@ export interface FindLicenseTransactionsRepoInput {
   viewerUserType: UserTypeEnums;
 }
 export type FindLicenseTransactionsRepoResult = LicenseDetailsTransactionItem[];
+
+export interface FindLicenseTransactionsForOrganizationRepoInput {
+  organizationId: string;
+  branchId?: string | null;
+  page?: number;
+  limit?: number;
+}
+
+export interface FindLicenseTransactionsForOrganizationRepoResult {
+  transactions: LicenseTransactionListItem[];
+  total: number;
+}
+
+export interface FindLicenseTransactionsForResellerRepoInput {
+  resellerId: string;
+  page?: number;
+  limit?: number;
+}
+
+export type FindLicenseTransactionsForResellerRepoResult =
+  FindLicenseTransactionsForOrganizationRepoResult;
+
+export interface FindTransactionWithItemsRepoInput {
+  transactionId: string;
+  organizationId?: string;
+  branchId?: string | null;
+  resellerId?: string;
+}
+
+export interface FindTransactionWithItemsRepoResult {
+  transaction: LicenseTransactionDetail;
+  items: LicenseTransactionItemDetail[];
+}
+
+export type LicenseTransactionListRow = {
+  id: string;
+  userId: string | null;
+  performedByName: string | null;
+  subtotalAmount: string;
+  discountAmount: string;
+  discountPercentage: string | null;
+  totalAmount: string;
+  currency: string;
+  paymentStatus: number | null;
+  transactionAt: string | null;
+  createdAt: string;
+  itemCount: number;
+  totalCount: string | number;
+};
+
+export type LicenseTransactionItemWithHeaderRow = {
+  // Item fields are nullable: a transaction with no items yet (still
+  // pending, cancelled, or failed before finalizing) returns exactly one
+  // row with every item field NULL, so the transaction header is never lost.
+  itemId: string | null;
+  licenseId: string | null;
+  licenseKey: string | null;
+  deviceType: number | null;
+  actionType: number | null;
+  durationDays: number | null;
+  baseUnitPrice: string | null;
+  discountPercentage: string | null;
+  unitPrice: string | null;
+  itemCreatedAt: string | null;
+  transactionId: string;
+  userId: string | null;
+  performedByName: string | null;
+  subtotalAmount: string;
+  discountAmount: string;
+  transactionDiscountPercentage: string | null;
+  totalAmount: string;
+  currency: string;
+  paymentStatus: number | null;
+  paymentProvider: number | null;
+  paymentReference: string | null;
+  failureReason: string | null;
+  transactionAt: string | null;
+  transactionCreatedAt: string;
+};
 
 export interface FindLicensesRepoInput {
   organizationId?: string;
@@ -735,6 +906,8 @@ export type FindLicensesForStatusCheckRepoResult = LicenseEntity[];
 
 export interface CreatePendingLicenseTransactionRepoInput {
   userId: string;
+  organizationId?: string | null;
+  branchId?: string | null;
   subtotalAmount: string;
   discountAmount: string;
   discountPercentage?: string;
@@ -745,6 +918,15 @@ export interface CreatePendingLicenseTransactionRepoInput {
   paymentProvider: number;
   paymentProviderOrderId: string;
   intentPayload?: unknown;
+  // Pre-created with a null licenseId — purchase items are known (quantity,
+  // duration, price) before any license exists; finalize links them up.
+  items?: Array<{
+    actionType: number;
+    durationDays: number;
+    baseUnitPrice: string;
+    discountPercentage?: string | null;
+    unitPrice: string;
+  }>;
 }
 export interface CreatePendingLicenseTransactionRepoResult {
   id: string;
@@ -787,6 +969,15 @@ export interface CancelPendingLicenseTransactionRepoInput {
   failureReason?: string;
 }
 export type CancelPendingLicenseTransactionRepoResult = boolean;
+
+export interface UpdateTransactionStatusByOrderIdRepoInput {
+  paymentProviderOrderId: string;
+  currentPaymentStatus: number;
+  newPaymentStatus: number;
+  paymentReference?: string;
+  failureReason?: string;
+}
+export type UpdateTransactionStatusByOrderIdRepoResult = boolean;
 
 export interface ActivateLicenseRepoInput {
   licenseId: string;

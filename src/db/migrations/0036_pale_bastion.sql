@@ -1,0 +1,1 @@
+ALTER TABLE "license_transaction_items" ALTER COLUMN "license_id" DROP NOT NULL;

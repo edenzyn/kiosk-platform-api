@@ -8,6 +8,7 @@ import {
   ilike,
   inArray,
   isNotNull,
+  isNull,
   or,
   sql,
   type SQL,
@@ -43,6 +44,10 @@ import type {
   FindLicensesForStatusCheckRepoResult,
   FindLicensesRepoInput,
   FindLicensesRepoResult,
+  FindLicenseTransactionsForOrganizationRepoInput,
+  FindLicenseTransactionsForOrganizationRepoResult,
+  FindLicenseTransactionsForResellerRepoInput,
+  FindLicenseTransactionsForResellerRepoResult,
   FindLicenseTransactionsRepoInput,
   FindLicenseTransactionsRepoResult,
   FindOneActiveLicenseByDeviceIdRepoInput,
@@ -53,10 +58,16 @@ import type {
   FindOneLicenseRepoResult,
   FindOwnedAvailableLicensesRepoInput,
   FindOwnedAvailableLicensesRepoResult,
+  FindTransactionWithItemsRepoInput,
+  FindTransactionWithItemsRepoResult,
   IsLicenseOwnedByResellerRepoInput,
   IsLicenseOwnedByResellerRepoResult,
+  LicenseTransactionItemWithHeaderRow,
+  LicenseTransactionListRow,
   UpdateLicenseRepoInput,
   UpdateLicenseRepoResult,
+  UpdateTransactionStatusByOrderIdRepoInput,
+  UpdateTransactionStatusByOrderIdRepoResult,
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
 import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
@@ -140,6 +151,85 @@ export class LicenseRepository {
     );
 
     return result.rows;
+  }
+
+  async findTransactionsForOrganization(
+    input: FindLicenseTransactionsForOrganizationRepoInput,
+  ): Promise<FindLicenseTransactionsForOrganizationRepoResult> {
+    const { organizationId, branchId, page = 1, limit = 10 } = input;
+
+    const result =
+      await this.database.client.execute<LicenseTransactionListRow>(
+        sql`SELECT * FROM fn_get_all_license_transactions_by_tenant(${organizationId}, ${branchId ?? null}, ${null}, ${page}, ${limit})`,
+      );
+
+    return {
+      transactions: result.rows.map(({ totalCount, ...row }) => row),
+      total: Number(result.rows[0]?.totalCount || 0),
+    };
+  }
+
+  async findTransactionsForReseller(
+    input: FindLicenseTransactionsForResellerRepoInput,
+  ): Promise<FindLicenseTransactionsForResellerRepoResult> {
+    const { resellerId, page = 1, limit = 10 } = input;
+
+    const result =
+      await this.database.client.execute<LicenseTransactionListRow>(
+        sql`SELECT * FROM fn_get_all_license_transactions_by_tenant(${null}, ${null}, ${resellerId}, ${page}, ${limit})`,
+      );
+
+    return {
+      transactions: result.rows.map(({ totalCount, ...row }) => row),
+      total: Number(result.rows[0]?.totalCount || 0),
+    };
+  }
+
+  async findTransactionWithItems(
+    input: FindTransactionWithItemsRepoInput,
+  ): Promise<FindTransactionWithItemsRepoResult | null> {
+    const result =
+      await this.database.client.execute<LicenseTransactionItemWithHeaderRow>(
+        sql`SELECT * FROM fn_get_license_transaction_items_by_tenant(${input.transactionId}, ${input.organizationId ?? null}, ${input.branchId ?? null}, ${input.resellerId ?? null})`,
+      );
+
+    const [transactionWithItems] = result.rows;
+    if (!transactionWithItems) return null;
+
+    return {
+      transaction: {
+        id: transactionWithItems.transactionId,
+        userId: transactionWithItems.userId,
+        performedByName: transactionWithItems.performedByName,
+        subtotalAmount: transactionWithItems.subtotalAmount,
+        discountAmount: transactionWithItems.discountAmount,
+        discountPercentage: transactionWithItems.transactionDiscountPercentage,
+        totalAmount: transactionWithItems.totalAmount,
+        currency: transactionWithItems.currency,
+        paymentStatus: transactionWithItems.paymentStatus,
+        paymentProvider: transactionWithItems.paymentProvider,
+        paymentReference: transactionWithItems.paymentReference,
+        failureReason: transactionWithItems.failureReason,
+        transactionAt: transactionWithItems.transactionAt,
+        createdAt: transactionWithItems.transactionCreatedAt,
+      },
+      items: result.rows
+        .filter(
+          (row): row is typeof row & { itemId: string } => row.itemId !== null,
+        )
+        .map((row) => ({
+          id: row.itemId,
+          licenseId: row.licenseId,
+          licenseKey: row.licenseKey,
+          deviceType: row.deviceType,
+          actionType: row.actionType as number,
+          durationDays: row.durationDays as number,
+          baseUnitPrice: row.baseUnitPrice as string,
+          discountPercentage: row.discountPercentage,
+          unitPrice: row.unitPrice as string,
+          createdAt: row.itemCreatedAt as string,
+        })),
+    };
   }
 
   async find(input: FindLicensesRepoInput): Promise<FindLicensesRepoResult> {
@@ -403,30 +493,47 @@ export class LicenseRepository {
   async createPendingTransaction(
     input: CreatePendingLicenseTransactionRepoInput,
   ): Promise<CreatePendingLicenseTransactionRepoResult> {
-    const [insertedTx] = await this.database.client
-      .insert(licenseTransactions)
-      .values({
-        userId: input.userId,
-        subtotalAmount: input.subtotalAmount,
-        discountAmount: input.discountAmount,
-        discountPercentage: input.discountPercentage,
-        appliedDiscountRuleId: input.appliedDiscountRuleId,
-        totalAmount: input.totalAmount,
-        currency: input.currency,
-        paymentStatus: input.paymentStatus,
-        paymentProvider: input.paymentProvider,
-        paymentProviderOrderId: input.paymentProviderOrderId,
-        intentPayload: input.intentPayload,
-        createdBy: input.userId,
-        updatedBy: input.userId,
-      })
-      .returning({ id: licenseTransactions.id });
+    return this.database.client.transaction(async (tx) => {
+      const [insertedTx] = await tx
+        .insert(licenseTransactions)
+        .values({
+          organizationId: input.organizationId,
+          branchId: input.branchId,
+          subtotalAmount: input.subtotalAmount,
+          discountAmount: input.discountAmount,
+          discountPercentage: input.discountPercentage,
+          appliedDiscountRuleId: input.appliedDiscountRuleId,
+          totalAmount: input.totalAmount,
+          currency: input.currency,
+          paymentStatus: input.paymentStatus,
+          paymentProvider: input.paymentProvider,
+          paymentProviderOrderId: input.paymentProviderOrderId,
+          intentPayload: input.intentPayload,
+          createdBy: input.userId,
+          updatedBy: input.userId,
+        })
+        .returning({ id: licenseTransactions.id });
 
-    if (!insertedTx) {
-      throw new Error("Failed to create pending license transaction record");
-    }
+      if (!insertedTx) {
+        throw new Error("Failed to create pending license transaction record");
+      }
 
-    return insertedTx;
+      if (input.items && input.items.length > 0) {
+        await tx.insert(licenseTransactionItems).values(
+          input.items.map((item) => ({
+            transactionId: insertedTx.id,
+            licenseId: null,
+            actionType: item.actionType,
+            durationDays: item.durationDays,
+            baseUnitPrice: item.baseUnitPrice,
+            discountPercentage: item.discountPercentage,
+            unitPrice: item.unitPrice,
+          })),
+        );
+      }
+
+      return insertedTx;
+    });
   }
 
   async finalizeLicensePurchase(
@@ -448,7 +555,7 @@ export class LicenseRepository {
               licenseTransactions.paymentProviderOrderId,
               input.paymentProviderOrderId,
             ),
-            eq(licenseTransactions.userId, input.userId),
+            eq(licenseTransactions.createdBy, input.userId),
             eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
           ),
         )
@@ -463,12 +570,29 @@ export class LicenseRepository {
         .values(input.licenses)
         .returning();
 
+      const pendingItems = await tx
+        .select({ id: licenseTransactionItems.id })
+        .from(licenseTransactionItems)
+        .where(
+          and(
+            eq(licenseTransactionItems.transactionId, finalizedTx.id),
+            isNull(licenseTransactionItems.licenseId),
+          ),
+        )
+        .orderBy(asc(licenseTransactionItems.createdAt));
+
       for (let i = 0; i < createdLicenses.length; i++) {
         const license = createdLicenses[i];
+        const pendingItem = pendingItems[i];
         const itemSpec =
           input.transactionItems?.[i] || input.transactionItems?.[0];
 
-        if (itemSpec && license) {
+        if (license && pendingItem) {
+          await tx
+            .update(licenseTransactionItems)
+            .set({ licenseId: license.id })
+            .where(eq(licenseTransactionItems.id, pendingItem.id));
+        } else if (license && itemSpec) {
           await tx.insert(licenseTransactionItems).values({
             transactionId: finalizedTx.id,
             licenseId: license.id,
@@ -528,13 +652,40 @@ export class LicenseRepository {
             licenseTransactions.paymentProviderOrderId,
             input.paymentProviderOrderId,
           ),
-          eq(licenseTransactions.userId, input.userId),
+          eq(licenseTransactions.createdBy, input.userId),
           eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
         ),
       )
       .returning({ id: licenseTransactions.id });
 
     return !!cancelledTx;
+  }
+
+  async updateTransactionStatusByOrderId(
+    input: UpdateTransactionStatusByOrderIdRepoInput,
+  ): Promise<UpdateTransactionStatusByOrderIdRepoResult> {
+    const [updatedTx] = await this.database.client
+      .update(licenseTransactions)
+      .set({
+        paymentStatus: input.newPaymentStatus,
+        ...(input.paymentReference != null
+          ? { paymentReference: input.paymentReference }
+          : {}),
+        failureReason: input.failureReason,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(
+            licenseTransactions.paymentProviderOrderId,
+            input.paymentProviderOrderId,
+          ),
+          eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
+        ),
+      )
+      .returning({ id: licenseTransactions.id });
+
+    return !!updatedTx;
   }
 
   async activate(
@@ -579,7 +730,7 @@ export class LicenseRepository {
               licenseTransactions.paymentProviderOrderId,
               input.paymentProviderOrderId,
             ),
-            eq(licenseTransactions.userId, input.userId),
+            eq(licenseTransactions.createdBy, input.userId),
             eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
           ),
         )

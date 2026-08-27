@@ -1,6 +1,7 @@
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { FrankfurterProvider } from "../../shared/providers/finance/frankfurter.provider";
 import type {
@@ -13,6 +14,7 @@ import {
   convertCurrencyAmount,
   type ExchangeRateTable,
 } from "../../shared/utils/finance/convert-currency.helper";
+import type { LicenseRepository } from "../license/repositories/license.repository";
 import { FinanceRepository } from "./finance.repository";
 import type {
   CachedExchangeRatesEntity,
@@ -27,6 +29,7 @@ export class FinanceService {
     private readonly frankfurterProvider: FrankfurterProvider,
     private readonly financeRepository: FinanceRepository,
     private readonly razorpayProvider: RazorpayProvider,
+    private readonly licenseRepository: LicenseRepository,
   ) {}
 
   // ========================================
@@ -97,6 +100,23 @@ export class FinanceService {
         body: input.body,
       })}`,
     );
+
+    const { event, payload } = input.body;
+    const payment = payload.payment?.entity;
+    if (!payment?.order_id) return;
+
+    if (event === "payment.failed") {
+      const failureReason =
+        payment.error_description ?? payment.error_reason ?? "Payment failed";
+
+      await this.licenseRepository.updateTransactionStatusByOrderId({
+        paymentProviderOrderId: payment.order_id,
+        currentPaymentStatus: PaymentStatusEnum.PENDING,
+        newPaymentStatus: PaymentStatusEnum.FAILED,
+        paymentReference: payment.id,
+        failureReason,
+      });
+    }
   }
 
   // ========================================

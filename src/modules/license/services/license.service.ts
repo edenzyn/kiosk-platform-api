@@ -49,6 +49,14 @@ import type {
   GetLicenseHistoryForResellerServiceResult,
   GetLicenseHistoryServiceInput,
   GetLicenseHistoryServiceResult,
+  GetLicenseTransactionItemsForResellerServiceInput,
+  GetLicenseTransactionItemsForResellerServiceResult,
+  GetLicenseTransactionItemsServiceInput,
+  GetLicenseTransactionItemsServiceResult,
+  GetLicenseTransactionsForResellerServiceInput,
+  GetLicenseTransactionsForResellerServiceResult,
+  GetLicenseTransactionsServiceInput,
+  GetLicenseTransactionsServiceResult,
   GetLicensesForResellerServiceInput,
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
@@ -300,6 +308,8 @@ export class LicenseService {
     resellerId?: string;
     ownerId: string;
     convertCurrency: boolean;
+    organizationId?: string | null;
+    branchId?: string | null;
   }): Promise<InitiateLicensePurchaseServiceResult> {
     const basePricing = await this._resolvePurchasePricing({
       quantity: params.quantity,
@@ -326,6 +336,8 @@ export class LicenseService {
 
     await this.licenseRepository.createPendingTransaction({
       userId: params.ownerId,
+      organizationId: params.organizationId ?? null,
+      branchId: params.branchId ?? null,
       subtotalAmount: pricing.subtotal,
       discountAmount: pricing.discountAmount,
       discountPercentage: pricing.discountPercentage,
@@ -341,6 +353,13 @@ export class LicenseService {
         discountRuleId: params.discountRuleId,
         razorpayOrder: order,
       },
+      items: Array.from({ length: params.quantity }, () => ({
+        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
+        durationDays: pricing.durationDays,
+        baseUnitPrice: pricing.baseUnitPrice,
+        discountPercentage: pricing.discountPercentage,
+        unitPrice: pricing.unitPrice,
+      })),
     });
 
     return {
@@ -537,6 +556,8 @@ export class LicenseService {
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
       ownerId: input.userId,
       convertCurrency: true,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
     });
   }
 
@@ -567,7 +588,7 @@ export class LicenseService {
       userId: input.userId,
       currentPaymentStatus: PaymentStatusEnum.PENDING,
       newPaymentStatus: PaymentStatusEnum.CANCELLED,
-      failureReason: input.reason ?? "Cancelled by user",
+      failureReason: input.reason ?? "Payment was cancelled before completion",
     });
   }
 
@@ -771,11 +792,12 @@ export class LicenseService {
         });
       }
 
-      const pricingPlans =
-        await this.licensePricingRepository.findPricingPlans({
+      const pricingPlans = await this.licensePricingRepository.findPricingPlans(
+        {
           id: pricingPlanId,
           isActive: true,
-        });
+        },
+      );
       const plan = pricingPlans[0];
       if (!plan) {
         throw new AppError("Pricing plan not found", {
@@ -853,6 +875,8 @@ export class LicenseService {
 
     await this.licenseRepository.createPendingTransaction({
       userId: input.userId,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || license.branchId || null,
       subtotalAmount: subtotal,
       discountAmount,
       discountPercentage: "0",
@@ -1067,6 +1091,58 @@ export class LicenseService {
     };
   }
 
+  async getLicenseTransactions(
+    input: GetLicenseTransactionsServiceInput,
+  ): Promise<GetLicenseTransactionsServiceResult> {
+    const organizationId = input.effectiveTenant.organizationId as string;
+    const branchId = input.effectiveTenant.branchId || undefined;
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { transactions, total } =
+      await this.licenseRepository.findTransactionsForOrganization({
+        organizationId,
+        branchId,
+        page,
+        limit,
+      });
+
+    return {
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLicenseTransactionItems(
+    input: GetLicenseTransactionItemsServiceInput,
+  ): Promise<GetLicenseTransactionItemsServiceResult> {
+    const result = await this.licenseRepository.findTransactionWithItems({
+      transactionId: input.transactionId,
+      organizationId: input.effectiveTenant.organizationId as string,
+      branchId: input.effectiveTenant.branchId || undefined,
+    });
+
+    if (!result) {
+      throw new AppError("Transaction not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return {
+      transaction: result.transaction,
+      items: result.items.map((item) => ({
+        ...item,
+        licenseKey: item.licenseKey
+          ? decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY)
+          : null,
+      })),
+    };
+  }
+
   // Reseller User methods
   async getLicensesForReseller(
     input: GetLicensesForResellerServiceInput,
@@ -1199,6 +1275,54 @@ export class LicenseService {
     return {
       license: decryptedLicense,
       transactions,
+    };
+  }
+
+  async getLicenseTransactionsForReseller(
+    input: GetLicenseTransactionsForResellerServiceInput,
+  ): Promise<GetLicenseTransactionsForResellerServiceResult> {
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { transactions, total } =
+      await this.licenseRepository.findTransactionsForReseller({
+        resellerId: input.resellerId,
+        page,
+        limit,
+      });
+
+    return {
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLicenseTransactionItemsForReseller(
+    input: GetLicenseTransactionItemsForResellerServiceInput,
+  ): Promise<GetLicenseTransactionItemsForResellerServiceResult> {
+    const result = await this.licenseRepository.findTransactionWithItems({
+      transactionId: input.transactionId,
+      resellerId: input.resellerId,
+    });
+
+    if (!result) {
+      throw new AppError("Transaction not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return {
+      transaction: result.transaction,
+      items: result.items.map((item) => ({
+        ...item,
+        licenseKey: item.licenseKey
+          ? decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY)
+          : null,
+      })),
     };
   }
 

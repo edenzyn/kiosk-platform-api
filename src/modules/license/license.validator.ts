@@ -359,6 +359,15 @@ export const LicenseValidator = {
       id: yup.string().uuid("Invalid license ID").required("License ID is required"),
     })
     .noUnknown(),
+  getLicenseTransactionsQuery: paginationQuerySchema.noUnknown(),
+  transactionIdParam: yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid transaction ID")
+        .required("Transaction ID is required"),
+    })
+    .noUnknown(),
   generateRedemptionCode: yup
     .object({
       licenseIds: yup

@@ -51,6 +51,7 @@ export class LicenseController {
     const user = req.user as UserTokenDto;
     const result = await this.licenseService.initiateLicensePurchase({
       dto: data,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
       userId: user.id,
     });
 
@@ -378,6 +379,39 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getLicenseTransactions = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto =
+      await LicenseValidator.getLicenseTransactionsQuery.validate(
+        req.query,
+        { abortEarly: false, stripUnknown: true },
+      );
+
+    const result = await this.licenseService.getLicenseTransactions({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      filters: queryDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getLicenseTransactionItems = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const params = await LicenseValidator.transactionIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.licenseService.getLicenseTransactionItems({
+      transactionId: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   // ========================================
   // ? RESELLER CLIENT APIS
   // ========================================
@@ -593,6 +627,44 @@ export class LicenseController {
       licenseId: params.id,
       resellerId: user.id,
     });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getLicenseTransactionsForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto =
+      await LicenseValidator.getLicenseTransactionsQuery.validate(
+        req.query,
+        { abortEarly: false, stripUnknown: true },
+      );
+
+    const user = req.user as UserTokenDto;
+    const result = await this.licenseService.getLicenseTransactionsForReseller(
+      {
+        resellerId: user.id,
+        filters: queryDto,
+      },
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getLicenseTransactionItemsForReseller = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const params = await LicenseValidator.transactionIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const user = req.user as UserTokenDto;
+    const result =
+      await this.licenseService.getLicenseTransactionItemsForReseller({
+        transactionId: params.id,
+        resellerId: user.id,
+      });
     res.status(HttpStatusCodes.OK).json(result);
   };
 

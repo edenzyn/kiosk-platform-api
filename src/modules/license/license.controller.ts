@@ -61,7 +61,7 @@ export class LicenseController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const data = await LicenseValidator.completeLicensePurchase.validate(
+    const data = await LicenseValidator.verifyLicensePurchase.validate(
       req.body,
       { abortEarly: false, stripUnknown: true },
     );

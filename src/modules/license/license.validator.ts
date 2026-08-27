@@ -58,7 +58,7 @@ export const LicenseValidator = {
       discountRuleId: yup.string().uuid().optional(),
     })
     .noUnknown(),
-  completeLicensePurchase: yup
+  verifyLicensePurchase: yup
     .object({
       quantity: yup
         .number()

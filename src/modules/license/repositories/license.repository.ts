@@ -412,6 +412,8 @@ export class LicenseRepository {
             totalAmount: input.transaction!.totalAmount,
             currency: input.transaction!.currency,
             paymentStatus: input.transaction!.paymentStatus,
+            paymentProvider: input.transaction!.paymentProvider,
+            paymentReference: input.transaction!.paymentReference,
             transactionAt: new Date(),
             createdBy: input.transaction!.userId,
             updatedBy: input.transaction!.userId,

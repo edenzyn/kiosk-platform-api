@@ -46,6 +46,42 @@ export const LicenseValidator = {
       discountRuleId: yup.string().uuid().optional(),
     })
     .noUnknown(),
+  initiateLicensePurchase: yup
+    .object({
+      quantity: yup
+        .number()
+        .typeError("Quantity must be a number")
+        .integer("Quantity must be an integer")
+        .min(1, "Quantity must be at least 1")
+        .required("Quantity is required"),
+      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      discountRuleId: yup.string().uuid().optional(),
+    })
+    .noUnknown(),
+  completeLicensePurchase: yup
+    .object({
+      quantity: yup
+        .number()
+        .typeError("Quantity must be a number")
+        .integer("Quantity must be an integer")
+        .min(1, "Quantity must be at least 1")
+        .required("Quantity is required"),
+      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      discountRuleId: yup.string().uuid().optional(),
+      razorpayOrderId: yup
+        .string()
+        .trim()
+        .required("Razorpay order id is required"),
+      razorpayPaymentId: yup
+        .string()
+        .trim()
+        .required("Razorpay payment id is required"),
+      razorpaySignature: yup
+        .string()
+        .trim()
+        .required("Razorpay signature is required"),
+    })
+    .noUnknown(),
   redeemLicenseCode: yup
     .object({
       redeemCode: yup.string().trim().required("Redeem code is required"),

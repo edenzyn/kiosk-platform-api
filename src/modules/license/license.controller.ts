@@ -57,14 +57,17 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  purchaseLicense = async (req: Request, res: Response): Promise<void> => {
+  verifyLicensePurchase = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const data = await LicenseValidator.completeLicensePurchase.validate(
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.purchaseLicense({
+    const result = await this.licenseService.verifyLicensePurchase({
       dto: data,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       userId: user.id,

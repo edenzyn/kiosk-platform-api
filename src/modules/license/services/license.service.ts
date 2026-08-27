@@ -453,7 +453,7 @@ export class LicenseService {
     };
   }
 
-  async purchaseLicense(
+  async verifyLicensePurchase(
     input: PurchaseLicenseServiceInput,
   ): Promise<PurchaseLicenseServiceResult> {
     const basePricing = await this._resolvePurchasePricing({

@@ -54,7 +54,7 @@ userLicenseRouter.post(
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
   }),
-  licenseController.purchaseLicense,
+  licenseController.verifyLicensePurchase,
 );
 
 userLicenseRouter.post(

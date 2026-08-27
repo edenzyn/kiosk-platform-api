@@ -437,7 +437,11 @@ export interface UpdatePricingPlanServiceResult {
   plan: LicensePricingEntity;
 }
 
-export interface ExtendLicenseServiceInput {
+export interface ExtendLicenseServiceResult {
+  license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+}
+
+export interface InitiateLicenseExtendServiceInput {
   licenseId: string;
   dto: {
     pricingPlanId?: string;
@@ -446,8 +450,19 @@ export interface ExtendLicenseServiceInput {
   effectiveTenant: EffectiveTenant;
 }
 
-export interface ExtendLicenseServiceResult {
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy">;
+export type InitiateLicenseExtendServiceResult =
+  InitiateLicensePurchaseServiceResult;
+
+export interface VerifyLicenseExtendServiceInput {
+  licenseId: string;
+  dto: {
+    pricingPlanId?: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  };
+  userId: string;
+  effectiveTenant: EffectiveTenant;
 }
 
 export interface GetLicenseExtendInfoServiceInput {
@@ -781,20 +796,15 @@ export interface ActivateLicenseRepoInput {
 }
 export type ActivateLicenseRepoResult = LicenseEntity;
 
-export interface ExtendLicenseRepoInput {
+export interface FinalizeLicenseExtendRepoInput {
   licenseId: string;
+  paymentProviderOrderId: string;
+  userId: string;
+  paymentReference: string;
+  currentPaymentStatus: number;
+  newPaymentStatus: number;
   newExpiresAt: Date;
   newStatus: number;
-  transaction: {
-    userId: string;
-    subtotalAmount: string;
-    discountAmount: string;
-    discountPercentage: string;
-    appliedDiscountRuleId: string | null;
-    totalAmount: string;
-    currency: string;
-    paymentStatus: number;
-  };
   transactionItem: {
     actionType: number;
     durationDays: number;
@@ -810,7 +820,7 @@ export interface ExtendLicenseRepoInput {
     remarks: string;
   };
 }
-export type ExtendLicenseRepoResult = LicenseEntity;
+export type FinalizeLicenseExtendRepoResult = LicenseEntity | null;
 
 export interface UpdateLicenseRepoInput {
   licenseId: string;

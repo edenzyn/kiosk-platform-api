@@ -103,12 +103,21 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.post(
-  "/:id/extend",
+  "/:id/extend/order",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
   }),
-  licenseController.extendLicense,
+  licenseController.initiateLicenseExtend,
+);
+
+userLicenseRouter.post(
+  "/:id/extend/verify",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.verifyLicenseExtend,
 );
 
 userLicenseRouter.get(

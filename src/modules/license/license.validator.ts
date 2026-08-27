@@ -332,9 +332,26 @@ export const LicenseValidator = {
         .required("Pricing plan ID is required"),
     })
     .noUnknown(),
-  extendLicense: yup
+  initiateLicenseExtend: yup
     .object({
       pricingPlanId: yup.string().uuid(),
+    })
+    .noUnknown(),
+  verifyLicenseExtend: yup
+    .object({
+      pricingPlanId: yup.string().uuid(),
+      razorpayOrderId: yup
+        .string()
+        .trim()
+        .required("Razorpay order id is required"),
+      razorpayPaymentId: yup
+        .string()
+        .trim()
+        .required("Razorpay payment id is required"),
+      razorpaySignature: yup
+        .string()
+        .trim()
+        .required("Razorpay signature is required"),
     })
     .noUnknown(),
   licenseIdParam: yup

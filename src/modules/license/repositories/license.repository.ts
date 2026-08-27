@@ -30,10 +30,10 @@ import type {
   CreateLicenseHistoryRepoResult,
   CreatePendingLicenseTransactionRepoInput,
   CreatePendingLicenseTransactionRepoResult,
-  ExtendLicenseRepoInput,
+  FinalizeLicenseExtendRepoInput,
+  FinalizeLicenseExtendRepoResult,
   FinalizeLicensePurchaseRepoInput,
   FinalizeLicensePurchaseRepoResult,
-  ExtendLicenseRepoResult,
   FindLatestPurchaseSnapshotRepoResult,
   FindLicenseHistoryRepoInput,
   FindLicenseHistoryRepoResult,
@@ -560,40 +560,42 @@ export class LicenseRepository {
     return updated;
   }
 
-  async extendLicense(
-    input: ExtendLicenseRepoInput,
-  ): Promise<ExtendLicenseRepoResult> {
-    const result = await this.database.client.transaction(async (tx) => {
-      // 1. Create transaction record
-      const [insertedTx] = await tx
-        .insert(licenseTransactions)
-        .values({
-          userId: input.transaction.userId,
-          subtotalAmount: input.transaction.subtotalAmount,
-          discountAmount: input.transaction.discountAmount,
-          discountPercentage: input.transaction.discountPercentage,
-          appliedDiscountRuleId: input.transaction.appliedDiscountRuleId,
-          totalAmount: input.transaction.totalAmount,
-          currency: input.transaction.currency,
-          paymentStatus: input.transaction.paymentStatus,
+  async finalizeLicenseExtend(
+    input: FinalizeLicenseExtendRepoInput,
+  ): Promise<FinalizeLicenseExtendRepoResult> {
+    return this.database.client.transaction(async (tx) => {
+      const [finalizedTx] = await tx
+        .update(licenseTransactions)
+        .set({
+          paymentStatus: input.newPaymentStatus,
+          paymentReference: input.paymentReference,
           transactionAt: new Date(),
-          createdBy: input.transaction.userId,
-          updatedBy: input.transaction.userId,
+          updatedBy: input.userId,
+          updatedAt: new Date(),
         })
+        .where(
+          and(
+            eq(
+              licenseTransactions.paymentProviderOrderId,
+              input.paymentProviderOrderId,
+            ),
+            eq(licenseTransactions.userId, input.userId),
+            eq(licenseTransactions.paymentStatus, input.currentPaymentStatus),
+          ),
+        )
         .returning();
 
-      if (!insertedTx) {
-        throw new Error("Failed to create license transaction record");
+      if (!finalizedTx) {
+        return null;
       }
 
-      // 2. Update license expiresAt and status
       const [updatedLicense] = await tx
         .update(licenses)
         .set({
           expiresAt: input.newExpiresAt,
           status: input.newStatus,
           updatedAt: new Date(),
-          updatedBy: input.transaction.userId,
+          updatedBy: input.userId,
         })
         .where(eq(licenses.id, input.licenseId))
         .returning();
@@ -602,9 +604,8 @@ export class LicenseRepository {
         throw new Error("Failed to update license");
       }
 
-      // 3. Create transaction item record
       await tx.insert(licenseTransactionItems).values({
-        transactionId: insertedTx.id,
+        transactionId: finalizedTx.id,
         licenseId: input.licenseId,
         actionType: input.transactionItem.actionType,
         durationDays: input.transactionItem.durationDays,
@@ -613,7 +614,6 @@ export class LicenseRepository {
         unitPrice: input.transactionItem.unitPrice,
       });
 
-      // 4. Create license history record
       await tx.insert(licenseHistory).values({
         licenseId: input.licenseId,
         eventType: input.historyEvent.eventType,
@@ -622,15 +622,13 @@ export class LicenseRepository {
         newStatus: input.newStatus,
         previousExpiresAt: input.historyEvent.previousExpiresAt,
         newExpiresAt: input.newExpiresAt,
-        transactionId: insertedTx.id,
-        performedBy: input.transaction.userId,
+        transactionId: finalizedTx.id,
+        performedBy: input.userId,
         remarks: input.historyEvent.remarks,
       });
 
       return updatedLicense;
     });
-
-    return result;
   }
 
   async update(

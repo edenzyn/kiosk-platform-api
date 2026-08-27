@@ -36,7 +36,6 @@ import type {
   CheckLicenseStatusServiceInput,
   CheckLicenseStatusServiceResult,
   CreateLicenseHistoryRepoInput,
-  ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
   GetLicenseDetailsForResellerServiceInput,
   GetLicenseDetailsForResellerServiceResult,
@@ -54,6 +53,8 @@ import type {
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
+  InitiateLicenseExtendServiceInput,
+  InitiateLicenseExtendServiceResult,
   InitiateLicensePurchaseAsResellerServiceInput,
   InitiateLicensePurchaseAsResellerServiceResult,
   InitiateLicensePurchaseServiceInput,
@@ -63,6 +64,7 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
   ResolvedPurchasePricing,
+  VerifyLicenseExtendServiceInput,
 } from "../license.types";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
@@ -707,8 +709,180 @@ export class LicenseService {
     };
   }
 
-  async extendLicense(
-    input: ExtendLicenseServiceInput,
+  private _computeExtendedExpiry(
+    license: LicenseEntity,
+    durationDays: number,
+  ): { newExpiresAt: Date; newStatus: number } {
+    const now = new Date();
+    const currentExpiresAt = license.expiresAt
+      ? new Date(license.expiresAt)
+      : null;
+    let baseDate = now;
+    if (
+      currentExpiresAt &&
+      currentExpiresAt > now &&
+      (license.status === LicenseStatusEnum.ACTIVE ||
+        license.status === LicenseStatusEnum.GRACE_PERIOD)
+    ) {
+      baseDate = currentExpiresAt;
+    }
+
+    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
+    const newStatus = license.deviceId
+      ? LicenseStatusEnum.ACTIVE
+      : LicenseStatusEnum.AVAILABLE;
+
+    return { newExpiresAt, newStatus };
+  }
+
+  private async _resolveLicenseExtendPricing(
+    licenseId: string,
+    userId: string,
+    pricingPlanId?: string,
+  ): Promise<{
+    price: number;
+    currency: string;
+    durationDays: number;
+    planLabel: string;
+  }> {
+    const lockedPricing =
+      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+        licenseId,
+      );
+
+    let resolved: {
+      price: number;
+      currency: string;
+      durationDays: number;
+      planLabel: string;
+    };
+
+    if (lockedPricing) {
+      resolved = {
+        price: Number(lockedPricing.soldPrice || lockedPricing.basePrice),
+        currency: lockedPricing.currency,
+        durationDays: lockedPricing.durationDays,
+        planLabel: lockedPricing.planName || "redeemed plan",
+      };
+    } else {
+      if (!pricingPlanId) {
+        throw new AppError("Pricing plan is required", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+
+      const pricingPlans =
+        await this.licensePricingRepository.findPricingPlans({
+          id: pricingPlanId,
+          isActive: true,
+        });
+      const plan = pricingPlans[0];
+      if (!plan) {
+        throw new AppError("Pricing plan not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      resolved = {
+        price: Number(plan.price),
+        currency: plan.currency,
+        durationDays: plan.durationDays,
+        planLabel: plan.name,
+      };
+    }
+
+    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const targetCurrency = settings.currencyCode;
+
+    const convertedAmount =
+      await this.financeService.convertAmountToTargetCurrency({
+        amount: resolved.price,
+        sourceCurrency: resolved.currency,
+        targetCurrency,
+      });
+
+    if (convertedAmount === null) {
+      logger.warn(
+        `[LicenseService] Could not convert amount from ${resolved.currency} to ${targetCurrency}; charging in ${resolved.currency}`,
+      );
+      return resolved;
+    }
+
+    return {
+      ...resolved,
+      price: Number(convertedAmount.toFixed(2)),
+      currency: targetCurrency,
+    };
+  }
+
+  async initiateLicenseExtend(
+    input: InitiateLicenseExtendServiceInput,
+  ): Promise<InitiateLicenseExtendServiceResult> {
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const { price, currency, durationDays } =
+      await this._resolveLicenseExtendPricing(
+        license.id,
+        input.userId,
+        input.dto.pricingPlanId,
+      );
+
+    const { subtotal, discountAmount, totalAmount } =
+      calculateLicensePurchasePricing(price, 1, 0);
+
+    const order = await this.financeService.createRazorpayOrder({
+      amount: Number(totalAmount),
+      currency,
+      receipt: generatePrefixedId("rec_lic_"),
+      notes: {
+        licenseId: license.id,
+        userId: input.userId,
+        pricingPlanId: input.dto.pricingPlanId ?? "",
+      },
+    });
+
+    await this.licenseRepository.createPendingTransaction({
+      userId: input.userId,
+      subtotalAmount: subtotal,
+      discountAmount,
+      discountPercentage: "0",
+      appliedDiscountRuleId: null,
+      totalAmount,
+      currency,
+      paymentStatus: PaymentStatusEnum.PENDING,
+      paymentProvider: PaymentProviderEnum.RAZORPAY,
+      paymentProviderOrderId: order.orderId,
+      intentPayload: {
+        licenseId: license.id,
+        pricingPlanId: input.dto.pricingPlanId ?? null,
+        durationDays,
+        razorpayOrder: order,
+      },
+    });
+
+    return {
+      razorpayOrderId: order.orderId,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      subtotalAmount: subtotal,
+      discountAmount,
+      totalAmount,
+    };
+  }
+
+  async verifyLicenseExtend(
+    input: VerifyLicenseExtendServiceInput,
   ): Promise<ExtendLicenseServiceResult> {
     const license = await this.licenseRepository.findOne({
       id: input.licenseId,
@@ -725,92 +899,38 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const lockedPricing =
-      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+    const { price, currency, durationDays, planLabel } =
+      await this._resolveLicenseExtendPricing(
         license.id,
+        input.userId,
+        input.dto.pricingPlanId,
       );
 
-    let durationDays: number;
-    let basePrice: string;
-    let currency: string;
-    let planLabel: string;
+    const { discountPercentage, totalAmount, unitPrice, baseUnitPrice } =
+      calculateLicensePurchasePricing(price, 1, 0);
 
-    if (lockedPricing) {
-      durationDays = lockedPricing.durationDays;
-      basePrice = lockedPricing.soldPrice || lockedPricing.basePrice;
-      currency = lockedPricing.currency;
-      planLabel = lockedPricing.planName || "redeemed plan";
-    } else {
-      if (!input.dto.pricingPlanId) {
-        throw new AppError("Pricing plan ID is required", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
+    await this.financeService.verifyRazorpayPayment({
+      razorpayOrderId: input.dto.razorpayOrderId,
+      razorpayPaymentId: input.dto.razorpayPaymentId,
+      razorpaySignature: input.dto.razorpaySignature,
+      expectedAmount: totalAmount,
+      expectedCurrency: currency,
+    });
 
-      const pricingPlans = await this.licensePricingRepository.findPricingPlans(
-        {
-          id: input.dto.pricingPlanId,
-          isActive: true,
-        },
-      );
-      const plan = pricingPlans[0];
-      if (!plan) {
-        throw new AppError("Pricing plan not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
-      }
+    const { newExpiresAt, newStatus } = this._computeExtendedExpiry(
+      license,
+      durationDays,
+    );
 
-      durationDays = plan.durationDays;
-      basePrice = plan.price;
-      currency = plan.currency;
-      planLabel = plan.name;
-    }
-
-    const {
-      subtotal,
-      discountPercentage,
-      discountAmount,
-      totalAmount,
-      unitPrice,
-      baseUnitPrice,
-    } = calculateLicensePurchasePricing(Number(basePrice), 1, 0);
-
-    const now = new Date();
-    const currentExpiresAt = license.expiresAt
-      ? new Date(license.expiresAt)
-      : null;
-    let baseDate = now;
-    if (
-      currentExpiresAt &&
-      currentExpiresAt > now &&
-      (license.status === LicenseStatusEnum.ACTIVE ||
-        license.status === LicenseStatusEnum.GRACE_PERIOD)
-    ) {
-      baseDate = currentExpiresAt;
-    }
-
-    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
-
-    let newStatus = LicenseStatusEnum.ACTIVE;
-    if (!license.deviceId) {
-      newStatus = LicenseStatusEnum.AVAILABLE;
-    }
-
-    const updated = await this.licenseRepository.extendLicense({
+    const updated = await this.licenseRepository.finalizeLicenseExtend({
       licenseId: license.id,
+      paymentProviderOrderId: input.dto.razorpayOrderId,
+      userId: input.userId,
+      paymentReference: input.dto.razorpayPaymentId,
+      currentPaymentStatus: PaymentStatusEnum.PENDING,
+      newPaymentStatus: PaymentStatusEnum.COMPLETED,
       newExpiresAt,
       newStatus,
-      transaction: {
-        userId: input.userId,
-        subtotalAmount: subtotal,
-        discountAmount: discountAmount,
-        discountPercentage: discountPercentage,
-        appliedDiscountRuleId: null,
-        totalAmount: totalAmount,
-        currency,
-        paymentStatus: PaymentStatusEnum.COMPLETED,
-      },
       transactionItem: {
         actionType: LicenseTransactionActionTypeEnum.RENEWAL,
         durationDays,
@@ -826,6 +946,16 @@ export class LicenseService {
         remarks: `License extended by ${durationDays} days via plan: ${planLabel}`,
       },
     });
+
+    if (!updated) {
+      throw new AppError(
+        "This extend order was not found or has already been processed",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        },
+      );
+    }
 
     const { createdBy, updatedBy, ...rest } = updated;
     return {

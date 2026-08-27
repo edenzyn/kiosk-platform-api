@@ -1,11 +1,11 @@
 import {
-  type AnyPgColumn,
   decimal,
   integer,
   pgTable,
   smallint,
   timestamp,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { licenseTransactions } from "./license-transaction.schema";
 import { licenses } from "./license.schema";
@@ -15,13 +15,17 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
   transactionId: uuid("transaction_id")
     .notNull()
     .references((): AnyPgColumn => licenseTransactions.id),
-  licenseId: uuid("license_id")
-    .notNull()
-    .references((): AnyPgColumn => licenses.id),
+  licenseId: uuid("license_id").references((): AnyPgColumn => licenses.id),
   actionType: smallint("action_type").notNull(),
   durationDays: integer("duration_days").notNull(),
-  baseUnitPrice: decimal("base_unit_price", { precision: 10, scale: 2 }).notNull(),
-  discountPercentage: decimal("discount_percentage", { precision: 5, scale: 2 }),
+  baseUnitPrice: decimal("base_unit_price", {
+    precision: 10,
+    scale: 2,
+  }).notNull(),
+  discountPercentage: decimal("discount_percentage", {
+    precision: 5,
+    scale: 2,
+  }),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

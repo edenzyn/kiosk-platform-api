@@ -42,7 +42,25 @@ resellerLicenseRouter.post(
     { reseller: [UserPermissions.RESELLER_BASIC] },
     UserTypeEnums.RESELLER,
   ),
-  licenseController.purchaseLicenseAsReseller,
+  licenseController.initiateLicensePurchaseAsReseller,
+);
+
+resellerLicenseRouter.post(
+  "/purchase/verify",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.verifyLicensePurchaseAsReseller,
+);
+
+resellerLicenseRouter.post(
+  "/purchase/cancel",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.cancelLicensePurchase,
 );
 
 resellerLicenseRouter.get(
@@ -113,6 +131,24 @@ resellerLicenseRouter.get(
     UserTypeEnums.RESELLER,
   ),
   licenseController.getLicenseDetailsForReseller,
+);
+
+resellerLicenseRouter.get(
+  "/transactions",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.getLicenseTransactionsForReseller,
+);
+
+resellerLicenseRouter.get(
+  "/transactions/:id/items",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  licenseController.getLicenseTransactionItemsForReseller,
 );
 
 export { resellerLicenseRouter };

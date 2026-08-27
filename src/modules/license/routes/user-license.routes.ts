@@ -40,7 +40,7 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.post(
-  "/purchase/order",
+  "/purchase",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
@@ -49,12 +49,21 @@ userLicenseRouter.post(
 );
 
 userLicenseRouter.post(
-  "/purchase",
+  "/purchase/verify",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
   }),
-  licenseController.purchaseLicense,
+  licenseController.verifyLicensePurchase,
+);
+
+userLicenseRouter.post(
+  "/purchase/cancel",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.cancelLicensePurchase,
 );
 
 userLicenseRouter.post(
@@ -94,12 +103,21 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.post(
-  "/:id/extend",
+  "/:id/extend/order",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
   }),
-  licenseController.extendLicense,
+  licenseController.initiateLicenseExtend,
+);
+
+userLicenseRouter.post(
+  "/:id/extend/verify",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
+    branch: [UserPermissions.BRANCH_LICENSE_WRITE],
+  }),
+  licenseController.verifyLicenseExtend,
 );
 
 userLicenseRouter.get(
@@ -118,6 +136,24 @@ userLicenseRouter.get(
     branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
   }),
   licenseController.getLicenseDetails,
+);
+
+userLicenseRouter.get(
+  "/transactions",
+  accessMiddleware({
+    organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
+    branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
+  }),
+  licenseController.getLicenseTransactions,
+);
+
+userLicenseRouter.get(
+  "/transactions/:id/items",
+  accessMiddleware({
+    organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
+    branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
+  }),
+  licenseController.getLicenseTransactionItems,
 );
 
 export { userLicenseRouter };

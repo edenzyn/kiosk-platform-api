@@ -12,7 +12,6 @@ import { PaymentProviderEnum } from "../../../shared/enums/license/payment-provi
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
 import {
   decryptData,
   encryptData,
@@ -33,10 +32,10 @@ import type {
   AssignLicenseToBranchServiceResult,
   AssignLicenseToDeviceServiceInput,
   AssignLicenseToDeviceServiceResult,
+  CancelLicensePurchaseServiceInput,
   CheckLicenseStatusServiceInput,
   CheckLicenseStatusServiceResult,
   CreateLicenseHistoryRepoInput,
-  ExtendLicenseServiceInput,
   ExtendLicenseServiceResult,
   GetLicenseDetailsForResellerServiceInput,
   GetLicenseDetailsForResellerServiceResult,
@@ -50,10 +49,22 @@ import type {
   GetLicenseHistoryForResellerServiceResult,
   GetLicenseHistoryServiceInput,
   GetLicenseHistoryServiceResult,
+  GetLicenseTransactionItemsForResellerServiceInput,
+  GetLicenseTransactionItemsForResellerServiceResult,
+  GetLicenseTransactionItemsServiceInput,
+  GetLicenseTransactionItemsServiceResult,
+  GetLicenseTransactionsForResellerServiceInput,
+  GetLicenseTransactionsForResellerServiceResult,
+  GetLicenseTransactionsServiceInput,
+  GetLicenseTransactionsServiceResult,
   GetLicensesForResellerServiceInput,
   GetLicensesForResellerServiceResult,
   GetLicensesServiceInput,
   GetLicensesServiceResult,
+  InitiateLicenseExtendServiceInput,
+  InitiateLicenseExtendServiceResult,
+  InitiateLicensePurchaseAsResellerServiceInput,
+  InitiateLicensePurchaseAsResellerServiceResult,
   InitiateLicensePurchaseServiceInput,
   InitiateLicensePurchaseServiceResult,
   PurchaseLicenseAsResellerServiceInput,
@@ -61,6 +72,7 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
   ResolvedPurchasePricing,
+  VerifyLicenseExtendServiceInput,
 } from "../license.types";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
@@ -75,7 +87,6 @@ export class LicenseService {
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly deviceRepository: DeviceRepository,
-    private readonly razorpayProvider: RazorpayProvider,
     private readonly userRepository: UserRepository,
     private readonly financeService: FinanceService,
   ) {}
@@ -289,67 +300,96 @@ export class LicenseService {
     };
   }
 
-  private async _verifyRazorpayPayment(params: {
-    razorpayOrderId: string;
-    razorpayPaymentId: string;
-    razorpaySignature: string;
-    expectedAmount: string;
-    expectedCurrency: string;
-  }): Promise<void> {
-    const isSignatureValid = this.razorpayProvider.verifyPaymentSignature({
-      orderId: params.razorpayOrderId,
-      paymentId: params.razorpayPaymentId,
-      signature: params.razorpaySignature,
+  private async _createPendingPurchaseOrder(params: {
+    quantity: number;
+    pricingPlanId: string;
+    discountRuleId?: string;
+    discountTargetEntity: number;
+    resellerId?: string;
+    ownerId: string;
+    convertCurrency: boolean;
+    organizationId?: string | null;
+    branchId?: string | null;
+  }): Promise<InitiateLicensePurchaseServiceResult> {
+    const basePricing = await this._resolvePurchasePricing({
+      quantity: params.quantity,
+      pricingPlanId: params.pricingPlanId,
+      resellerId: params.resellerId,
+      discountTargetEntity: params.discountTargetEntity,
+      discountRuleId: params.discountRuleId,
     });
-    if (!isSignatureValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
-        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
-      });
-    }
 
-    const order = await this.razorpayProvider.fetchOrder(
-      params.razorpayOrderId,
-    );
+    const pricing = params.convertCurrency
+      ? await this._convertPricingToUserCurrency(basePricing, params.ownerId)
+      : basePricing;
 
-    const expectedAmountInSubunits = Math.round(
-      Number(params.expectedAmount) * 100,
-    );
-    const isValid =
-      order.status === "paid" &&
-      order.amount === expectedAmountInSubunits &&
-      order.currency === params.expectedCurrency;
+    const order = await this.financeService.createRazorpayOrder({
+      amount: Number(pricing.totalAmount),
+      currency: pricing.currency,
+      receipt: generatePrefixedId("rec_lic_"),
+      notes: {
+        ownerId: params.ownerId,
+        pricingPlanId: params.pricingPlanId,
+        quantity: String(params.quantity),
+      },
+    });
 
-    if (!isValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
-        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
-      });
-    }
+    await this.licenseRepository.createPendingTransaction({
+      userId: params.ownerId,
+      organizationId: params.organizationId ?? null,
+      branchId: params.branchId ?? null,
+      subtotalAmount: pricing.subtotal,
+      discountAmount: pricing.discountAmount,
+      discountPercentage: pricing.discountPercentage,
+      appliedDiscountRuleId: pricing.appliedDiscountRuleId,
+      totalAmount: pricing.totalAmount,
+      currency: pricing.currency,
+      paymentStatus: PaymentStatusEnum.PENDING,
+      paymentProvider: PaymentProviderEnum.RAZORPAY,
+      paymentProviderOrderId: order.orderId,
+      intentPayload: {
+        quantity: params.quantity,
+        pricingPlanId: params.pricingPlanId,
+        discountRuleId: params.discountRuleId,
+        razorpayOrder: order,
+      },
+      items: Array.from({ length: params.quantity }, () => ({
+        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
+        durationDays: pricing.durationDays,
+        baseUnitPrice: pricing.baseUnitPrice,
+        discountPercentage: pricing.discountPercentage,
+        unitPrice: pricing.unitPrice,
+      })),
+    });
+
+    return {
+      razorpayOrderId: order.orderId,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      subtotalAmount: pricing.subtotal,
+      discountAmount: pricing.discountAmount,
+      totalAmount: pricing.totalAmount,
+    };
   }
 
-  private async _purchaseLicenses(params: {
+  private async _finalizeLicensePurchase(params: {
     pricing: ResolvedPurchasePricing;
     quantity: number;
     organizationId: string | null;
     branchId: string | null;
-    userId: string;
+    ownerId: string;
     resellerId?: string;
     historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
-    paymentProvider?: number;
-    paymentReference?: string;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
 
     const {
       selectedPlan,
       durationDays,
-      currency,
-      appliedDiscountRuleId,
-      subtotal,
       discountPercentage,
-      discountAmount,
-      totalAmount,
       unitPrice,
       baseUnitPrice,
     } = params.pricing;
@@ -371,27 +411,20 @@ export class LicenseService {
         deviceType: selectedPlan.deviceType,
         status: LicenseStatusEnum.AVAILABLE,
         expiresAt: null,
-        createdBy: params.userId,
-        updatedBy: params.userId,
+        createdBy: params.ownerId,
+        updatedBy: params.ownerId,
       });
     }
 
-    const created = await this.licenseRepository.createLicenses({
-      licenses: newLicenses,
+    const created = await this.licenseRepository.finalizeLicensePurchase({
+      paymentProviderOrderId: params.razorpayOrderId,
+      userId: params.ownerId,
+      paymentReference: params.razorpayPaymentId,
+      currentPaymentStatus: PaymentStatusEnum.PENDING,
+      newPaymentStatus: PaymentStatusEnum.COMPLETED,
       resellerId: params.resellerId,
       historyTargetEntityType: params.historyTargetEntityType,
-      transaction: {
-        userId: params.userId,
-        subtotalAmount: subtotal,
-        discountAmount: discountAmount,
-        discountPercentage: discountPercentage,
-        appliedDiscountRuleId,
-        totalAmount: totalAmount,
-        currency,
-        paymentStatus: PaymentStatusEnum.COMPLETED,
-        paymentProvider: params.paymentProvider,
-        paymentReference: params.paymentReference,
-      },
+      licenses: newLicenses,
       transactionItems: newLicenses.map(() => ({
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
         durationDays,
@@ -400,6 +433,16 @@ export class LicenseService {
         unitPrice: unitPrice,
       })),
     });
+
+    if (!created) {
+      throw new AppError(
+        "This purchase order was not found or has already been processed",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        },
+      );
+    }
 
     const resultLicenses = created.map(({ createdBy, updatedBy, ...rest }) => {
       return {
@@ -411,6 +454,54 @@ export class LicenseService {
     return {
       licenses: resultLicenses,
     };
+  }
+
+  private async _verifyAndFinalizePurchase(params: {
+    quantity: number;
+    pricingPlanId: string;
+    discountRuleId?: string;
+    discountTargetEntity: number;
+    resellerId?: string;
+    ownerId: string;
+    convertCurrency: boolean;
+    organizationId: string | null;
+    branchId: string | null;
+    historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  }): Promise<PurchaseLicenseServiceResult> {
+    const basePricing = await this._resolvePurchasePricing({
+      quantity: params.quantity,
+      pricingPlanId: params.pricingPlanId,
+      resellerId: params.resellerId,
+      discountTargetEntity: params.discountTargetEntity,
+      discountRuleId: params.discountRuleId,
+    });
+
+    const pricing = params.convertCurrency
+      ? await this._convertPricingToUserCurrency(basePricing, params.ownerId)
+      : basePricing;
+
+    await this.financeService.verifyRazorpayPayment({
+      razorpayOrderId: params.razorpayOrderId,
+      razorpayPaymentId: params.razorpayPaymentId,
+      razorpaySignature: params.razorpaySignature,
+      expectedAmount: pricing.totalAmount,
+      expectedCurrency: pricing.currency,
+    });
+
+    return this._finalizeLicensePurchase({
+      pricing,
+      quantity: params.quantity,
+      organizationId: params.organizationId,
+      branchId: params.branchId,
+      ownerId: params.ownerId,
+      resellerId: params.resellerId,
+      historyTargetEntityType: params.historyTargetEntityType,
+      razorpayOrderId: params.razorpayOrderId,
+      razorpayPaymentId: params.razorpayPaymentId,
+    });
   }
 
   // ========================================
@@ -457,73 +548,47 @@ export class LicenseService {
   async initiateLicensePurchase(
     input: InitiateLicensePurchaseServiceInput,
   ): Promise<InitiateLicensePurchaseServiceResult> {
-    const basePricing = await this._resolvePurchasePricing({
+    return this._createPendingPurchaseOrder({
       quantity: input.dto.quantity,
       pricingPlanId: input.dto.pricingPlanId,
+      discountRuleId: input.dto.discountRuleId,
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
-      discountRuleId: input.dto.discountRuleId,
+      ownerId: input.userId,
+      convertCurrency: true,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
     });
-
-    const pricing = await this._convertPricingToUserCurrency(
-      basePricing,
-      input.userId,
-    );
-
-    const order = await this.razorpayProvider.createOrder({
-      amount: Number(pricing.totalAmount),
-      currency: pricing.currency,
-      receipt: generatePrefixedId("rec_lic_"),
-      notes: {
-        userId: input.userId,
-        pricingPlanId: input.dto.pricingPlanId,
-        quantity: String(input.dto.quantity),
-      },
-    });
-
-    return {
-      razorpayOrderId: order.orderId,
-      razorpayKeyId: env.RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: order.currency,
-      subtotalAmount: pricing.subtotal,
-      discountAmount: pricing.discountAmount,
-      totalAmount: pricing.totalAmount,
-    };
   }
 
-  async purchaseLicense(
+  async verifyLicensePurchase(
     input: PurchaseLicenseServiceInput,
   ): Promise<PurchaseLicenseServiceResult> {
-    const basePricing = await this._resolvePurchasePricing({
+    return this._verifyAndFinalizePurchase({
       quantity: input.dto.quantity,
       pricingPlanId: input.dto.pricingPlanId,
+      discountRuleId: input.dto.discountRuleId,
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
-      discountRuleId: input.dto.discountRuleId,
-    });
-
-    const pricing = await this._convertPricingToUserCurrency(
-      basePricing,
-      input.userId,
-    );
-
-    await this._verifyRazorpayPayment({
+      ownerId: input.userId,
+      convertCurrency: true,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || null,
       razorpayOrderId: input.dto.razorpayOrderId,
       razorpayPaymentId: input.dto.razorpayPaymentId,
       razorpaySignature: input.dto.razorpaySignature,
-      expectedAmount: pricing.totalAmount,
-      expectedCurrency: pricing.currency,
     });
+  }
 
-    return this._purchaseLicenses({
-      pricing,
-      quantity: input.dto.quantity,
-      organizationId: input.effectiveTenant.organizationId,
-      branchId: input.effectiveTenant.branchId || null,
+  async cancelLicensePurchase(
+    input: CancelLicensePurchaseServiceInput,
+  ): Promise<void> {
+    await this.licenseRepository.cancelPendingTransaction({
+      paymentProviderOrderId: input.razorpayOrderId,
       userId: input.userId,
-      paymentProvider: PaymentProviderEnum.RAZORPAY,
-      paymentReference: input.dto.razorpayPaymentId,
+      currentPaymentStatus: PaymentStatusEnum.PENDING,
+      newPaymentStatus: PaymentStatusEnum.CANCELLED,
+      failureReason: input.reason ?? "Payment was cancelled before completion",
     });
   }
 
@@ -665,8 +730,183 @@ export class LicenseService {
     };
   }
 
-  async extendLicense(
-    input: ExtendLicenseServiceInput,
+  private _computeExtendedExpiry(
+    license: LicenseEntity,
+    durationDays: number,
+  ): { newExpiresAt: Date; newStatus: number } {
+    const now = new Date();
+    const currentExpiresAt = license.expiresAt
+      ? new Date(license.expiresAt)
+      : null;
+    let baseDate = now;
+    if (
+      currentExpiresAt &&
+      currentExpiresAt > now &&
+      (license.status === LicenseStatusEnum.ACTIVE ||
+        license.status === LicenseStatusEnum.GRACE_PERIOD)
+    ) {
+      baseDate = currentExpiresAt;
+    }
+
+    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
+    const newStatus = license.deviceId
+      ? LicenseStatusEnum.ACTIVE
+      : LicenseStatusEnum.AVAILABLE;
+
+    return { newExpiresAt, newStatus };
+  }
+
+  private async _resolveLicenseExtendPricing(
+    licenseId: string,
+    userId: string,
+    pricingPlanId?: string,
+  ): Promise<{
+    price: number;
+    currency: string;
+    durationDays: number;
+    planLabel: string;
+  }> {
+    const lockedPricing =
+      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+        licenseId,
+      );
+
+    let resolved: {
+      price: number;
+      currency: string;
+      durationDays: number;
+      planLabel: string;
+    };
+
+    if (lockedPricing) {
+      resolved = {
+        price: Number(lockedPricing.soldPrice || lockedPricing.basePrice),
+        currency: lockedPricing.currency,
+        durationDays: lockedPricing.durationDays,
+        planLabel: lockedPricing.planName || "redeemed plan",
+      };
+    } else {
+      if (!pricingPlanId) {
+        throw new AppError("Pricing plan is required", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+        });
+      }
+
+      const pricingPlans = await this.licensePricingRepository.findPricingPlans(
+        {
+          id: pricingPlanId,
+          isActive: true,
+        },
+      );
+      const plan = pricingPlans[0];
+      if (!plan) {
+        throw new AppError("Pricing plan not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      resolved = {
+        price: Number(plan.price),
+        currency: plan.currency,
+        durationDays: plan.durationDays,
+        planLabel: plan.name,
+      };
+    }
+
+    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const targetCurrency = settings.currencyCode;
+
+    const convertedAmount =
+      await this.financeService.convertAmountToTargetCurrency({
+        amount: resolved.price,
+        sourceCurrency: resolved.currency,
+        targetCurrency,
+      });
+
+    if (convertedAmount === null) {
+      logger.warn(
+        `[LicenseService] Could not convert amount from ${resolved.currency} to ${targetCurrency}; charging in ${resolved.currency}`,
+      );
+      return resolved;
+    }
+
+    return {
+      ...resolved,
+      price: Number(convertedAmount.toFixed(2)),
+      currency: targetCurrency,
+    };
+  }
+
+  async initiateLicenseExtend(
+    input: InitiateLicenseExtendServiceInput,
+  ): Promise<InitiateLicenseExtendServiceResult> {
+    const license = await this.licenseRepository.findOne({
+      id: input.licenseId,
+      organizationId: input.effectiveTenant.organizationId as string,
+    });
+    if (!license) {
+      throw new AppError("License not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const { price, currency, durationDays } =
+      await this._resolveLicenseExtendPricing(
+        license.id,
+        input.userId,
+        input.dto.pricingPlanId,
+      );
+
+    const { subtotal, discountAmount, totalAmount } =
+      calculateLicensePurchasePricing(price, 1, 0);
+
+    const order = await this.financeService.createRazorpayOrder({
+      amount: Number(totalAmount),
+      currency,
+      receipt: generatePrefixedId("rec_lic_"),
+      notes: {
+        licenseId: license.id,
+        userId: input.userId,
+        pricingPlanId: input.dto.pricingPlanId ?? "",
+      },
+    });
+
+    await this.licenseRepository.createPendingTransaction({
+      userId: input.userId,
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: input.effectiveTenant.branchId || license.branchId || null,
+      subtotalAmount: subtotal,
+      discountAmount,
+      discountPercentage: "0",
+      appliedDiscountRuleId: null,
+      totalAmount,
+      currency,
+      paymentStatus: PaymentStatusEnum.PENDING,
+      paymentProvider: PaymentProviderEnum.RAZORPAY,
+      paymentProviderOrderId: order.orderId,
+      intentPayload: {
+        licenseId: license.id,
+        pricingPlanId: input.dto.pricingPlanId ?? null,
+        durationDays,
+        razorpayOrder: order,
+      },
+    });
+
+    return {
+      razorpayOrderId: order.orderId,
+      razorpayKeyId: env.RAZORPAY_KEY_ID,
+      amount: order.amount,
+      currency: order.currency,
+      subtotalAmount: subtotal,
+      discountAmount,
+      totalAmount,
+    };
+  }
+
+  async verifyLicenseExtend(
+    input: VerifyLicenseExtendServiceInput,
   ): Promise<ExtendLicenseServiceResult> {
     const license = await this.licenseRepository.findOne({
       id: input.licenseId,
@@ -683,92 +923,38 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const lockedPricing =
-      await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
+    const { price, currency, durationDays, planLabel } =
+      await this._resolveLicenseExtendPricing(
         license.id,
+        input.userId,
+        input.dto.pricingPlanId,
       );
 
-    let durationDays: number;
-    let basePrice: string;
-    let currency: string;
-    let planLabel: string;
+    const { discountPercentage, totalAmount, unitPrice, baseUnitPrice } =
+      calculateLicensePurchasePricing(price, 1, 0);
 
-    if (lockedPricing) {
-      durationDays = lockedPricing.durationDays;
-      basePrice = lockedPricing.soldPrice || lockedPricing.basePrice;
-      currency = lockedPricing.currency;
-      planLabel = lockedPricing.planName || "redeemed plan";
-    } else {
-      if (!input.dto.pricingPlanId) {
-        throw new AppError("Pricing plan ID is required", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
-      }
+    await this.financeService.verifyRazorpayPayment({
+      razorpayOrderId: input.dto.razorpayOrderId,
+      razorpayPaymentId: input.dto.razorpayPaymentId,
+      razorpaySignature: input.dto.razorpaySignature,
+      expectedAmount: totalAmount,
+      expectedCurrency: currency,
+    });
 
-      const pricingPlans = await this.licensePricingRepository.findPricingPlans(
-        {
-          id: input.dto.pricingPlanId,
-          isActive: true,
-        },
-      );
-      const plan = pricingPlans[0];
-      if (!plan) {
-        throw new AppError("Pricing plan not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
-      }
+    const { newExpiresAt, newStatus } = this._computeExtendedExpiry(
+      license,
+      durationDays,
+    );
 
-      durationDays = plan.durationDays;
-      basePrice = plan.price;
-      currency = plan.currency;
-      planLabel = plan.name;
-    }
-
-    const {
-      subtotal,
-      discountPercentage,
-      discountAmount,
-      totalAmount,
-      unitPrice,
-      baseUnitPrice,
-    } = calculateLicensePurchasePricing(Number(basePrice), 1, 0);
-
-    const now = new Date();
-    const currentExpiresAt = license.expiresAt
-      ? new Date(license.expiresAt)
-      : null;
-    let baseDate = now;
-    if (
-      currentExpiresAt &&
-      currentExpiresAt > now &&
-      (license.status === LicenseStatusEnum.ACTIVE ||
-        license.status === LicenseStatusEnum.GRACE_PERIOD)
-    ) {
-      baseDate = currentExpiresAt;
-    }
-
-    const newExpiresAt = dayjs(baseDate).add(durationDays, "day").toDate();
-
-    let newStatus = LicenseStatusEnum.ACTIVE;
-    if (!license.deviceId) {
-      newStatus = LicenseStatusEnum.AVAILABLE;
-    }
-
-    const updated = await this.licenseRepository.extendLicense({
+    const updated = await this.licenseRepository.finalizeLicenseExtend({
       licenseId: license.id,
+      paymentProviderOrderId: input.dto.razorpayOrderId,
+      userId: input.userId,
+      paymentReference: input.dto.razorpayPaymentId,
+      currentPaymentStatus: PaymentStatusEnum.PENDING,
+      newPaymentStatus: PaymentStatusEnum.COMPLETED,
       newExpiresAt,
       newStatus,
-      transaction: {
-        userId: input.userId,
-        subtotalAmount: subtotal,
-        discountAmount: discountAmount,
-        discountPercentage: discountPercentage,
-        appliedDiscountRuleId: null,
-        totalAmount: totalAmount,
-        currency,
-        paymentStatus: PaymentStatusEnum.COMPLETED,
-      },
       transactionItem: {
         actionType: LicenseTransactionActionTypeEnum.RENEWAL,
         durationDays,
@@ -784,6 +970,16 @@ export class LicenseService {
         remarks: `License extended by ${durationDays} days via plan: ${planLabel}`,
       },
     });
+
+    if (!updated) {
+      throw new AppError(
+        "This extend order was not found or has already been processed",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        },
+      );
+    }
 
     const { createdBy, updatedBy, ...rest } = updated;
     return {
@@ -895,6 +1091,58 @@ export class LicenseService {
     };
   }
 
+  async getLicenseTransactions(
+    input: GetLicenseTransactionsServiceInput,
+  ): Promise<GetLicenseTransactionsServiceResult> {
+    const organizationId = input.effectiveTenant.organizationId as string;
+    const branchId = input.effectiveTenant.branchId || undefined;
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { transactions, total } =
+      await this.licenseRepository.findTransactionsForOrganization({
+        organizationId,
+        branchId,
+        page,
+        limit,
+      });
+
+    return {
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLicenseTransactionItems(
+    input: GetLicenseTransactionItemsServiceInput,
+  ): Promise<GetLicenseTransactionItemsServiceResult> {
+    const result = await this.licenseRepository.findTransactionWithItems({
+      transactionId: input.transactionId,
+      organizationId: input.effectiveTenant.organizationId as string,
+      branchId: input.effectiveTenant.branchId || undefined,
+    });
+
+    if (!result) {
+      throw new AppError("Transaction not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return {
+      transaction: result.transaction,
+      items: result.items.map((item) => ({
+        ...item,
+        licenseKey: item.licenseKey
+          ? decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY)
+          : null,
+      })),
+    };
+  }
+
   // Reseller User methods
   async getLicensesForReseller(
     input: GetLicensesForResellerServiceInput,
@@ -930,25 +1178,37 @@ export class LicenseService {
     };
   }
 
-  async purchaseLicenseAsReseller(
-    input: PurchaseLicenseAsResellerServiceInput,
-  ): Promise<PurchaseLicenseAsResellerServiceResult> {
-    const pricing = await this._resolvePurchasePricing({
+  async initiateLicensePurchaseAsReseller(
+    input: InitiateLicensePurchaseAsResellerServiceInput,
+  ): Promise<InitiateLicensePurchaseAsResellerServiceResult> {
+    return this._createPendingPurchaseOrder({
       quantity: input.dto.quantity,
       pricingPlanId: input.dto.pricingPlanId,
-      resellerId: input.resellerId,
-      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       discountRuleId: input.dto.discountRuleId,
+      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+      resellerId: input.resellerId,
+      ownerId: input.resellerId,
+      convertCurrency: false,
     });
+  }
 
-    return this._purchaseLicenses({
-      pricing,
+  async verifyLicensePurchaseAsReseller(
+    input: PurchaseLicenseAsResellerServiceInput,
+  ): Promise<PurchaseLicenseAsResellerServiceResult> {
+    return this._verifyAndFinalizePurchase({
       quantity: input.dto.quantity,
+      pricingPlanId: input.dto.pricingPlanId,
+      discountRuleId: input.dto.discountRuleId,
+      discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
+      resellerId: input.resellerId,
+      ownerId: input.resellerId,
+      convertCurrency: false,
       organizationId: null,
       branchId: null,
-      userId: input.resellerId,
-      resellerId: input.resellerId,
       historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
+      razorpayOrderId: input.dto.razorpayOrderId,
+      razorpayPaymentId: input.dto.razorpayPaymentId,
+      razorpaySignature: input.dto.razorpaySignature,
     });
   }
 
@@ -1015,6 +1275,54 @@ export class LicenseService {
     return {
       license: decryptedLicense,
       transactions,
+    };
+  }
+
+  async getLicenseTransactionsForReseller(
+    input: GetLicenseTransactionsForResellerServiceInput,
+  ): Promise<GetLicenseTransactionsForResellerServiceResult> {
+    const page = input.filters.page || 1;
+    const limit = input.filters.limit || 10;
+
+    const { transactions, total } =
+      await this.licenseRepository.findTransactionsForReseller({
+        resellerId: input.resellerId,
+        page,
+        limit,
+      });
+
+    return {
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLicenseTransactionItemsForReseller(
+    input: GetLicenseTransactionItemsForResellerServiceInput,
+  ): Promise<GetLicenseTransactionItemsForResellerServiceResult> {
+    const result = await this.licenseRepository.findTransactionWithItems({
+      transactionId: input.transactionId,
+      resellerId: input.resellerId,
+    });
+
+    if (!result) {
+      throw new AppError("Transaction not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return {
+      transaction: result.transaction,
+      items: result.items.map((item) => ({
+        ...item,
+        licenseKey: item.licenseKey
+          ? decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY)
+          : null,
+      })),
     };
   }
 

@@ -239,6 +239,41 @@
       "when": 1787653356716,
       "tag": "0033_latest-fixes-otps",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1787825385886,
+      "tag": "0034_famous_cobalt_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1787826109465,
+      "tag": "0035_exotic_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1787837225177,
+      "tag": "0036_pale_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1787850000000,
+      "tag": "0037_update-license-transactions-table",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787841943989,
+      "tag": "0038_license-transaction-scheam-updates",
+      "breakpoints": true
     }
   ]
 }

@@ -20,3 +20,14 @@ export interface HandleRazorpayWebhookServiceInput {
   headers: Record<string, string | string[] | undefined>;
   body: unknown;
 }
+
+// ========================================
+// ? PAYMENTS
+// ========================================
+export interface VerifyRazorpayPaymentServiceInput {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  expectedAmount: string;
+  expectedCurrency: string;
+}

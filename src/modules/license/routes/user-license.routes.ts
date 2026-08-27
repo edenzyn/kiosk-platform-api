@@ -40,7 +40,7 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.post(
-  "/purchase/order",
+  "/purchase",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],
@@ -49,7 +49,7 @@ userLicenseRouter.post(
 );
 
 userLicenseRouter.post(
-  "/purchase",
+  "/purchase/verify",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_LICENSE_WRITE],
     branch: [UserPermissions.BRANCH_LICENSE_WRITE],

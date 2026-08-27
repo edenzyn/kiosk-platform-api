@@ -1,7 +1,9 @@
 import {
   decimal,
+  jsonb,
   pgTable,
   smallint,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -35,6 +37,11 @@ export const licenseTransactions = pgTable("license_transactions", {
   paymentProvider: smallint("payment_provider"),
   paymentStatus: smallint("payment_status"),
   paymentReference: varchar("payment_reference", { length: 255 }),
+  paymentProviderOrderId: varchar("payment_provider_order_id", {
+    length: 255,
+  }),
+  intentPayload: jsonb("intent_payload"),
+  failureReason: text("failure_reason"),
   transactionAt: timestamp("transaction_at", { withTimezone: true }),
   // Audit
   createdAt: timestamp("created_at", { withTimezone: true })

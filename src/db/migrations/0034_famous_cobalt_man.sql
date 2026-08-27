@@ -1,0 +1,1 @@
+ALTER TABLE "license_transactions" ADD COLUMN "payment_provider_order_id" varchar(255);

@@ -12,7 +12,6 @@ import { PaymentProviderEnum } from "../../../shared/enums/license/payment-provi
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
 import {
   decryptData,
   encryptData,
@@ -75,7 +74,6 @@ export class LicenseService {
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly deviceRepository: DeviceRepository,
-    private readonly razorpayProvider: RazorpayProvider,
     private readonly userRepository: UserRepository,
     private readonly financeService: FinanceService,
   ) {}
@@ -289,45 +287,6 @@ export class LicenseService {
     };
   }
 
-  private async _verifyRazorpayPayment(params: {
-    razorpayOrderId: string;
-    razorpayPaymentId: string;
-    razorpaySignature: string;
-    expectedAmount: string;
-    expectedCurrency: string;
-  }): Promise<void> {
-    const isSignatureValid = this.razorpayProvider.verifyPaymentSignature({
-      orderId: params.razorpayOrderId,
-      paymentId: params.razorpayPaymentId,
-      signature: params.razorpaySignature,
-    });
-    if (!isSignatureValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
-        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
-      });
-    }
-
-    const order = await this.razorpayProvider.fetchOrder(
-      params.razorpayOrderId,
-    );
-
-    const expectedAmountInSubunits = Math.round(
-      Number(params.expectedAmount) * 100,
-    );
-    const isValid =
-      order.status === "paid" &&
-      order.amount === expectedAmountInSubunits &&
-      order.currency === params.expectedCurrency;
-
-    if (!isValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
-        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
-      });
-    }
-  }
-
   private async _purchaseLicenses(params: {
     pricing: ResolvedPurchasePricing;
     quantity: number;
@@ -338,6 +297,7 @@ export class LicenseService {
     historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
     paymentProvider?: number;
     paymentReference?: string;
+    paymentProviderOrderId?: string;
   }): Promise<PurchaseLicenseServiceResult> {
     const qty = params.quantity;
 
@@ -391,6 +351,7 @@ export class LicenseService {
         paymentStatus: PaymentStatusEnum.COMPLETED,
         paymentProvider: params.paymentProvider,
         paymentReference: params.paymentReference,
+        paymentProviderOrderId: params.paymentProviderOrderId,
       },
       transactionItems: newLicenses.map(() => ({
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
@@ -470,7 +431,7 @@ export class LicenseService {
       input.userId,
     );
 
-    const order = await this.razorpayProvider.createOrder({
+    const order = await this.financeService.createRazorpayOrder({
       amount: Number(pricing.totalAmount),
       currency: pricing.currency,
       receipt: generatePrefixedId("rec_lic_"),
@@ -508,7 +469,7 @@ export class LicenseService {
       input.userId,
     );
 
-    await this._verifyRazorpayPayment({
+    await this.financeService.verifyRazorpayPayment({
       razorpayOrderId: input.dto.razorpayOrderId,
       razorpayPaymentId: input.dto.razorpayPaymentId,
       razorpaySignature: input.dto.razorpaySignature,
@@ -524,6 +485,7 @@ export class LicenseService {
       userId: input.userId,
       paymentProvider: PaymentProviderEnum.RAZORPAY,
       paymentReference: input.dto.razorpayPaymentId,
+      paymentProviderOrderId: input.dto.razorpayOrderId,
     });
   }
 

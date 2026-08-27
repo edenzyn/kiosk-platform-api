@@ -721,6 +721,7 @@ export interface CreateLicensesRepoInput {
     paymentStatus: number;
     paymentProvider?: number;
     paymentReference?: string;
+    paymentProviderOrderId?: string;
   };
   transactionItems?: Array<{
     actionType: number;

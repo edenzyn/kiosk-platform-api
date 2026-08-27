@@ -1,4 +1,4 @@
-import Razorpay from "razorpay";
+import type Razorpay from "razorpay";
 import {
   validatePaymentVerification,
   validateWebhookSignature,
@@ -28,21 +28,22 @@ export interface VerifyRazorpayPaymentInput {
   signature: string;
 }
 
-export class RazorpayProvider {
-  private readonly client: Razorpay;
+export interface FetchRazorpayOrderResult {
+  id: string;
+  amount: number;
+  amountPaid: number;
+  currency: string;
+  status: "created" | "attempted" | "paid";
+}
 
-  constructor() {
-    this.client = new Razorpay({
-      key_id: env.RAZORPAY_KEY_ID,
-      key_secret: env.RAZORPAY_KEY_SECRET,
-    });
-  }
+export class RazorpayProvider {
+  constructor(private readonly razorpayClient: Razorpay) {}
 
   async createOrder(
     input: CreateRazorpayOrderInput,
   ): Promise<CreateRazorpayOrderResult> {
     try {
-      const order = await this.client.orders.create({
+      const order = await this.razorpayClient.orders.create({
         amount: Math.round(input.amount * 100),
         currency: input.currency,
         receipt: input.receipt,
@@ -57,6 +58,26 @@ export class RazorpayProvider {
       };
     } catch (error) {
       throw new AppError("Failed to create Razorpay order", {
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
+        details: error,
+      });
+    }
+  }
+
+  async fetchOrder(orderId: string): Promise<FetchRazorpayOrderResult> {
+    try {
+      const order = await this.razorpayClient.orders.fetch(orderId);
+
+      return {
+        id: order.id,
+        amount: Number(order.amount),
+        amountPaid: Number(order.amount_paid),
+        currency: order.currency,
+        status: order.status,
+      };
+    } catch (error) {
+      throw new AppError("Failed to fetch order", {
         statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
         details: error,

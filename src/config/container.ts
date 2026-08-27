@@ -23,6 +23,7 @@ import { createEmailQueue } from "../shared/queue/email/email.queue";
 import { initDatabase } from "./db";
 import { mailTransporter } from "./mail";
 import { createQueueConnection } from "./queue-connection";
+import { createRazorpayClient } from "./razorpay";
 import { initRedis } from "./redis";
 
 export const container = createContainer({
@@ -35,6 +36,7 @@ container.register({
   redis: asFunction(initRedis).singleton(),
   redisProvider: asClass(RedisProvider).singleton(),
   frankfurterProvider: asClass(FrankfurterProvider).singleton(),
+  razorpayClient: asFunction(createRazorpayClient).singleton(),
   razorpayProvider: asClass(RazorpayProvider).singleton(),
   queueConnection: asFunction(createQueueConnection).singleton(),
   emailQueue: asFunction(createEmailQueue).singleton(),

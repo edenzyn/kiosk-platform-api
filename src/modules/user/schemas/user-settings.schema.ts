@@ -26,7 +26,9 @@ export const userSettings = pgTable("user_settings", {
   languageCode: varchar("language_code", { length: 10 })
     .notNull()
     .default("en"),
-  timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+  timezone: varchar("timezone", { length: 100 })
+    .notNull()
+    .default("Asia/Kolkata"),
   currencyCode: varchar("currency_code", { length: 3 })
     .notNull()
     .default("INR"),

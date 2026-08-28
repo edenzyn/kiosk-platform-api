@@ -5,8 +5,10 @@ import {
   smallint,
   timestamp,
   uuid,
+  varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { licensePricing } from "./license-pricing.schema";
 import { licenseTransactions } from "./license-transaction.schema";
 import { licenses } from "./license.schema";
 
@@ -16,6 +18,10 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     .notNull()
     .references((): AnyPgColumn => licenseTransactions.id),
   licenseId: uuid("license_id").references((): AnyPgColumn => licenses.id),
+  pricingPlanId: uuid("pricing_plan_id").references(
+    (): AnyPgColumn => licensePricing.id,
+  ),
+  planName: varchar("plan_name", { length: 255 }),
   actionType: smallint("action_type").notNull(),
   durationDays: integer("duration_days").notNull(),
   baseUnitPrice: decimal("base_unit_price", {

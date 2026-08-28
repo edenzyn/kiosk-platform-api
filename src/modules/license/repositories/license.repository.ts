@@ -222,6 +222,8 @@ export class LicenseRepository {
           licenseId: row.licenseId,
           licenseKey: row.licenseKey,
           deviceType: row.deviceType,
+          pricingPlanId: row.pricingPlanId,
+          planName: row.planName,
           actionType: row.actionType as number,
           durationDays: row.durationDays as number,
           baseUnitPrice: row.baseUnitPrice as string,
@@ -523,6 +525,8 @@ export class LicenseRepository {
           input.items.map((item) => ({
             transactionId: insertedTx.id,
             licenseId: null,
+            pricingPlanId: item.pricingPlanId,
+            planName: item.planName,
             actionType: item.actionType,
             durationDays: item.durationDays,
             baseUnitPrice: item.baseUnitPrice,
@@ -596,6 +600,8 @@ export class LicenseRepository {
           await tx.insert(licenseTransactionItems).values({
             transactionId: finalizedTx.id,
             licenseId: license.id,
+            pricingPlanId: itemSpec.pricingPlanId,
+            planName: itemSpec.planName,
             actionType: itemSpec.actionType,
             durationDays: itemSpec.durationDays,
             baseUnitPrice: itemSpec.baseUnitPrice,
@@ -758,6 +764,8 @@ export class LicenseRepository {
       await tx.insert(licenseTransactionItems).values({
         transactionId: finalizedTx.id,
         licenseId: input.licenseId,
+        pricingPlanId: input.transactionItem.pricingPlanId,
+        planName: input.transactionItem.planName,
         actionType: input.transactionItem.actionType,
         durationDays: input.transactionItem.durationDays,
         baseUnitPrice: input.transactionItem.baseUnitPrice,

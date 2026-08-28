@@ -5,6 +5,8 @@ CREATE OR REPLACE FUNCTION fn_get_license_transactions_by_user_type(
 RETURNS TABLE (
   id UUID,
   "transactionId" UUID,
+  "pricingPlanId" UUID,
+  "planName" VARCHAR(255),
   "actionType" SMALLINT,
   "durationDays" INTEGER,
   "baseUnitPrice" NUMERIC(10, 2),
@@ -26,6 +28,8 @@ BEGIN
   SELECT
     lti.id,
     lti.transaction_id AS "transactionId",
+    lti.pricing_plan_id AS "pricingPlanId",
+    lti.plan_name AS "planName",
     lti.action_type AS "actionType",
     lti.duration_days AS "durationDays",
     lti.base_unit_price AS "baseUnitPrice",

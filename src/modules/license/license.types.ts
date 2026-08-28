@@ -577,6 +577,8 @@ export interface LicenseTransactionItemDetail {
   licenseId: string | null;
   licenseKey: string | null;
   deviceType: number | null;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
@@ -654,6 +656,8 @@ export type LicenseDetailsResult = {
 export type LicenseDetailsTransactionItem = {
   id: string;
   transactionId: string;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
@@ -731,6 +735,8 @@ export type LicenseTransactionItemWithHeaderRow = {
   licenseId: string | null;
   licenseKey: string | null;
   deviceType: number | null;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number | null;
   durationDays: number | null;
   baseUnitPrice: string | null;
@@ -921,6 +927,8 @@ export interface CreatePendingLicenseTransactionRepoInput {
   // Pre-created with a null licenseId — purchase items are known (quantity,
   // duration, price) before any license exists; finalize links them up.
   items?: Array<{
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
@@ -952,6 +960,8 @@ export interface FinalizeLicensePurchaseRepoInput {
     updatedBy: string;
   }>;
   transactionItems?: Array<{
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
@@ -997,6 +1007,8 @@ export interface FinalizeLicenseExtendRepoInput {
   newExpiresAt: Date;
   newStatus: number;
   transactionItem: {
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;

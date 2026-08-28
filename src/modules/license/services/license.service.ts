@@ -354,6 +354,8 @@ export class LicenseService {
         razorpayOrder: order,
       },
       items: Array.from({ length: params.quantity }, () => ({
+        pricingPlanId: pricing.selectedPlan.id,
+        planName: pricing.selectedPlan.name,
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
         durationDays: pricing.durationDays,
         baseUnitPrice: pricing.baseUnitPrice,
@@ -426,6 +428,8 @@ export class LicenseService {
       historyTargetEntityType: params.historyTargetEntityType,
       licenses: newLicenses,
       transactionItems: newLicenses.map(() => ({
+        pricingPlanId: selectedPlan.id,
+        planName: selectedPlan.name,
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
         durationDays,
         baseUnitPrice: baseUnitPrice,
@@ -765,6 +769,7 @@ export class LicenseService {
     currency: string;
     durationDays: number;
     planLabel: string;
+    resolvedPricingPlanId: string | null;
   }> {
     const lockedPricing =
       await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
@@ -776,6 +781,7 @@ export class LicenseService {
       currency: string;
       durationDays: number;
       planLabel: string;
+      resolvedPricingPlanId: string | null;
     };
 
     if (lockedPricing) {
@@ -783,7 +789,8 @@ export class LicenseService {
         price: Number(lockedPricing.soldPrice || lockedPricing.basePrice),
         currency: lockedPricing.currency,
         durationDays: lockedPricing.durationDays,
-        planLabel: lockedPricing.planName || "redeemed plan",
+        planLabel: lockedPricing.planName || "Redeemed plan",
+        resolvedPricingPlanId: lockedPricing.pricingId,
       };
     } else {
       if (!pricingPlanId) {
@@ -811,6 +818,7 @@ export class LicenseService {
         currency: plan.currency,
         durationDays: plan.durationDays,
         planLabel: plan.name,
+        resolvedPricingPlanId: plan.id,
       };
     }
 
@@ -923,7 +931,7 @@ export class LicenseService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const { price, currency, durationDays, planLabel } =
+    const { price, currency, durationDays, planLabel, resolvedPricingPlanId } =
       await this._resolveLicenseExtendPricing(
         license.id,
         input.userId,
@@ -956,6 +964,8 @@ export class LicenseService {
       newExpiresAt,
       newStatus,
       transactionItem: {
+        pricingPlanId: resolvedPricingPlanId,
+        planName: planLabel,
         actionType: LicenseTransactionActionTypeEnum.RENEWAL,
         durationDays,
         baseUnitPrice,

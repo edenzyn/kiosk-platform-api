@@ -1,0 +1,3 @@
+ALTER TABLE "license_transaction_items" ADD COLUMN "pricing_plan_id" uuid;--> statement-breakpoint
+ALTER TABLE "license_transaction_items" ADD COLUMN "plan_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "license_transaction_items" ADD CONSTRAINT "license_transaction_items_pricing_plan_id_license_pricing_id_fk" FOREIGN KEY ("pricing_plan_id") REFERENCES "public"."license_pricing"("id") ON DELETE no action ON UPDATE no action;

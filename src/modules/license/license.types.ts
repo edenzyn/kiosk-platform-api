@@ -905,6 +905,7 @@ export type FindLatestPurchaseSnapshotRepoResult = {
   durationDays: number;
   baseUnitPrice: string;
   currency: string;
+  pricingPlanId: string | null;
 } | null;
 
 export interface FindLicensesForStatusCheckRepoInput {

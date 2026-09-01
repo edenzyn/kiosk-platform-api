@@ -2,6 +2,7 @@ import dayjs from "dayjs";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../../shared/enums/license/license-discount-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/license-history-event-type.enum";
@@ -52,8 +53,8 @@ import type {
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type { LicensePricingRepository } from "../repositories/license-pricing.repository";
 import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
-import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseTransactionRepository } from "../repositories/license-transaction.repository";
+import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseEntity } from "../schemas/license.schema";
 
 export class LicenseTransactionService {
@@ -429,25 +430,26 @@ export class LicenseTransactionService {
       });
     }
 
-    const created = await this.licenseTransactionRepository.finalizeLicensePurchase({
-      paymentProviderOrderId: params.razorpayOrderId,
-      userId: params.ownerId,
-      paymentReference: params.razorpayPaymentId,
-      currentPaymentStatus: PaymentStatusEnum.PENDING,
-      newPaymentStatus: PaymentStatusEnum.COMPLETED,
-      resellerId: params.resellerId,
-      historyTargetEntityType: params.historyTargetEntityType,
-      licenses: newLicenses,
-      transactionItems: newLicenses.map(() => ({
-        pricingPlanId: selectedPlan.id,
-        planName: selectedPlan.name,
-        actionType: LicenseTransactionActionTypeEnum.PURCHASE,
-        durationDays,
-        baseUnitPrice: baseUnitPrice,
-        discountPercentage: discountPercentage,
-        unitPrice: unitPrice,
-      })),
-    });
+    const created =
+      await this.licenseTransactionRepository.finalizeLicensePurchase({
+        paymentProviderOrderId: params.razorpayOrderId,
+        userId: params.ownerId,
+        paymentReference: params.razorpayPaymentId,
+        currentPaymentStatus: PaymentStatusEnum.PENDING,
+        newPaymentStatus: PaymentStatusEnum.COMPLETED,
+        resellerId: params.resellerId,
+        historyTargetEntityType: params.historyTargetEntityType,
+        licenses: newLicenses,
+        transactionItems: newLicenses.map(() => ({
+          pricingPlanId: selectedPlan.id,
+          planName: selectedPlan.name,
+          actionType: LicenseTransactionActionTypeEnum.PURCHASE,
+          durationDays,
+          baseUnitPrice: baseUnitPrice,
+          discountPercentage: discountPercentage,
+          unitPrice: unitPrice,
+        })),
+      });
 
     if (!created) {
       throw new AppError(
@@ -570,6 +572,7 @@ export class LicenseTransactionService {
   private async _resolveLicenseExtendPricing(
     licenseId: string,
     userId: string,
+    licenseDeviceType: DeviceTypeEnum,
     pricingPlanId?: string,
   ): Promise<{
     price: number;
@@ -620,6 +623,13 @@ export class LicenseTransactionService {
           statusCode: HttpStatusCodes.NOT_FOUND,
           code: ErrorCodes.RESOURCE_NOT_FOUND,
         });
+      }
+
+      if (plan.deviceType !== licenseDeviceType) {
+        throw new AppError(
+          "This pricing plan is for a different device type and cannot be used to extend this license.",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
       }
 
       resolved = {
@@ -699,6 +709,7 @@ export class LicenseTransactionService {
       await this._resolveLicenseExtendPricing(
         license.id,
         input.userId,
+        license.deviceType,
         input.dto.pricingPlanId,
       );
 
@@ -770,6 +781,7 @@ export class LicenseTransactionService {
       await this._resolveLicenseExtendPricing(
         license.id,
         input.userId,
+        license.deviceType,
         input.dto.pricingPlanId,
       );
 
@@ -789,32 +801,33 @@ export class LicenseTransactionService {
       durationDays,
     );
 
-    const updated = await this.licenseTransactionRepository.finalizeLicenseExtend({
-      licenseId: license.id,
-      paymentProviderOrderId: input.dto.razorpayOrderId,
-      userId: input.userId,
-      paymentReference: input.dto.razorpayPaymentId,
-      currentPaymentStatus: PaymentStatusEnum.PENDING,
-      newPaymentStatus: PaymentStatusEnum.COMPLETED,
-      newExpiresAt,
-      newStatus,
-      transactionItem: {
-        pricingPlanId: resolvedPricingPlanId,
-        planName: planLabel,
-        actionType: LicenseTransactionActionTypeEnum.RENEWAL,
-        durationDays,
-        baseUnitPrice,
-        discountPercentage,
-        unitPrice,
-      },
-      historyEvent: {
-        eventType: LicenseHistoryEventTypeEnum.EXTEND,
-        targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
-        previousStatus: license.status,
-        previousExpiresAt: license.expiresAt,
-        remarks: `License extended by ${durationDays} days via plan: ${planLabel}`,
-      },
-    });
+    const updated =
+      await this.licenseTransactionRepository.finalizeLicenseExtend({
+        licenseId: license.id,
+        paymentProviderOrderId: input.dto.razorpayOrderId,
+        userId: input.userId,
+        paymentReference: input.dto.razorpayPaymentId,
+        currentPaymentStatus: PaymentStatusEnum.PENDING,
+        newPaymentStatus: PaymentStatusEnum.COMPLETED,
+        newExpiresAt,
+        newStatus,
+        transactionItem: {
+          pricingPlanId: resolvedPricingPlanId,
+          planName: planLabel,
+          actionType: LicenseTransactionActionTypeEnum.RENEWAL,
+          durationDays,
+          baseUnitPrice,
+          discountPercentage,
+          unitPrice,
+        },
+        historyEvent: {
+          eventType: LicenseHistoryEventTypeEnum.EXTEND,
+          targetEntityType: LicenseHistoryTargetEntityTypeEnum.NORMAL,
+          previousStatus: license.status,
+          previousExpiresAt: license.expiresAt,
+          remarks: `License extended by ${durationDays} days via plan: ${planLabel}`,
+        },
+      });
 
     if (!updated) {
       throw new AppError(
@@ -899,11 +912,12 @@ export class LicenseTransactionService {
   async getLicenseTransactionItems(
     input: GetLicenseTransactionItemsServiceInput,
   ): Promise<GetLicenseTransactionItemsServiceResult> {
-    const result = await this.licenseTransactionRepository.findTransactionWithItems({
-      transactionId: input.transactionId,
-      organizationId: input.effectiveTenant.organizationId as string,
-      branchId: input.effectiveTenant.branchId || undefined,
-    });
+    const result =
+      await this.licenseTransactionRepository.findTransactionWithItems({
+        transactionId: input.transactionId,
+        organizationId: input.effectiveTenant.organizationId as string,
+        branchId: input.effectiveTenant.branchId || undefined,
+      });
 
     if (!result) {
       throw new AppError("Transaction not found", {
@@ -983,10 +997,11 @@ export class LicenseTransactionService {
   async getLicenseTransactionItemsForReseller(
     input: GetLicenseTransactionItemsForResellerServiceInput,
   ): Promise<GetLicenseTransactionItemsForResellerServiceResult> {
-    const result = await this.licenseTransactionRepository.findTransactionWithItems({
-      transactionId: input.transactionId,
-      resellerId: input.resellerId,
-    });
+    const result =
+      await this.licenseTransactionRepository.findTransactionWithItems({
+        transactionId: input.transactionId,
+        resellerId: input.resellerId,
+      });
 
     if (!result) {
       throw new AppError("Transaction not found", {

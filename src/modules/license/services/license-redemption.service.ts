@@ -81,6 +81,7 @@ export class LicenseRedemptionService {
         }
         return {
           licenseId: license.id,
+          pricingId: snapshot.pricingPlanId,
           basePrice: snapshot.baseUnitPrice,
           soldPrice: null, // Not known until the reseller verifies the code after it's claimed.
           basePriceCurrency: snapshot.currency,

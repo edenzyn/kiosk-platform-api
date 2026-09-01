@@ -432,6 +432,7 @@ export class LicenseTransactionRepository {
         durationDays: licenseTransactionItems.durationDays,
         baseUnitPrice: licenseTransactionItems.baseUnitPrice,
         currency: licenseTransactions.currency,
+        pricingPlanId: licenseTransactionItems.pricingPlanId,
       })
       .from(licenseTransactionItems)
       .innerJoin(

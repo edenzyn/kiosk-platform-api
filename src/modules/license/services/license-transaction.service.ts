@@ -245,6 +245,7 @@ export class LicenseTransactionService {
       selectedPlan,
       durationDays,
       currency,
+      discountCurrency: currency,
       appliedDiscountRuleId,
       ...pricing,
     };
@@ -287,13 +288,15 @@ export class LicenseTransactionService {
     const convertedTotalAmount = convert(pricing.totalAmount);
     const convertedUnitPrice = convert(pricing.unitPrice);
     const convertedBaseUnitPrice = convert(pricing.baseUnitPrice);
+    const convertedDiscountValue = convert(pricing.discountValue);
 
     if (
       convertedSubtotal === null ||
       convertedDiscountAmount === null ||
       convertedTotalAmount === null ||
       convertedUnitPrice === null ||
-      convertedBaseUnitPrice === null
+      convertedBaseUnitPrice === null ||
+      convertedDiscountValue === null
     ) {
       logger.warn(
         `[LicenseTransactionService] Could not convert pricing from ${pricing.currency} to ${targetCurrency}; charging in ${pricing.currency}`,
@@ -304,11 +307,13 @@ export class LicenseTransactionService {
     return {
       ...pricing,
       currency: targetCurrency,
+      discountCurrency: targetCurrency,
       subtotal: convertedSubtotal,
       discountAmount: convertedDiscountAmount,
       totalAmount: convertedTotalAmount,
       unitPrice: convertedUnitPrice,
       baseUnitPrice: convertedBaseUnitPrice,
+      discountValue: convertedDiscountValue,
     };
   }
 
@@ -371,7 +376,9 @@ export class LicenseTransactionService {
         actionType: LicenseTransactionActionTypeEnum.PURCHASE,
         durationDays: pricing.durationDays,
         baseUnitPrice: pricing.baseUnitPrice,
-        discountPercentage: pricing.discountPercentage,
+        discountType: pricing.discountType,
+        discountValue: pricing.discountValue,
+        discountCurrency: pricing.currency,
         unitPrice: pricing.unitPrice,
       })),
     });
@@ -403,7 +410,9 @@ export class LicenseTransactionService {
     const {
       selectedPlan,
       durationDays,
-      discountPercentage,
+      discountType,
+      discountValue,
+      discountCurrency,
       unitPrice,
       baseUnitPrice,
     } = params.pricing;
@@ -446,7 +455,9 @@ export class LicenseTransactionService {
           actionType: LicenseTransactionActionTypeEnum.PURCHASE,
           durationDays,
           baseUnitPrice: baseUnitPrice,
-          discountPercentage: discountPercentage,
+          discountType,
+          discountValue,
+          discountCurrency,
           unitPrice: unitPrice,
         })),
       });
@@ -785,7 +796,7 @@ export class LicenseTransactionService {
         input.dto.pricingPlanId,
       );
 
-    const { discountPercentage, totalAmount, unitPrice, baseUnitPrice } =
+    const { discountType, discountValue, totalAmount, unitPrice, baseUnitPrice } =
       calculateLicensePurchasePricing(price, 1, 0);
 
     await this.financeService.verifyRazorpayPayment({
@@ -817,7 +828,9 @@ export class LicenseTransactionService {
           actionType: LicenseTransactionActionTypeEnum.RENEWAL,
           durationDays,
           baseUnitPrice,
-          discountPercentage,
+          discountType,
+          discountValue,
+          discountCurrency: currency,
           unitPrice,
         },
         historyEvent: {

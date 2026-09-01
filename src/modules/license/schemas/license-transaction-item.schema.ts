@@ -28,10 +28,9 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     precision: 10,
     scale: 2,
   }).notNull(),
-  discountPercentage: decimal("discount_percentage", {
-    precision: 5,
-    scale: 2,
-  }),
+  discountType: smallint("discount_type"), // LicenseDiscountTypeEnum
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
+  discountCurrency: varchar("discount_currency", { length: 10 }),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

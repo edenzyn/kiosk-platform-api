@@ -88,6 +88,9 @@ export interface ResolvedPurchasePricing {
   appliedDiscountRuleId: string | null;
   subtotal: string;
   discountPercentage: string;
+  discountType: number;
+  discountValue: string;
+  discountCurrency: string;
   discountAmount: string;
   totalAmount: string;
   unitPrice: string;
@@ -584,7 +587,9 @@ export interface LicenseTransactionItemDetail {
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string;
   createdAt: string;
 }
@@ -663,7 +668,9 @@ export type LicenseDetailsTransactionItem = {
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string;
   createdAt: string;
   paymentStatus: number | null;
@@ -742,7 +749,9 @@ export type LicenseTransactionItemWithHeaderRow = {
   actionType: number | null;
   durationDays: number | null;
   baseUnitPrice: string | null;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string | null;
   itemCreatedAt: string | null;
   transactionId: string;
@@ -935,7 +944,9 @@ export interface CreatePendingLicenseTransactionRepoInput {
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage?: string | null;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   }>;
 }
@@ -968,7 +979,9 @@ export interface FinalizeLicensePurchaseRepoInput {
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage?: string;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   }>;
 }
@@ -1015,7 +1028,9 @@ export interface FinalizeLicenseExtendRepoInput {
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage: string;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   };
   historyEvent: {

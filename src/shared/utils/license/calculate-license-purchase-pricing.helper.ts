@@ -11,11 +11,12 @@ export function calculateLicensePurchasePricing(
   const discountAmount = isFlat
     ? Math.min(discountValue, subtotal)
     : subtotal * (discountValue / 100);
-  // Flat discounts don't have a meaningful percentage of their own, matching
-  // how the frontend's calculateRuleDiscount treats them.
   const discountPercentage = isFlat ? 0 : discountValue;
   const totalAmount = subtotal - discountAmount;
   const unitPrice = totalAmount / qty;
+  const appliedUnitDiscountValue = isFlat
+    ? discountAmount / qty
+    : discountValue;
 
   return {
     subtotal: subtotal.toFixed(2),
@@ -24,5 +25,7 @@ export function calculateLicensePurchasePricing(
     totalAmount: totalAmount.toFixed(2),
     unitPrice: unitPrice.toFixed(2),
     baseUnitPrice: basePrice.toFixed(2),
+    discountType,
+    discountValue: appliedUnitDiscountValue.toFixed(2),
   };
 }

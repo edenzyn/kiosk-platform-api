@@ -121,7 +121,9 @@ export class LicenseTransactionRepository {
           actionType: row.actionType as number,
           durationDays: row.durationDays as number,
           baseUnitPrice: row.baseUnitPrice as string,
-          discountPercentage: row.discountPercentage,
+          discountType: row.discountType,
+          discountValue: row.discountValue,
+          discountCurrency: row.discountCurrency,
           unitPrice: row.unitPrice as string,
           createdAt: row.itemCreatedAt as string,
         })),
@@ -166,7 +168,9 @@ export class LicenseTransactionRepository {
             actionType: item.actionType,
             durationDays: item.durationDays,
             baseUnitPrice: item.baseUnitPrice,
-            discountPercentage: item.discountPercentage,
+            discountType: item.discountType,
+            discountValue: item.discountValue,
+            discountCurrency: item.discountCurrency,
             unitPrice: item.unitPrice,
           })),
         );
@@ -241,7 +245,9 @@ export class LicenseTransactionRepository {
             actionType: itemSpec.actionType,
             durationDays: itemSpec.durationDays,
             baseUnitPrice: itemSpec.baseUnitPrice,
-            discountPercentage: itemSpec.discountPercentage,
+            discountType: itemSpec.discountType,
+            discountValue: itemSpec.discountValue,
+            discountCurrency: itemSpec.discountCurrency,
             unitPrice: itemSpec.unitPrice,
           });
         }
@@ -382,7 +388,9 @@ export class LicenseTransactionRepository {
         actionType: input.transactionItem.actionType,
         durationDays: input.transactionItem.durationDays,
         baseUnitPrice: input.transactionItem.baseUnitPrice,
-        discountPercentage: input.transactionItem.discountPercentage,
+        discountType: input.transactionItem.discountType,
+        discountValue: input.transactionItem.discountValue,
+        discountCurrency: input.transactionItem.discountCurrency,
         unitPrice: input.transactionItem.unitPrice,
       });
 

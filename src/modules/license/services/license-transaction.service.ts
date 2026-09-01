@@ -139,7 +139,8 @@ export class LicenseTransactionService {
       );
     } else if (
       rule.targetEntity ===
-      LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL
+        LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL &&
+      inQuantityRange
     ) {
       const targetsMap =
         await this.licenseDiscountRepository.findDiscountRuleTargets({

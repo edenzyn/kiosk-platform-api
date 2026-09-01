@@ -632,6 +632,8 @@ export class LicenseService {
       );
     }
 
+    await this._checkActiveLicenseExists(input.deviceId);
+
     const purchaseItem = await this.licenseTransactionRepository.findOneLatestPurchaseItem(
       license.id,
     );

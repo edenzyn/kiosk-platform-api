@@ -78,9 +78,8 @@ export class LicenseRedemptionService {
         return {
           licenseId: license.id,
           basePrice: snapshot.baseUnitPrice,
-          // Not known until the reseller verifies the code after it's claimed.
-          soldPrice: null,
-          currency: snapshot.currency,
+          soldPrice: null, // Not known until the reseller verifies the code after it's claimed.
+          basePriceCurrency: snapshot.currency,
           durationDays: snapshot.durationDays,
         };
       }),
@@ -206,7 +205,7 @@ export class LicenseRedemptionService {
   async verifyRedemptionCode(
     input: VerifyRedemptionCodeServiceInput,
   ): Promise<VerifyRedemptionCodeServiceResult> {
-    const { totalSoldPrice, currency, items } = input.dto;
+    const { totalSoldPrice, soldPriceCurrency, items } = input.dto;
 
     const details =
       await this.licenseRedemptionRepository.findRedemptionCodeDetailsById({
@@ -249,7 +248,7 @@ export class LicenseRedemptionService {
         id: input.redemptionId,
         resellerId: input.resellerId,
         totalSoldPrice: totalSoldPrice.toFixed(2),
-        currency,
+        soldPriceCurrency,
         items: items.map((item) => ({
           licenseId: item.licenseId,
           soldPrice: item.soldPrice.toFixed(2),

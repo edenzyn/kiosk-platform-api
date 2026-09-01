@@ -246,7 +246,7 @@ export interface VerifyRedemptionCodeServiceInput {
   redemptionId: string;
   dto: {
     totalSoldPrice: number;
-    currency: string;
+    soldPriceCurrency: string;
     items: Array<{ licenseId: string; soldPrice: number }>;
   };
 }
@@ -474,8 +474,9 @@ export interface GetLicenseExtendInfoServiceInput {
 export interface LicenseExtendLockedPricing {
   planName: string | null;
   basePrice: string;
+  basePriceCurrency: string;
   soldPrice: string | null;
-  currency: string;
+  soldPriceCurrency: string | null;
   durationDays: number;
 }
 
@@ -488,8 +489,9 @@ export interface FindRedemptionPricingForLicenseRepoResult {
   pricingId: string | null;
   planName: string | null;
   basePrice: string;
+  basePriceCurrency: string;
   soldPrice: string | null;
-  currency: string;
+  soldPriceCurrency: string | null;
   durationDays: number;
 }
 
@@ -831,7 +833,7 @@ export interface CreateRedemptionCodeRepoInput {
     pricingId?: string | null;
     basePrice: string;
     soldPrice: string | null;
-    currency: string;
+    basePriceCurrency: string;
     durationDays: number;
   }>;
 }
@@ -878,7 +880,7 @@ export interface VerifyRedemptionCodeRepoInput {
   id: string;
   resellerId: string;
   totalSoldPrice: string;
-  currency: string;
+  soldPriceCurrency: string;
   items: Array<{ licenseId: string; soldPrice: string }>;
 }
 export type VerifyRedemptionCodeRepoResult = boolean;

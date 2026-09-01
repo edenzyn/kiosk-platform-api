@@ -386,7 +386,7 @@ export const LicenseValidator = {
         .typeError("Total sold price must be a number")
         .min(0, "Total sold price cannot be negative")
         .required("Total sold price is required"),
-      currency: yup
+      soldPriceCurrency: yup
         .string()
         .trim()
         .uppercase()

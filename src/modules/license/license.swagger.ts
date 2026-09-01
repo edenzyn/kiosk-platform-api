@@ -343,10 +343,10 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["totalSoldPrice", "currency", "items"],
+              required: ["totalSoldPrice", "soldPriceCurrency", "items"],
               properties: {
                 totalSoldPrice: { type: "number", minimum: 0 },
-                currency: { type: "string", minLength: 3, maxLength: 3 },
+                soldPriceCurrency: { type: "string", minLength: 3, maxLength: 3 },
                 items: {
                   type: "array",
                   minItems: 1,
@@ -549,8 +549,9 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
                     properties: {
                       planName: { type: "string", nullable: true },
                       basePrice: { type: "string" },
+                      basePriceCurrency: { type: "string" },
                       soldPrice: { type: "string", nullable: true },
-                      currency: { type: "string" },
+                      soldPriceCurrency: { type: "string", nullable: true },
                       durationDays: { type: "integer" },
                     },
                   },

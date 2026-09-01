@@ -111,7 +111,12 @@ export class LicenseService {
     quantity: number;
     pricingPlanId: string;
     resellerId?: string;
-  }): Promise<{ discountValue: number; discountType: number; ruleId: string }> {
+  }): Promise<{
+    discountValue: number;
+    discountType: number;
+    ruleId: string;
+    currency: string | null;
+  }> {
     const rule = await this.licenseDiscountRepository.findDiscountRule({
       ruleId: params.discountRuleId,
     });
@@ -179,6 +184,7 @@ export class LicenseService {
       discountValue: Number(rule.discountValue),
       discountType: rule.discountType,
       ruleId: rule.id,
+      currency: rule.currency,
     };
   }
 
@@ -217,9 +223,37 @@ export class LicenseService {
         pricingPlanId: params.pricingPlanId,
         resellerId: params.resellerId,
       });
-      discountValue = resolved.discountValue;
       discountType = resolved.discountType;
       appliedDiscountRuleId = resolved.ruleId;
+
+      if (resolved.discountType === LicenseDiscountTypeEnum.FLAT) {
+        if (!resolved.currency) {
+          throw new AppError(
+            "Selected discount is no longer valid. Please review and try again.",
+            { statusCode: HttpStatusCodes.BAD_REQUEST },
+          );
+        }
+
+        const convertedFlatValue =
+          resolved.currency === currency
+            ? resolved.discountValue
+            : await this.financeService.convertAmountToTargetCurrency({
+                amount: resolved.discountValue,
+                sourceCurrency: resolved.currency,
+                targetCurrency: currency,
+              });
+
+        if (convertedFlatValue === null) {
+          throw new AppError(
+            "Could not apply discount: currency conversion is unavailable right now. Please try again shortly.",
+            { statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE },
+          );
+        }
+
+        discountValue = convertedFlatValue;
+      } else {
+        discountValue = resolved.discountValue;
+      }
     }
 
     const pricing = calculateLicensePurchasePricing(
@@ -307,7 +341,6 @@ export class LicenseService {
     discountTargetEntity: number;
     resellerId?: string;
     ownerId: string;
-    convertCurrency: boolean;
     organizationId?: string | null;
     branchId?: string | null;
   }): Promise<InitiateLicensePurchaseServiceResult> {
@@ -319,9 +352,10 @@ export class LicenseService {
       discountRuleId: params.discountRuleId,
     });
 
-    const pricing = params.convertCurrency
-      ? await this._convertPricingToUserCurrency(basePricing, params.ownerId)
-      : basePricing;
+    const pricing = await this._convertPricingToUserCurrency(
+      basePricing,
+      params.ownerId,
+    );
 
     const order = await this.financeService.createRazorpayOrder({
       amount: Number(pricing.totalAmount),
@@ -467,7 +501,6 @@ export class LicenseService {
     discountTargetEntity: number;
     resellerId?: string;
     ownerId: string;
-    convertCurrency: boolean;
     organizationId: string | null;
     branchId: string | null;
     historyTargetEntityType?: LicenseHistoryTargetEntityTypeEnum;
@@ -483,9 +516,10 @@ export class LicenseService {
       discountRuleId: params.discountRuleId,
     });
 
-    const pricing = params.convertCurrency
-      ? await this._convertPricingToUserCurrency(basePricing, params.ownerId)
-      : basePricing;
+    const pricing = await this._convertPricingToUserCurrency(
+      basePricing,
+      params.ownerId,
+    );
 
     await this.financeService.verifyRazorpayPayment({
       razorpayOrderId: params.razorpayOrderId,
@@ -559,7 +593,6 @@ export class LicenseService {
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
       ownerId: input.userId,
-      convertCurrency: true,
       organizationId: input.effectiveTenant.organizationId,
       branchId: input.effectiveTenant.branchId || null,
     });
@@ -575,7 +608,6 @@ export class LicenseService {
       discountTargetEntity:
         LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
       ownerId: input.userId,
-      convertCurrency: true,
       organizationId: input.effectiveTenant.organizationId,
       branchId: input.effectiveTenant.branchId || null,
       razorpayOrderId: input.dto.razorpayOrderId,
@@ -787,7 +819,9 @@ export class LicenseService {
     if (lockedPricing) {
       resolved = {
         price: Number(lockedPricing.soldPrice || lockedPricing.basePrice),
-        currency: lockedPricing.currency,
+        currency: lockedPricing.soldPrice
+          ? (lockedPricing.soldPriceCurrency ?? lockedPricing.basePriceCurrency)
+          : lockedPricing.basePriceCurrency,
         durationDays: lockedPricing.durationDays,
         planLabel: lockedPricing.planName || "Redeemed plan",
         resolvedPricingPlanId: lockedPricing.pricingId,
@@ -1028,8 +1062,9 @@ export class LicenseService {
       lockedPricing: {
         planName: lockedPricing.planName,
         basePrice: lockedPricing.basePrice,
+        basePriceCurrency: lockedPricing.basePriceCurrency,
         soldPrice: lockedPricing.soldPrice,
-        currency: lockedPricing.currency,
+        soldPriceCurrency: lockedPricing.soldPriceCurrency,
         durationDays: lockedPricing.durationDays,
       },
     };
@@ -1198,7 +1233,6 @@ export class LicenseService {
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       resellerId: input.resellerId,
       ownerId: input.resellerId,
-      convertCurrency: false,
     });
   }
 
@@ -1212,7 +1246,6 @@ export class LicenseService {
       discountTargetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       resellerId: input.resellerId,
       ownerId: input.resellerId,
-      convertCurrency: false,
       organizationId: null,
       branchId: null,
       historyTargetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,

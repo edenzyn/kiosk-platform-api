@@ -24,7 +24,7 @@ export const licenseRedemptionItems = pgTable("license_redemption_items", {
   ),
   basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
   soldPrice: decimal("sold_price", { precision: 10, scale: 2 }),
-  currency: varchar("currency", { length: 10 }).notNull(),
+  basePriceCurrency: varchar("base_price_currency", { length: 10 }).notNull(),
   durationDays: integer("duration_days").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

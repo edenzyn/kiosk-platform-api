@@ -14,7 +14,7 @@ import {
   convertCurrencyAmount,
   type ExchangeRateTable,
 } from "../../shared/utils/finance/convert-currency.helper";
-import type { LicenseRepository } from "../license/repositories/license.repository";
+import type { LicenseTransactionRepository } from "../license/repositories/license-transaction.repository";
 import { FinanceRepository } from "./finance.repository";
 import type {
   CachedExchangeRatesEntity,
@@ -29,7 +29,7 @@ export class FinanceService {
     private readonly frankfurterProvider: FrankfurterProvider,
     private readonly financeRepository: FinanceRepository,
     private readonly razorpayProvider: RazorpayProvider,
-    private readonly licenseRepository: LicenseRepository,
+    private readonly licenseTransactionRepository: LicenseTransactionRepository,
   ) {}
 
   // ========================================
@@ -109,7 +109,7 @@ export class FinanceService {
       const failureReason =
         payment.error_description ?? payment.error_reason ?? "Payment failed";
 
-      await this.licenseRepository.updateTransactionStatusByOrderId({
+      await this.licenseTransactionRepository.updateTransactionStatusByOrderId({
         paymentProviderOrderId: payment.order_id,
         currentPaymentStatus: PaymentStatusEnum.PENDING,
         newPaymentStatus: PaymentStatusEnum.FAILED,

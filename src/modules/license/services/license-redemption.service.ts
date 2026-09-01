@@ -26,12 +26,14 @@ import type {
   VerifyRedemptionCodeServiceResult,
 } from "../license.types";
 import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
+import type { LicenseTransactionRepository } from "../repositories/license-transaction.repository";
 import type { LicenseRepository } from "../repositories/license.repository";
 
 export class LicenseRedemptionService {
   constructor(
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly licenseRepository: LicenseRepository,
+    private readonly licenseTransactionRepository: LicenseTransactionRepository,
   ) {}
 
   async generateRedemptionCode(
@@ -68,7 +70,9 @@ export class LicenseRedemptionService {
     const items = await Promise.all(
       ownedAvailable.map(async (license) => {
         const snapshot =
-          await this.licenseRepository.findLatestPurchaseSnapshot(license.id);
+          await this.licenseTransactionRepository.findLatestPurchaseSnapshot(
+            license.id,
+          );
         if (!snapshot) {
           throw new AppError(
             `No purchase record found for license ${license.id}`,

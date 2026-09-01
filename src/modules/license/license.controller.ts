@@ -9,11 +9,13 @@ import { LicenseValidator } from "./license.validator";
 import type { LicenseDiscountService } from "./services/license-discount.service";
 import type { LicensePricingService } from "./services/license-pricing.service";
 import type { LicenseRedemptionService } from "./services/license-redemption.service";
+import type { LicenseTransactionService } from "./services/license-transaction.service";
 import type { LicenseService } from "./services/license.service";
 
 export class LicenseController {
   constructor(
     private readonly licenseService: LicenseService,
+    private readonly licenseTransactionService: LicenseTransactionService,
     private readonly licensePricingService: LicensePricingService,
     private readonly licenseDiscountService: LicenseDiscountService,
     private readonly licenseRedemptionService: LicenseRedemptionService,
@@ -49,7 +51,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.initiateLicensePurchase({
+    const result = await this.licenseTransactionService.initiateLicensePurchase({
       dto: data,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       userId: user.id,
@@ -68,7 +70,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.verifyLicensePurchase({
+    const result = await this.licenseTransactionService.verifyLicensePurchase({
       dto: data,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       userId: user.id,
@@ -87,7 +89,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    await this.licenseService.cancelLicensePurchase({
+    await this.licenseTransactionService.cancelLicensePurchase({
       razorpayOrderId: data.razorpayOrderId,
       userId: user.id,
       reason: data.reason,
@@ -162,7 +164,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.initiateLicenseExtend({
+    const result = await this.licenseTransactionService.initiateLicenseExtend({
       licenseId: req.params.id as string,
       dto: data,
       userId: user.id,
@@ -179,7 +181,7 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.verifyLicenseExtend({
+    const result = await this.licenseTransactionService.verifyLicenseExtend({
       licenseId: req.params.id as string,
       dto: data,
       userId: user.id,
@@ -190,7 +192,7 @@ export class LicenseController {
   };
 
   getLicenseExtendInfo = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.licenseService.getLicenseExtendInfo({
+    const result = await this.licenseTransactionService.getLicenseExtendInfo({
       licenseId: req.params.id as string,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
@@ -389,7 +391,7 @@ export class LicenseController {
         { abortEarly: false, stripUnknown: true },
       );
 
-    const result = await this.licenseService.getLicenseTransactions({
+    const result = await this.licenseTransactionService.getLicenseTransactions({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       filters: queryDto,
     });
@@ -405,7 +407,7 @@ export class LicenseController {
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.licenseService.getLicenseTransactionItems({
+    const result = await this.licenseTransactionService.getLicenseTransactionItems({
       transactionId: params.id,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
@@ -447,12 +449,11 @@ export class LicenseController {
       );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.initiateLicensePurchaseAsReseller(
-      {
+    const result =
+      await this.licenseTransactionService.initiateLicensePurchaseAsReseller({
         dto: data,
         resellerId: user.id,
-      },
-    );
+      });
 
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -468,10 +469,11 @@ export class LicenseController {
       );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.verifyLicensePurchaseAsReseller({
-      dto: data,
-      resellerId: user.id,
-    });
+    const result =
+      await this.licenseTransactionService.verifyLicensePurchaseAsReseller({
+        dto: data,
+        resellerId: user.id,
+      });
 
     res.status(HttpStatusCodes.CREATED).json(result);
   };
@@ -641,12 +643,11 @@ export class LicenseController {
       );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseService.getLicenseTransactionsForReseller(
-      {
+    const result =
+      await this.licenseTransactionService.getLicenseTransactionsForReseller({
         resellerId: user.id,
         filters: queryDto,
-      },
-    );
+      });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
@@ -661,7 +662,7 @@ export class LicenseController {
 
     const user = req.user as UserTokenDto;
     const result =
-      await this.licenseService.getLicenseTransactionItemsForReseller({
+      await this.licenseTransactionService.getLicenseTransactionItemsForReseller({
         transactionId: params.id,
         resellerId: user.id,
       });

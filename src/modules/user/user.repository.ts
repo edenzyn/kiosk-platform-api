@@ -14,9 +14,9 @@ import {
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { branches } from "../branch/branch.schema";
+import { branches } from "../branch/schemas/branch.schema";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
-import { organizations } from "../organization/organization.schema";
+import { organizations } from "../organization/schemas/organization.schema";
 import { organizationSettings } from "../organization/schemas/organization-settings.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import type { UserResponseDto } from "./dtos/get-users.dtos";

@@ -1,4 +1,4 @@
-import type { OrganizationEntity } from "../organization.schema";
+import type { OrganizationEntity } from "../schemas/organization.schema";
 
 export interface ToggleOrganizationStatusResponseDto {
   organization: OrganizationEntity;

@@ -8,8 +8,8 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../organization/organization.schema";
-import { users } from "../user/schemas/user.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const branches = pgTable("branches", {
   id: uuid("id").defaultRandom().primaryKey(),

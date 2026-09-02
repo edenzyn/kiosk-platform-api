@@ -6,7 +6,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { ThemeModeEnums } from "../../../shared/enums/theme/theme-mode.enum";
-import { branches } from "../branch.schema";
+import { branches } from "./branch.schema";
 
 export const branchSettings = pgTable("branch_settings", {
   id: uuid("id").defaultRandom().primaryKey(),

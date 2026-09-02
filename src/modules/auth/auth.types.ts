@@ -9,7 +9,7 @@ import type { LicenseEntity } from "../license/schemas/license.schema";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
 import type { UserSettingsEntity } from "../user/schemas/user-settings.schema";
 import type { UserEntity } from "../user/schemas/user.schema";
-import type { OrganizationEntity } from "../organization/organization.schema";
+import type { OrganizationEntity } from "../organization/schemas/organization.schema";
 import type {
   AuthSessionEntity,
   CreateAuthSessionEntity,

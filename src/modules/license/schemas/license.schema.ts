@@ -7,9 +7,9 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
-import { branches } from "../../branch/branch.schema";
+import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
-import { organizations } from "../../organization/organization.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 
 export const licenses = pgTable("licenses", {

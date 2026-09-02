@@ -6,8 +6,8 @@ import {
   uuid,
   boolean,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../../organization/organization.schema";
-import { branches } from "../../branch/branch.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
+import { branches } from "../../branch/schemas/branch.schema";
 import { users } from "../../user/schemas/user.schema";
 import { permissions } from "./permission.schema";
 

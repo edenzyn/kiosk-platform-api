@@ -1,5 +1,5 @@
 import type { SortingOrderEnum } from "../../../shared/enums/core/sorting-order.enum";
-import type { OrganizationEntity } from "../organization.schema";
+import type { OrganizationEntity } from "../schemas/organization.schema";
 
 export interface GetOrganizationsRequestDto {
   page?: number;

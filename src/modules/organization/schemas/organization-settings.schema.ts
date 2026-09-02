@@ -6,7 +6,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { ThemeModeEnums } from "../../../shared/enums/theme/theme-mode.enum";
-import { organizations } from "../organization.schema";
+import { organizations } from "./organization.schema";
 
 export const organizationSettings = pgTable("organization_settings", {
   id: uuid("id").defaultRandom().primaryKey(),

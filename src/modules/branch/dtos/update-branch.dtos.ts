@@ -1,4 +1,4 @@
-import type { BranchEntity } from "../branch.schema";
+import type { BranchEntity } from "../schemas/branch.schema";
 
 export interface UpdateBranchRequestDto {
   id: string;

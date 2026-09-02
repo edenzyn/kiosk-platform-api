@@ -8,7 +8,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../../organization/organization.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 
 export const licenseRedemptionCodes = pgTable("license_redemption_codes", {

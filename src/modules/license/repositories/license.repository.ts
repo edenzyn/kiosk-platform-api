@@ -15,9 +15,9 @@ import {
 import type { Database } from "../../../config/db";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
-import { branches } from "../../branch/branch.schema";
+import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
-import { organizations } from "../../organization/organization.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
 import type {
   ActivateLicenseRepoInput,

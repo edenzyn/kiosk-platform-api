@@ -1,5 +1,5 @@
-import { env } from "../../../../../config/env";
-import { ONE_TIME_TOKEN_CONSTANTS } from "../../../../../shared/constants/one-time-token.constants";
+import { env } from "../../../config/env";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../constants/one-time-token.constants";
 
 export interface ForgotPasswordTemplateOptions {
   name: string;

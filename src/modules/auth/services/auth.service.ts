@@ -38,7 +38,7 @@ import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
-import { getForgotPasswordTemplate } from "../../notification/channels/email/templates/forgot-password.template";
+import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import type { NotificationService } from "../../notification/notification.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";

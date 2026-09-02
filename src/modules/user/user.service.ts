@@ -35,8 +35,8 @@ import type {
 import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
 import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { BranchRepository } from "../branch/branch.repository";
-import { getInviteUserTemplate } from "../notification/channels/email/templates/invite-user.template";
-import { getTwoFactorOtpTemplate } from "../notification/channels/email/templates/two-factor-otp.template";
+import { getInviteUserTemplate } from "../../shared/utils/emailTemplates/invite-user.template";
+import { getTwoFactorOtpTemplate } from "../../shared/utils/emailTemplates/two-factor-otp.template";
 import type { NotificationService } from "../notification/notification.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";

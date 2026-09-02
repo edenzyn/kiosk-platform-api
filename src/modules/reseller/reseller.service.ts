@@ -7,7 +7,7 @@ import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitatio
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import { getInviteResellerTemplate } from "../notification/channels/email/templates/invite-reseller.template";
+import { getInviteResellerTemplate } from "../../shared/utils/emailTemplates/invite-reseller.template";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";

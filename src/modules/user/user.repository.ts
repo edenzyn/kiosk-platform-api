@@ -15,7 +15,9 @@ import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { branches } from "../branch/branch.schema";
+import { branchSettings } from "../branch/schemas/branch-settings.schema";
 import { organizations } from "../organization/organization.schema";
+import { organizationSettings } from "../organization/schemas/organization-settings.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import type { UserResponseDto } from "./dtos/get-users.dtos";
 import { userInvitations } from "./schemas/user-invitations.schema";
@@ -563,7 +565,13 @@ export class UserRepository {
   // ========================================
   // ? USER SETTINGS SCHEMA METHODS
   // ========================================
-  async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
+  async getOrCreateSettings(input: {
+    userId: string;
+    organizationId?: string | null;
+    branchId?: string | null;
+  }): Promise<UserSettingsEntity> {
+    const { userId, organizationId, branchId } = input;
+
     const [existing] = await this.database.client
       .select()
       .from(userSettings)
@@ -572,9 +580,33 @@ export class UserRepository {
 
     if (existing) return existing;
 
+    const inheritedSettings = branchId
+      ? (
+          await this.database.client
+            .select()
+            .from(branchSettings)
+            .where(eq(branchSettings.branchId, branchId))
+            .limit(1)
+        )[0]
+      : organizationId
+        ? (
+            await this.database.client
+              .select()
+              .from(organizationSettings)
+              .where(eq(organizationSettings.organizationId, organizationId))
+              .limit(1)
+          )[0]
+        : undefined;
+
     const [created] = await this.database.client
       .insert(userSettings)
-      .values({ userId })
+      .values({
+        userId,
+        themeMode: inheritedSettings?.themeMode,
+        primaryColor: inheritedSettings?.primaryColor,
+        languageCode: inheritedSettings?.languageCode,
+        currencyCode: inheritedSettings?.currencyCode,
+      })
       .onConflictDoNothing()
       .returning();
 

@@ -10,6 +10,7 @@ import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import { userInvitations } from "../user/schemas/user-invitations.schema";
 import { users } from "../user/schemas/user.schema";
 import { organizations } from "./organization.schema";
+import { organizationSettings } from "./schemas/organization-settings.schema";
 import type {
   CreateOrganizationWithOwnerRepoInput,
   CreateOrganizationWithOwnerRepoResult,
@@ -20,6 +21,7 @@ import type {
   UpdateOrganizationRepoInput,
   UpdateOrganizationRepoResult,
 } from "./organization.types";
+import type { OrganizationSettingsEntity } from "./schemas/organization-settings.schema";
 
 export class OrganizationRepository {
   constructor(private readonly database: Database) {}
@@ -153,6 +155,10 @@ export class OrganizationRepository {
         .where(eq(organizations.id, organization.id))
         .returning();
 
+      await tx.insert(organizationSettings).values({
+        organizationId: organization.id,
+      });
+
       let ownerRoleId: string | undefined;
 
       for (const defaultRole of input.defaultRoles) {
@@ -219,5 +225,20 @@ export class OrganizationRepository {
         ownerRoleId,
       };
     });
+  }
+
+  // ========================================
+  // ? ORGANIZATION SETTINGS SCHEMA METHODS
+  // ========================================
+  async getSettings(
+    organizationId: string,
+  ): Promise<OrganizationSettingsEntity | undefined> {
+    const [settings] = await this.database.client
+      .select()
+      .from(organizationSettings)
+      .where(eq(organizationSettings.organizationId, organizationId))
+      .limit(1);
+
+    return settings;
   }
 }

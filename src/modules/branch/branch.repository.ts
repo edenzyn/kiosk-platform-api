@@ -12,6 +12,11 @@ import {
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { branches } from "./branch.schema";
+import {
+  branchSettings,
+  type BranchSettingsEntity,
+  type CreateBranchSettingsEntity,
+} from "./schemas/branch-settings.schema";
 import type {
   CreateBranchRepoInput,
   CreateBranchRepoResult,
@@ -209,5 +214,23 @@ export class BranchRepository {
     }
 
     return updated;
+  }
+
+  // ========================================
+  // ? BRANCH SETTINGS SCHEMA METHODS
+  // ========================================
+  async createSettings(
+    data: CreateBranchSettingsEntity,
+  ): Promise<BranchSettingsEntity> {
+    const [created] = await this.database.client
+      .insert(branchSettings)
+      .values(data)
+      .returning();
+
+    if (!created) {
+      throw new Error("Failed to create branch settings");
+    }
+
+    return created;
   }
 }

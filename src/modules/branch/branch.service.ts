@@ -5,6 +5,7 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
@@ -14,6 +15,7 @@ export class BranchService {
   constructor(
     private readonly branchRepository: BranchRepository,
     private readonly rbacRepository: RbacRepository,
+    private readonly organizationRepository: OrganizationRepository,
   ) {}
 
   async createBranch(
@@ -32,6 +34,19 @@ export class BranchService {
         ...data,
         createdBy: user.id,
       } as CreateBranchRequestDto,
+    });
+
+    const organizationSettings = await this.organizationRepository.getSettings(
+      branch.organizationId,
+    );
+
+    await this.branchRepository.createSettings({
+      branchId: branch.id,
+      logoUrl: organizationSettings?.logoUrl,
+      themeMode: organizationSettings?.themeMode,
+      primaryColor: organizationSettings?.primaryColor,
+      languageCode: organizationSettings?.languageCode,
+      currencyCode: organizationSettings?.currencyCode,
     });
 
     const allKeys = Array.from(

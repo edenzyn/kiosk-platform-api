@@ -48,7 +48,9 @@ export class PlatformService {
         }
       : null;
 
-    const settings = await this.userRepository.getOrCreateSettings(user.id);
+    const settings = await this.userRepository.getOrCreateSettings({
+      userId: user.id,
+    });
 
     return {
       user: userWithoutPassword,

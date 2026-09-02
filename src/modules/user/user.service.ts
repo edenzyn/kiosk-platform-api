@@ -202,7 +202,11 @@ export class UserService {
     const { password, ...userWithoutPassword } = user;
 
     const userScope = getUserScope(user);
-    const settings = await this.getOrCreateSettings(user.id);
+    const settings = await this.getOrCreateSettings({
+      id: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+    });
 
     const { permissions, availableScopes } = await this.getPermissionsAndScopes(
       user.id,
@@ -251,8 +255,16 @@ export class UserService {
     });
   }
 
-  async getOrCreateSettings(userId: string): Promise<UserSettingsEntity> {
-    return this.userRepository.getOrCreateSettings(userId);
+  async getOrCreateSettings(input: {
+    id: string;
+    organizationId?: string | null;
+    branchId?: string | null;
+  }): Promise<UserSettingsEntity> {
+    return this.userRepository.getOrCreateSettings({
+      userId: input.id,
+      organizationId: input.organizationId,
+      branchId: input.branchId,
+    });
   }
 
   async listMySessions(

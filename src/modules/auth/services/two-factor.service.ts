@@ -28,7 +28,7 @@ export class TwoFactorService {
   ) {}
 
   async getStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
-    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const settings = await this.userRepository.getOrCreateSettings({ userId });
     return {
       isEnabled: settings.twoFactorEnabled,
       method: settings.twoFactorMethod,

@@ -255,7 +255,7 @@ export class LicenseTransactionService {
     pricing: ResolvedPurchasePricing,
     userId: string,
   ): Promise<ResolvedPurchasePricing> {
-    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const settings = await this.userRepository.getOrCreateSettings({ userId });
     const targetCurrency = settings.currencyCode;
 
     if (targetCurrency === pricing.currency) {
@@ -652,7 +652,7 @@ export class LicenseTransactionService {
       };
     }
 
-    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const settings = await this.userRepository.getOrCreateSettings({ userId });
     const targetCurrency = settings.currencyCode;
 
     const convertedAmount =

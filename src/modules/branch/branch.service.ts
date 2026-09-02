@@ -10,6 +10,12 @@ import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
+import type {
+  GetBranchSettingsServiceInput,
+  GetBranchSettingsServiceResult,
+  UpdateBranchSettingsServiceInput,
+  UpdateBranchSettingsServiceResult,
+} from "./branch.types";
 
 export class BranchService {
   constructor(
@@ -36,17 +42,18 @@ export class BranchService {
       } as CreateBranchRequestDto,
     });
 
-    const organizationSettings = await this.organizationRepository.getSettings(
-      branch.organizationId,
-    );
+    const organizationSettings =
+      await this.organizationRepository.getOrCreateSettings(
+        branch.organizationId,
+      );
 
     await this.branchRepository.createSettings({
       branchId: branch.id,
-      logoUrl: organizationSettings?.logoUrl,
-      themeMode: organizationSettings?.themeMode,
-      primaryColor: organizationSettings?.primaryColor,
-      languageCode: organizationSettings?.languageCode,
-      currencyCode: organizationSettings?.currencyCode,
+      logoUrl: organizationSettings.logoUrl,
+      primaryColor: organizationSettings.primaryColor,
+      languageCode: organizationSettings.languageCode,
+      currencyCode: organizationSettings.currencyCode,
+      timezone: organizationSettings.timezone,
     });
 
     const allKeys = Array.from(
@@ -173,5 +180,87 @@ export class BranchService {
     });
 
     return updated;
+  }
+
+  async getBranchSettings(
+    input: GetBranchSettingsServiceInput,
+  ): Promise<GetBranchSettingsServiceResult> {
+    const { branchId, effectiveTenant } = input;
+
+    const branch = await this.branchRepository.findOne({ id: branchId });
+    if (!branch) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (branch.organizationId !== effectiveTenant.organizationId) {
+      throw new AppError("Cannot access settings for a different branch", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const settings = await this.branchRepository.getOrCreateSettings(branchId);
+
+    return { branch, settings };
+  }
+
+  async updateBranchSettings(
+    input: UpdateBranchSettingsServiceInput,
+  ): Promise<UpdateBranchSettingsServiceResult> {
+    const { branchId, data, user, effectiveTenant } = input;
+
+    const existing = await this.branchRepository.findOne({ id: branchId });
+    if (!existing) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (existing.organizationId !== effectiveTenant.organizationId) {
+      throw new AppError("Cannot update settings for a different branch", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const {
+      logoUrl,
+      primaryColor,
+      languageCode,
+      currencyCode,
+      timezone,
+      ...branchFields
+    } = data;
+
+    const settingsFields = {
+      logoUrl,
+      primaryColor,
+      languageCode,
+      currencyCode,
+      timezone,
+    };
+    const hasSettingsFields = Object.values(settingsFields).some(
+      (value) => value !== undefined,
+    );
+    const hasBranchFields = Object.values(branchFields).some(
+      (value) => value !== undefined,
+    );
+
+    let branch = existing;
+    if (hasBranchFields) {
+      branch = await this.branchRepository.update({
+        id: branchId,
+        data: { ...branchFields, updatedBy: user.id },
+      });
+    }
+
+    const settings = hasSettingsFields
+      ? await this.branchRepository.updateSettings({
+          branchId,
+          data: settingsFields,
+        })
+      : await this.branchRepository.getOrCreateSettings(branchId);
+
+    return { branch, settings };
   }
 }

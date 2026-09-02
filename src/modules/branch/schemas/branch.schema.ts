@@ -31,7 +31,6 @@ export const branches = pgTable("branches", {
   address: text("address").notNull(),
 
   // Location
-  timezone: varchar("timezone", { length: 100 }).notNull(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
 

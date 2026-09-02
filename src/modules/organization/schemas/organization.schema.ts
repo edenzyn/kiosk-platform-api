@@ -24,7 +24,6 @@ export const organizations = pgTable("organizations", {
   area: varchar("area", { length: 255 }),
   landmark: varchar("landmark", { length: 255 }),
   address: text("address"),
-  timezone: varchar("timezone", { length: 100 }),
 
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

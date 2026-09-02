@@ -602,7 +602,6 @@ export class UserRepository {
       .insert(userSettings)
       .values({
         userId,
-        themeMode: inheritedSettings?.themeMode,
         primaryColor: inheritedSettings?.primaryColor,
         languageCode: inheritedSettings?.languageCode,
         currencyCode: inheritedSettings?.currencyCode,

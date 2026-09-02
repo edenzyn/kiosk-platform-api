@@ -9,8 +9,11 @@ import { roles } from "../rbac/schemas/role.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
 import { userInvitations } from "../user/schemas/user-invitations.schema";
 import { users } from "../user/schemas/user.schema";
-import { organizations } from "./organization.schema";
-import { organizationSettings } from "./schemas/organization-settings.schema";
+import { organizations } from "./schemas/organization.schema";
+import {
+  organizationSettings,
+  type OrganizationSettingsEntity,
+} from "./schemas/organization-settings.schema";
 import type {
   CreateOrganizationWithOwnerRepoInput,
   CreateOrganizationWithOwnerRepoResult,
@@ -20,8 +23,8 @@ import type {
   FindPaginatedOrganizationsRepoResult,
   UpdateOrganizationRepoInput,
   UpdateOrganizationRepoResult,
+  UpdateOrganizationSettingsRepoInput,
 } from "./organization.types";
-import type { OrganizationSettingsEntity } from "./schemas/organization-settings.schema";
 
 export class OrganizationRepository {
   constructor(private readonly database: Database) {}
@@ -230,15 +233,51 @@ export class OrganizationRepository {
   // ========================================
   // ? ORGANIZATION SETTINGS SCHEMA METHODS
   // ========================================
-  async getSettings(
+  async getOrCreateSettings(
     organizationId: string,
-  ): Promise<OrganizationSettingsEntity | undefined> {
+  ): Promise<OrganizationSettingsEntity> {
+    const [existing] = await this.database.client
+      .select()
+      .from(organizationSettings)
+      .where(eq(organizationSettings.organizationId, organizationId))
+      .limit(1);
+
+    if (existing) return existing;
+
+    const [created] = await this.database.client
+      .insert(organizationSettings)
+      .values({ organizationId })
+      .onConflictDoNothing()
+      .returning();
+
+    if (created) return created;
+
+    // Lost the race to a concurrent insert - read back what it created.
     const [settings] = await this.database.client
       .select()
       .from(organizationSettings)
       .where(eq(organizationSettings.organizationId, organizationId))
       .limit(1);
 
+    if (!settings)
+      throw new Error("Failed to get or create organization settings");
     return settings;
+  }
+
+  async updateSettings(
+    input: UpdateOrganizationSettingsRepoInput,
+  ): Promise<OrganizationSettingsEntity> {
+    const { organizationId, data } = input;
+    const [updated] = await this.database.client
+      .insert(organizationSettings)
+      .values({ organizationId, ...data })
+      .onConflictDoUpdate({
+        target: organizationSettings.organizationId,
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!updated) throw new Error("Failed to update organization settings");
+    return updated;
   }
 }

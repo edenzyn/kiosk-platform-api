@@ -64,4 +64,29 @@ export class BranchController {
     );
     res.status(HttpStatusCodes.OK).json({ branch });
   };
+
+  getSettings = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const result = await this.branchService.getBranchSettings({
+      branchId: effectiveTenant.branchId as string,
+      effectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  updateSettings = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const data = await BranchValidator.updateSettings.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.branchService.updateBranchSettings({
+      branchId: effectiveTenant.branchId as string,
+      data,
+      user: req.user as UserTokenDto,
+      effectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
 }

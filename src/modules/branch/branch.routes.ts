@@ -46,11 +46,26 @@ branchRouter.get(
   branchController.getBranchesForFilters,
 );
 
-branchRouter.put(
-  "/:id",
+branchRouter
+  .route("/settings")
+  .get(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    branchController.getSettings,
+  )
+  .put(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    branchController.updateSettings,
+  );
+
+branchRouter.route("/:id").put(
   accessMiddleware({
     organization: [
-      UserPermissions.ORGANIZATION_ALL_WRITE,
       UserPermissions.ORGANIZATION_BRANCH_WRITE,
       UserPermissions.ORGANIZATION_BRANCH_READ,
     ],

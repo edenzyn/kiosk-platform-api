@@ -10,7 +10,8 @@ import type {
   InviteOrganizationResponseDto,
 } from "./dtos/invite-organization.dtos";
 import type { ToggleOrganizationStatusResponseDto } from "./dtos/toggle-organization-status.dtos";
-import type { OrganizationEntity } from "./organization.schema";
+import type { OrganizationEntity } from "./schemas/organization.schema";
+import type { OrganizationSettingsEntity } from "./schemas/organization-settings.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -32,6 +33,23 @@ export interface ToggleOrganizationStatusServiceInput {
 }
 export type ToggleOrganizationStatusServiceResult =
   ToggleOrganizationStatusResponseDto;
+
+export interface GetMyOrganizationServiceResult {
+  organization: OrganizationEntity;
+  settings: OrganizationSettingsEntity;
+}
+
+export interface UpdateMyOrganizationServiceInput {
+  organizationId: string;
+  data: Partial<
+    UpdateOrganizationRepoInput["data"] & UpdateOrganizationSettingsRepoInput["data"]
+  >;
+  currentUser: UserTokenDto;
+}
+export interface UpdateMyOrganizationServiceResult {
+  organization: OrganizationEntity;
+  settings: OrganizationSettingsEntity;
+}
 
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
@@ -64,11 +82,29 @@ export interface UpdateOrganizationRepoInput {
       | "registeredName"
       | "registrationNumber"
       | "isActive"
+      | "country"
+      | "state"
+      | "city"
+      | "postalCode"
+      | "area"
+      | "landmark"
+      | "address"
       | "updatedBy"
     >
   >;
 }
 export type UpdateOrganizationRepoResult = OrganizationEntity;
+
+export interface UpdateOrganizationSettingsRepoInput {
+  organizationId: string;
+  data: Partial<
+    Pick<
+      OrganizationSettingsEntity,
+      "logoUrl" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+    >
+  >;
+}
+export type UpdateOrganizationSettingsRepoResult = OrganizationSettingsEntity;
 
 export interface CreateOrganizationWithOwnerRepoInput {
   organizationName: string;

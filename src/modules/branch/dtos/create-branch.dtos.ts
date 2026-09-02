@@ -12,7 +12,6 @@ export interface CreateBranchRequestDto {
   area?: string | null;
   landmark?: string | null;
   address: string;
-  timezone: string;
   latitude?: number | null;
   longitude?: number | null;
   createdBy: string;

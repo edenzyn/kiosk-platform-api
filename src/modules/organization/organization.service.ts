@@ -13,12 +13,15 @@ import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
+  GetMyOrganizationServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
   InviteOrganizationServiceResult,
   ToggleOrganizationStatusServiceInput,
   ToggleOrganizationStatusServiceResult,
+  UpdateMyOrganizationServiceInput,
+  UpdateMyOrganizationServiceResult,
 } from "./organization.types";
 
 export class OrganizationService {
@@ -181,5 +184,85 @@ export class OrganizationService {
     });
 
     return { organization: updated };
+  }
+
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
+  async getMyOrganization(
+    organizationId: string,
+  ): Promise<GetMyOrganizationServiceResult> {
+    const organization = await this.organizationRepository.findOne({
+      id: organizationId,
+    });
+
+    if (!organization) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const settings =
+      await this.organizationRepository.getOrCreateSettings(organizationId);
+
+    return { organization, settings };
+  }
+
+  async updateMyOrganization(
+    input: UpdateMyOrganizationServiceInput,
+  ): Promise<UpdateMyOrganizationServiceResult> {
+    const existing = await this.organizationRepository.findOne({
+      id: input.organizationId,
+    });
+
+    if (!existing) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const {
+      logoUrl,
+      primaryColor,
+      languageCode,
+      currencyCode,
+      timezone,
+      ...organizationFields
+    } = input.data;
+
+    const settingsFields = {
+      logoUrl,
+      primaryColor,
+      languageCode,
+      currencyCode,
+      timezone,
+    };
+    const hasSettingsFields = Object.values(settingsFields).some(
+      (value) => value !== undefined,
+    );
+    const hasOrganizationFields = Object.values(organizationFields).some(
+      (value) => value !== undefined,
+    );
+
+    let organization = existing;
+    if (hasOrganizationFields) {
+      organization = await this.organizationRepository.update({
+        id: input.organizationId,
+        data: { ...organizationFields, updatedBy: input.currentUser.id },
+      });
+    }
+
+    const settings = hasSettingsFields
+      ? await this.organizationRepository.updateSettings({
+          organizationId: input.organizationId,
+          data: settingsFields,
+        })
+      : await this.organizationRepository.getOrCreateSettings(
+          input.organizationId,
+        );
+
+    return { organization, settings };
   }
 }

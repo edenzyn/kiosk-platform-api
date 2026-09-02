@@ -11,8 +11,12 @@ import type { BranchRepository } from "./branch.repository";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 import type {
+  GetBranchDetailsServiceInput,
+  GetBranchDetailsServiceResult,
   GetBranchSettingsServiceInput,
   GetBranchSettingsServiceResult,
+  UpdateBranchDetailsServiceInput,
+  UpdateBranchDetailsServiceResult,
   UpdateBranchSettingsServiceInput,
   UpdateBranchSettingsServiceResult,
 } from "./branch.types";
@@ -182,6 +186,53 @@ export class BranchService {
     return updated;
   }
 
+  async getBranchDetails(
+    input: GetBranchDetailsServiceInput,
+  ): Promise<GetBranchDetailsServiceResult> {
+    const { branchId, effectiveTenant } = input;
+
+    const branch = await this.branchRepository.findOne({ id: branchId });
+    if (!branch) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (branch.organizationId !== effectiveTenant.organizationId) {
+      throw new AppError("Cannot access details for a different branch", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    return { branch };
+  }
+
+  async updateBranchDetails(
+    input: UpdateBranchDetailsServiceInput,
+  ): Promise<UpdateBranchDetailsServiceResult> {
+    const { branchId, data, user, effectiveTenant } = input;
+
+    const existing = await this.branchRepository.findOne({ id: branchId });
+    if (!existing) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (existing.organizationId !== effectiveTenant.organizationId) {
+      throw new AppError("Cannot update details for a different branch", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+      });
+    }
+
+    const branch = await this.branchRepository.update({
+      id: branchId,
+      data: { ...data, updatedBy: user.id },
+    });
+
+    return { branch };
+  }
+
   async getBranchSettings(
     input: GetBranchSettingsServiceInput,
   ): Promise<GetBranchSettingsServiceResult> {
@@ -202,13 +253,13 @@ export class BranchService {
 
     const settings = await this.branchRepository.getOrCreateSettings(branchId);
 
-    return { branch, settings };
+    return { settings };
   }
 
   async updateBranchSettings(
     input: UpdateBranchSettingsServiceInput,
   ): Promise<UpdateBranchSettingsServiceResult> {
-    const { branchId, data, user, effectiveTenant } = input;
+    const { branchId, data, effectiveTenant } = input;
 
     const existing = await this.branchRepository.findOne({ id: branchId });
     if (!existing) {
@@ -223,44 +274,11 @@ export class BranchService {
       });
     }
 
-    const {
-      logoUrl,
-      primaryColor,
-      languageCode,
-      currencyCode,
-      timezone,
-      ...branchFields
-    } = data;
+    const settings = await this.branchRepository.updateSettings({
+      branchId,
+      data,
+    });
 
-    const settingsFields = {
-      logoUrl,
-      primaryColor,
-      languageCode,
-      currencyCode,
-      timezone,
-    };
-    const hasSettingsFields = Object.values(settingsFields).some(
-      (value) => value !== undefined,
-    );
-    const hasBranchFields = Object.values(branchFields).some(
-      (value) => value !== undefined,
-    );
-
-    let branch = existing;
-    if (hasBranchFields) {
-      branch = await this.branchRepository.update({
-        id: branchId,
-        data: { ...branchFields, updatedBy: user.id },
-      });
-    }
-
-    const settings = hasSettingsFields
-      ? await this.branchRepository.updateSettings({
-          branchId,
-          data: settingsFields,
-        })
-      : await this.branchRepository.getOrCreateSettings(branchId);
-
-    return { branch, settings };
+    return { settings };
   }
 }

@@ -63,9 +63,8 @@ export const BranchValidator = {
         .optional(),
     })
     .noUnknown(),
-  updateSettings: yup
+  updateDetails: yup
     .object({
-      // Branch details (branches table)
       name: yup.string().max(255).optional(),
       email: emailValidator("Invalid email").nullable().optional(),
       mobile: yup
@@ -84,7 +83,10 @@ export const BranchValidator = {
       area: yup.string().max(255).nullable().optional(),
       landmark: yup.string().max(255).nullable().optional(),
       address: yup.string().optional(),
-      // Branch preferences (branch_settings table)
+    })
+    .noUnknown(),
+  updateSettings: yup
+    .object({
       primaryColor: yup.string().trim().max(20).optional(),
       languageCode: yup.string().trim().max(10).optional(),
       currencyCode: yup.string().trim().max(3).optional(),

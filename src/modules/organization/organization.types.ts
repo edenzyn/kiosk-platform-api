@@ -36,18 +36,26 @@ export type ToggleOrganizationStatusServiceResult =
 
 export interface GetMyOrganizationServiceResult {
   organization: OrganizationEntity;
-  settings: OrganizationSettingsEntity;
 }
 
 export interface UpdateMyOrganizationServiceInput {
   organizationId: string;
-  data: Partial<
-    UpdateOrganizationRepoInput["data"] & UpdateOrganizationSettingsRepoInput["data"]
-  >;
+  data: UpdateOrganizationRepoInput["data"];
   currentUser: UserTokenDto;
 }
 export interface UpdateMyOrganizationServiceResult {
   organization: OrganizationEntity;
+}
+
+export interface GetMyOrganizationSettingsServiceResult {
+  settings: OrganizationSettingsEntity;
+}
+
+export interface UpdateMyOrganizationSettingsServiceInput {
+  organizationId: string;
+  data: UpdateOrganizationSettingsRepoInput["data"];
+}
+export interface UpdateMyOrganizationSettingsServiceResult {
   settings: OrganizationSettingsEntity;
 }
 

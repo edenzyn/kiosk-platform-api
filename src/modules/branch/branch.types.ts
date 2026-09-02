@@ -70,16 +70,15 @@ export interface UpdateBranchServiceInput {
 
 export type UpdateBranchServiceResult = BranchEntity;
 
-export interface GetBranchSettingsServiceInput {
+export interface GetBranchDetailsServiceInput {
   branchId: string;
   effectiveTenant: EffectiveTenant;
 }
-export interface GetBranchSettingsServiceResult {
+export interface GetBranchDetailsServiceResult {
   branch: BranchEntity;
-  settings: BranchSettingsEntity;
 }
 
-export interface UpdateBranchSettingsServiceInput {
+export interface UpdateBranchDetailsServiceInput {
   branchId: string;
   data: Partial<
     Pick<
@@ -94,21 +93,34 @@ export interface UpdateBranchSettingsServiceInput {
       | "area"
       | "landmark"
       | "address"
-    > &
-      Pick<
-        BranchSettingsEntity,
-        | "logoUrl"
-        | "primaryColor"
-        | "languageCode"
-        | "currencyCode"
-        | "timezone"
-      >
+    >
   >;
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
 }
-export interface UpdateBranchSettingsServiceResult {
+export interface UpdateBranchDetailsServiceResult {
   branch: BranchEntity;
+}
+
+export interface GetBranchSettingsServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+}
+export interface GetBranchSettingsServiceResult {
+  settings: BranchSettingsEntity;
+}
+
+export interface UpdateBranchSettingsServiceInput {
+  branchId: string;
+  data: Partial<
+    Pick<
+      BranchSettingsEntity,
+      "logoUrl" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+    >
+  >;
+  effectiveTenant: EffectiveTenant;
+}
+export interface UpdateBranchSettingsServiceResult {
   settings: BranchSettingsEntity;
 }
 

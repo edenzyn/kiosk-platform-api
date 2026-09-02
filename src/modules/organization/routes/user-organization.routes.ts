@@ -10,7 +10,7 @@ const organizationController = container.resolve<OrganizationController>(
 );
 
 userOrganizationRouter
-  .route("/settings")
+  .route("/details")
   .get(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_UPDATE],
@@ -22,6 +22,21 @@ userOrganizationRouter
       organization: [UserPermissions.ORGANIZATION_UPDATE],
     }),
     organizationController.updateMyOrganization,
+  );
+
+userOrganizationRouter
+  .route("/settings")
+  .get(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_UPDATE],
+    }),
+    organizationController.getMyOrganizationSettings,
+  )
+  .put(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_UPDATE],
+    }),
+    organizationController.updateMyOrganizationSettings,
   );
 
 export { userOrganizationRouter };

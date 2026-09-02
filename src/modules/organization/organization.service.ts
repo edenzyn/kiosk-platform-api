@@ -14,6 +14,7 @@ import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
   GetMyOrganizationServiceResult,
+  GetMyOrganizationSettingsServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
@@ -22,6 +23,8 @@ import type {
   ToggleOrganizationStatusServiceResult,
   UpdateMyOrganizationServiceInput,
   UpdateMyOrganizationServiceResult,
+  UpdateMyOrganizationSettingsServiceInput,
+  UpdateMyOrganizationSettingsServiceResult,
 } from "./organization.types";
 
 export class OrganizationService {
@@ -203,10 +206,7 @@ export class OrganizationService {
       });
     }
 
-    const settings =
-      await this.organizationRepository.getOrCreateSettings(organizationId);
-
-    return { organization, settings };
+    return { organization };
   }
 
   async updateMyOrganization(
@@ -223,46 +223,31 @@ export class OrganizationService {
       });
     }
 
-    const {
-      logoUrl,
-      primaryColor,
-      languageCode,
-      currencyCode,
-      timezone,
-      ...organizationFields
-    } = input.data;
+    const organization = await this.organizationRepository.update({
+      id: input.organizationId,
+      data: { ...input.data, updatedBy: input.currentUser.id },
+    });
 
-    const settingsFields = {
-      logoUrl,
-      primaryColor,
-      languageCode,
-      currencyCode,
-      timezone,
-    };
-    const hasSettingsFields = Object.values(settingsFields).some(
-      (value) => value !== undefined,
-    );
-    const hasOrganizationFields = Object.values(organizationFields).some(
-      (value) => value !== undefined,
-    );
+    return { organization };
+  }
 
-    let organization = existing;
-    if (hasOrganizationFields) {
-      organization = await this.organizationRepository.update({
-        id: input.organizationId,
-        data: { ...organizationFields, updatedBy: input.currentUser.id },
-      });
-    }
+  async getMyOrganizationSettings(
+    organizationId: string,
+  ): Promise<GetMyOrganizationSettingsServiceResult> {
+    const settings =
+      await this.organizationRepository.getOrCreateSettings(organizationId);
 
-    const settings = hasSettingsFields
-      ? await this.organizationRepository.updateSettings({
-          organizationId: input.organizationId,
-          data: settingsFields,
-        })
-      : await this.organizationRepository.getOrCreateSettings(
-          input.organizationId,
-        );
+    return { settings };
+  }
 
-    return { organization, settings };
+  async updateMyOrganizationSettings(
+    input: UpdateMyOrganizationSettingsServiceInput,
+  ): Promise<UpdateMyOrganizationSettingsServiceResult> {
+    const settings = await this.organizationRepository.updateSettings({
+      organizationId: input.organizationId,
+      data: input.data,
+    });
+
+    return { settings };
   }
 }

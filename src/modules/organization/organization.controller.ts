@@ -68,4 +68,34 @@ export class OrganizationController {
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  getMyOrganizationSettings = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const result = await this.organizationService.getMyOrganizationSettings(
+      effectiveTenant.organizationId,
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  updateMyOrganizationSettings = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const data =
+      await OrganizationValidator.updateMyOrganizationSettings.validate(
+        req.body,
+        { abortEarly: false, stripUnknown: true },
+      );
+    const result = await this.organizationService.updateMyOrganizationSettings(
+      {
+        organizationId: effectiveTenant.organizationId,
+        data,
+      },
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
 }

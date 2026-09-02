@@ -52,7 +52,6 @@ export class OrganizationValidator {
   }).noUnknown();
 
   static readonly updateMyOrganization = Yup.object({
-    // Organization details (organizations table)
     name: Yup.string().trim().min(2).max(255).optional(),
     registeredName: Yup.string().trim().max(255).nullable().optional(),
     registrationNumber: Yup.string().trim().max(100).nullable().optional(),
@@ -63,7 +62,9 @@ export class OrganizationValidator {
     area: Yup.string().max(255).nullable().optional(),
     landmark: Yup.string().max(255).nullable().optional(),
     address: Yup.string().nullable().optional(),
-    // Organization preferences (organization_settings table)
+  }).noUnknown();
+
+  static readonly updateMyOrganizationSettings = Yup.object({
     primaryColor: Yup.string().trim().max(20).optional(),
     languageCode: Yup.string().trim().max(10).optional(),
     currencyCode: Yup.string().trim().max(3).optional(),

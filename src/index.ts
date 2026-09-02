@@ -1,6 +1,6 @@
-import { createServer } from "node:http";
 import type { Worker } from "bullmq";
 import type Redis from "ioredis";
+import { createServer } from "node:http";
 import { App } from "./app";
 import { container } from "./config/container";
 import type { Database } from "./config/db";

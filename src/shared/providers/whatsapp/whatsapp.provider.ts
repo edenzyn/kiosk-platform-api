@@ -1,20 +1,23 @@
 import crypto from "node:crypto";
-import { env } from "../../../../config/env";
-import { HttpStatusCodes } from "../../../../shared/constants/http-status-codes.constants";
-import { AppError } from "../../../../shared/errors/app-error";
+import type { WhatsAppClientConfig } from "../../../config/whatsapp";
+import { HttpStatusCodes } from "../../constants/http-status-codes.constants";
+import { AppError } from "../../errors/app-error";
 import type {
   SendWhatsAppMessageOptions,
   WhatsAppApiErrorResponse,
-} from "../../notification.types";
+} from "../../../modules/notification/notification.types";
+import { logger } from "../../utils/core/logger";
 
-export class WhatsAppChannel {
+export class WhatsAppProvider {
+  constructor(private readonly whatsappClientConfig: WhatsAppClientConfig) {}
+
   async sendMessage(options: SendWhatsAppMessageOptions): Promise<void> {
-    const url = `${env.META_WHATSAPP_API_BASE_URL}/${env.META_WHATSAPP_API_VERSION}/${env.META_WHATSAPP_PHONE_NUMBER_ID}/messages`;
+    const url = `${this.whatsappClientConfig.apiBaseUrl}/${this.whatsappClientConfig.apiVersion}/${this.whatsappClientConfig.phoneNumberId}/messages`;
 
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.META_WHATSAPP_ACCESS_TOKEN}`,
+        Authorization: `Bearer ${this.whatsappClientConfig.accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -48,7 +51,7 @@ export class WhatsAppChannel {
         .json()
         .catch(() => null)) as WhatsAppApiErrorResponse | null;
 
-      console.log("[WhatsAppChannel] Failed to send message", {
+      logger.error("[WhatsAppProvider] Failed to send message", {
         status: response.status,
         error: body?.error,
       });
@@ -63,7 +66,9 @@ export class WhatsAppChannel {
   }
 
   verifyChallenge(mode: string, token: string): boolean {
-    return mode === "subscribe" && token === env.META_WHATSAPP_VERIFY_TOKEN;
+    return (
+      mode === "subscribe" && token === this.whatsappClientConfig.verifyToken
+    );
   }
 
   verifySignature(
@@ -73,7 +78,7 @@ export class WhatsAppChannel {
     if (!rawBody || !signatureHeader) return false;
 
     const expected = `sha256=${crypto
-      .createHmac("sha256", env.META_WHATSAPP_APP_SECRET)
+      .createHmac("sha256", this.whatsappClientConfig.appSecret)
       .update(rawBody)
       .digest("hex")}`;
 

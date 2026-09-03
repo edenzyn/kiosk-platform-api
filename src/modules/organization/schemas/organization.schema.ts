@@ -2,11 +2,12 @@ import {
   type AnyPgColumn,
   boolean,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
-import { users } from "../user/schemas/user.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -14,6 +15,16 @@ export const organizations = pgTable("organizations", {
   registeredName: varchar("registered_name", { length: 255 }),
   registrationNumber: varchar("registration_number", { length: 100 }),
   isActive: boolean("is_active").default(true).notNull(),
+
+  // Address Information
+  country: varchar("country", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  postalCode: varchar("postal_code", { length: 20 }),
+  area: varchar("area", { length: 255 }),
+  landmark: varchar("landmark", { length: 255 }),
+  address: text("address"),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

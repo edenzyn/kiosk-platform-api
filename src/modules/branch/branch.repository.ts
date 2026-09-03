@@ -11,7 +11,12 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
-import { branches } from "./branch.schema";
+import { branches } from "./schemas/branch.schema";
+import {
+  branchSettings,
+  type BranchSettingsEntity,
+  type CreateBranchSettingsEntity,
+} from "./schemas/branch-settings.schema";
 import type {
   CreateBranchRepoInput,
   CreateBranchRepoResult,
@@ -23,6 +28,7 @@ import type {
   FindOneBranchRepoResult,
   UpdateBranchRepoInput,
   UpdateBranchRepoResult,
+  UpdateBranchSettingsRepoInput,
 } from "./branch.types";
 
 export class BranchRepository {
@@ -179,7 +185,6 @@ export class BranchRepository {
         area: data.area ?? null,
         landmark: data.landmark ?? null,
         address: data.address,
-        timezone: data.timezone,
         latitude: data.latitude ?? null,
         longitude: data.longitude ?? null,
         createdBy: data.createdBy,
@@ -208,6 +213,69 @@ export class BranchRepository {
       throw new Error("Failed to update branch");
     }
 
+    return updated;
+  }
+
+  // ========================================
+  // ? BRANCH SETTINGS SCHEMA METHODS
+  // ========================================
+  async createSettings(
+    data: CreateBranchSettingsEntity,
+  ): Promise<BranchSettingsEntity> {
+    const [created] = await this.database.client
+      .insert(branchSettings)
+      .values(data)
+      .returning();
+
+    if (!created) {
+      throw new Error("Failed to create branch settings");
+    }
+
+    return created;
+  }
+
+  async getOrCreateSettings(branchId: string): Promise<BranchSettingsEntity> {
+    const [existing] = await this.database.client
+      .select()
+      .from(branchSettings)
+      .where(eq(branchSettings.branchId, branchId))
+      .limit(1);
+
+    if (existing) return existing;
+
+    const [created] = await this.database.client
+      .insert(branchSettings)
+      .values({ branchId })
+      .onConflictDoNothing()
+      .returning();
+
+    if (created) return created;
+
+    // Lost the race to a concurrent insert - read back what it created.
+    const [settings] = await this.database.client
+      .select()
+      .from(branchSettings)
+      .where(eq(branchSettings.branchId, branchId))
+      .limit(1);
+
+    if (!settings) throw new Error("Failed to get or create branch settings");
+    return settings;
+  }
+
+  async updateSettings(
+    input: UpdateBranchSettingsRepoInput,
+  ): Promise<BranchSettingsEntity> {
+    const { branchId, data } = input;
+    const [updated] = await this.database.client
+      .insert(branchSettings)
+      .values({ branchId, ...data })
+      .onConflictDoUpdate({
+        target: branchSettings.branchId,
+        set: { ...data, updatedAt: new Date() },
+      })
+      .returning();
+
+    if (!updated) throw new Error("Failed to update branch settings");
     return updated;
   }
 }

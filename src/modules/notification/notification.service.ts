@@ -1,16 +1,20 @@
+import type { Queue } from "bullmq";
+import { JobNames } from "../../shared/enums/core/job-names.enum";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import { logger } from "../../shared/utils/core/logger";
+import type { WhatsAppProvider } from "../../shared/providers/whatsapp/whatsapp.provider";
 import type {
-  EmailChannel,
+  EmailJobData,
   SendMailOptions,
-} from "./channels/email/email.channel";
-import type { WhatsAppChannel } from "./channels/whatsapp/whatsapp.channel";
+} from "../../shared/queue/email/email.queue";
+import type { WhatsAppJobData } from "../../shared/queue/whatsapp/whatsapp.queue";
+import { logger } from "../../shared/utils/core/logger";
 import { SendWhatsAppMessageOptions } from "./notification.types";
 
 export class NotificationService {
   constructor(
-    private readonly emailChannel: EmailChannel,
-    private readonly whatsappChannel: WhatsAppChannel,
+    private readonly emailQueue: Queue<EmailJobData>,
+    private readonly whatsappQueue: Queue<WhatsAppJobData>,
+    private readonly whatsappProvider: WhatsAppProvider,
   ) {}
 
   async send(
@@ -19,23 +23,29 @@ export class NotificationService {
   ): Promise<void> {
     switch (channel) {
       case NotificationChannelEnum.EMAIL:
-        return this.emailChannel.sendMail(options as SendMailOptions);
+        await this.emailQueue.add(
+          JobNames.SEND_EMAIL,
+          options as SendMailOptions,
+        );
+        return;
       case NotificationChannelEnum.WHATSAPP:
-        return this.whatsappChannel.sendMessage(
+        await this.whatsappQueue.add(
+          JobNames.SEND_WHATSAPP,
           options as SendWhatsAppMessageOptions,
         );
+        return;
     }
   }
 
   verifyWhatsAppChallenge(mode: string, token: string): boolean {
-    return this.whatsappChannel.verifyChallenge(mode, token);
+    return this.whatsappProvider.verifyChallenge(mode, token);
   }
 
   verifyWhatsAppSignature(
     rawBody: Buffer | undefined,
     signatureHeader: string | undefined,
   ): boolean {
-    return this.whatsappChannel.verifySignature(rawBody, signatureHeader);
+    return this.whatsappProvider.verifySignature(rawBody, signatureHeader);
   }
 
   async handleWhatsAppWebhookEvent(payload: unknown): Promise<void> {

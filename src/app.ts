@@ -23,6 +23,7 @@ import { resellerLicenseRouter } from "./modules/license/routes/reseller-license
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
+import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
 import platformRoutes from "./modules/platform/platform.routes";
 import rbacRoutes from "./modules/rbac/rbac.routes";
 import { platformResellerRouter } from "./modules/reseller/routes/platform-reseller.routes";
@@ -146,6 +147,10 @@ export class App {
     this.instance.use(`${this.normalUserApiV1Prefix}/users`, userRoutes);
     this.instance.use(`${this.normalUserApiV1Prefix}/rbac`, rbacRoutes);
     this.instance.use(`${this.normalUserApiV1Prefix}/branches`, branchRoutes);
+    this.instance.use(
+      `${this.normalUserApiV1Prefix}/organizations`,
+      userOrganizationRouter,
+    );
     this.instance.use(
       `${this.normalUserApiV1Prefix}/devices`,
       userDeviceRouter,

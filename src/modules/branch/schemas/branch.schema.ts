@@ -8,8 +8,8 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../organization/organization.schema";
-import { users } from "../user/schemas/user.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
+import { users } from "../../user/schemas/user.schema";
 
 export const branches = pgTable("branches", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -31,7 +31,6 @@ export const branches = pgTable("branches", {
   address: text("address").notNull(),
 
   // Location
-  timezone: varchar("timezone", { length: 100 }).notNull(),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
 

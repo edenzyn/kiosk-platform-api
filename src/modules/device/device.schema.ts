@@ -7,8 +7,8 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { branches } from "../branch/branch.schema";
-import { organizations } from "../organization/organization.schema";
+import { branches } from "../branch/schemas/branch.schema";
+import { organizations } from "../organization/schemas/organization.schema";
 import { users } from "../user/schemas/user.schema";
 
 export const devices = pgTable("devices", {

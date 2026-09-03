@@ -19,9 +19,9 @@ import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/licens
 import { LicenseRedemptionStatusEnum } from "../../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
-import { branches } from "../../branch/branch.schema";
+import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
-import { organizations } from "../../organization/organization.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
 import type {
   ClaimRedemptionCodeRepoInput,
@@ -128,8 +128,9 @@ export class LicenseRedemptionRepository {
         pricingId: licenseRedemptionItems.pricingId,
         planName: licensePricing.name,
         basePrice: licenseRedemptionItems.basePrice,
+        basePriceCurrency: licenseRedemptionItems.basePriceCurrency,
         soldPrice: licenseRedemptionItems.soldPrice,
-        currency: licenseRedemptionItems.currency,
+        soldPriceCurrency: licenseRedemptionCodes.soldPriceCurrency,
         durationDays: licenseRedemptionItems.durationDays,
       })
       .from(licenseRedemptionItems)
@@ -246,7 +247,7 @@ export class LicenseRedemptionRepository {
             pricingId: item.pricingId,
             basePrice: item.basePrice,
             soldPrice: item.soldPrice,
-            currency: item.currency,
+            basePriceCurrency: item.basePriceCurrency,
             durationDays: item.durationDays,
           })),
         )
@@ -305,7 +306,7 @@ export class LicenseRedemptionRepository {
           redeemCode: licenseRedemptionCodes.redeemCode,
           status: licenseRedemptionCodes.status,
           soldPrice: licenseRedemptionCodes.soldPrice,
-          currency: licenseRedemptionCodes.currency,
+          soldPriceCurrency: licenseRedemptionCodes.soldPriceCurrency,
           generatedAt: licenseRedemptionCodes.generatedAt,
           redeemExpiresAt: licenseRedemptionCodes.redeemExpiresAt,
           claimedAt: licenseRedemptionCodes.claimedAt,
@@ -391,7 +392,7 @@ export class LicenseRedemptionRepository {
         redeemCode: licenseRedemptionCodes.redeemCode,
         status: licenseRedemptionCodes.status,
         soldPrice: licenseRedemptionCodes.soldPrice,
-        currency: licenseRedemptionCodes.currency,
+        soldPriceCurrency: licenseRedemptionCodes.soldPriceCurrency,
         generatedAt: licenseRedemptionCodes.generatedAt,
         redeemExpiresAt: licenseRedemptionCodes.redeemExpiresAt,
         claimedAt: licenseRedemptionCodes.claimedAt,
@@ -422,7 +423,7 @@ export class LicenseRedemptionRepository {
         pricingId: licenseRedemptionItems.pricingId,
         basePrice: licenseRedemptionItems.basePrice,
         soldPrice: licenseRedemptionItems.soldPrice,
-        currency: licenseRedemptionItems.currency,
+        basePriceCurrency: licenseRedemptionItems.basePriceCurrency,
         durationDays: licenseRedemptionItems.durationDays,
         createdAt: licenseRedemptionItems.createdAt,
         licenseKey: licenses.licenseKey,
@@ -451,7 +452,7 @@ export class LicenseRedemptionRepository {
         {
           status: LicenseRedemptionStatusEnum.VERIFIED,
           soldPrice: input.totalSoldPrice,
-          currency: input.currency,
+          soldPriceCurrency: input.soldPriceCurrency,
         },
       );
 

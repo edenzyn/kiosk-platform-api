@@ -274,6 +274,76 @@
       "when": 1787841943989,
       "tag": "0038_license-transaction-scheam-updates",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1787891458052,
+      "tag": "0039_ambiguous_power_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1787950000000,
+      "tag": "0040_rename-redemption-currency-columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1787910465460,
+      "tag": "0041_license-transaction-scheam-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1788010000000,
+      "tag": "0042_add-discount-details-to-license-transaction-items",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1788020000000,
+      "tag": "0043_add-discount-currency-to-license-transaction-items",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788337611340,
+      "tag": "0044_short_bug",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1788340476896,
+      "tag": "0045_concerned_victor_mancha",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1788343447857,
+      "tag": "0046_amused_living_lightning",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788348583135,
+      "tag": "0047_certain_sleeper",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788600000000,
+      "tag": "0048_rename_logo_url_to_logo",
+      "breakpoints": true
     }
   ]
 }

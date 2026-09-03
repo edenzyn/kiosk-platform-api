@@ -50,4 +50,26 @@ export class OrganizationValidator {
   static readonly delete = Yup.object({
     id: Yup.string().uuid("Invalid organization ID").required(),
   }).noUnknown();
+
+  static readonly updateMyOrganization = Yup.object({
+    name: Yup.string().trim().min(2).max(255).optional(),
+    registeredName: Yup.string().trim().max(255).nullable().optional(),
+    registrationNumber: Yup.string().trim().max(100).nullable().optional(),
+    country: Yup.string().max(100).nullable().optional(),
+    state: Yup.string().max(100).nullable().optional(),
+    city: Yup.string().max(100).nullable().optional(),
+    postalCode: Yup.string().max(20).nullable().optional(),
+    area: Yup.string().max(255).nullable().optional(),
+    landmark: Yup.string().max(255).nullable().optional(),
+    address: Yup.string().nullable().optional(),
+  }).noUnknown();
+
+  static readonly updateMyOrganizationSettings = Yup.object({
+    primaryColor: Yup.string().trim().max(20).optional(),
+    languageCode: Yup.string().trim().max(10).optional(),
+    currencyCode: Yup.string().trim().max(3).optional(),
+    timezone: Yup.string().trim().max(100).optional(),
+    logo: Yup.string().trim().max(255).nullable().optional(),
+  }).noUnknown();
+
 }

@@ -19,5 +19,6 @@ export interface CheckAuthResponseDto {
   availableScopes?: UserScope[];
   topRole?: Pick<RoleEntity, "name" | "description" | "rank" | "isSystem"> | null;
   settings: UserSettingsEntity;
+  logoUrl?: string | null;
 }
 export interface CheckAuthRequestDto {}

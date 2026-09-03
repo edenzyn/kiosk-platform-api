@@ -1,4 +1,4 @@
-import type { BranchEntity } from "../branch.schema";
+import type { BranchEntity } from "../schemas/branch.schema";
 
 export interface CreateBranchRequestDto {
   organizationId: string;
@@ -12,7 +12,6 @@ export interface CreateBranchRequestDto {
   area?: string | null;
   landmark?: string | null;
   address: string;
-  timezone: string;
   latitude?: number | null;
   longitude?: number | null;
   createdBy: string;

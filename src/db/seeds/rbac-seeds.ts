@@ -1,6 +1,6 @@
 import bcrypt from "bcrypt";
 import { initDatabase } from "../../config/db";
-import { organizations } from "../../modules/organization/organization.schema";
+import { organizations } from "../../modules/organization/schemas/organization.schema";
 import { permissionMapper as permissionsMapper } from "../../modules/rbac/schemas/permission-mapper.schema";
 import { permissions } from "../../modules/rbac/schemas/permission.schema";
 import { roles } from "../../modules/rbac/schemas/role.schema";

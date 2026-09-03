@@ -88,6 +88,9 @@ export interface ResolvedPurchasePricing {
   appliedDiscountRuleId: string | null;
   subtotal: string;
   discountPercentage: string;
+  discountType: number;
+  discountValue: string;
+  discountCurrency: string;
   discountAmount: string;
   totalAmount: string;
   unitPrice: string;
@@ -246,7 +249,7 @@ export interface VerifyRedemptionCodeServiceInput {
   redemptionId: string;
   dto: {
     totalSoldPrice: number;
-    currency: string;
+    soldPriceCurrency: string;
     items: Array<{ licenseId: string; soldPrice: number }>;
   };
 }
@@ -474,8 +477,9 @@ export interface GetLicenseExtendInfoServiceInput {
 export interface LicenseExtendLockedPricing {
   planName: string | null;
   basePrice: string;
+  basePriceCurrency: string;
   soldPrice: string | null;
-  currency: string;
+  soldPriceCurrency: string | null;
   durationDays: number;
 }
 
@@ -488,8 +492,9 @@ export interface FindRedemptionPricingForLicenseRepoResult {
   pricingId: string | null;
   planName: string | null;
   basePrice: string;
+  basePriceCurrency: string;
   soldPrice: string | null;
-  currency: string;
+  soldPriceCurrency: string | null;
   durationDays: number;
 }
 
@@ -577,10 +582,14 @@ export interface LicenseTransactionItemDetail {
   licenseId: string | null;
   licenseKey: string | null;
   deviceType: number | null;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string;
   createdAt: string;
 }
@@ -654,10 +663,14 @@ export type LicenseDetailsResult = {
 export type LicenseDetailsTransactionItem = {
   id: string;
   transactionId: string;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string;
   createdAt: string;
   paymentStatus: number | null;
@@ -731,10 +744,14 @@ export type LicenseTransactionItemWithHeaderRow = {
   licenseId: string | null;
   licenseKey: string | null;
   deviceType: number | null;
+  pricingPlanId: string | null;
+  planName: string | null;
   actionType: number | null;
   durationDays: number | null;
   baseUnitPrice: string | null;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  discountCurrency: string | null;
   unitPrice: string | null;
   itemCreatedAt: string | null;
   transactionId: string;
@@ -825,7 +842,7 @@ export interface CreateRedemptionCodeRepoInput {
     pricingId?: string | null;
     basePrice: string;
     soldPrice: string | null;
-    currency: string;
+    basePriceCurrency: string;
     durationDays: number;
   }>;
 }
@@ -872,7 +889,7 @@ export interface VerifyRedemptionCodeRepoInput {
   id: string;
   resellerId: string;
   totalSoldPrice: string;
-  currency: string;
+  soldPriceCurrency: string;
   items: Array<{ licenseId: string; soldPrice: string }>;
 }
 export type VerifyRedemptionCodeRepoResult = boolean;
@@ -897,6 +914,7 @@ export type FindLatestPurchaseSnapshotRepoResult = {
   durationDays: number;
   baseUnitPrice: string;
   currency: string;
+  pricingPlanId: string | null;
 } | null;
 
 export interface FindLicensesForStatusCheckRepoInput {
@@ -921,10 +939,14 @@ export interface CreatePendingLicenseTransactionRepoInput {
   // Pre-created with a null licenseId — purchase items are known (quantity,
   // duration, price) before any license exists; finalize links them up.
   items?: Array<{
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage?: string | null;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   }>;
 }
@@ -952,10 +974,14 @@ export interface FinalizeLicensePurchaseRepoInput {
     updatedBy: string;
   }>;
   transactionItems?: Array<{
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage?: string;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   }>;
 }
@@ -997,10 +1023,14 @@ export interface FinalizeLicenseExtendRepoInput {
   newExpiresAt: Date;
   newStatus: number;
   transactionItem: {
+    pricingPlanId?: string | null;
+    planName?: string | null;
     actionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountPercentage: string;
+    discountType?: number | null;
+    discountValue?: string | null;
+    discountCurrency?: string | null;
     unitPrice: string;
   };
   historyEvent: {

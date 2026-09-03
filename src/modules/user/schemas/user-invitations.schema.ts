@@ -10,8 +10,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
-import { branches } from "../../branch/branch.schema";
-import { organizations } from "../../organization/organization.schema";
+import { branches } from "../../branch/schemas/branch.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "./user.schema";
 
 export const userInvitations = pgTable("user_invitations", {

@@ -1,10 +1,3 @@
-/**
- * Single source of truth for one-time token sizes and policy.
- *
- * Drives token generation, request validation, rate limiting, and the OTP
- * inputs on the client (sizes mirrored in
- * `user-client/src/shared/constants/otpConstants.ts`).
- */
 export const ONE_TIME_TOKEN_CONSTANTS = {
   /** Digits in a delivered OTP (2FA email/WhatsApp, email & mobile change). */
   CODE_LENGTH: 6,

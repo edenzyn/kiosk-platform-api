@@ -31,6 +31,8 @@
     "db:seed:functions": "tsx ./src/db/seeds/sql-functions-seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
+    "@aws-sdk/s3-request-presigner": "^3.1125.0",
     "awesome-phonenumber": "^7.8.0",
     "awilix": "^13.0.5",
     "bcrypt": "^6.0.0",

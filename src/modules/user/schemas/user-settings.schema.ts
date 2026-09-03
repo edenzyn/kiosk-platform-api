@@ -7,6 +7,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { DEFAULT_PRIMARY_COLOR } from "../../../shared/constants/theme.constants";
 import { ThemeModeEnums } from "../../../shared/enums/theme/theme-mode.enum";
 import type { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { users } from "./user.schema";
@@ -22,11 +23,13 @@ export const userSettings = pgTable("user_settings", {
     .default(ThemeModeEnums.SYSTEM),
   primaryColor: varchar("primary_color", { length: 20 })
     .notNull()
-    .default("#10b981"),
+    .default(DEFAULT_PRIMARY_COLOR),
   languageCode: varchar("language_code", { length: 10 })
     .notNull()
     .default("en"),
-  timezone: varchar("timezone", { length: 100 }).notNull().default("UTC"),
+  timezone: varchar("timezone", { length: 100 })
+    .notNull()
+    .default("Asia/Kolkata"),
   currencyCode: varchar("currency_code", { length: 3 })
     .notNull()
     .default("INR"),

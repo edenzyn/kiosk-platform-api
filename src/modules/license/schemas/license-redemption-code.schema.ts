@@ -8,7 +8,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { organizations } from "../../organization/organization.schema";
+import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 
 export const licenseRedemptionCodes = pgTable("license_redemption_codes", {
@@ -20,7 +20,7 @@ export const licenseRedemptionCodes = pgTable("license_redemption_codes", {
   redeemCodeHash: text("redeem_code_hash").notNull().unique(), // hashed
   status: smallint("status").notNull(), // LicenseRedemptionStatusEnum
   soldPrice: decimal("sold_price", { precision: 10, scale: 2 }),
-  currency: varchar("currency", { length: 10 }),
+  soldPriceCurrency: varchar("sold_price_currency", { length: 10 }),
   generatedAt: timestamp("generated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

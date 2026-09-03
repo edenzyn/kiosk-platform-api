@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { container } from "../../config/container";
 import { accessMiddleware } from "../../middleware/access.middleware";
+import { fileParserMiddleware } from "../../middleware/file-parser.middleware";
+import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { BRANCH_TOP_SCOPED_PERMISSIONS } from "../../shared/constants/user-permission.constants";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { BranchController } from "./branch.controller";
@@ -46,11 +48,55 @@ branchRouter.get(
   branchController.getBranchesForFilters,
 );
 
-branchRouter.put(
-  "/:id",
+branchRouter.route("/details").put(
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+    branch: [UserPermissions.BRANCH_UPDATE],
+  }),
+  branchController.updateDetails,
+);
+
+branchRouter
+  .route("/settings")
+  .get(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    branchController.getSettings,
+  )
+  .put(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    branchController.updateSettings,
+  );
+
+branchRouter
+  .route("/settings/brand-logo")
+  .post(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    fileParserMiddleware({
+      acceptedTypes: FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
+    }),
+    branchController.uploadBrandLogo,
+  )
+  .delete(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
+    }),
+    branchController.deleteBrandLogo,
+  );
+
+branchRouter.route("/:id").put(
   accessMiddleware({
     organization: [
-      UserPermissions.ORGANIZATION_ALL_WRITE,
       UserPermissions.ORGANIZATION_BRANCH_WRITE,
       UserPermissions.ORGANIZATION_BRANCH_READ,
     ],

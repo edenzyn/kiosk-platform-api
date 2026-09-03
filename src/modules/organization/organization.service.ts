@@ -1,24 +1,33 @@
 import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
-import { getInviteOrganizationTemplate } from "../notification/channels/email/templates/invite-organization.template";
+import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates/invite-organization.template";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
+import type { FileService } from "../file/file.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
+  GetMyOrganizationSettingsServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
   InviteOrganizationServiceResult,
   ToggleOrganizationStatusServiceInput,
   ToggleOrganizationStatusServiceResult,
+  UpdateMyOrganizationServiceInput,
+  UpdateMyOrganizationServiceResult,
+  UpdateMyOrganizationSettingsServiceInput,
+  UpdateMyOrganizationSettingsServiceResult,
+  UploadOrganizationLogoServiceInput,
+  UploadOrganizationLogoServiceResult,
 } from "./organization.types";
 
 export class OrganizationService {
@@ -26,6 +35,7 @@ export class OrganizationService {
     private readonly organizationRepository: OrganizationRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
+    private readonly fileService: FileService,
   ) {}
 
   // ========================================
@@ -181,5 +191,135 @@ export class OrganizationService {
     });
 
     return { organization: updated };
+  }
+
+  // ========================================
+  // ? USER CLIENT SERVICES
+  // ========================================
+  async updateMyOrganization(
+    input: UpdateMyOrganizationServiceInput,
+  ): Promise<UpdateMyOrganizationServiceResult> {
+    const existing = await this.organizationRepository.findOne({
+      id: input.organizationId,
+    });
+
+    if (!existing) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const organization = await this.organizationRepository.update({
+      id: input.organizationId,
+      data: { ...input.data, updatedBy: input.currentUser.id },
+    });
+
+    return { organization };
+  }
+
+  async getMyOrganizationSettings(
+    organizationId: string,
+  ): Promise<GetMyOrganizationSettingsServiceResult> {
+    const organization = await this.organizationRepository.findOne({
+      id: organizationId,
+    });
+
+    if (!organization) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const settings =
+      await this.organizationRepository.getOrCreateSettings(organizationId);
+
+    let brandLogoUrl: string | null = null;
+    if (settings.logo) {
+      const result = await this.fileService.generateBrandLogoUrl(
+        settings.logo,
+      );
+      brandLogoUrl = result.brandLogoUrl;
+    }
+
+    return { organization, settings, brandLogoUrl };
+  }
+
+  async updateMyOrganizationSettings(
+    input: UpdateMyOrganizationSettingsServiceInput,
+  ): Promise<UpdateMyOrganizationSettingsServiceResult> {
+    const settings = await this.organizationRepository.updateSettings({
+      organizationId: input.organizationId,
+      data: input.data,
+    });
+
+    return { settings };
+  }
+
+  async uploadBrandLogo(
+    input: UploadOrganizationLogoServiceInput,
+  ): Promise<UploadOrganizationLogoServiceResult> {
+    const { organizationId, contentType, body } = input;
+
+    if (
+      !contentType ||
+      !FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes.includes(
+        contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
+      )
+    ) {
+      throw new AppError("Unsupported or missing image content type", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      throw new AppError("Image data is required", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (body.length > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
+      throw new AppError("Image is too large", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    const { settings: existing } =
+      await this.getMyOrganizationSettings(organizationId);
+
+    const { logo } = await this.fileService.uploadBrandLogo({
+      contentType,
+      body,
+    });
+
+    await this.updateMyOrganizationSettings({
+      organizationId,
+      data: { logo },
+    });
+
+    if (existing.logo) {
+      await this.fileService.deleteBrandLogo(existing.logo);
+    }
+
+    const { brandLogoUrl, expiresIn } =
+      await this.fileService.generateBrandLogoUrl(logo);
+
+    return { brandLogoUrl, expiresIn };
+  }
+
+  async deleteBrandLogo(organizationId: string): Promise<void> {
+    const { settings } = await this.getMyOrganizationSettings(organizationId);
+
+    if (!settings.logo) return;
+
+    await this.fileService.deleteBrandLogo(settings.logo);
+    await this.updateMyOrganizationSettings({
+      organizationId,
+      data: { logo: null },
+    });
   }
 }

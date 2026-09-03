@@ -38,7 +38,7 @@ import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
-import { getForgotPasswordTemplate } from "../../notification/channels/email/templates/forgot-password.template";
+import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import type { NotificationService } from "../../notification/notification.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";
@@ -282,7 +282,11 @@ export class AuthService {
   ): Promise<LoginServiceResult> {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
-    const settings = await this.userService.getOrCreateSettings(user.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+    });
 
     const userScope = getUserScope(user);
 
@@ -311,7 +315,11 @@ export class AuthService {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
-    const settings = await this.userService.getOrCreateSettings(user.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+    });
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -329,7 +337,11 @@ export class AuthService {
     const { password, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
-    const settings = await this.userService.getOrCreateSettings(user.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+    });
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -629,7 +641,11 @@ export class AuthService {
         createdUser.branchId,
         userScope,
       );
-    const settings = await this.userService.getOrCreateSettings(createdUser.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: createdUser.id,
+      organizationId: createdUser.organizationId,
+      branchId: createdUser.branchId,
+    });
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -706,7 +722,11 @@ export class AuthService {
       null,
       null,
     );
-    const settings = await this.userService.getOrCreateSettings(createdUser.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: createdUser.id,
+      organizationId: createdUser.organizationId,
+      branchId: createdUser.branchId,
+    });
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -784,7 +804,11 @@ export class AuthService {
         createdUser.branchId,
         userScope,
       );
-    const settings = await this.userService.getOrCreateSettings(createdUser.id);
+    const settings = await this.userService.getOrCreateSettings({
+      id: createdUser.id,
+      organizationId: createdUser.organizationId,
+      branchId: createdUser.branchId,
+    });
 
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
@@ -952,7 +976,11 @@ export class AuthService {
           user.branchId,
           userScope,
         );
-      const settings = await this.userService.getOrCreateSettings(user.id);
+      const settings = await this.userService.getOrCreateSettings({
+      id: user.id,
+      organizationId: user.organizationId,
+      branchId: user.branchId,
+    });
 
       return {
         clientType: ClientTypeEnum.USER_CLIENT,

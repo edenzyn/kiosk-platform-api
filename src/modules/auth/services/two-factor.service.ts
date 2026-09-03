@@ -8,7 +8,7 @@ import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-t
 import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
 import { AppError } from "../../../shared/errors/app-error";
 import { compareHashedData } from "../../../shared/utils/core/bcrypt.helper";
-import { getTwoFactorOtpTemplate } from "../../notification/channels/email/templates/two-factor-otp.template";
+import { getTwoFactorOtpTemplate } from "../../../shared/utils/emailTemplates/two-factor-otp.template";
 import type { NotificationService } from "../../notification/notification.service";
 import type { UserRepository } from "../../user/user.repository";
 import type { RequiresTwoFactorServiceResult } from "../auth.types";
@@ -28,7 +28,7 @@ export class TwoFactorService {
   ) {}
 
   async getStatus(userId: string): Promise<TwoFactorStatusResponseDto> {
-    const settings = await this.userRepository.getOrCreateSettings(userId);
+    const settings = await this.userRepository.getOrCreateSettings({ userId });
     return {
       isEnabled: settings.twoFactorEnabled,
       method: settings.twoFactorMethod,

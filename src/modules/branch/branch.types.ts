@@ -1,8 +1,9 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
-import type { BranchEntity } from "./branch.schema";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
+import type { BranchEntity } from "./schemas/branch.schema";
+import type { BranchSettingsEntity } from "./schemas/branch-settings.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -60,7 +61,6 @@ export interface UpdateBranchServiceInput {
     area?: string | null;
     landmark?: string | null;
     address?: string;
-    timezone?: string;
     latitude?: number | null;
     longitude?: number | null;
   };
@@ -69,6 +69,70 @@ export interface UpdateBranchServiceInput {
 }
 
 export type UpdateBranchServiceResult = BranchEntity;
+
+export interface UpdateBranchDetailsServiceInput {
+  branchId: string;
+  data: Partial<
+    Pick<
+      BranchEntity,
+      | "name"
+      | "email"
+      | "mobile"
+      | "country"
+      | "state"
+      | "city"
+      | "postalCode"
+      | "area"
+      | "landmark"
+      | "address"
+    >
+  >;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export interface UpdateBranchDetailsServiceResult {
+  branch: BranchEntity;
+}
+
+export interface GetBranchSettingsServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+}
+export interface GetBranchSettingsServiceResult {
+  branch: BranchEntity;
+  settings: BranchSettingsEntity;
+  brandLogoUrl: string | null;
+}
+
+export interface UpdateBranchSettingsServiceInput {
+  branchId: string;
+  data: Partial<
+    Pick<
+      BranchSettingsEntity,
+      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+    >
+  >;
+  effectiveTenant: EffectiveTenant;
+}
+export interface UpdateBranchSettingsServiceResult {
+  settings: BranchSettingsEntity;
+}
+
+export interface UploadBranchLogoServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+  contentType: string | undefined;
+  body: unknown;
+}
+export interface UploadBranchLogoServiceResult {
+  brandLogoUrl: string;
+  expiresIn: number;
+}
+
+export interface DeleteBranchLogoServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+}
 
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
@@ -114,3 +178,14 @@ export interface UpdateBranchRepoInput {
   data: Partial<BranchEntity>;
 }
 export type UpdateBranchRepoResult = BranchEntity;
+
+export interface UpdateBranchSettingsRepoInput {
+  branchId: string;
+  data: Partial<
+    Pick<
+      BranchSettingsEntity,
+      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+    >
+  >;
+}
+export type UpdateBranchSettingsRepoResult = BranchSettingsEntity;

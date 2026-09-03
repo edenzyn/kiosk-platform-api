@@ -10,7 +10,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { branches } from "../branch/branch.schema";
+import { branches } from "../branch/schemas/branch.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
   CreateDeviceRepoInput,

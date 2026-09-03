@@ -8,6 +8,7 @@ import {
 import { AuthContainer } from "../modules/auth/auth.container";
 import { BranchContainer } from "../modules/branch/branch.container";
 import { DeviceContainer } from "../modules/device/device.container";
+import { FileContainer } from "../modules/file/file.container";
 import { FinanceContainer } from "../modules/finance/finance.container";
 import { LicenseContainer } from "../modules/license/license.container";
 import { NotificationContainer } from "../modules/notification/notification.container";
@@ -20,6 +21,7 @@ import { EmailProvider } from "../shared/providers/email/email.provider";
 import { FrankfurterProvider } from "../shared/providers/finance/frankfurter.provider";
 import { RazorpayProvider } from "../shared/providers/finance/razorpay.provider";
 import { RedisProvider } from "../shared/providers/redis/redis.provider";
+import { S3Provider } from "../shared/providers/s3/s3.provider";
 import { WhatsAppProvider } from "../shared/providers/whatsapp/whatsapp.provider";
 import { createEmailQueue } from "../shared/queue/email/email.queue";
 import { createWhatsAppQueue } from "../shared/queue/whatsapp/whatsapp.queue";
@@ -28,6 +30,7 @@ import { mailTransporter } from "./mail";
 import { createQueueConnection } from "./queue-connection";
 import { createRazorpayClient } from "./razorpay";
 import { initRedis } from "./redis";
+import { createS3Client } from "./s3";
 import { whatsappClientConfig } from "./whatsapp";
 
 export const container = createContainer({
@@ -49,6 +52,8 @@ container.register({
   emailProvider: asClass(EmailProvider).singleton(),
   whatsappClientConfig: asValue(whatsappClientConfig),
   whatsappProvider: asClass(WhatsAppProvider).singleton(),
+  s3Client: asFunction(createS3Client).singleton(),
+  s3Provider: asClass(S3Provider).singleton(),
 });
 
 UserContainer.register(container);
@@ -57,6 +62,7 @@ OrganizationContainer.register(container);
 BranchContainer.register(container);
 RbacContainer.register(container);
 DeviceContainer.register(container);
+FileContainer.register(container);
 FinanceContainer.register(container);
 LicenseContainer.register(container);
 PlatformContainer.register(container);

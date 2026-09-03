@@ -133,6 +133,18 @@ const EnvSchema = Yup.object({
   RAZORPAY_KEY_ID: Yup.string().required().min(1),
   RAZORPAY_KEY_SECRET: Yup.string().required().min(1),
   RAZORPAY_WEBHOOK_SECRET: Yup.string().required().min(1),
+
+  // ==============================
+  // Storage (S3)
+  // ==============================
+  S3_REGION: Yup.string().required().min(1),
+  S3_BUCKET: Yup.string().required().min(1),
+  S3_ACCESS_KEY_ID: Yup.string().required().min(1),
+  S3_SECRET_ACCESS_KEY: Yup.string().required().min(1),
+  S3_PRESIGNED_URL_EXPIRES_IN_SECONDS: Yup.number()
+    .integer()
+    .positive()
+    .default(300),
 });
 
 export const env = EnvSchema.validateSync(process.env, { stripUnknown: true });

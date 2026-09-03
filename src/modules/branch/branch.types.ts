@@ -124,6 +124,31 @@ export interface UpdateBranchSettingsServiceResult {
   settings: BranchSettingsEntity;
 }
 
+export interface UploadBranchLogoServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+  contentType: string | undefined;
+  body: unknown;
+}
+export interface UploadBranchLogoServiceResult {
+  brandLogoUrl: string;
+  expiresIn: number;
+}
+
+export interface GetBranchLogoUrlServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+}
+export interface GetBranchLogoUrlServiceResult {
+  brandLogoUrl: string | null;
+  expiresIn?: number;
+}
+
+export interface DeleteBranchLogoServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================

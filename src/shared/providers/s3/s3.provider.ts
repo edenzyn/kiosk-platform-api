@@ -10,15 +10,10 @@ import { HttpStatusCodes } from "../../constants/http-status-codes.constants";
 import { ErrorCodes } from "../../enums/core/error-codes.enum";
 import { AppError } from "../../errors/app-error";
 
-export interface GetUploadUrlInput {
+export interface UploadObjectInput {
   key: string;
+  body: Buffer;
   contentType: string;
-}
-
-export interface GetUploadUrlResult {
-  uploadUrl: string;
-  key: string;
-  expiresIn: number;
 }
 
 export interface GetDownloadUrlInput {
@@ -33,27 +28,18 @@ export interface GetDownloadUrlResult {
 export class S3Provider {
   constructor(private readonly s3Client: S3Client) {}
 
-  async getUploadUrl(
-    input: GetUploadUrlInput,
-  ): Promise<GetUploadUrlResult> {
+  async uploadObject(input: UploadObjectInput): Promise<void> {
     try {
-      const command = new PutObjectCommand({
-        Bucket: env.S3_BUCKET,
-        Key: input.key,
-        ContentType: input.contentType,
-      });
-
-      const uploadUrl = await getSignedUrl(this.s3Client, command, {
-        expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
-      });
-
-      return {
-        uploadUrl,
-        key: input.key,
-        expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
-      };
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: env.S3_BUCKET,
+          Key: input.key,
+          Body: input.body,
+          ContentType: input.contentType,
+        }),
+      );
     } catch (error) {
-      throw new AppError("Failed to generate upload URL", {
+      throw new AppError("Failed to upload file to storage", {
         statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,

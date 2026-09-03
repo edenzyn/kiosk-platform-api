@@ -91,6 +91,7 @@ export const BranchValidator = {
       languageCode: yup.string().trim().max(10).optional(),
       currencyCode: yup.string().trim().max(3).optional(),
       timezone: yup.string().trim().max(100).optional(),
+      logo: yup.string().trim().max(255).nullable().optional(),
     })
     .noUnknown(),
 };

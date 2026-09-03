@@ -113,4 +113,39 @@ export class BranchController {
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  uploadBrandLogo = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    const result = await this.branchService.uploadBrandLogo({
+      branchId: effectiveTenant.branchId as string,
+      effectiveTenant,
+      contentType: req.headers["content-type"],
+      body: req.body,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getBrandLogoUrl = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    const result = await this.branchService.getBrandLogoUrl({
+      branchId: effectiveTenant.branchId as string,
+      effectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  deleteBrandLogo = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    await this.branchService.deleteBrandLogo({
+      branchId: effectiveTenant.branchId as string,
+      effectiveTenant,
+    });
+
+    res.status(HttpStatusCodes.NO_CONTENT).send();
+  };
 }

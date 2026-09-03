@@ -59,6 +59,21 @@ export interface UpdateMyOrganizationSettingsServiceResult {
   settings: OrganizationSettingsEntity;
 }
 
+export interface UploadOrganizationLogoServiceInput {
+  organizationId: string;
+  contentType: string | undefined;
+  body: unknown;
+}
+export interface UploadOrganizationLogoServiceResult {
+  brandLogoUrl: string;
+  expiresIn: number;
+}
+
+export interface GetOrganizationLogoUrlServiceResult {
+  brandLogoUrl: string | null;
+  expiresIn?: number;
+}
+
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
 // ========================================

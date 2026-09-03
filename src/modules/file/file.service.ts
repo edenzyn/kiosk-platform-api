@@ -7,7 +7,7 @@ import type {
 } from "./file.types";
 
 export class FileService {
-  private readonly brandLogo = "brand-logos";
+  private readonly brandLogoPrefixPath = "brand-logos";
 
   constructor(private readonly fileRepository: FileRepository) {}
 
@@ -17,25 +17,33 @@ export class FileService {
   async uploadBrandLogo(
     input: UploadBrandLogoInput,
   ): Promise<UploadBrandLogoResult> {
-    const logo = `${randomUUID()}.${input.fileType}`;
+    const fileType = input.contentType.split("/")[1] || "png";
+    const logo = `${randomUUID()}.${fileType}`;
 
-    const { uploadUrl, expiresIn } = await this.fileRepository.getUploadUrl({
-      key: `${this.brandLogo}/${logo}`,
+    await this.fileRepository.uploadObject({
+      key: `${this.brandLogoPrefixPath}/${logo}`,
+      body: input.body,
       contentType: input.contentType,
     });
 
-    return { logo, uploadUrl, expiresIn };
+    return { logo };
   }
 
   async generateBrandLogoUrl(
     logo: string,
   ): Promise<GenerateBrandLogoUrlResult> {
-    return this.fileRepository.getDownloadUrl({
-      key: `${this.brandLogo}/${logo}`,
-    });
+    const { downloadUrl, expiresIn } = await this.fileRepository.getDownloadUrl(
+      {
+        key: `${this.brandLogoPrefixPath}/${logo}`,
+      },
+    );
+
+    return { brandLogoUrl: downloadUrl, expiresIn };
   }
 
   async deleteBrandLogo(logo: string): Promise<void> {
-    await this.fileRepository.deleteObject(`${this.brandLogo}/${logo}`);
+    await this.fileRepository.deleteObject(
+      `${this.brandLogoPrefixPath}/${logo}`,
+    );
   }
 }

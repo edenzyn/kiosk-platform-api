@@ -1,6 +1,7 @@
 import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
+import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
@@ -9,12 +10,14 @@ import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates/invite-organization.template";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
+import type { FileService } from "../file/file.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
   GetMyOrganizationServiceResult,
   GetMyOrganizationSettingsServiceResult,
+  GetOrganizationLogoUrlServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
@@ -25,6 +28,8 @@ import type {
   UpdateMyOrganizationServiceResult,
   UpdateMyOrganizationSettingsServiceInput,
   UpdateMyOrganizationSettingsServiceResult,
+  UploadOrganizationLogoServiceInput,
+  UploadOrganizationLogoServiceResult,
 } from "./organization.types";
 
 export class OrganizationService {
@@ -32,6 +37,7 @@ export class OrganizationService {
     private readonly organizationRepository: OrganizationRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
+    private readonly fileService: FileService,
   ) {}
 
   // ========================================
@@ -249,5 +255,83 @@ export class OrganizationService {
     });
 
     return { settings };
+  }
+
+  async uploadBrandLogo(
+    input: UploadOrganizationLogoServiceInput,
+  ): Promise<UploadOrganizationLogoServiceResult> {
+    const { organizationId, contentType, body } = input;
+
+    if (
+      !contentType ||
+      !FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes.includes(
+        contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
+      )
+    ) {
+      throw new AppError("Unsupported or missing image content type", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      throw new AppError("Image data is required", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (body.length > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
+      throw new AppError("Image is too large", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    const { settings: existing } =
+      await this.getMyOrganizationSettings(organizationId);
+
+    const { logo } = await this.fileService.uploadBrandLogo({
+      contentType,
+      body,
+    });
+
+    await this.updateMyOrganizationSettings({
+      organizationId,
+      data: { logo },
+    });
+
+    if (existing.logo) {
+      await this.fileService.deleteBrandLogo(existing.logo);
+    }
+
+    const { brandLogoUrl, expiresIn } =
+      await this.fileService.generateBrandLogoUrl(logo);
+
+    return { brandLogoUrl, expiresIn };
+  }
+
+  async getBrandLogoUrl(
+    organizationId: string,
+  ): Promise<GetOrganizationLogoUrlServiceResult> {
+    const { settings } = await this.getMyOrganizationSettings(organizationId);
+
+    if (!settings.logo) {
+      return { brandLogoUrl: null };
+    }
+
+    return this.fileService.generateBrandLogoUrl(settings.logo);
+  }
+
+  async deleteBrandLogo(organizationId: string): Promise<void> {
+    const { settings } = await this.getMyOrganizationSettings(organizationId);
+
+    if (!settings.logo) return;
+
+    await this.fileService.deleteBrandLogo(settings.logo);
+    await this.updateMyOrganizationSettings({
+      organizationId,
+      data: { logo: null },
+    });
   }
 }

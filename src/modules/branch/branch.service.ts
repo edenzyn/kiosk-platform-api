@@ -1,24 +1,32 @@
+import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { FileService } from "../file/file.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 import type {
+  DeleteBranchLogoServiceInput,
   GetBranchDetailsServiceInput,
   GetBranchDetailsServiceResult,
+  GetBranchLogoUrlServiceInput,
+  GetBranchLogoUrlServiceResult,
   GetBranchSettingsServiceInput,
   GetBranchSettingsServiceResult,
   UpdateBranchDetailsServiceInput,
   UpdateBranchDetailsServiceResult,
   UpdateBranchSettingsServiceInput,
   UpdateBranchSettingsServiceResult,
+  UploadBranchLogoServiceInput,
+  UploadBranchLogoServiceResult,
 } from "./branch.types";
 
 export class BranchService {
@@ -26,6 +34,7 @@ export class BranchService {
     private readonly branchRepository: BranchRepository,
     private readonly rbacRepository: RbacRepository,
     private readonly organizationRepository: OrganizationRepository,
+    private readonly fileService: FileService,
   ) {}
 
   async createBranch(
@@ -280,5 +289,91 @@ export class BranchService {
     });
 
     return { settings };
+  }
+
+  async uploadBrandLogo(
+    input: UploadBranchLogoServiceInput,
+  ): Promise<UploadBranchLogoServiceResult> {
+    const { branchId, effectiveTenant, contentType, body } = input;
+
+    if (
+      !contentType ||
+      !FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes.includes(
+        contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
+      )
+    ) {
+      throw new AppError("Unsupported or missing image content type", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      throw new AppError("Image data is required", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (body.length > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
+      throw new AppError("Image is too large", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    const { settings: existing } = await this.getBranchSettings({
+      branchId,
+      effectiveTenant,
+    });
+
+    const { logo } = await this.fileService.uploadBrandLogo({
+      contentType,
+      body,
+    });
+
+    await this.updateBranchSettings({
+      branchId,
+      data: { logo },
+      effectiveTenant,
+    });
+
+    if (existing.logo) {
+      await this.fileService.deleteBrandLogo(existing.logo);
+    }
+
+    const { brandLogoUrl, expiresIn } =
+      await this.fileService.generateBrandLogoUrl(logo);
+
+    return { brandLogoUrl, expiresIn };
+  }
+
+  async getBrandLogoUrl(
+    input: GetBranchLogoUrlServiceInput,
+  ): Promise<GetBranchLogoUrlServiceResult> {
+    const { settings } = await this.getBranchSettings(input);
+
+    if (!settings.logo) {
+      return { brandLogoUrl: null };
+    }
+
+    return this.fileService.generateBrandLogoUrl(settings.logo);
+  }
+
+  async deleteBrandLogo(input: DeleteBranchLogoServiceInput): Promise<void> {
+    const { branchId, effectiveTenant } = input;
+    const { settings } = await this.getBranchSettings({
+      branchId,
+      effectiveTenant,
+    });
+
+    if (!settings.logo) return;
+
+    await this.fileService.deleteBrandLogo(settings.logo);
+    await this.updateBranchSettings({
+      branchId,
+      data: { logo: null },
+      effectiveTenant,
+    });
   }
 }

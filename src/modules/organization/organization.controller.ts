@@ -98,4 +98,36 @@ export class OrganizationController {
     );
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  uploadBrandLogo = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    const result = await this.organizationService.uploadBrandLogo({
+      organizationId: effectiveTenant.organizationId,
+      contentType: req.headers["content-type"],
+      body: req.body,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getBrandLogoUrl = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    const result = await this.organizationService.getBrandLogoUrl(
+      effectiveTenant.organizationId,
+    );
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  deleteBrandLogo = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+
+    await this.organizationService.deleteBrandLogo(
+      effectiveTenant.organizationId,
+    );
+
+    res.status(HttpStatusCodes.NO_CONTENT).send();
+  };
 }

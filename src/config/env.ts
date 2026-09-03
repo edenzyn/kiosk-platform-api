@@ -139,6 +139,7 @@ const EnvSchema = Yup.object({
   // ==============================
   S3_REGION: Yup.string().required().min(1),
   S3_BUCKET: Yup.string().required().min(1),
+  S3_APP_FOLDER_PATH: Yup.string().required().min(1),
   S3_ACCESS_KEY_ID: Yup.string().required().min(1),
   S3_SECRET_ACCESS_KEY: Yup.string().required().min(1),
   S3_PRESIGNED_URL_EXPIRES_IN_SECONDS: Yup.number()

@@ -69,5 +69,7 @@ export class OrganizationValidator {
     languageCode: Yup.string().trim().max(10).optional(),
     currencyCode: Yup.string().trim().max(3).optional(),
     timezone: Yup.string().trim().max(100).optional(),
+    logo: Yup.string().trim().max(255).nullable().optional(),
   }).noUnknown();
+
 }

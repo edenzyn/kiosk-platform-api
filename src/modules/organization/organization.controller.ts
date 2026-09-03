@@ -46,14 +46,6 @@ export class OrganizationController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getMyOrganization = async (req: Request, res: Response): Promise<void> => {
-    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-    const result = await this.organizationService.getMyOrganization(
-      effectiveTenant.organizationId,
-    );
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
   updateMyOrganization = async (req: Request, res: Response): Promise<void> => {
     const currentUser = req.user as UserTokenDto;
     const effectiveTenant = req.effectiveTenant as EffectiveTenant;
@@ -107,16 +99,6 @@ export class OrganizationController {
       contentType: req.headers["content-type"],
       body: req.body,
     });
-
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
-  getBrandLogoUrl = async (req: Request, res: Response): Promise<void> => {
-    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-
-    const result = await this.organizationService.getBrandLogoUrl(
-      effectiveTenant.organizationId,
-    );
 
     res.status(HttpStatusCodes.OK).json(result);
   };

@@ -34,10 +34,6 @@ export interface ToggleOrganizationStatusServiceInput {
 export type ToggleOrganizationStatusServiceResult =
   ToggleOrganizationStatusResponseDto;
 
-export interface GetMyOrganizationServiceResult {
-  organization: OrganizationEntity;
-}
-
 export interface UpdateMyOrganizationServiceInput {
   organizationId: string;
   data: UpdateOrganizationRepoInput["data"];
@@ -48,7 +44,9 @@ export interface UpdateMyOrganizationServiceResult {
 }
 
 export interface GetMyOrganizationSettingsServiceResult {
+  organization: OrganizationEntity;
   settings: OrganizationSettingsEntity;
+  brandLogoUrl: string | null;
 }
 
 export interface UpdateMyOrganizationSettingsServiceInput {
@@ -67,11 +65,6 @@ export interface UploadOrganizationLogoServiceInput {
 export interface UploadOrganizationLogoServiceResult {
   brandLogoUrl: string;
   expiresIn: number;
-}
-
-export interface GetOrganizationLogoUrlServiceResult {
-  brandLogoUrl: string | null;
-  expiresIn?: number;
 }
 
 // ========================================

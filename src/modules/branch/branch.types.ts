@@ -70,14 +70,6 @@ export interface UpdateBranchServiceInput {
 
 export type UpdateBranchServiceResult = BranchEntity;
 
-export interface GetBranchDetailsServiceInput {
-  branchId: string;
-  effectiveTenant: EffectiveTenant;
-}
-export interface GetBranchDetailsServiceResult {
-  branch: BranchEntity;
-}
-
 export interface UpdateBranchDetailsServiceInput {
   branchId: string;
   data: Partial<
@@ -107,7 +99,9 @@ export interface GetBranchSettingsServiceInput {
   effectiveTenant: EffectiveTenant;
 }
 export interface GetBranchSettingsServiceResult {
+  branch: BranchEntity;
   settings: BranchSettingsEntity;
+  brandLogoUrl: string | null;
 }
 
 export interface UpdateBranchSettingsServiceInput {
@@ -133,15 +127,6 @@ export interface UploadBranchLogoServiceInput {
 export interface UploadBranchLogoServiceResult {
   brandLogoUrl: string;
   expiresIn: number;
-}
-
-export interface GetBranchLogoUrlServiceInput {
-  branchId: string;
-  effectiveTenant: EffectiveTenant;
-}
-export interface GetBranchLogoUrlServiceResult {
-  brandLogoUrl: string | null;
-  expiresIn?: number;
 }
 
 export interface DeleteBranchLogoServiceInput {

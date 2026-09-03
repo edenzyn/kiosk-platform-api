@@ -11,20 +11,12 @@ const organizationController = container.resolve<OrganizationController>(
   "organizationController",
 );
 
-userOrganizationRouter
-  .route("/details")
-  .get(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_UPDATE],
-    }),
-    organizationController.getMyOrganization,
-  )
-  .put(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_UPDATE],
-    }),
-    organizationController.updateMyOrganization,
-  );
+userOrganizationRouter.route("/details").put(
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_UPDATE],
+  }),
+  organizationController.updateMyOrganization,
+);
 
 userOrganizationRouter
   .route("/settings")
@@ -43,12 +35,6 @@ userOrganizationRouter
 
 userOrganizationRouter
   .route("/settings/brand-logo")
-  .get(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_UPDATE],
-    }),
-    organizationController.getBrandLogoUrl,
-  )
   .post(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_UPDATE],

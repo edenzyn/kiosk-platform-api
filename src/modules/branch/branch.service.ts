@@ -15,10 +15,6 @@ import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 import type {
   DeleteBranchLogoServiceInput,
-  GetBranchDetailsServiceInput,
-  GetBranchDetailsServiceResult,
-  GetBranchLogoUrlServiceInput,
-  GetBranchLogoUrlServiceResult,
   GetBranchSettingsServiceInput,
   GetBranchSettingsServiceResult,
   UpdateBranchDetailsServiceInput,
@@ -195,27 +191,6 @@ export class BranchService {
     return updated;
   }
 
-  async getBranchDetails(
-    input: GetBranchDetailsServiceInput,
-  ): Promise<GetBranchDetailsServiceResult> {
-    const { branchId, effectiveTenant } = input;
-
-    const branch = await this.branchRepository.findOne({ id: branchId });
-    if (!branch) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
-    }
-
-    if (branch.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot access details for a different branch", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
-    }
-
-    return { branch };
-  }
-
   async updateBranchDetails(
     input: UpdateBranchDetailsServiceInput,
   ): Promise<UpdateBranchDetailsServiceResult> {
@@ -262,7 +237,15 @@ export class BranchService {
 
     const settings = await this.branchRepository.getOrCreateSettings(branchId);
 
-    return { settings };
+    let brandLogoUrl: string | null = null;
+    if (settings.logo) {
+      const result = await this.fileService.generateBrandLogoUrl(
+        settings.logo,
+      );
+      brandLogoUrl = result.brandLogoUrl;
+    }
+
+    return { branch, settings, brandLogoUrl };
   }
 
   async updateBranchSettings(
@@ -346,18 +329,6 @@ export class BranchService {
       await this.fileService.generateBrandLogoUrl(logo);
 
     return { brandLogoUrl, expiresIn };
-  }
-
-  async getBrandLogoUrl(
-    input: GetBranchLogoUrlServiceInput,
-  ): Promise<GetBranchLogoUrlServiceResult> {
-    const { settings } = await this.getBranchSettings(input);
-
-    if (!settings.logo) {
-      return { brandLogoUrl: null };
-    }
-
-    return this.fileService.generateBrandLogoUrl(settings.logo);
   }
 
   async deleteBrandLogo(input: DeleteBranchLogoServiceInput): Promise<void> {

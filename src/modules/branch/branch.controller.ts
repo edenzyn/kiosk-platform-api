@@ -65,15 +65,6 @@ export class BranchController {
     res.status(HttpStatusCodes.OK).json({ branch });
   };
 
-  getDetails = async (req: Request, res: Response): Promise<void> => {
-    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-    const result = await this.branchService.getBranchDetails({
-      branchId: effectiveTenant.branchId as string,
-      effectiveTenant,
-    });
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
   updateDetails = async (req: Request, res: Response): Promise<void> => {
     const effectiveTenant = req.effectiveTenant as EffectiveTenant;
     const data = await BranchValidator.updateDetails.validate(req.body, {
@@ -122,17 +113,6 @@ export class BranchController {
       effectiveTenant,
       contentType: req.headers["content-type"],
       body: req.body,
-    });
-
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
-  getBrandLogoUrl = async (req: Request, res: Response): Promise<void> => {
-    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-
-    const result = await this.branchService.getBrandLogoUrl({
-      branchId: effectiveTenant.branchId as string,
-      effectiveTenant,
     });
 
     res.status(HttpStatusCodes.OK).json(result);

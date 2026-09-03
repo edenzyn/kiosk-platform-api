@@ -48,22 +48,13 @@ branchRouter.get(
   branchController.getBranchesForFilters,
 );
 
-branchRouter
-  .route("/details")
-  .get(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
-      branch: [UserPermissions.BRANCH_UPDATE],
-    }),
-    branchController.getDetails,
-  )
-  .put(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
-      branch: [UserPermissions.BRANCH_UPDATE],
-    }),
-    branchController.updateDetails,
-  );
+branchRouter.route("/details").put(
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+    branch: [UserPermissions.BRANCH_UPDATE],
+  }),
+  branchController.updateDetails,
+);
 
 branchRouter
   .route("/settings")
@@ -84,13 +75,6 @@ branchRouter
 
 branchRouter
   .route("/settings/brand-logo")
-  .get(
-    accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
-      branch: [UserPermissions.BRANCH_UPDATE],
-    }),
-    branchController.getBrandLogoUrl,
-  )
   .post(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],

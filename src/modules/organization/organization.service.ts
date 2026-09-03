@@ -15,9 +15,7 @@ import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
-  GetMyOrganizationServiceResult,
   GetMyOrganizationSettingsServiceResult,
-  GetOrganizationLogoUrlServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
@@ -198,23 +196,6 @@ export class OrganizationService {
   // ========================================
   // ? USER CLIENT SERVICES
   // ========================================
-  async getMyOrganization(
-    organizationId: string,
-  ): Promise<GetMyOrganizationServiceResult> {
-    const organization = await this.organizationRepository.findOne({
-      id: organizationId,
-    });
-
-    if (!organization) {
-      throw new AppError("Organization not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    return { organization };
-  }
-
   async updateMyOrganization(
     input: UpdateMyOrganizationServiceInput,
   ): Promise<UpdateMyOrganizationServiceResult> {
@@ -240,10 +221,29 @@ export class OrganizationService {
   async getMyOrganizationSettings(
     organizationId: string,
   ): Promise<GetMyOrganizationSettingsServiceResult> {
+    const organization = await this.organizationRepository.findOne({
+      id: organizationId,
+    });
+
+    if (!organization) {
+      throw new AppError("Organization not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
     const settings =
       await this.organizationRepository.getOrCreateSettings(organizationId);
 
-    return { settings };
+    let brandLogoUrl: string | null = null;
+    if (settings.logo) {
+      const result = await this.fileService.generateBrandLogoUrl(
+        settings.logo,
+      );
+      brandLogoUrl = result.brandLogoUrl;
+    }
+
+    return { organization, settings, brandLogoUrl };
   }
 
   async updateMyOrganizationSettings(
@@ -309,18 +309,6 @@ export class OrganizationService {
       await this.fileService.generateBrandLogoUrl(logo);
 
     return { brandLogoUrl, expiresIn };
-  }
-
-  async getBrandLogoUrl(
-    organizationId: string,
-  ): Promise<GetOrganizationLogoUrlServiceResult> {
-    const { settings } = await this.getMyOrganizationSettings(organizationId);
-
-    if (!settings.logo) {
-      return { brandLogoUrl: null };
-    }
-
-    return this.fileService.generateBrandLogoUrl(settings.logo);
   }
 
   async deleteBrandLogo(organizationId: string): Promise<void> {

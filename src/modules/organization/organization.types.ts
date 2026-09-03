@@ -108,7 +108,7 @@ export interface UpdateOrganizationSettingsRepoInput {
   data: Partial<
     Pick<
       OrganizationSettingsEntity,
-      "logoUrl" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
     >
   >;
 }

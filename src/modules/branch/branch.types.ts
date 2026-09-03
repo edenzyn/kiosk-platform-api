@@ -115,7 +115,7 @@ export interface UpdateBranchSettingsServiceInput {
   data: Partial<
     Pick<
       BranchSettingsEntity,
-      "logoUrl" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
     >
   >;
   effectiveTenant: EffectiveTenant;
@@ -174,7 +174,7 @@ export interface UpdateBranchSettingsRepoInput {
   data: Partial<
     Pick<
       BranchSettingsEntity,
-      "logoUrl" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
     >
   >;
 }

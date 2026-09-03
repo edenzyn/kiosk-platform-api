@@ -14,7 +14,7 @@ export const organizationSettings = pgTable("organization_settings", {
     .notNull()
     .unique()
     .references((): AnyPgColumn => organizations.id),
-  logoUrl: varchar("logo_url", { length: 500 }),
+  logo: varchar("logo", { length: 255 }),
   primaryColor: varchar("primary_color", { length: 20 })
     .notNull()
     .default(DEFAULT_PRIMARY_COLOR),

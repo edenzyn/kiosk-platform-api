@@ -53,7 +53,7 @@ export class BranchService {
 
     await this.branchRepository.createSettings({
       branchId: branch.id,
-      logoUrl: organizationSettings.logoUrl,
+      logo: organizationSettings.logo,
       primaryColor: organizationSettings.primaryColor,
       languageCode: organizationSettings.languageCode,
       currencyCode: organizationSettings.currencyCode,

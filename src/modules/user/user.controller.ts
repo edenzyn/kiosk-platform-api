@@ -10,7 +10,11 @@ export class UserController {
 
   checkAuth = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
-    const result = await this.userService.checkAuth(userTokenData);
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant | undefined;
+    const result = await this.userService.checkAuth(
+      userTokenData,
+      effectiveTenant,
+    );
     res.json(result);
   };
 

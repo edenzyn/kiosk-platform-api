@@ -23,6 +23,8 @@ import {
   hashData,
 } from "../../shared/utils/core/bcrypt.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
+import { getInviteUserTemplate } from "../../shared/utils/emailTemplates/invite-user.template";
+import { getTwoFactorOtpTemplate } from "../../shared/utils/emailTemplates/two-factor-otp.template";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { AuthRepository } from "../auth/auth.repository";
 import type { SessionDto } from "../auth/auth.types";
@@ -35,8 +37,6 @@ import type {
 import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
 import type { TwoFactorService } from "../auth/services/two-factor.service";
 import type { BranchRepository } from "../branch/branch.repository";
-import { getInviteUserTemplate } from "../../shared/utils/emailTemplates/invite-user.template";
-import { getTwoFactorOtpTemplate } from "../../shared/utils/emailTemplates/two-factor-otp.template";
 import type { FileService } from "../file/file.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
@@ -177,7 +177,10 @@ export class UserService {
     };
   }
 
-  async checkAuth(tokenUser: UserTokenDto): Promise<CheckAuthResponseDto> {
+  async checkAuth(
+    tokenUser: UserTokenDto,
+    effectiveTenant?: EffectiveTenant,
+  ): Promise<CheckAuthResponseDto> {
     const user = await this.userRepository.findOne({ id: tokenUser.id });
 
     if (!user) {
@@ -239,14 +242,16 @@ export class UserService {
       : null;
 
     let logoUrl: string | null = null;
-    if (user.organizationId) {
-      const logo = user.branchId
-        ? (await this.branchRepository.getOrCreateSettings(user.branchId)).logo
-        : (
-            await this.organizationRepository.getOrCreateSettings(
-              user.organizationId,
-            )
-          ).logo;
+    const orgId = effectiveTenant?.organizationId ?? user.organizationId;
+    const branchId =
+      effectiveTenant?.branchId !== undefined
+        ? effectiveTenant.branchId
+        : user.branchId;
+
+    if (orgId) {
+      const logo = branchId
+        ? (await this.branchRepository.getOrCreateSettings(branchId)).logo
+        : (await this.organizationRepository.getOrCreateSettings(orgId)).logo;
 
       if (logo) {
         logoUrl = (await this.fileService.generateBrandLogoUrl(logo))

@@ -126,6 +126,10 @@ const EnvSchema = Yup.object({
     .integer()
     .positive()
     .default(24),
+  FINANCE_CURRENCIES_CACHE_TTL_DAYS: Yup.number()
+    .integer()
+    .positive()
+    .default(7),
 
   // ==============================
   // Payment (Razorpay)

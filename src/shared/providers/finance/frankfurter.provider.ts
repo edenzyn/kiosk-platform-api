@@ -9,6 +9,15 @@ export interface FrankfurterLatestRatesResult {
   rates: Record<string, number>;
 }
 
+export interface FrankfurterCurrencyRecord {
+  iso_code: string;
+  iso_numeric: string;
+  name: string;
+  symbol: string;
+  start_date: string;
+  end_date: string;
+}
+
 interface FrankfurterRateRecord {
   date: string;
   base: string;
@@ -58,5 +67,29 @@ export class FrankfurterProvider {
     }
 
     return { base: baseCurrency, rateDate, rates };
+  }
+
+  async getSupportedCurrencies(): Promise<FrankfurterCurrencyRecord[]> {
+    const url = `${env.FRANKFURTER_API_BASE_URL}/currencies`;
+
+    let response: Response;
+    try {
+      response = await fetch(url);
+    } catch (error) {
+      throw new AppError("Failed to get supported currencies", {
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        code: ErrorCodes.EXCHANGE_RATE_UNAVAILABLE,
+        details: error,
+      });
+    }
+
+    if (!response.ok) {
+      throw new AppError("Failed to get supported currencies", {
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        code: ErrorCodes.EXCHANGE_RATE_UNAVAILABLE,
+      });
+    }
+
+    return (await response.json()) as FrankfurterCurrencyRecord[];
   }
 }

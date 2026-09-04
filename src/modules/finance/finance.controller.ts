@@ -18,6 +18,14 @@ export class FinanceController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getSupportedCurrencies = async (
+    _req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.financeService.getSupportedCurrencies();
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   // ========================================
   // ? WEBHOOKS
   // ========================================

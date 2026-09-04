@@ -17,4 +17,13 @@ userFinanceRouter.get(
   financeController.getExchangeRates,
 );
 
+userFinanceRouter.get(
+  "/currencies",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  financeController.getSupportedCurrencies,
+);
+
 export { userFinanceRouter };

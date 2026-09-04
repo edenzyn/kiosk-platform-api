@@ -1,6 +1,8 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
+  NotFound,
   PutObjectCommand,
   type S3Client,
 } from "@aws-sdk/client-s3";
@@ -16,6 +18,16 @@ export interface UploadObjectInput {
   contentType: string;
 }
 
+export interface GetUploadUrlInput {
+  key: string;
+  contentType: string;
+}
+
+export interface GetUploadUrlResult {
+  uploadUrl: string;
+  expiresIn: number;
+}
+
 export interface GetDownloadUrlInput {
   key: string;
 }
@@ -23,6 +35,11 @@ export interface GetDownloadUrlInput {
 export interface GetDownloadUrlResult {
   downloadUrl: string;
   expiresIn: number;
+}
+
+export interface HeadObjectResult {
+  exists: boolean;
+  contentLength: number;
 }
 
 export class S3Provider {
@@ -40,6 +57,31 @@ export class S3Provider {
       );
     } catch (error) {
       throw new AppError("Failed to upload file to storage", {
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        code: ErrorCodes.STORAGE_PROVIDER_ERROR,
+        details: error,
+      });
+    }
+  }
+
+  async getUploadUrl(input: GetUploadUrlInput): Promise<GetUploadUrlResult> {
+    try {
+      const command = new PutObjectCommand({
+        Bucket: env.S3_BUCKET,
+        Key: input.key,
+        ContentType: input.contentType,
+      });
+
+      const uploadUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
+      });
+
+      return {
+        uploadUrl,
+        expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
+      };
+    } catch (error) {
+      throw new AppError("Failed to generate upload URL", {
         statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
@@ -66,6 +108,32 @@ export class S3Provider {
       };
     } catch (error) {
       throw new AppError("Failed to generate download URL", {
+        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+        code: ErrorCodes.STORAGE_PROVIDER_ERROR,
+        details: error,
+      });
+    }
+  }
+
+  async headObject(key: string): Promise<HeadObjectResult> {
+    try {
+      const result = await this.s3Client.send(
+        new HeadObjectCommand({
+          Bucket: env.S3_BUCKET,
+          Key: key,
+        }),
+      );
+
+      return {
+        exists: true,
+        contentLength: result.ContentLength ?? 0,
+      };
+    } catch (error) {
+      if (error instanceof NotFound) {
+        return { exists: false, contentLength: 0 };
+      }
+
+      throw new AppError("Failed to verify uploaded file", {
         statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,

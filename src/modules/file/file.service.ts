@@ -1,9 +1,14 @@
 import { randomUUID } from "node:crypto";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { AppError } from "../../shared/errors/app-error";
 import type { FileRepository } from "./file.repository";
 import type {
+  CreateBrandLogoUploadUrlInput,
+  CreateBrandLogoUploadUrlResult,
+  FinalizeBrandLogoInput,
+  FinalizeBrandLogoResult,
   GenerateBrandLogoUrlResult,
-  UploadBrandLogoInput,
-  UploadBrandLogoResult,
 } from "./file.types";
 
 export class FileService {
@@ -14,19 +19,45 @@ export class FileService {
   // ========================================
   // ? BRAND LOGO
   // ========================================
-  async uploadBrandLogo(
-    input: UploadBrandLogoInput,
-  ): Promise<UploadBrandLogoResult> {
+  async createBrandLogoUploadUrl(
+    input: CreateBrandLogoUploadUrlInput,
+  ): Promise<CreateBrandLogoUploadUrlResult> {
     const fileType = input.contentType.split("/")[1] || "png";
     const logo = `${randomUUID()}.${fileType}`;
 
-    await this.fileRepository.uploadObject({
+    const { uploadUrl, expiresIn } = await this.fileRepository.getUploadUrl({
       key: `${this.brandLogoPrefixPath}/${logo}`,
-      body: input.body,
       contentType: input.contentType,
     });
 
-    return { logo };
+    return { logo, uploadUrl, expiresIn };
+  }
+
+  async finalizeBrandLogo(
+    input: FinalizeBrandLogoInput,
+  ): Promise<FinalizeBrandLogoResult> {
+    const { logo, maxSizeBytes } = input;
+
+    const { exists, contentLength } = await this.fileRepository.headObject(
+      `${this.brandLogoPrefixPath}/${logo}`,
+    );
+
+    if (!exists) {
+      throw new AppError("Uploaded image was not found in storage", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (contentLength > maxSizeBytes) {
+      await this.deleteBrandLogo(logo);
+      throw new AppError("Image is too large", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    return { contentLength };
   }
 
   async generateBrandLogoUrl(

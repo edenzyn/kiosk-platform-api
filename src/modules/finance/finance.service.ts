@@ -18,7 +18,9 @@ import type { LicenseTransactionRepository } from "../license/repositories/licen
 import { FinanceRepository } from "./finance.repository";
 import type {
   CachedExchangeRatesEntity,
+  CachedSupportedCurrenciesEntity,
   GetLatestExchangeRatesServiceResult,
+  GetSupportedCurrenciesServiceResult,
   HandleRazorpayWebhookServiceInput,
   RefreshExchangeRatesServiceResult,
   VerifyRazorpayPaymentServiceInput,
@@ -86,6 +88,26 @@ export class FinanceService {
     );
 
     return updated;
+  }
+
+  async getSupportedCurrencies(): Promise<GetSupportedCurrenciesServiceResult> {
+    const cached = await this.financeRepository.getCachedSupportedCurrencies();
+    if (cached) return cached;
+
+    const currencies = await this.frankfurterProvider.getSupportedCurrencies();
+
+    const result: CachedSupportedCurrenciesEntity = {
+      currencies: currencies.map((currency) => ({
+        code: currency.iso_code,
+        name: currency.name,
+        symbol: currency.symbol,
+      })),
+      fetchedAt: new Date().toISOString(),
+    };
+
+    await this.financeRepository.setCachedSupportedCurrencies(result);
+
+    return result;
   }
 
   // ========================================

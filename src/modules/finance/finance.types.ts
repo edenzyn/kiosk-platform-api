@@ -8,6 +8,17 @@ export interface CachedExchangeRatesEntity {
   fetchedAt: string;
 }
 
+export interface SupportedCurrencyEntity {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+export interface CachedSupportedCurrenciesEntity {
+  currencies: SupportedCurrencyEntity[];
+  fetchedAt: string;
+}
+
 // ========================================
 // ? SERVICE INPUTS & RESULTS
 // ========================================
@@ -15,6 +26,9 @@ export type GetLatestExchangeRatesServiceResult = CachedExchangeRatesEntity;
 
 export type RefreshExchangeRatesServiceResult =
   CachedExchangeRatesEntity | null;
+
+export type GetSupportedCurrenciesServiceResult =
+  CachedSupportedCurrenciesEntity;
 
 export interface HandleRazorpayWebhookServiceInput {
   headers: Record<string, string | string[] | undefined>;

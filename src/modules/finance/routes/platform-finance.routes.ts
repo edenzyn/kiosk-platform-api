@@ -18,4 +18,13 @@ platformFinanceRouter.get(
   financeController.getExchangeRates,
 );
 
+platformFinanceRouter.get(
+  "/currencies",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  financeController.getSupportedCurrencies,
+);
+
 export { platformFinanceRouter };

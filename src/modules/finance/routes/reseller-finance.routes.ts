@@ -18,4 +18,13 @@ resellerFinanceRouter.get(
   financeController.getExchangeRates,
 );
 
+resellerFinanceRouter.get(
+  "/currencies",
+  accessMiddleware(
+    { reseller: [UserPermissions.RESELLER_BASIC] },
+    UserTypeEnums.RESELLER,
+  ),
+  financeController.getSupportedCurrencies,
+);
+
 export { resellerFinanceRouter };

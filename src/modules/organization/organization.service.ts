@@ -15,19 +15,21 @@ import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
 import type {
+  FinalizeOrganizationLogoServiceInput,
+  FinalizeOrganizationLogoServiceResult,
   GetMyOrganizationSettingsServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
   InviteOrganizationServiceResult,
+  RequestOrganizationLogoUploadServiceInput,
+  RequestOrganizationLogoUploadServiceResult,
   ToggleOrganizationStatusServiceInput,
   ToggleOrganizationStatusServiceResult,
   UpdateMyOrganizationServiceInput,
   UpdateMyOrganizationServiceResult,
   UpdateMyOrganizationSettingsServiceInput,
   UpdateMyOrganizationSettingsServiceResult,
-  UploadOrganizationLogoServiceInput,
-  UploadOrganizationLogoServiceResult,
 } from "./organization.types";
 
 export class OrganizationService {
@@ -257,13 +259,12 @@ export class OrganizationService {
     return { settings };
   }
 
-  async uploadBrandLogo(
-    input: UploadOrganizationLogoServiceInput,
-  ): Promise<UploadOrganizationLogoServiceResult> {
-    const { organizationId, contentType, body } = input;
+  async requestBrandLogoUpload(
+    input: RequestOrganizationLogoUploadServiceInput,
+  ): Promise<RequestOrganizationLogoUploadServiceResult> {
+    const { contentType, fileSize } = input;
 
     if (
-      !contentType ||
       !FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes.includes(
         contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
       )
@@ -274,26 +275,30 @@ export class OrganizationService {
       });
     }
 
-    if (!Buffer.isBuffer(body) || body.length === 0) {
-      throw new AppError("Image data is required", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.VALIDATION_ERROR,
-      });
-    }
-
-    if (body.length > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
+    if (fileSize <= 0 || fileSize > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
       throw new AppError("Image is too large", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
+    const { logo, uploadUrl, expiresIn } =
+      await this.fileService.createBrandLogoUploadUrl({ contentType });
+
+    return { logo, uploadUrl, expiresIn };
+  }
+
+  async finalizeBrandLogoUpload(
+    input: FinalizeOrganizationLogoServiceInput,
+  ): Promise<FinalizeOrganizationLogoServiceResult> {
+    const { organizationId, logo } = input;
+
     const { settings: existing } =
       await this.getMyOrganizationSettings(organizationId);
 
-    const { logo } = await this.fileService.uploadBrandLogo({
-      contentType,
-      body,
+    await this.fileService.finalizeBrandLogo({
+      logo,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
     });
 
     await this.updateMyOrganizationSettings({

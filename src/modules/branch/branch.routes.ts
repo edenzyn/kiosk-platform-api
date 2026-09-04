@@ -1,8 +1,6 @@
 import { Router } from "express";
 import { container } from "../../config/container";
 import { accessMiddleware } from "../../middleware/access.middleware";
-import { fileParserMiddleware } from "../../middleware/file-parser.middleware";
-import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { BRANCH_TOP_SCOPED_PERMISSIONS } from "../../shared/constants/user-permission.constants";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import type { BranchController } from "./branch.controller";
@@ -75,16 +73,19 @@ branchRouter
 
 branchRouter
   .route("/settings/brand-logo")
-  .post(
+  .put(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    fileParserMiddleware({
-      acceptedTypes: FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes,
-      maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
+    branchController.requestBrandLogoUpload,
+  )
+  .patch(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    branchController.uploadBrandLogo,
+    branchController.finalizeBrandLogoUpload,
   )
   .delete(
     accessMiddleware({

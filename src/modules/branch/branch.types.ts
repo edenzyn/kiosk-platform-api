@@ -118,13 +118,22 @@ export interface UpdateBranchSettingsServiceResult {
   settings: BranchSettingsEntity;
 }
 
-export interface UploadBranchLogoServiceInput {
+export interface RequestBranchLogoUploadServiceInput {
+  contentType: string;
+  fileSize: number;
+}
+export interface RequestBranchLogoUploadServiceResult {
+  logo: string;
+  uploadUrl: string;
+  expiresIn: number;
+}
+
+export interface FinalizeBranchLogoServiceInput {
   branchId: string;
   effectiveTenant: EffectiveTenant;
-  contentType: string | undefined;
-  body: unknown;
+  logo: string;
 }
-export interface UploadBranchLogoServiceResult {
+export interface FinalizeBranchLogoServiceResult {
   brandLogoUrl: string;
   expiresIn: number;
 }

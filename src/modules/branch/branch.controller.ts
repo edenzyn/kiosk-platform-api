@@ -105,14 +105,37 @@ export class BranchController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  uploadBrandLogo = async (req: Request, res: Response): Promise<void> => {
-    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+  requestBrandLogoUpload = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await BranchValidator.requestBrandLogoUpload.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
 
-    const result = await this.branchService.uploadBrandLogo({
+    const result = await this.branchService.requestBrandLogoUpload({
+      contentType: data.contentType,
+      fileSize: data.fileSize,
+    });
+
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  finalizeBrandLogoUpload = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const data = await BranchValidator.finalizeBrandLogoUpload.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.branchService.finalizeBrandLogoUpload({
       branchId: effectiveTenant.branchId as string,
       effectiveTenant,
-      contentType: req.headers["content-type"],
-      body: req.body,
+      logo: data.logo,
     });
 
     res.status(HttpStatusCodes.OK).json(result);

@@ -72,4 +72,15 @@ export class OrganizationValidator {
     logo: Yup.string().trim().max(255).nullable().optional(),
   }).noUnknown();
 
+  static readonly requestBrandLogoUpload = Yup.object({
+    contentType: Yup.string().required("File content type is required"),
+    fileSize: Yup.number()
+      .integer()
+      .positive()
+      .required("File size is required"),
+  }).noUnknown();
+
+  static readonly finalizeBrandLogoUpload = Yup.object({
+    logo: Yup.string().trim().max(255).required("Logo key is required"),
+  }).noUnknown();
 }

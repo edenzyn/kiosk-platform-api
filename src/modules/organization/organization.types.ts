@@ -57,12 +57,21 @@ export interface UpdateMyOrganizationSettingsServiceResult {
   settings: OrganizationSettingsEntity;
 }
 
-export interface UploadOrganizationLogoServiceInput {
-  organizationId: string;
-  contentType: string | undefined;
-  body: unknown;
+export interface RequestOrganizationLogoUploadServiceInput {
+  contentType: string;
+  fileSize: number;
 }
-export interface UploadOrganizationLogoServiceResult {
+export interface RequestOrganizationLogoUploadServiceResult {
+  logo: string;
+  uploadUrl: string;
+  expiresIn: number;
+}
+
+export interface FinalizeOrganizationLogoServiceInput {
+  organizationId: string;
+  logo: string;
+}
+export interface FinalizeOrganizationLogoServiceResult {
   brandLogoUrl: string;
   expiresIn: number;
 }

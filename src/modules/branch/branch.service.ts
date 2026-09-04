@@ -3,27 +3,29 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { FileService } from "../file/file.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
-import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
-import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 import type {
   DeleteBranchLogoServiceInput,
+  FinalizeBranchLogoServiceInput,
+  FinalizeBranchLogoServiceResult,
   GetBranchSettingsServiceInput,
   GetBranchSettingsServiceResult,
+  RequestBranchLogoUploadServiceInput,
+  RequestBranchLogoUploadServiceResult,
   UpdateBranchDetailsServiceInput,
   UpdateBranchDetailsServiceResult,
   UpdateBranchSettingsServiceInput,
   UpdateBranchSettingsServiceResult,
-  UploadBranchLogoServiceInput,
-  UploadBranchLogoServiceResult,
 } from "./branch.types";
+import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
+import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 
 export class BranchService {
   constructor(
@@ -239,9 +241,7 @@ export class BranchService {
 
     let brandLogoUrl: string | null = null;
     if (settings.logo) {
-      const result = await this.fileService.generateBrandLogoUrl(
-        settings.logo,
-      );
+      const result = await this.fileService.generateBrandLogoUrl(settings.logo);
       brandLogoUrl = result.brandLogoUrl;
     }
 
@@ -274,13 +274,12 @@ export class BranchService {
     return { settings };
   }
 
-  async uploadBrandLogo(
-    input: UploadBranchLogoServiceInput,
-  ): Promise<UploadBranchLogoServiceResult> {
-    const { branchId, effectiveTenant, contentType, body } = input;
+  async requestBrandLogoUpload(
+    input: RequestBranchLogoUploadServiceInput,
+  ): Promise<RequestBranchLogoUploadServiceResult> {
+    const { contentType, fileSize } = input;
 
     if (
-      !contentType ||
       !FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes.includes(
         contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
       )
@@ -291,28 +290,35 @@ export class BranchService {
       });
     }
 
-    if (!Buffer.isBuffer(body) || body.length === 0) {
-      throw new AppError("Image data is required", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.VALIDATION_ERROR,
-      });
-    }
-
-    if (body.length > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
+    if (
+      fileSize <= 0 ||
+      fileSize > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes
+    ) {
       throw new AppError("Image is too large", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
+    const { logo, uploadUrl, expiresIn } =
+      await this.fileService.createBrandLogoUploadUrl({ contentType });
+
+    return { logo, uploadUrl, expiresIn };
+  }
+
+  async finalizeBrandLogoUpload(
+    input: FinalizeBranchLogoServiceInput,
+  ): Promise<FinalizeBranchLogoServiceResult> {
+    const { branchId, effectiveTenant, logo } = input;
+
     const { settings: existing } = await this.getBranchSettings({
       branchId,
       effectiveTenant,
     });
 
-    const { logo } = await this.fileService.uploadBrandLogo({
-      contentType,
-      body,
+    await this.fileService.finalizeBrandLogo({
+      logo,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
     });
 
     await this.updateBranchSettings({

@@ -120,7 +120,7 @@ const EnvSchema = Yup.object({
     "https://api.frankfurter.dev/v2",
   ),
   FRANKFURTER_BASE_CURRENCY: Yup.string().default("INR"),
-  FINANCE_EXCHANGE_RATE_SYNC_CRON: Yup.string().default("45 20 * * 1-5"),
+  FINANCE_EXCHANGE_RATE_SYNC_CRON: Yup.string().default("0 3,9,15,21 * * *"),
   FINANCE_EXCHANGE_RATE_SYNC_TIMEZONE: Yup.string().default("Asia/Kolkata"),
   FINANCE_EXCHANGE_RATE_CACHE_TTL_HOURS: Yup.number()
     .integer()

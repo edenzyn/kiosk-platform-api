@@ -11,7 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/schemas/branch.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
-import { licenseDiscountRules } from "./license-discount-rule.schema";
+import { licensePlanDiscountRules } from "./license-plan-discount-rule.schema";
 import { users } from "../../user/schemas/user.schema";
 
 export const licenseTransactions = pgTable("license_transactions", {
@@ -33,7 +33,7 @@ export const licenseTransactions = pgTable("license_transactions", {
     scale: 2,
   }),
   appliedDiscountRuleId: uuid("applied_discount_rule_id").references(
-    (): AnyPgColumn => licenseDiscountRules.id,
+    (): AnyPgColumn => licensePlanDiscountRules.id,
   ),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 10 }).notNull(),

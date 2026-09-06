@@ -8,9 +8,9 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { licensePricing } from "./license-pricing.schema";
 import { licenseTransactions } from "./license-transaction.schema";
 import { licenses } from "./license.schema";
+import { licensePlans } from "./license-plan.schema";
 
 export const licenseTransactionItems = pgTable("license_transaction_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -19,7 +19,7 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     .references((): AnyPgColumn => licenseTransactions.id),
   licenseId: uuid("license_id").references((): AnyPgColumn => licenses.id),
   pricingPlanId: uuid("pricing_plan_id").references(
-    (): AnyPgColumn => licensePricing.id,
+    (): AnyPgColumn => licensePlans.id,
   ),
   planName: varchar("plan_name", { length: 255 }),
   actionType: smallint("action_type").notNull(),

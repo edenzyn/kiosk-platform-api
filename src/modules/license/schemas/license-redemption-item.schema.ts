@@ -7,9 +7,9 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { licensePricing } from "./license-pricing.schema";
 import { licenseRedemptionCodes } from "./license-redemption-code.schema";
 import { licenses } from "./license.schema";
+import { licensePlans } from "./license-plan.schema";
 
 export const licenseRedemptionItems = pgTable("license_redemption_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -20,7 +20,7 @@ export const licenseRedemptionItems = pgTable("license_redemption_items", {
     .notNull()
     .references((): AnyPgColumn => licenses.id),
   pricingId: uuid("pricing_id").references(
-    (): AnyPgColumn => licensePricing.id,
+    (): AnyPgColumn => licensePlans.id,
   ),
   basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
   soldPrice: decimal("sold_price", { precision: 10, scale: 2 }),

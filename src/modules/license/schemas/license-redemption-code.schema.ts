@@ -5,9 +5,9 @@ import {
   text,
   timestamp,
   uuid,
-  varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { markets } from "../../market/schemas/market.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 
@@ -18,9 +18,12 @@ export const licenseRedemptionCodes = pgTable("license_redemption_codes", {
     .references((): AnyPgColumn => users.id),
   redeemCode: text("redeem_code").notNull(), // encrypted
   redeemCodeHash: text("redeem_code_hash").notNull().unique(), // hashed
+  marketId: uuid("market_id")
+    .notNull()
+    .references((): AnyPgColumn => markets.id),
+  licenseIds: uuid("license_ids").array().notNull(),
   status: smallint("status").notNull(), // LicenseRedemptionStatusEnum
   soldPrice: decimal("sold_price", { precision: 10, scale: 2 }),
-  soldPriceCurrency: varchar("sold_price_currency", { length: 10 }),
   generatedAt: timestamp("generated_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

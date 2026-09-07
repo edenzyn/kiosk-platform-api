@@ -22,7 +22,7 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     .notNull()
     .references((): AnyPgColumn => licensePlans.id),
   planName: varchar("plan_name", { length: 100 }).notNull(), // snapshot of plan name at transaction time
-  actionType: smallint("action_type").notNull(), // LicenseTransactionActionTypeEnum: 1 = PURCHASE, 2 = RENEWAL
+  transactionType: smallint("transaction_type").notNull(), // LicenseTransactionTypeEnum: 1 = ORGANIZATION_PURCHASE, 2 = RESELLER_PURCHASE, 3 = RENEWAL
   durationDays: integer("duration_days").notNull(),
   baseUnitPrice: decimal("base_unit_price", {
     precision: 10,

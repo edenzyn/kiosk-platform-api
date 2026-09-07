@@ -24,6 +24,7 @@ export const licenseTransactions = pgTable("license_transactions", {
   marketId: uuid("market_id")
     .notNull()
     .references((): AnyPgColumn => markets.id),
+  transactionType: smallint("transaction_type").notNull(), // LicenseTransactionTypeEnum: 1 = ORGANIZATION_PURCHASE, 2 = RESELLER_PURCHASE, 3 = RENEWAL
   // Pricing snapshot
   subtotalAmount: decimal("subtotal_amount", {
     precision: 10,

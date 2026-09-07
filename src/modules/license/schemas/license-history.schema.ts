@@ -9,6 +9,7 @@ import {
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { licenseTransactions } from "./license-transaction.schema";
 import { users } from "../../user/schemas/user.schema";
+import { licensePlans } from "./license-plan.schema";
 import { licenses } from "./license.schema";
 
 export const licenseHistory = pgTable("license_history", {
@@ -22,6 +23,12 @@ export const licenseHistory = pgTable("license_history", {
     .default(LicenseHistoryTargetEntityTypeEnum.NORMAL),
   previousStatus: smallint("previous_status"),
   newStatus: smallint("new_status"),
+  previousPlanId: uuid("previous_plan_id").references(
+    (): AnyPgColumn => licensePlans.id,
+  ),
+  newPlanId: uuid("new_plan_id").references(
+    (): AnyPgColumn => licensePlans.id,
+  ),
   previousExpiresAt: timestamp("previous_expires_at", { withTimezone: true }),
   newExpiresAt: timestamp("new_expires_at", { withTimezone: true }),
   transactionId: uuid("transaction_id").references(

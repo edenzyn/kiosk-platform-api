@@ -46,7 +46,7 @@ import type {
   UpdateLicenseRepoResult,
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
-import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
+import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses } from "../schemas/license.schema";
 

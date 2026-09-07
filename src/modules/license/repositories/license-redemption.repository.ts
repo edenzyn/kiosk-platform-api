@@ -50,7 +50,7 @@ import { licenseHistory } from "../schemas/license-history.schema";
 import { licensePricing } from "../schemas/license-pricing.schema";
 import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schema";
 import { licenseRedemptionItems } from "../schemas/license-redemption-item.schema";
-import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
+import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses, type LicenseEntity } from "../schemas/license.schema";
 

@@ -27,7 +27,7 @@ import type {
   UpdateTransactionStatusByOrderIdRepoResult,
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
-import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
+import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenseTransactions } from "../schemas/license-transaction.schema";
 import { licenses } from "../schemas/license.schema";
@@ -270,7 +270,6 @@ export class LicenseTransactionRepository {
             await tx.insert(licenseResellerMapper).values({
               licenseId: license.id,
               resellerId: input.resellerId,
-              assignedAt: new Date(),
               isActive: true,
               createdBy: input.userId,
               updatedBy: input.userId,

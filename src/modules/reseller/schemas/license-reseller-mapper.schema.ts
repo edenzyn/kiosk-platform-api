@@ -5,7 +5,7 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { licenses } from "./license.schema";
+import { licenses } from "../../license/schemas/license.schema";
 import { users } from "../../user/schemas/user.schema";
 
 export const licenseResellerMapper = pgTable("license_reseller_mapper", {
@@ -16,7 +16,6 @@ export const licenseResellerMapper = pgTable("license_reseller_mapper", {
   resellerId: uuid("reseller_id")
     .notNull()
     .references((): AnyPgColumn => users.id),
-  assignedAt: timestamp("assigned_at", { withTimezone: true }),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -28,5 +27,7 @@ export const licenseResellerMapper = pgTable("license_reseller_mapper", {
   updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
 });
 
-export type LicenseResellerMapperEntity = typeof licenseResellerMapper.$inferSelect;
-export type CreateLicenseResellerMapperEntity = typeof licenseResellerMapper.$inferInsert;
+export type LicenseResellerMapperEntity =
+  typeof licenseResellerMapper.$inferSelect;
+export type CreateLicenseResellerMapperEntity =
+  typeof licenseResellerMapper.$inferInsert;

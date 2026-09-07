@@ -14,7 +14,7 @@ export const licensePlans = pgTable("license_plans", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
-  deviceType: integer("device_type").notNull(),
+  deviceType: integer("device_type").notNull(), // DeviceTypeEnum: 1 = KIOSK, 2 = COUNTER, 3 = KDS, 4 = DIGITAL_DISPLAY
   durationDays: integer("duration_days").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

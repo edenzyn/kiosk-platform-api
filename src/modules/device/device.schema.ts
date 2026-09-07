@@ -22,7 +22,7 @@ export const devices = pgTable("devices", {
   deviceCode: varchar("device_code", { length: 255 }).unique(),
   name: varchar("name", { length: 255 }).notNull(),
   pin: varchar("pin", { length: 255 }).notNull(),
-  deviceType: smallint("device_type").notNull(),
+  deviceType: smallint("device_type").notNull(), // DeviceTypeEnum: 1 = KIOSK, 2 = COUNTER, 3 = KDS, 4 = DIGITAL_DISPLAY
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

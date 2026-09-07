@@ -29,7 +29,7 @@ export const licenseTransactions = pgTable("license_transactions", {
     precision: 10,
     scale: 2,
   }).notNull(),
-  discountType: smallint("discount_type"), // LicenseDiscountTypeEnum
+  discountType: smallint("discount_type"), // LicenseDiscountTypeEnum: 1 = PERCENTAGE, 2 = FLAT
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 })
     .notNull()
@@ -39,9 +39,9 @@ export const licenseTransactions = pgTable("license_transactions", {
   ),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   // Payment
-  paymentMethod: smallint("payment_method"),
-  paymentProvider: smallint("payment_provider"),
-  paymentStatus: smallint("payment_status"),
+  paymentMethod: smallint("payment_method"), // PaymentMethodEnum: 1 = UPI
+  paymentProvider: smallint("payment_provider"), // PaymentProviderEnum: 1 = RAZORPAY
+  paymentStatus: smallint("payment_status"), // PaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
   paymentReference: varchar("payment_reference", { length: 255 }),
   paymentProviderOrderId: varchar("payment_provider_order_id", {
     length: 255,

@@ -35,9 +35,7 @@ export const userSettings = pgTable("user_settings", {
     .default("INR"),
   // 2FA settings
   twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
-  twoFactorMethod: smallint(
-    "two_factor_method",
-  ).$type<TwoFactorMethodEnums | null>(),
+  twoFactorMethod: smallint("two_factor_method").$type<TwoFactorMethodEnums | null>(), // TwoFactorMethodEnums: 1 = EMAIL, 2 = WHATSAPP
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -17,12 +17,12 @@ export const licenseHistory = pgTable("license_history", {
   licenseId: uuid("license_id")
     .notNull()
     .references((): AnyPgColumn => licenses.id),
-  eventType: smallint("event_type").notNull(),
+  eventType: smallint("event_type").notNull(), // LicenseHistoryEventTypeEnum: 1 = PURCHASE, 2 = ACTIVATION, 3 = ASSIGNMENT, 4 = DEACTIVATION, 5 = REVOCATION, 6 = EXPIRATION, 7 = EXTEND, 8 = GRACE_PERIOD, 9 = REDEMPTION_CODE_GENERATED, 10 = REDEEMED, 11 = REDEEM_CODE_REVOKED, 12 = REDEEM_CODE_EXPIRED, 13 = REDEMPTION_VERIFIED
   targetEntityType: smallint("target_entity_type")
     .notNull()
-    .default(LicenseHistoryTargetEntityTypeEnum.NORMAL),
-  previousStatus: smallint("previous_status"),
-  newStatus: smallint("new_status"),
+    .default(LicenseHistoryTargetEntityTypeEnum.NORMAL), // LicenseHistoryTargetEntityTypeEnum: 1 = NORMAL, 2 = RESELLER, 3 = COMMON
+  previousStatus: smallint("previous_status"), // LicenseStatusEnum: 1 = AVAILABLE, 2 = ACTIVE, 3 = GRACE_PERIOD, 4 = EXPIRED, 5 = REVOKED
+  newStatus: smallint("new_status"), // LicenseStatusEnum: 1 = AVAILABLE, 2 = ACTIVE, 3 = GRACE_PERIOD, 4 = EXPIRED, 5 = REVOKED
   previousPlanId: uuid("previous_plan_id").references(
     (): AnyPgColumn => licensePlans.id,
   ),

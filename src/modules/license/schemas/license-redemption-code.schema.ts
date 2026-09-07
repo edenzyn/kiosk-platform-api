@@ -22,7 +22,7 @@ export const licenseRedemptionCodes = pgTable("license_redemption_codes", {
     .notNull()
     .references((): AnyPgColumn => markets.id),
   licenseIds: uuid("license_ids").array().notNull(),
-  status: smallint("status").notNull(), // LicenseRedemptionStatusEnum
+  status: smallint("status").notNull(), // LicenseRedemptionStatusEnum: 1 = GENERATED, 2 = CLAIMED, 3 = REVOKED, 4 = EXPIRED, 5 = VERIFIED
   soldPrice: decimal("sold_price", { precision: 10, scale: 2 }),
   generatedAt: timestamp("generated_at", { withTimezone: true })
     .defaultNow()

@@ -18,7 +18,7 @@ export const userInvitations = pgTable("user_invitations", {
   id: uuid("id").defaultRandom().primaryKey(),
   email: varchar("email", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
-  entityType: integer("entity_type").notNull().default(UserTypeEnums.NORMAL),
+  entityType: integer("entity_type").notNull().default(UserTypeEnums.NORMAL), // UserTypeEnums: 1 = NORMAL, 2 = RESELLER, 3 = PLATFORM
   isOrgRegistration: boolean("is_org_registration").notNull().default(false),
   organizationName: varchar("organization_name", { length: 255 }),
   organizationId: uuid("organization_id").references(
@@ -28,7 +28,7 @@ export const userInvitations = pgTable("user_invitations", {
   roleIds: uuid("role_ids").array().default([]).notNull(),
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  status: integer("status").default(UserInvitationStatusEnum.PENDING).notNull(),
+  status: integer("status").default(UserInvitationStatusEnum.PENDING).notNull(), // UserInvitationStatusEnum: 1 = PENDING, 2 = ACCEPTED, 3 = EXPIRED, 4 = REVOKED
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

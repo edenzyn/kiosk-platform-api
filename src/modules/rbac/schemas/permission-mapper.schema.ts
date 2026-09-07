@@ -13,7 +13,7 @@ import { permissions } from "./permission.schema";
 
 export const permissionMapper = pgTable("permission_mapper", {
   id: uuid("id").defaultRandom().primaryKey(),
-  entityType: smallint("entity_type").notNull(),
+  entityType: smallint("entity_type").notNull(), // PermissionEntityType: 1 = USER, 2 = ROLE
   entityId: uuid("entity_id").notNull(),
   permissionId: uuid("permission_id")
     .references((): AnyPgColumn => permissions.id)

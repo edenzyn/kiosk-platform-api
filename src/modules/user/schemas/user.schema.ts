@@ -19,7 +19,7 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   mobile: varchar("mobile", { length: 20 }).unique(),
   password: varchar("password", { length: 255 }).notNull(),
-  userType: integer("user_type").notNull(),
+  userType: integer("user_type").notNull(), // UserTypeEnums: 1 = NORMAL, 2 = RESELLER, 3 = PLATFORM
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

@@ -8,9 +8,9 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { licensePlans } from "./license-plan.schema";
 import { licenseTransactions } from "./license-transaction.schema";
 import { licenses } from "./license.schema";
-import { licensePlans } from "./license-plan.schema";
 
 export const licenseTransactionItems = pgTable("license_transaction_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -18,11 +18,11 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     .notNull()
     .references((): AnyPgColumn => licenseTransactions.id),
   licenseId: uuid("license_id").references((): AnyPgColumn => licenses.id),
-  pricingPlanId: uuid("pricing_plan_id").references(
-    (): AnyPgColumn => licensePlans.id,
-  ),
-  planName: varchar("plan_name", { length: 255 }),
-  actionType: smallint("action_type").notNull(),
+  planId: uuid("plan_id")
+    .notNull()
+    .references((): AnyPgColumn => licensePlans.id),
+  planName: varchar("plan_name", { length: 100 }).notNull(), // snapshot of plan name at transaction time
+  actionType: smallint("action_type").notNull(), // LicenseTransactionActionTypeEnum
   durationDays: integer("duration_days").notNull(),
   baseUnitPrice: decimal("base_unit_price", {
     precision: 10,
@@ -30,8 +30,13 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
   }).notNull(),
   discountType: smallint("discount_type"), // LicenseDiscountTypeEnum
   discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
-  discountCurrency: varchar("discount_currency", { length: 10 }),
-  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
+  finalUnitPrice: decimal("final_unit_price", {
+    precision: 10,
+    scale: 2,
+  }).notNull(), // actual charged unit price
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

@@ -10,9 +10,10 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/schemas/branch.schema";
+import { markets } from "../../market/schemas/market.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
-import { licensePlanDiscountRules } from "./license-plan-discount-rule.schema";
 import { users } from "../../user/schemas/user.schema";
+import { licensePlanDiscountRules } from "./license-plan-discount-rule.schema";
 
 export const licenseTransactions = pgTable("license_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -20,23 +21,23 @@ export const licenseTransactions = pgTable("license_transactions", {
     (): AnyPgColumn => organizations.id,
   ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
+  marketId: uuid("market_id")
+    .notNull()
+    .references((): AnyPgColumn => markets.id),
   // Pricing snapshot
   subtotalAmount: decimal("subtotal_amount", {
     precision: 10,
     scale: 2,
   }).notNull(),
+  discountType: smallint("discount_type"), // LicenseDiscountTypeEnum
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 })
     .notNull()
     .default("0"),
-  discountPercentage: decimal("discount_percentage", {
-    precision: 5,
-    scale: 2,
-  }),
   appliedDiscountRuleId: uuid("applied_discount_rule_id").references(
     (): AnyPgColumn => licensePlanDiscountRules.id,
   ),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 10 }).notNull(),
   // Payment
   paymentMethod: smallint("payment_method"),
   paymentProvider: smallint("payment_provider"),

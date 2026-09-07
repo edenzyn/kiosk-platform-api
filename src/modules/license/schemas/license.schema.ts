@@ -1,4 +1,5 @@
 import {
+  boolean,
   pgTable,
   smallint,
   text,
@@ -9,8 +10,10 @@ import {
 import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
+import { markets } from "../../market/schemas/market.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
+import { licensePlans } from "./license-plan.schema";
 
 export const licenses = pgTable("licenses", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -21,6 +24,13 @@ export const licenses = pgTable("licenses", {
   ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
+  marketId: uuid("market_id")
+    .notNull()
+    .references((): AnyPgColumn => markets.id),
+  currentPlanId: uuid("current_plan_id")
+    .notNull()
+    .references((): AnyPgColumn => licensePlans.id),
+  isRedeemed: boolean("is_redeemed").default(false).notNull(),
   deviceType: smallint("device_type").default(DeviceTypeEnum.KIOSK).notNull(),
   status: smallint("status").notNull(),
   activatedAt: timestamp("activated_at", { withTimezone: true }),

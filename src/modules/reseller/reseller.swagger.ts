@@ -364,10 +364,16 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name", "email"],
+              required: ["name", "email", "marketIds"],
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 email: { type: "string", format: "email" },
+                marketIds: {
+                  type: "array",
+                  items: { type: "string", format: "uuid" },
+                  minItems: 1,
+                  description: "Markets this reseller can purchase/sell licenses in, once the invitation is accepted",
+                },
               },
             },
           },

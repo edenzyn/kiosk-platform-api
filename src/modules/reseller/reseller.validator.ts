@@ -10,6 +10,10 @@ export class ResellerValidator {
     email: emailValidator("Invalid email address").required(
       "Email is required",
     ),
+    marketIds: Yup.array()
+      .of(Yup.string().uuid("Invalid market ID").required())
+      .min(1, "Select at least one market")
+      .required("Select at least one market"),
   }).noUnknown();
 
   static getInvitationsQuery = paginationQuerySchema

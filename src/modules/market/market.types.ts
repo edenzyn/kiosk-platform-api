@@ -104,6 +104,12 @@ export interface IsResellerMappedToMarketRepoInput {
 }
 export type IsResellerMappedToMarketRepoResult = boolean;
 
+export interface MapResellerToMarketsRepoInput {
+  resellerId: string;
+  marketIds: string[];
+  createdBy: string;
+}
+
 export interface FindPaginatedMarketsRepoInput {
   page: number;
   limit: number;

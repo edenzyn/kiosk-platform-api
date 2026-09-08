@@ -9,6 +9,7 @@ import { NotificationChannelEnum } from "../../shared/enums/notification/notific
 import { getInviteResellerTemplate } from "../../shared/utils/emailTemplates/invite-reseller.template";
 import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
+import type { MarketService } from "../market/market.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type {
@@ -30,6 +31,7 @@ export class ResellerService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
+    private readonly marketService: MarketService,
   ) {}
 
   // ========================================
@@ -65,6 +67,8 @@ export class ResellerService {
       );
     }
 
+    await this.marketService.validateMarketIds({ marketIds: dto.marketIds });
+
     const token = generateToken(
       {
         email: dto.email,
@@ -88,6 +92,7 @@ export class ResellerService {
         organizationId: null,
         branchId: null,
         roleIds: [],
+        marketIds: dto.marketIds,
         token,
         expiresAt,
         status: UserInvitationStatusEnum.PENDING,

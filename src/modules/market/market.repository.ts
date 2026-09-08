@@ -19,6 +19,7 @@ import type {
   IsOrganizationMappedToMarketRepoResult,
   IsResellerMappedToMarketRepoInput,
   IsResellerMappedToMarketRepoResult,
+  MapResellerToMarketsRepoInput,
   UpdateMarketRepoInput,
   UpdateMarketRepoResult,
 } from "./market.types";
@@ -88,6 +89,19 @@ export class MarketRepository {
       .limit(1);
 
     return !!mapping;
+  }
+
+  async mapResellerToMarkets(input: MapResellerToMarketsRepoInput): Promise<void> {
+    if (input.marketIds.length === 0) return;
+
+    await this.database.client.insert(resellerMarketMapper).values(
+      input.marketIds.map((marketId) => ({
+        resellerId: input.resellerId,
+        marketId,
+        createdBy: input.createdBy,
+        updatedBy: input.createdBy,
+      })),
+    );
   }
 
   async findOneByCountryCode(

@@ -2,6 +2,10 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { UserEntity } from "../user/schemas/user.schema";
 import type {
+  GetOrganizationInvitationsRequestDto,
+  GetOrganizationInvitationsResponseDto,
+} from "./dtos/get-organization-invitations.dtos";
+import type {
   GetOrganizationsRequestDto,
   GetOrganizationsResponseDto,
 } from "./dtos/get-organizations.dtos";
@@ -26,6 +30,20 @@ export interface GetOrganizationsServiceInput {
   query: GetOrganizationsRequestDto;
 }
 export type GetOrganizationsServiceResult = GetOrganizationsResponseDto;
+export interface GetOrganizationInvitationsServiceInput {
+  query: GetOrganizationInvitationsRequestDto;
+}
+export type GetOrganizationInvitationsServiceResult =
+  GetOrganizationInvitationsResponseDto;
+
+export interface RevokeOrganizationInvitationServiceInput {
+  invitationId: string;
+  currentUser: UserTokenDto;
+}
+export interface RevokeOrganizationInvitationServiceResult {
+  message: string;
+  success: boolean;
+}
 
 export interface ToggleOrganizationStatusServiceInput {
   organizationId: string;
@@ -136,6 +154,7 @@ export interface CreateOrganizationWithOwnerRepoInput {
   registeredName: string;
   registrationNumber: string;
   invitationId: string;
+  marketIds: string[];
   owner: {
     name: string;
     email: string;

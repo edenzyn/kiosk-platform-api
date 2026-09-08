@@ -16,6 +16,11 @@ export class MarketController {
     res.json(result);
   };
 
+  getActiveMarkets = async (_req: Request, res: Response): Promise<void> => {
+    const result = await this.marketService.getActiveMarkets();
+    res.json(result);
+  };
+
   createMarket = async (req: Request, res: Response): Promise<void> => {
     const dto = await MarketValidator.createMarket.validate(req.body, {
       abortEarly: false,

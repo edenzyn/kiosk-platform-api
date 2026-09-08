@@ -7,6 +7,7 @@ import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { permissionMapper } from "../rbac/schemas/permission-mapper.schema";
 import { roles } from "../rbac/schemas/role.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
+import { organizationMarketMapper } from "../market/schemas/organization-market-mapper.schema";
 import { userInvitations } from "../user/schemas/user-invitations.schema";
 import { users } from "../user/schemas/user.schema";
 import { organizations } from "./schemas/organization.schema";
@@ -161,6 +162,17 @@ export class OrganizationRepository {
       await tx.insert(organizationSettings).values({
         organizationId: organization.id,
       });
+
+      if (input.marketIds.length > 0) {
+        await tx.insert(organizationMarketMapper).values(
+          input.marketIds.map((marketId) => ({
+            organizationId: organization.id,
+            marketId,
+            createdBy: user.id,
+            updatedBy: user.id,
+          })),
+        );
+      }
 
       let ownerRoleId: string | undefined;
 

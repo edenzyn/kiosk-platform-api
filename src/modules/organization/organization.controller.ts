@@ -30,6 +30,32 @@ export class OrganizationController {
     res.json(result);
   };
 
+  getInvitations = async (req: Request, res: Response): Promise<void> => {
+    const query = await OrganizationValidator.getInvitationsQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const result = await this.organizationService.getOrganizationInvitations({
+      query,
+    });
+    res.json(result);
+  };
+
+  revokeInvitation = async (req: Request, res: Response): Promise<void> => {
+    const params = await OrganizationValidator.invitationIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.organizationService.revokeOrganizationInvitation(
+      {
+        invitationId: params.id,
+        currentUser,
+      },
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   toggleOrganizationStatus = async (
     req: Request,
     res: Response,

@@ -351,6 +351,13 @@
       "when": 1788758572139,
       "tag": "0049_license-module-redesign",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1788849319270,
+      "tag": "0050_user-invitations-updates",
+      "breakpoints": true
     }
   ]
 }

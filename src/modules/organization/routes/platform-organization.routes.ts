@@ -22,6 +22,24 @@ platformOrganizationRouter.post(
 );
 
 platformOrganizationRouter.get(
+  "/invitations",
+  accessMiddleware(
+    { platform: PLATFORM_ORGANIZATION_READ_WRITE_PERMS },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(organizationController.getInvitations),
+);
+
+platformOrganizationRouter.post(
+  "/invitations/:id/revoke",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_ORGANIZATION_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(organizationController.revokeInvitation),
+);
+
+platformOrganizationRouter.get(
   "/",
   accessMiddleware(
     { platform: PLATFORM_ORGANIZATION_READ_WRITE_PERMS },

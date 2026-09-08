@@ -446,6 +446,7 @@ export class UserRepository {
       organizationId,
       branchId,
       entityType,
+      isOrgRegistration,
       page,
       limit,
       search,
@@ -489,6 +490,10 @@ export class UserRepository {
 
     if (entityType !== undefined && entityType !== null) {
       conditions.push(eq(userInvitations.entityType, entityType));
+    }
+
+    if (isOrgRegistration !== undefined) {
+      conditions.push(eq(userInvitations.isOrgRegistration, isOrgRegistration));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;

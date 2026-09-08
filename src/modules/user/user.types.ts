@@ -206,6 +206,7 @@ export interface FindInvitationsByTenantRepoInput {
   organizationId?: string;
   branchId?: string;
   entityType?: UserTypeEnums;
+  isOrgRegistration?: boolean;
   page?: number;
   limit?: number;
   search?: string;

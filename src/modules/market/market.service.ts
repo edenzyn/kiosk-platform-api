@@ -14,6 +14,7 @@ import type {
   ToggleMarketStatusServiceResult,
   UpdateMarketServiceInput,
   UpdateMarketServiceResult,
+  ValidateMarketIdsServiceInput,
   ValidateOrganizationMarketServiceInput,
   ValidateResellerMarketServiceInput,
 } from "./market.types";
@@ -47,13 +48,10 @@ export class MarketService {
       marketId: input.marketId,
     });
     if (!isMapped) {
-      throw new AppError(
-        "This market is not available for your organization",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.VALIDATION_ERROR,
-        },
-      );
+      throw new AppError("This market is not available for your organization", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
     }
   }
 
@@ -66,6 +64,21 @@ export class MarketService {
     });
     if (!isMapped) {
       throw new AppError("This market is not available for you", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+  }
+
+  async validateMarketIds(input: ValidateMarketIdsServiceInput): Promise<void> {
+    if (input.marketIds.length === 0) return;
+
+    const found = await this.marketRepository.findManyByIds({
+      ids: input.marketIds,
+    });
+
+    if (found.length !== input.marketIds.length) {
+      throw new AppError("One or more selected markets do not exist", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
         code: ErrorCodes.VALIDATION_ERROR,
       });

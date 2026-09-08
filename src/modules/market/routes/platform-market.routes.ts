@@ -12,6 +12,15 @@ const marketController =
   container.resolve<MarketController>("marketController");
 
 platformMarketRouter.get(
+  "/active",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_BASIC] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(marketController.getActiveMarkets),
+);
+
+platformMarketRouter.get(
   "/",
   accessMiddleware(
     { platform: PLATFORM_MARKET_READ_WRITE_PERMS },

@@ -783,6 +783,7 @@ export class AuthService {
         registeredName: dto.registeredName,
         registrationNumber: dto.registrationNumber,
         invitationId: invitation.id,
+        marketIds: invitation.marketIds ?? [],
         owner: {
           name: dto.name,
           email: invitation.email,

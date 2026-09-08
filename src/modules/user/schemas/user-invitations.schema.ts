@@ -26,6 +26,7 @@ export const userInvitations = pgTable("user_invitations", {
   ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   roleIds: uuid("role_ids").array().default([]).notNull(),
+  marketIds: uuid("market_ids").array(),
   token: text("token").notNull().unique(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   status: integer("status").default(UserInvitationStatusEnum.PENDING).notNull(), // UserInvitationStatusEnum: 1 = PENDING, 2 = ACCEPTED, 3 = EXPIRED, 4 = REVOKED

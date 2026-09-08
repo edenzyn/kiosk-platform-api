@@ -23,6 +23,10 @@ export interface ValidateResellerMarketServiceInput {
   marketId: string;
 }
 
+export interface ValidateMarketIdsServiceInput {
+  marketIds: string[];
+}
+
 export interface GetPlatformMarketsServiceInput {
   query: {
     page: number;
@@ -82,6 +86,11 @@ export interface FindOneMarketRepoInput {
 export type FindOneMarketRepoResult = MarketEntity | null;
 
 export type FindActiveMarketsRepoResult = MarketEntity[];
+
+export interface FindManyMarketsByIdsRepoInput {
+  ids: string[];
+}
+export type FindManyMarketsByIdsRepoResult = MarketEntity[];
 
 export interface IsOrganizationMappedToMarketRepoInput {
   organizationId: string;

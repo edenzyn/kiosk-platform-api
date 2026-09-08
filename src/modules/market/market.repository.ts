@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, ne, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, ne, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { organizationMarketMapper } from "./schemas/organization-market-mapper.schema";
 import { resellerMarketMapper } from "./schemas/reseller-market-mapper.schema";
@@ -7,6 +7,8 @@ import type {
   CreateMarketRepoInput,
   CreateMarketRepoResult,
   FindActiveMarketsRepoResult,
+  FindManyMarketsByIdsRepoInput,
+  FindManyMarketsByIdsRepoResult,
   FindOneByCountryCodeRepoInput,
   FindOneByCountryCodeRepoResult,
   FindOneMarketRepoInput,
@@ -39,6 +41,17 @@ export class MarketRepository {
       .select()
       .from(markets)
       .where(eq(markets.isActive, true));
+  }
+
+  async findManyByIds(
+    input: FindManyMarketsByIdsRepoInput,
+  ): Promise<FindManyMarketsByIdsRepoResult> {
+    if (input.ids.length === 0) return [];
+
+    return this.database.client
+      .select()
+      .from(markets)
+      .where(inArray(markets.id, input.ids));
   }
 
   async isOrganizationMappedToMarket(

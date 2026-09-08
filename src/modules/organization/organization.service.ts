@@ -11,6 +11,7 @@ import { NotificationChannelEnum } from "../../shared/enums/notification/notific
 import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates/invite-organization.template";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { FileService } from "../file/file.service";
+import type { MarketService } from "../market/market.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
@@ -18,12 +19,16 @@ import type {
   FinalizeOrganizationLogoServiceInput,
   FinalizeOrganizationLogoServiceResult,
   GetMyOrganizationSettingsServiceResult,
+  GetOrganizationInvitationsServiceInput,
+  GetOrganizationInvitationsServiceResult,
   GetOrganizationsServiceInput,
   GetOrganizationsServiceResult,
   InviteOrganizationServiceInput,
   InviteOrganizationServiceResult,
   RequestOrganizationLogoUploadServiceInput,
   RequestOrganizationLogoUploadServiceResult,
+  RevokeOrganizationInvitationServiceInput,
+  RevokeOrganizationInvitationServiceResult,
   ToggleOrganizationStatusServiceInput,
   ToggleOrganizationStatusServiceResult,
   UpdateMyOrganizationServiceInput,
@@ -38,6 +43,7 @@ export class OrganizationService {
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
     private readonly fileService: FileService,
+    private readonly marketService: MarketService,
   ) {}
 
   // ========================================
@@ -83,6 +89,8 @@ export class OrganizationService {
       );
     }
 
+    await this.marketService.validateMarketIds({ marketIds: dto.marketIds });
+
     const token = generateToken(
       {
         email: dto.email,
@@ -109,6 +117,7 @@ export class OrganizationService {
         organizationId: null,
         branchId: null,
         roleIds: [],
+        marketIds: dto.marketIds,
         token,
         expiresAt,
         status: UserInvitationStatusEnum.PENDING,
@@ -167,6 +176,74 @@ export class OrganizationService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getOrganizationInvitations(
+    input: GetOrganizationInvitationsServiceInput,
+  ): Promise<GetOrganizationInvitationsServiceResult> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy,
+      sortOrder,
+      status,
+    } = input.query;
+
+    const { invitations, total } =
+      await this.userRepository.findInvitationsByTenant({
+        entityType: UserTypeEnums.NORMAL,
+        isOrgRegistration: true,
+        page,
+        limit,
+        search,
+        sortBy,
+        sortOrder,
+        status,
+      });
+
+    return {
+      invitations,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async revokeOrganizationInvitation(
+    input: RevokeOrganizationInvitationServiceInput,
+  ): Promise<RevokeOrganizationInvitationServiceResult> {
+    const invitation = await this.userRepository.findOneInvitation({
+      id: input.invitationId,
+    });
+
+    if (!invitation || !invitation.isOrgRegistration) {
+      throw new AppError("Invitation not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.PENDING) {
+      throw new AppError("Only pending invitations can be revoked", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    await this.userRepository.updateInvitation({
+      id: input.invitationId,
+      data: {
+        status: UserInvitationStatusEnum.REVOKED,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    return {
+      message: "Invitation revoked successfully",
+      success: true,
     };
   }
 

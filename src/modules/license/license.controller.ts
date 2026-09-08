@@ -7,7 +7,7 @@ import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/lice
 import type { ActivateLicenseRequestDto } from "./dtos/activate-license.dtos";
 import { LicenseValidator } from "./license.validator";
 import type { LicenseDiscountService } from "./services/license-discount.service";
-import type { LicensePricingService } from "./services/license-pricing.service";
+import type { LicensePlanService } from "./services/license-plan.service";
 import type { LicenseRedemptionService } from "./services/license-redemption.service";
 import type { LicenseTransactionService } from "./services/license-transaction.service";
 import type { LicenseService } from "./services/license.service";
@@ -16,7 +16,7 @@ export class LicenseController {
   constructor(
     private readonly licenseService: LicenseService,
     private readonly licenseTransactionService: LicenseTransactionService,
-    private readonly licensePricingService: LicensePricingService,
+    private readonly licensePlanService: LicensePlanService,
     private readonly licenseDiscountService: LicenseDiscountService,
     private readonly licenseRedemptionService: LicenseRedemptionService,
   ) {}
@@ -200,8 +200,8 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getPricingPlans = async (req: Request, res: Response): Promise<void> => {
-    const query = await LicenseValidator.getPricingPlansQuery.validate(
+  getLicensePlans = async (req: Request, res: Response): Promise<void> => {
+    const query = await LicenseValidator.getLicensePlansQuery.validate(
       req.query,
       {
         abortEarly: false,
@@ -209,7 +209,7 @@ export class LicenseController {
       },
     );
 
-    const result = await this.licensePricingService.getLicensePricingPlans({
+    const result = await this.licensePlanService.getLicensePlans({
       id: query.id,
     });
     res.status(HttpStatusCodes.OK).json(result);
@@ -290,64 +290,64 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getPlatformPricingPlans = async (
+  getPlatformLicensePlans = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const query = await LicenseValidator.getPlatformPricingPlansQuery.validate(
+    const query = await LicenseValidator.getPlatformLicensePlansQuery.validate(
       req.query,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.licensePricingService.getPlatformPricingPlans({
+    const result = await this.licensePlanService.getPlatformLicensePlans({
       query,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  createPricingPlan = async (req: Request, res: Response): Promise<void> => {
-    const dto = await LicenseValidator.createPricingPlan.validate(req.body, {
+  createLicensePlan = async (req: Request, res: Response): Promise<void> => {
+    const dto = await LicenseValidator.createLicensePlan.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licensePricingService.createPricingPlan({
+    const result = await this.licensePlanService.createLicensePlan({
       dto,
       currentUser,
     });
     res.status(HttpStatusCodes.CREATED).json(result);
   };
 
-  togglePricingPlanStatus = async (
+  toggleLicensePlanStatus = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const params = await LicenseValidator.pricingPlanIdParam.validate(
+    const params = await LicenseValidator.licensePlanIdParam.validate(
       req.params,
       { abortEarly: false, stripUnknown: true },
     );
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licensePricingService.togglePricingPlanStatus({
+    const result = await this.licensePlanService.toggleLicensePlanStatus({
       planId: params.id,
       currentUser,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  updatePricingPlan = async (req: Request, res: Response): Promise<void> => {
-    const params = await LicenseValidator.pricingPlanIdParam.validate(
+  updateLicensePlan = async (req: Request, res: Response): Promise<void> => {
+    const params = await LicenseValidator.licensePlanIdParam.validate(
       req.params,
       { abortEarly: false, stripUnknown: true },
     );
-    const dto = await LicenseValidator.createPricingPlan.validate(req.body, {
+    const dto = await LicenseValidator.updateLicensePlan.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
 
     const currentUser = req.user as UserTokenDto;
-    const result = await this.licensePricingService.updatePricingPlan({
+    const result = await this.licensePlanService.updateLicensePlan({
       planId: params.id,
       dto,
       currentUser,

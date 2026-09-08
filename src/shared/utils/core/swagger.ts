@@ -33,7 +33,7 @@ export const swaggerDocument = {
     { name: "Licenses", description: "License purchasing, assignment, extension, and history (org/branch side)" },
     { name: "Reseller Licenses", description: "Reseller license inventory, pricing, and purchasing" },
     { name: "Redemption Codes", description: "Reseller-generated redemption codes bundling licenses for resale" },
-    { name: "Platform Licenses", description: "Platform-managed pricing plans and discount rules" },
+    { name: "Platform Licenses", description: "Platform-managed license plans and discount rules" },
     { name: "Device Licenses", description: "Device-client license activation" },
     { name: "RBAC", description: "Role and permission management within an organization or branch" },
     { name: "Resellers", description: "Reseller account self-service and platform-side reseller management" },

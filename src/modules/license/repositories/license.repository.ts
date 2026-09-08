@@ -14,7 +14,7 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
-import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { LicenseTransactionTypeEnum } from "../../../shared/enums/license/license-transaction-type.enum";
 import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
@@ -284,8 +284,8 @@ export class LicenseRepository {
         and(
           eq(licenseTransactionItems.licenseId, licenses.id),
           eq(
-            licenseTransactionItems.actionType,
-            LicenseTransactionActionTypeEnum.PURCHASE,
+            licenseTransactionItems.transactionType,
+            LicenseTransactionTypeEnum.RESELLER_PURCHASE,
           ),
         ),
       )

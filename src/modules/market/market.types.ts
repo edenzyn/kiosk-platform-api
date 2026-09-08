@@ -1,11 +1,18 @@
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { MarketEntity } from "./schemas/market.schema";
 
+export interface ActiveMarketEntity {
+  id: string;
+  countryCode: string;
+  name: string;
+  currencyCode: string;
+}
+
 // ========================================
 // ? SERVICE INPUTS & RESULTS
 // ========================================
 export interface GetActiveMarketsServiceResult {
-  markets: MarketEntity[];
+  markets: ActiveMarketEntity[];
 }
 
 export interface GetMarketByIdServiceInput {
@@ -21,10 +28,6 @@ export interface ValidateOrganizationMarketServiceInput {
 export interface ValidateResellerMarketServiceInput {
   resellerId: string;
   marketId: string;
-}
-
-export interface ValidateMarketIdsServiceInput {
-  marketIds: string[];
 }
 
 export interface GetPlatformMarketsServiceInput {
@@ -85,12 +88,7 @@ export interface FindOneMarketRepoInput {
 }
 export type FindOneMarketRepoResult = MarketEntity | null;
 
-export type FindActiveMarketsRepoResult = MarketEntity[];
-
-export interface FindManyMarketsByIdsRepoInput {
-  ids: string[];
-}
-export type FindManyMarketsByIdsRepoResult = MarketEntity[];
+export type FindActiveMarketsRepoResult = ActiveMarketEntity[];
 
 export interface IsOrganizationMappedToMarketRepoInput {
   organizationId: string;

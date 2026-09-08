@@ -19,12 +19,12 @@ resellerLicenseRouter.get(
 );
 
 resellerLicenseRouter.get(
-  "/pricing",
+  "/plans",
   accessMiddleware(
     { reseller: [UserPermissions.RESELLER_BASIC] },
     UserTypeEnums.RESELLER,
   ),
-  licenseController.getPricingPlans,
+  licenseController.getLicensePlans,
 );
 
 resellerLicenseRouter.get(

@@ -10,7 +10,7 @@ import { licensePlanDiscountRules } from "./license-plan-discount-rule.schema";
 import { licensePlans } from "./license-plan.schema";
 
 // Resolves LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL -
-// which specific pricing plan a discount rule applies to, mirroring how
+// which specific license plan a discount rule applies to, mirroring how
 // reseller_discount_rule_mapper resolves RESELLER_INDIVIDUAL.
 export const licensePlanDiscountRuleMapper = pgTable(
   "license_plan_discount_rule_mapper",

@@ -22,12 +22,12 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.get(
-  "/pricing",
+  "/plans",
   accessMiddleware({
     organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
     branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
   }),
-  licenseController.getPricingPlans,
+  licenseController.getLicensePlans,
 );
 
 userLicenseRouter.get(

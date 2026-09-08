@@ -11,7 +11,6 @@ import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates
 import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { FileService } from "../file/file.service";
-import type { MarketService } from "../market/market.service";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
 import type { OrganizationRepository } from "./organization.repository";
@@ -45,7 +44,6 @@ export class OrganizationService {
     private readonly userRepository: UserRepository,
     private readonly notificationService: NotificationService,
     private readonly fileService: FileService,
-    private readonly marketService: MarketService,
   ) {}
 
   // ========================================
@@ -90,8 +88,6 @@ export class OrganizationService {
         },
       );
     }
-
-    await this.marketService.validateMarketIds({ marketIds: dto.marketIds });
 
     const token = generateToken(
       {

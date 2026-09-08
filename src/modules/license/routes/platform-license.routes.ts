@@ -47,38 +47,38 @@ platformLicenseRouter.patch(
 );
 
 platformLicenseRouter
-  .route("/pricing")
+  .route("/plans")
   .get(
     accessMiddleware(
       { platform: PLATFORM_LICENSE_READ_WRITE_PERMS },
       UserTypeEnums.PLATFORM,
     ),
-    asyncHandler(licenseController.getPlatformPricingPlans),
+    asyncHandler(licenseController.getPlatformLicensePlans),
   )
   .post(
     accessMiddleware(
       { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
       UserTypeEnums.PLATFORM,
     ),
-    asyncHandler(licenseController.createPricingPlan),
+    asyncHandler(licenseController.createLicensePlan),
   );
 
 platformLicenseRouter.patch(
-  "/pricing/:id/status",
+  "/plans/:id/status",
   accessMiddleware(
     { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
     UserTypeEnums.PLATFORM,
   ),
-  asyncHandler(licenseController.togglePricingPlanStatus),
+  asyncHandler(licenseController.toggleLicensePlanStatus),
 );
 
 platformLicenseRouter.patch(
-  "/pricing/:id",
+  "/plans/:id",
   accessMiddleware(
     { platform: [UserPermissions.PLATFORM_LICENSE_WRITE] },
     UserTypeEnums.PLATFORM,
   ),
-  asyncHandler(licenseController.updatePricingPlan),
+  asyncHandler(licenseController.updateLicensePlan),
 );
 
 export { platformLicenseRouter };

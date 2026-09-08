@@ -12,13 +12,13 @@ const deviceTypeDescription = "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY";
 
 const discountRuleRequestSchema = {
   type: "object",
-  required: ["name", "targetEntity", "discountType", "discountValue"],
+  required: ["name", "targetEntity", "discountType", "discountValue", "scopeType"],
   properties: {
     name: { type: "string", minLength: 2, maxLength: 255 },
     targetEntity: {
       type: "integer",
       description:
-        "1=ORGANIZATIONS (all orgs), 2=RESELLERS (all resellers), 3=RESELLER_INDIVIDUAL (requires resellerIds), 4=LICENSE_PLAN_INDIVIDUAL (requires pricingPlanIds)",
+        "1=ORGANIZATIONS (all orgs), 2=RESELLERS (all resellers), 3=RESELLER_INDIVIDUAL (requires resellerIds), 4=LICENSE_PLAN_INDIVIDUAL (requires licensePlanIds)",
     },
     discountType: { type: "integer", description: "1=PERCENTAGE, 2=FLAT" },
     discountValue: {
@@ -26,11 +26,14 @@ const discountRuleRequestSchema = {
       exclusiveMinimum: 0,
       description: "Percentage (0-100) if discountType=PERCENTAGE, otherwise a flat amount",
     },
-    currency: {
+    scopeType: {
+      type: "integer",
+      description: "1=GLOBAL, 2=MARKET. A FLAT discount must be MARKET-scoped.",
+    },
+    marketId: {
       type: "string",
-      minLength: 3,
-      maxLength: 3,
-      description: "Required (3-letter ISO code) when discountType=FLAT; ignored otherwise",
+      format: "uuid",
+      description: "Required when scopeType=MARKET or discountType=FLAT; must not be set otherwise",
     },
     minQuantity: { type: "integer", minimum: 1, default: 1 },
     maxQuantity: { type: "integer", minimum: 1, nullable: true },
@@ -41,7 +44,7 @@ const discountRuleRequestSchema = {
       items: { type: "string", format: "uuid" },
       description: "Required when targetEntity=RESELLER_INDIVIDUAL",
     },
-    pricingPlanIds: {
+    licensePlanIds: {
       type: "array",
       items: { type: "string", format: "uuid" },
       description: "Required when targetEntity=LICENSE_PLAN_INDIVIDUAL",
@@ -49,15 +52,26 @@ const discountRuleRequestSchema = {
   },
 };
 
-const pricingPlanRequestSchema = {
+const licensePlanRequestSchema = {
   type: "object",
-  required: ["name", "deviceType", "durationDays", "price", "currency"],
+  required: ["name", "deviceType", "durationDays", "marketPrices"],
   properties: {
     name: { type: "string", minLength: 2, maxLength: 255 },
     deviceType: { type: "integer", description: deviceTypeDescription },
     durationDays: { type: "integer", minimum: 1 },
-    price: { type: "number", minimum: 0 },
-    currency: { type: "string", minLength: 3, maxLength: 3, description: "3-letter ISO code" },
+    marketPrices: {
+      type: "array",
+      description:
+        "Per-market prices. On create, required with at least one entry. On update, a full replace of this plan's market prices when provided; omit to leave existing prices untouched.",
+      items: {
+        type: "object",
+        required: ["marketId", "price"],
+        properties: {
+          marketId: { type: "string", format: "uuid" },
+          price: { type: "number", exclusiveMinimum: 0 },
+        },
+      },
+    },
   },
 };
 
@@ -140,7 +154,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
     patch: {
       tags: ["Platform Licenses"],
       summary: "Update a discount rule",
-      description: "Full update, including its resellers/pricing-plan targets — reuses the create schema.",
+      description: "Full update, including its resellers/license-plan targets — reuses the create schema.",
       parameters: [{ ...licenseIdParam, description: "Discount rule ID" }],
       requestBody: { required: true, content: { "application/json": { schema: discountRuleRequestSchema } } },
       responses: {
@@ -150,42 +164,50 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
-  "/pvt/p/licenses/pricing": {
+  "/pvt/p/licenses/plans": {
     get: {
       tags: ["Platform Licenses"],
-      summary: "List pricing plans",
-      parameters: [{ name: "isActive", in: "query", schema: { type: "boolean" } }],
-      responses: { "200": { description: "List of pricing plans" } },
+      summary: "List license plans",
+      description:
+        "When marketId is omitted, each plan includes a nested marketPrices[] array (all markets) for admin editing. When marketId is given, only that market's price is attached.",
+      parameters: [
+        { name: "page", in: "query", schema: { type: "integer", minimum: 1 } },
+        { name: "limit", in: "query", schema: { type: "integer", minimum: 1, maximum: 100 } },
+        { name: "search", in: "query", schema: { type: "string" } },
+        { name: "isActive", in: "query", schema: { type: "boolean" } },
+        { name: "marketId", in: "query", schema: { type: "string", format: "uuid" } },
+      ],
+      responses: { "200": { description: "Paginated list of license plans" } },
     },
     post: {
       tags: ["Platform Licenses"],
-      summary: "Create a pricing plan",
-      requestBody: { required: true, content: { "application/json": { schema: pricingPlanRequestSchema } } },
+      summary: "Create a license plan",
+      requestBody: { required: true, content: { "application/json": { schema: licensePlanRequestSchema } } },
       responses: {
-        "201": { description: "Pricing plan created" },
+        "201": { description: "License plan created" },
         "400": { $ref: "#/components/responses/ValidationError" },
       },
     },
   },
-  "/pvt/p/licenses/pricing/{id}/status": {
+  "/pvt/p/licenses/plans/{id}/status": {
     patch: {
       tags: ["Platform Licenses"],
-      summary: "Toggle a pricing plan's active status",
-      parameters: [{ ...licenseIdParam, description: "Pricing plan ID" }],
+      summary: "Toggle a license plan's active status",
+      parameters: [{ ...licenseIdParam, description: "License plan ID" }],
       responses: {
         "200": { description: "Status toggled" },
         "404": { $ref: "#/components/responses/NotFound" },
       },
     },
   },
-  "/pvt/p/licenses/pricing/{id}": {
+  "/pvt/p/licenses/plans/{id}": {
     patch: {
       tags: ["Platform Licenses"],
-      summary: "Update a pricing plan",
-      parameters: [{ ...licenseIdParam, description: "Pricing plan ID" }],
-      requestBody: { required: true, content: { "application/json": { schema: pricingPlanRequestSchema } } },
+      summary: "Update a license plan",
+      parameters: [{ ...licenseIdParam, description: "License plan ID" }],
+      requestBody: { required: true, content: { "application/json": { schema: licensePlanRequestSchema } } },
       responses: {
-        "200": { description: "Pricing plan updated" },
+        "200": { description: "License plan updated" },
         "400": { $ref: "#/components/responses/ValidationError" },
         "404": { $ref: "#/components/responses/NotFound" },
       },
@@ -210,12 +232,15 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       responses: { "200": { description: "Paginated list of the reseller's licenses" } },
     },
   },
-  "/pvt/r/licenses/pricing": {
+  "/pvt/r/licenses/plans": {
     get: {
       tags: ["Reseller Licenses"],
-      summary: "List pricing plans available for purchase",
-      parameters: [{ name: "id", in: "query", schema: { type: "string", format: "uuid" } }],
-      responses: { "200": { description: "List of active pricing plans" } },
+      summary: "List license plans available for purchase",
+      parameters: [
+        { name: "id", in: "query", schema: { type: "string", format: "uuid" } },
+        { name: "marketId", in: "query", schema: { type: "string", format: "uuid" } },
+      ],
+      responses: { "200": { description: "List of active license plans, each with that market's price" } },
     },
   },
   "/pvt/r/licenses/discount-rules": {
@@ -235,11 +260,16 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["quantity", "pricingPlanId"],
+              required: ["quantity", "licensePlanId", "marketId"],
               properties: {
                 quantity: { type: "integer", minimum: 1 },
-                pricingPlanId: { type: "string", format: "uuid" },
+                licensePlanId: { type: "string", format: "uuid" },
                 discountRuleId: { type: "string", format: "uuid" },
+                marketId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Must be mapped to this reseller via reseller_market_mapper",
+                },
               },
             },
           },
@@ -335,7 +365,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       tags: ["Redemption Codes"],
       summary: "Verify (finalize) the sold price of a claimed redemption code",
       description:
-        "Called after the code has been claimed by an organization, to record what it was actually sold for. Per-license `soldPrice` values must sum to `totalSoldPrice`.",
+        "Called after the code has been claimed by an organization, to record what it was actually sold for. Per-license `lockedPrice` values must sum to `totalSoldPrice`. Currency is implied by the code's market.",
       parameters: [{ ...licenseIdParam, description: "Redemption code ID" }],
       requestBody: {
         required: true,
@@ -343,19 +373,18 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["totalSoldPrice", "soldPriceCurrency", "items"],
+              required: ["totalSoldPrice", "items"],
               properties: {
                 totalSoldPrice: { type: "number", minimum: 0 },
-                soldPriceCurrency: { type: "string", minLength: 3, maxLength: 3 },
                 items: {
                   type: "array",
                   minItems: 1,
                   items: {
                     type: "object",
-                    required: ["licenseId", "soldPrice"],
+                    required: ["licenseId", "lockedPrice"],
                     properties: {
                       licenseId: { type: "string", format: "uuid" },
-                      soldPrice: { type: "number", minimum: 0 },
+                      lockedPrice: { type: "number", minimum: 0 },
                     },
                   },
                 },
@@ -413,12 +442,15 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       responses: { "200": { description: "Paginated list of licenses" } },
     },
   },
-  "/pvt/u/licenses/pricing": {
+  "/pvt/u/licenses/plans": {
     get: {
       tags: ["Licenses"],
-      summary: "List pricing plans available for purchase",
-      parameters: [{ name: "id", in: "query", schema: { type: "string", format: "uuid" } }],
-      responses: { "200": { description: "List of active pricing plans" } },
+      summary: "List license plans available for purchase",
+      parameters: [
+        { name: "id", in: "query", schema: { type: "string", format: "uuid" } },
+        { name: "marketId", in: "query", schema: { type: "string", format: "uuid" } },
+      ],
+      responses: { "200": { description: "List of active license plans, each with that market's price" } },
     },
   },
   "/pvt/u/licenses/discount-rules": {
@@ -432,17 +464,24 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
     post: {
       tags: ["Licenses"],
       summary: "Purchase licenses for the organization",
+      description:
+        "marketId is required only when purchasing at the organization level (no branch selected in the effective tenant) — if a branch is selected, its locked market is used instead.",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["quantity", "pricingPlanId"],
+              required: ["quantity", "licensePlanId"],
               properties: {
                 quantity: { type: "integer", minimum: 1 },
-                pricingPlanId: { type: "string", format: "uuid" },
+                licensePlanId: { type: "string", format: "uuid" },
                 discountRuleId: { type: "string", format: "uuid" },
+                marketId: {
+                  type: "string",
+                  format: "uuid",
+                  description: "Required for org-level purchases (no branch); must be mapped via organization_market_mapper",
+                },
               },
             },
           },
@@ -532,7 +571,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       tags: ["Licenses"],
       summary: "Get extend eligibility/locked pricing for a license",
       description:
-        "If the license was originally redeemed via a code, returns `isRedeemed: true` plus the locked plan/price/duration it must be extended with. Otherwise `isRedeemed: false` and the caller may extend with any active pricing plan.",
+        "If the license was originally redeemed via a code, returns `isRedeemed: true` plus the locked plan/price/duration it must be extended with. Otherwise `isRedeemed: false` and the caller may extend with any active license plan.",
       parameters: [licenseIdParam],
       responses: {
         "200": {
@@ -549,10 +588,9 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
                     properties: {
                       planName: { type: "string", nullable: true },
                       basePrice: { type: "string" },
-                      basePriceCurrency: { type: "string" },
-                      soldPrice: { type: "string", nullable: true },
-                      soldPriceCurrency: { type: "string", nullable: true },
+                      lockedPrice: { type: "string" },
                       durationDays: { type: "integer" },
+                      marketId: { type: "string", format: "uuid" },
                     },
                   },
                 },
@@ -569,7 +607,7 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
       tags: ["Licenses"],
       summary: "Extend a license",
       description:
-        "`pricingPlanId` is required unless the license was redeemed via a code (see GET .../extend-info) — in that case it's ignored server-side and the license's originally-redeemed plan/price/duration is used instead.",
+        "`licensePlanId` is required unless the license was redeemed via a code (see GET .../extend-info) — in that case it's ignored server-side and the license's originally-redeemed plan/price/duration is used instead.",
       parameters: [licenseIdParam],
       requestBody: {
         required: false,
@@ -577,15 +615,15 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              properties: { pricingPlanId: { type: "string", format: "uuid" } },
+              properties: { licensePlanId: { type: "string", format: "uuid" } },
             },
           },
         },
       },
       responses: {
         "200": { description: "License extended; returns the updated license" },
-        "400": { description: "Pricing plan ID is required (non-redeemed license, none supplied)" },
-        "404": { description: "License or pricing plan not found" },
+        "400": { description: "License plan ID is required (non-redeemed license, none supplied)" },
+        "404": { description: "License or license plan not found" },
       },
     },
   },

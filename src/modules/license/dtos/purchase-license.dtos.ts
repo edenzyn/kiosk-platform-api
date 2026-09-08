@@ -2,8 +2,9 @@ import type { LicenseEntity } from "../schemas/license.schema";
 
 export interface InitiateLicensePurchaseRequestDto {
   quantity: number;
-  pricingPlanId: string;
+  licensePlanId: string;
   discountRuleId?: string;
+  marketId?: string;
 }
 
 export interface InitiateLicensePurchaseResponseDto {
@@ -18,8 +19,9 @@ export interface InitiateLicensePurchaseResponseDto {
 
 export interface PurchaseLicenseRequestDto {
   quantity: number;
-  pricingPlanId: string;
+  licensePlanId: string;
   discountRuleId?: string;
+  marketId?: string;
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;

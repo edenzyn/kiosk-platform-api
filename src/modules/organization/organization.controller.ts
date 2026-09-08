@@ -56,6 +56,21 @@ export class OrganizationController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  resendInvitation = async (req: Request, res: Response): Promise<void> => {
+    const params = await OrganizationValidator.invitationIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.organizationService.resendOrganizationInvitation(
+      {
+        invitationId: params.id,
+        currentUser,
+      },
+    );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   toggleOrganizationStatus = async (
     req: Request,
     res: Response,

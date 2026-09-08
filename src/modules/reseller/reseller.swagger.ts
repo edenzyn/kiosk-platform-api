@@ -443,6 +443,64 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/p/resellers/invitations/{id}/revoke": {
+    post: {
+      tags: ["Resellers"],
+      summary: "Revoke a reseller invitation",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": {
+          description: "Invitation revoked",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "400": { description: "Only pending invitations can be revoked" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/p/resellers/invitations/{id}/resend": {
+    post: {
+      tags: ["Resellers"],
+      summary: "Resend an expired reseller invitation",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": {
+          description: "Invitation resent",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "400": { description: "Only expired invitations can be resent" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/p/resellers/": {
     get: {
       tags: ["Resellers"],

@@ -45,6 +45,15 @@ export interface RevokeOrganizationInvitationServiceResult {
   success: boolean;
 }
 
+export interface ResendOrganizationInvitationServiceInput {
+  invitationId: string;
+  currentUser: UserTokenDto;
+}
+export interface ResendOrganizationInvitationServiceResult {
+  message: string;
+  success: boolean;
+}
+
 export interface ToggleOrganizationStatusServiceInput {
   organizationId: string;
   currentUser: UserTokenDto;

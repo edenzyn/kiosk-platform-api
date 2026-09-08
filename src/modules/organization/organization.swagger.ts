@@ -124,6 +124,35 @@ export const organizationSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/p/organizations/invitations/{id}/resend": {
+    post: {
+      tags: ["Organizations"],
+      summary: "Resend an expired organization invitation",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": {
+          description: "Invitation resent",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "400": { description: "Only expired invitations can be resent" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/p/organizations": {
     get: {
       tags: ["Organizations"],

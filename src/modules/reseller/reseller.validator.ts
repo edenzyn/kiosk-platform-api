@@ -50,4 +50,10 @@ export class ResellerValidator {
   static resellerIdParam = Yup.object({
     id: Yup.string().uuid("Invalid reseller ID").required("Reseller ID is required"),
   }).noUnknown();
+
+  static invitationIdParam = Yup.object({
+    id: Yup.string()
+      .uuid("Invalid invitation ID")
+      .required("Invitation ID is required"),
+  }).noUnknown();
 }

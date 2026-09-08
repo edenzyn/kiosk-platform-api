@@ -39,6 +39,15 @@ platformOrganizationRouter.post(
   asyncHandler(organizationController.revokeInvitation),
 );
 
+platformOrganizationRouter.post(
+  "/invitations/:id/resend",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_ORGANIZATION_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(organizationController.resendInvitation),
+);
+
 platformOrganizationRouter.get(
   "/",
   accessMiddleware(

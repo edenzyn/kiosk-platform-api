@@ -27,6 +27,8 @@ import type {
   InviteOrganizationServiceResult,
   RequestOrganizationLogoUploadServiceInput,
   RequestOrganizationLogoUploadServiceResult,
+  ResendOrganizationInvitationServiceInput,
+  ResendOrganizationInvitationServiceResult,
   RevokeOrganizationInvitationServiceInput,
   RevokeOrganizationInvitationServiceResult,
   ToggleOrganizationStatusServiceInput,
@@ -243,6 +245,74 @@ export class OrganizationService {
 
     return {
       message: "Invitation revoked successfully",
+      success: true,
+    };
+  }
+
+  async resendOrganizationInvitation(
+    input: ResendOrganizationInvitationServiceInput,
+  ): Promise<ResendOrganizationInvitationServiceResult> {
+    const invitation = await this.userRepository.findOneInvitation({
+      id: input.invitationId,
+    });
+
+    if (!invitation || !invitation.isOrgRegistration) {
+      throw new AppError("Invitation not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
+      throw new AppError("Only expired invitations can be resent", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const token = generateToken(
+      {
+        email: invitation.email,
+        entityType: UserTypeEnums.NORMAL,
+        isOrgRegistration: true,
+        organizationId: null,
+        branchId: null,
+      },
+      env.JWT_INVITE_USER_SECRET,
+      {
+        expiresIn:
+          env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+    const expiresAt = dayjs().add(7, "day").toDate();
+
+    await this.userRepository.updateInvitation({
+      id: input.invitationId,
+      data: {
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    try {
+      const template = getInviteOrganizationTemplate({
+        name: invitation.name || "there",
+        organizationName: invitation.organizationName || "your organization",
+        token,
+      });
+
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
+        to: invitation.email,
+        ...template,
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") console.log(error);
+    }
+
+    return {
+      message: "Invitation resent successfully",
       success: true,
     };
   }

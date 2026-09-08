@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -8,6 +7,7 @@ import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteResellerTemplate } from "../../shared/utils/emailTemplates/invite-reseller.template";
+import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
@@ -78,7 +78,7 @@ export class ResellerService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.createInvitation({
       invitation: {
@@ -215,7 +215,7 @@ export class ResellerService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.updateInvitation({
       id: input.invitationId,

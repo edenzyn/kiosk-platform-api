@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
@@ -9,6 +8,7 @@ import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates/invite-organization.template";
+import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { FileService } from "../file/file.service";
 import type { MarketService } from "../market/market.service";
@@ -107,7 +107,7 @@ export class OrganizationService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.createInvitation({
       invitation: {
@@ -284,7 +284,7 @@ export class OrganizationService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.updateInvitation({
       id: input.invitationId,

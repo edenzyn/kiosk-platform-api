@@ -50,13 +50,14 @@ export class MarketService {
     userId: string,
   ): Promise<string> {
     if (existingTaxProfileId) {
-      const taxProfile = await this.taxRepository.updateTaxProfileWithComponents({
-        taxProfileId: existingTaxProfileId,
-        name: taxConfiguration.name,
-        isTaxInclusive: taxConfiguration.isTaxInclusive,
-        components: taxConfiguration.components,
-        updatedBy: userId,
-      });
+      const taxProfile =
+        await this.taxRepository.updateTaxProfileWithComponents({
+          taxProfileId: existingTaxProfileId,
+          name: taxConfiguration.name,
+          isTaxInclusive: taxConfiguration.isTaxInclusive,
+          components: taxConfiguration.components,
+          updatedBy: userId,
+        });
       return taxProfile.id;
     }
 

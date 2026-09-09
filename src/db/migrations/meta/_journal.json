@@ -358,6 +358,13 @@
       "when": 1788849319270,
       "tag": "0050_user-invitations-updates",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1788939505957,
+      "tag": "0051_chunky_zaladane",
+      "breakpoints": true
     }
   ]
 }

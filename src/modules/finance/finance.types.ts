@@ -1,3 +1,7 @@
+import type { AppTaxComponentEntity } from "./schemas/app-tax-component.schema";
+import type { AppTaxProfileEntity } from "./schemas/app-tax-profile.schema";
+import type { AppTaxRuleEntity } from "./schemas/app-tax-rule.schema";
+
 // ========================================
 // ? CACHE ENTITY
 // ========================================
@@ -66,3 +70,64 @@ export interface VerifyRazorpayPaymentServiceInput {
   expectedAmount: string;
   expectedCurrency: string;
 }
+
+// ========================================
+// ? TAX — SHARED TYPES
+// ========================================
+// Tax configuration is embedded in the Market create/update/get APIs
+// (MarketService), not exposed as standalone tax-profile endpoints.
+export type TaxProfileWithRules = AppTaxProfileEntity & {
+  rules: (AppTaxRuleEntity & { components: AppTaxComponentEntity[] })[];
+};
+
+export interface CreateTaxRuleComponentDto {
+  name: string;
+  rate: number;
+}
+
+export interface CreateTaxProfileRuleDto {
+  name: string;
+  conditionType: number;
+  priority?: number;
+  startsAt?: Date | null;
+  endsAt?: Date | null;
+  components: CreateTaxRuleComponentDto[];
+}
+
+// ========================================
+// ? TAX — REPOSITORY INPUTS & RESULTS
+// ========================================
+export interface FindOneTaxProfileRepoInput {
+  id: string;
+}
+export type FindOneTaxProfileRepoResult = AppTaxProfileEntity | null;
+
+export interface FindTaxProfileRulesRepoInput {
+  taxProfileId: string;
+}
+export type FindTaxProfileRulesRepoResult = AppTaxRuleEntity[];
+
+export interface FindTaxRuleComponentsRepoInput {
+  taxRuleIds: string[];
+}
+export type FindTaxRuleComponentsRepoResult = Map<
+  string,
+  AppTaxComponentEntity[]
+>;
+
+export interface CreateTaxProfileRepoInput {
+  name: string;
+  isTaxInclusive: boolean;
+  rules: CreateTaxProfileRuleDto[];
+  createdBy: string;
+}
+export type CreateTaxProfileRepoResult = AppTaxProfileEntity;
+
+export interface UpdateTaxProfileRepoInput {
+  taxProfileId: string;
+  name: string;
+  isTaxInclusive: boolean;
+  rules: CreateTaxProfileRuleDto[];
+  updatedBy: string;
+}
+export type UpdateTaxProfileRepoResult = AppTaxProfileEntity;

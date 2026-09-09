@@ -15,7 +15,7 @@ import {
   type ExchangeRateTable,
 } from "../../shared/utils/finance/convert-currency.helper";
 import type { LicenseTransactionRepository } from "../license/repositories/license-transaction.repository";
-import { FinanceRepository } from "./finance.repository";
+import { FinanceRepository } from "./repositories/finance.repository";
 import type {
   CachedExchangeRatesEntity,
   CachedSupportedCurrenciesEntity,

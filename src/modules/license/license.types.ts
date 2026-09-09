@@ -952,6 +952,7 @@ export interface CreatePendingLicenseTransactionRepoInput {
   discountValue?: string | null;
   appliedDiscountRuleId?: string | null;
   totalAmount: string;
+  totalTaxAmount?: string;
   paymentStatus: number;
   paymentProvider: number;
   paymentProviderOrderId: string;

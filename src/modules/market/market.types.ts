@@ -1,4 +1,8 @@
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type {
+  CreateTaxProfileRuleDto,
+  TaxProfileWithRules,
+} from "../finance/finance.types";
 import type { MarketEntity } from "./schemas/market.schema";
 
 export interface ActiveMarketEntity {
@@ -7,6 +11,16 @@ export interface ActiveMarketEntity {
   name: string;
   currencyCode: string;
 }
+
+export interface TaxConfigurationDto {
+  name: string;
+  isTaxInclusive: boolean;
+  rules: CreateTaxProfileRuleDto[];
+}
+
+export type MarketWithTaxProfile = MarketEntity & {
+  taxProfile: TaxProfileWithRules | null;
+};
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -18,7 +32,7 @@ export interface GetActiveMarketsServiceResult {
 export interface GetMarketByIdServiceInput {
   marketId: string;
 }
-export type GetMarketByIdServiceResult = MarketEntity;
+export type GetMarketByIdServiceResult = MarketWithTaxProfile;
 
 export interface ValidateOrganizationMarketServiceInput {
   organizationId: string;
@@ -41,8 +55,12 @@ export interface GetPlatformMarketsServiceInput {
   };
 }
 
+export type MarketWithTaxProfileSummary = MarketEntity & {
+  taxProfile: { id: string; name: string } | null;
+};
+
 export interface GetPlatformMarketsServiceResult {
-  markets: MarketEntity[];
+  markets: MarketWithTaxProfileSummary[];
   total: number;
   page: number;
   limit: number;
@@ -54,22 +72,24 @@ export interface CreateMarketServiceInput {
     countryCode: string;
     name: string;
     currencyCode: string;
+    taxConfiguration?: TaxConfigurationDto | null;
   };
   currentUser: UserTokenDto;
 }
 export interface CreateMarketServiceResult {
-  market: MarketEntity;
+  market: MarketWithTaxProfile;
 }
 
 export interface UpdateMarketServiceInput {
   marketId: string;
   dto: {
     name: string;
+    taxConfiguration?: TaxConfigurationDto | null;
   };
   currentUser: UserTokenDto;
 }
 export interface UpdateMarketServiceResult {
-  market: MarketEntity;
+  market: MarketWithTaxProfile;
 }
 
 export interface ToggleMarketStatusServiceInput {
@@ -131,6 +151,7 @@ export interface CreateMarketRepoInput {
   countryCode: string;
   name: string;
   currencyCode: string;
+  appTaxProfileId?: string | null;
   createdBy: string;
 }
 export type CreateMarketRepoResult = MarketEntity;
@@ -142,6 +163,7 @@ export interface UpdateMarketRepoInput {
     countryCode: string;
     name: string;
     currencyCode: string;
+    appTaxProfileId: string | null;
     isActive: boolean;
   }>;
 }

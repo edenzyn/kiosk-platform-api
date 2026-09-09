@@ -1,10 +1,10 @@
-import { env } from "../../config/env";
-import { RedisKeys } from "../../shared/constants/redis-keys.constants";
-import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
+import { env } from "../../../config/env";
+import { RedisKeys } from "../../../shared/constants/redis-keys.constants";
+import type { RedisProvider } from "../../../shared/providers/redis/redis.provider";
 import type {
   CachedExchangeRatesEntity,
   CachedSupportedCurrenciesEntity,
-} from "./finance.types";
+} from "../finance.types";
 
 export class FinanceRepository {
   constructor(private readonly redisProvider: RedisProvider) {}

@@ -6,17 +6,12 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { appTaxProfiles } from "../../finance/schemas/app-tax-profile.schema";
 import { users } from "../../user/schemas/user.schema";
 
-export const markets = pgTable("markets", {
+export const appTaxProfiles = pgTable("app_tax_profiles", {
   id: uuid("id").defaultRandom().primaryKey(),
-  countryCode: varchar("country_code", { length: 2 }).notNull().unique(),
   name: varchar("name", { length: 100 }).notNull(),
-  currencyCode: varchar("currency_code", { length: 3 }).notNull(),
-  appTaxProfileId: uuid("app_tax_profile_id").references(
-    (): AnyPgColumn => appTaxProfiles.id,
-  ),
+  isTaxInclusive: boolean("is_tax_inclusive").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -28,5 +23,5 @@ export const markets = pgTable("markets", {
   updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
 });
 
-export type MarketEntity = typeof markets.$inferSelect;
-export type CreateMarketEntity = typeof markets.$inferInsert;
+export type AppTaxProfileEntity = typeof appTaxProfiles.$inferSelect;
+export type CreateAppTaxProfileEntity = typeof appTaxProfiles.$inferInsert;

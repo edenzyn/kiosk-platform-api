@@ -39,6 +39,9 @@ export const licenseTransactions = pgTable("license_transactions", {
     (): AnyPgColumn => licensePlanDiscountRules.id,
   ),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  totalTaxAmount: decimal("total_tax_amount", { precision: 10, scale: 2 })
+    .notNull()
+    .default("0"),
   // Payment
   paymentMethod: smallint("payment_method"), // PaymentMethodEnum: 1 = UPI
   paymentProvider: smallint("payment_provider"), // PaymentProviderEnum: 1 = RAZORPAY

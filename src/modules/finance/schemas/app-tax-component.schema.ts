@@ -1,22 +1,22 @@
 import {
   boolean,
+  decimal,
   pgTable,
   timestamp,
   uuid,
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
-import { appTaxProfiles } from "../../finance/schemas/app-tax-profile.schema";
 import { users } from "../../user/schemas/user.schema";
+import { appTaxRules } from "./app-tax-rule.schema";
 
-export const markets = pgTable("markets", {
+export const appTaxComponents = pgTable("app_tax_components", {
   id: uuid("id").defaultRandom().primaryKey(),
-  countryCode: varchar("country_code", { length: 2 }).notNull().unique(),
+  taxRuleId: uuid("tax_rule_id")
+    .notNull()
+    .references((): AnyPgColumn => appTaxRules.id),
   name: varchar("name", { length: 100 }).notNull(),
-  currencyCode: varchar("currency_code", { length: 3 }).notNull(),
-  appTaxProfileId: uuid("app_tax_profile_id").references(
-    (): AnyPgColumn => appTaxProfiles.id,
-  ),
+  rate: decimal("rate", { precision: 10, scale: 4 }).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -28,5 +28,6 @@ export const markets = pgTable("markets", {
   updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
 });
 
-export type MarketEntity = typeof markets.$inferSelect;
-export type CreateMarketEntity = typeof markets.$inferInsert;
+export type AppTaxComponentEntity = typeof appTaxComponents.$inferSelect;
+export type CreateAppTaxComponentEntity =
+  typeof appTaxComponents.$inferInsert;

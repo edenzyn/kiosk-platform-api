@@ -98,6 +98,14 @@ export interface FindComponentsByProfileIdRepoInput {
 }
 export type FindComponentsByProfileIdRepoResult = AppTaxComponentEntity[];
 
+export interface FindTaxProfileSummariesByIdsRepoInput {
+  taxProfileIds: string[];
+}
+export type FindTaxProfileSummariesByIdsRepoResult = Array<{
+  id: string;
+  name: string;
+}>;
+
 export interface CreateTaxProfileRepoInput {
   name: string;
   isTaxInclusive: boolean;

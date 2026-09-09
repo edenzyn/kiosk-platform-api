@@ -80,18 +80,12 @@ export class MarketService {
       ),
     ];
 
-    const taxProfilesById = new Map<string, { id: string; name: string }>();
-    for (const taxProfileId of taxProfileIds) {
-      const taxProfile = await this.taxRepository.findOne({
-        id: taxProfileId,
-      });
-      if (taxProfile) {
-        taxProfilesById.set(taxProfile.id, {
-          id: taxProfile.id,
-          name: taxProfile.name,
-        });
-      }
-    }
+    const taxProfiles = await this.taxRepository.findTaxProfileSummariesByIds({
+      taxProfileIds,
+    });
+    const taxProfilesById = new Map(
+      taxProfiles.map((taxProfile) => [taxProfile.id, taxProfile]),
+    );
 
     return markets.map((market) => ({
       ...market,

@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import type {
   CreateTaxProfileRepoInput,
@@ -7,6 +7,8 @@ import type {
   FindComponentsByProfileIdRepoResult,
   FindOneTaxProfileRepoInput,
   FindOneTaxProfileRepoResult,
+  FindTaxProfileSummariesByIdsRepoInput,
+  FindTaxProfileSummariesByIdsRepoResult,
   UpdateTaxProfileRepoInput,
   UpdateTaxProfileRepoResult,
 } from "../finance.types";
@@ -36,6 +38,17 @@ export class TaxRepository {
       .from(appTaxComponents)
       .where(eq(appTaxComponents.taxProfileId, input.taxProfileId))
       .orderBy(asc(appTaxComponents.createdAt));
+  }
+
+  async findTaxProfileSummariesByIds(
+    input: FindTaxProfileSummariesByIdsRepoInput,
+  ): Promise<FindTaxProfileSummariesByIdsRepoResult> {
+    if (input.taxProfileIds.length === 0) return [];
+
+    return this.database.client
+      .select({ id: appTaxProfiles.id, name: appTaxProfiles.name })
+      .from(appTaxProfiles)
+      .where(inArray(appTaxProfiles.id, input.taxProfileIds));
   }
 
   async createTaxProfileWithComponents(

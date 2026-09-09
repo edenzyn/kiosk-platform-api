@@ -148,6 +148,7 @@ export interface FindUsersByRoleIdRepoResult {
 export interface FindResellersRepoInput {
   search?: string;
   isActive?: boolean;
+  marketId?: string;
   page?: number;
   limit?: number;
   sortBy?: string;

@@ -15,7 +15,7 @@ import type {
   UpdateDiscountRuleServiceInput,
   UpdateDiscountRuleServiceResult,
 } from "../license.types";
-import type { LicenseDiscountRuleEntity } from "../schemas/license-discount-rule.schema";
+import type { LicensePlanDiscountRuleEntity } from "../schemas/license-plan-discount-rule.schema";
 
 export class LicenseDiscountService {
   constructor(
@@ -71,6 +71,7 @@ export class LicenseDiscountService {
     const rules = await this.licenseDiscountRepository.findActiveDiscountRules({
       targetEntity: input.targetEntity,
       resellerId: input.resellerId,
+      marketId: input.marketId,
     });
     return {
       rules: await this._attachTargets(rules, { includeResellerTargets: false }),
@@ -80,8 +81,16 @@ export class LicenseDiscountService {
   async getPlatformDiscountRules(
     input: GetPlatformDiscountRulesServiceInput,
   ): Promise<GetPlatformDiscountRulesServiceResult> {
-    const { page = 1, limit = 10, search, targetEntity, isActive, sortBy, sortOrder } =
-      input.query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      targetEntity,
+      isActive,
+      marketId,
+      sortBy,
+      sortOrder,
+    } = input.query;
 
     const { rules, total } =
       await this.licenseDiscountRepository.findPaginatedDiscountRules({
@@ -90,6 +99,7 @@ export class LicenseDiscountService {
         search,
         targetEntity,
         isActive,
+        marketId,
         sortBy,
         sortOrder,
       });
@@ -104,7 +114,7 @@ export class LicenseDiscountService {
   }
 
   private async _fetchTargetsForRule(
-    rule: LicenseDiscountRuleEntity,
+    rule: LicensePlanDiscountRuleEntity,
   ): Promise<{ id: string; name: string }[]> {
     if (
       rule.targetEntity !==
@@ -132,13 +142,14 @@ export class LicenseDiscountService {
       targetEntity: dto.targetEntity,
       discountType: dto.discountType,
       discountValue: dto.discountValue,
-      currency: dto.currency,
+      scopeType: dto.scopeType,
+      marketId: dto.marketId,
       minQuantity: dto.minQuantity,
       maxQuantity: dto.maxQuantity,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt,
       resellerIds: dto.resellerIds,
-      pricingPlanIds: dto.pricingPlanIds,
+      licensePlanIds: dto.licensePlanIds,
       createdBy: currentUser.id,
     });
 
@@ -167,13 +178,14 @@ export class LicenseDiscountService {
       targetEntity: dto.targetEntity,
       discountType: dto.discountType,
       discountValue: dto.discountValue,
-      currency: dto.currency,
+      scopeType: dto.scopeType,
+      marketId: dto.marketId,
       minQuantity: dto.minQuantity,
       maxQuantity: dto.maxQuantity,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt,
       resellerIds: dto.resellerIds,
-      pricingPlanIds: dto.pricingPlanIds,
+      licensePlanIds: dto.licensePlanIds,
       updatedBy: currentUser.id,
     });
 

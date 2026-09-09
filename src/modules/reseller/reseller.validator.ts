@@ -42,6 +42,7 @@ export class ResellerValidator {
       status: Yup.string()
         .oneOf(["active", "inactive", "all"])
         .optional(),
+      marketId: Yup.string().uuid().optional(),
       sortBy: Yup.string()
         .oneOf(["name", "isActive", "createdAt"])
         .optional(),

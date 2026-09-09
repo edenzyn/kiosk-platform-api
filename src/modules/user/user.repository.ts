@@ -6,6 +6,7 @@ import {
   eq,
   gte,
   ilike,
+  inArray,
   isNull,
   lte,
   or,
@@ -16,6 +17,7 @@ import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { branches } from "../branch/schemas/branch.schema";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
+import { resellerMarketMapper } from "../market/schemas/reseller-market-mapper.schema";
 import { organizations } from "../organization/schemas/organization.schema";
 import { organizationSettings } from "../organization/schemas/organization-settings.schema";
 import { userRolesMapper } from "../rbac/schemas/user-roles-mapper.schema";
@@ -317,7 +319,7 @@ export class UserRepository {
   async findResellers(
     input: FindResellersRepoInput,
   ): Promise<FindResellersRepoResult> {
-    const { search, isActive, page, limit, sortBy, sortOrder } = input;
+    const { search, isActive, marketId, page, limit, sortBy, sortOrder } = input;
 
     const conditions: (SQL | undefined)[] = [
       eq(users.userType, UserTypeEnums.RESELLER),
@@ -330,6 +332,23 @@ export class UserRepository {
     if (search) {
       conditions.push(
         or(ilike(users.name, `%${search}%`), ilike(users.email, `%${search}%`)),
+      );
+    }
+
+    if (marketId) {
+      conditions.push(
+        inArray(
+          users.id,
+          this.database.client
+            .select({ resellerId: resellerMarketMapper.resellerId })
+            .from(resellerMarketMapper)
+            .where(
+              and(
+                eq(resellerMarketMapper.marketId, marketId),
+                eq(resellerMarketMapper.isActive, true),
+              ),
+            ),
+        ),
       );
     }
 

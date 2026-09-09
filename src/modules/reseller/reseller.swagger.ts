@@ -521,6 +521,12 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
           schema: { type: "string", enum: ["active", "inactive", "all"] },
         },
         {
+          name: "marketId",
+          in: "query",
+          schema: { type: "string", format: "uuid" },
+          description: "Only return resellers mapped to this market",
+        },
+        {
           name: "sortBy",
           in: "query",
           schema: { type: "string", enum: ["name", "isActive", "createdAt"] },

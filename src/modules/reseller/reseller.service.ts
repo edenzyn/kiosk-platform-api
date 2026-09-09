@@ -251,7 +251,7 @@ export class ResellerService {
   async getResellers(
     input: GetResellersServiceInput,
   ): Promise<GetResellersServiceResult> {
-    const { page = 1, limit = 10, search, sortBy, sortOrder, status } =
+    const { page = 1, limit = 10, search, sortBy, sortOrder, status, marketId } =
       input.query;
 
     const isActive =
@@ -260,6 +260,7 @@ export class ResellerService {
     const { resellers, total } = await this.userRepository.findResellers({
       search,
       isActive,
+      marketId,
       page,
       limit,
       sortBy,

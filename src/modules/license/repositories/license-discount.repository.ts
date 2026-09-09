@@ -151,8 +151,17 @@ export class LicenseDiscountRepository {
   async findPaginatedDiscountRules(
     input: FindPaginatedDiscountRulesRepoInput,
   ): Promise<FindPaginatedDiscountRulesRepoResult> {
-    const { search, targetEntity, isActive, marketId, page, limit, sortBy, sortOrder } =
-      input;
+    const {
+      search,
+      targetEntity,
+      isActive,
+      marketId,
+      discountType,
+      page,
+      limit,
+      sortBy,
+      sortOrder,
+    } = input;
 
     const conditions: (SQL | undefined)[] = [];
     if (targetEntity !== undefined) {
@@ -166,6 +175,9 @@ export class LicenseDiscountRepository {
     }
     if (marketId) {
       conditions.push(this._marketScopeCondition(marketId));
+    }
+    if (discountType !== undefined) {
+      conditions.push(eq(licensePlanDiscountRules.discountType, discountType));
     }
     const condition = conditions.length > 0 ? and(...conditions) : undefined;
 

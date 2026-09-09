@@ -122,6 +122,8 @@ export const licenseSwaggerPaths: Record<string, unknown> = {
         { name: "search", in: "query", schema: { type: "string" } },
         { name: "targetEntity", in: "query", schema: { type: "integer" } },
         { name: "isActive", in: "query", schema: { type: "boolean" } },
+        { name: "marketId", in: "query", schema: { type: "string", format: "uuid" } },
+        { name: "discountType", in: "query", schema: { type: "integer" } },
         { name: "sortBy", in: "query", schema: { type: "string", enum: ["name", "discountValue", "createdAt"] } },
         { name: "sortOrder", in: "query", schema: { type: "string", enum: ["asc", "desc"] } },
       ],

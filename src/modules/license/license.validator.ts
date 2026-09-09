@@ -166,6 +166,11 @@ export const LicenseValidator = {
         .optional(),
       isActive: yup.boolean().optional(),
       marketId: yup.string().uuid().optional(),
+      discountType: yup
+        .number()
+        .typeError("Discount type must be a number")
+        .oneOf(Object.values(LicenseDiscountTypeEnum) as number[], "Invalid discount type")
+        .optional(),
       sortBy: yup
         .string()
         .oneOf(["name", "discountValue", "createdAt"])

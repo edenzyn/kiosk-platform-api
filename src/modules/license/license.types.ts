@@ -1,6 +1,7 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
+import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
@@ -359,6 +360,7 @@ export interface GetPlatformDiscountRulesServiceInput {
     targetEntity?: number;
     isActive?: boolean;
     marketId?: string;
+    discountType?: LicenseDiscountTypeEnum;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   };
@@ -1105,6 +1107,7 @@ export interface FindPaginatedDiscountRulesRepoInput {
   targetEntity?: number;
   isActive?: boolean;
   marketId?: string;
+  discountType?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }

@@ -88,6 +88,7 @@ export class LicenseDiscountService {
       targetEntity,
       isActive,
       marketId,
+      discountType,
       sortBy,
       sortOrder,
     } = input.query;
@@ -100,6 +101,7 @@ export class LicenseDiscountService {
         targetEntity,
         isActive,
         marketId,
+        discountType,
         sortBy,
         sortOrder,
       });

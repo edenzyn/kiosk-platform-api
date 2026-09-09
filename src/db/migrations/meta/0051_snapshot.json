@@ -1,5 +1,5 @@
 {
-  "id": "7fa5fb2a-0167-46cc-b3ba-7d5a1996e55f",
+  "id": "f3f481c9-25ca-4bf9-aed1-f3df7b98d7fb",
   "prevId": "0fca0be5-c49d-4c09-9b2e-2233f0e076f1",
   "version": "7",
   "dialect": "postgresql",
@@ -731,8 +731,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "tax_rule_id": {
-          "name": "tax_rule_id",
+        "tax_profile_id": {
+          "name": "tax_profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -740,6 +740,12 @@
         "name": {
           "name": "name",
           "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "condition_type": {
+          "name": "condition_type",
+          "type": "smallint",
           "primaryKey": false,
           "notNull": true
         },
@@ -785,12 +791,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "app_tax_components_tax_rule_id_app_tax_rules_id_fk": {
-          "name": "app_tax_components_tax_rule_id_app_tax_rules_id_fk",
+        "app_tax_components_tax_profile_id_app_tax_profiles_id_fk": {
+          "name": "app_tax_components_tax_profile_id_app_tax_profiles_id_fk",
           "tableFrom": "app_tax_components",
-          "tableTo": "app_tax_rules",
+          "tableTo": "app_tax_profiles",
           "columnsFrom": [
-            "tax_rule_id"
+            "tax_profile_id"
           ],
           "columnsTo": [
             "id"
@@ -907,136 +913,6 @@
         "app_tax_profiles_updated_by_users_id_fk": {
           "name": "app_tax_profiles_updated_by_users_id_fk",
           "tableFrom": "app_tax_profiles",
-          "tableTo": "users",
-          "columnsFrom": [
-            "updated_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.app_tax_rules": {
-      "name": "app_tax_rules",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "tax_profile_id": {
-          "name": "tax_profile_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "condition_type": {
-          "name": "condition_type",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "priority": {
-          "name": "priority",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "starts_at": {
-          "name": "starts_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ends_at": {
-          "name": "ends_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "updated_by": {
-          "name": "updated_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "app_tax_rules_tax_profile_id_app_tax_profiles_id_fk": {
-          "name": "app_tax_rules_tax_profile_id_app_tax_profiles_id_fk",
-          "tableFrom": "app_tax_rules",
-          "tableTo": "app_tax_profiles",
-          "columnsFrom": [
-            "tax_profile_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "app_tax_rules_created_by_users_id_fk": {
-          "name": "app_tax_rules_created_by_users_id_fk",
-          "tableFrom": "app_tax_rules",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "app_tax_rules_updated_by_users_id_fk": {
-          "name": "app_tax_rules_updated_by_users_id_fk",
-          "tableFrom": "app_tax_rules",
           "tableTo": "users",
           "columnsFrom": [
             "updated_by"
@@ -2094,8 +1970,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "tax_rule_id": {
-          "name": "tax_rule_id",
+        "tax_profile_id": {
+          "name": "tax_profile_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -2163,12 +2039,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "license_transaction_taxes_tax_rule_id_app_tax_rules_id_fk": {
-          "name": "license_transaction_taxes_tax_rule_id_app_tax_rules_id_fk",
+        "license_transaction_taxes_tax_profile_id_app_tax_profiles_id_fk": {
+          "name": "license_transaction_taxes_tax_profile_id_app_tax_profiles_id_fk",
           "tableFrom": "license_transaction_taxes",
-          "tableTo": "app_tax_rules",
+          "tableTo": "app_tax_profiles",
           "columnsFrom": [
-            "tax_rule_id"
+            "tax_profile_id"
           ],
           "columnsTo": [
             "id"

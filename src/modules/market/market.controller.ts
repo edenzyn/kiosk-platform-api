@@ -21,6 +21,17 @@ export class MarketController {
     res.json(result);
   };
 
+  getMarketWithTax = async (req: Request, res: Response): Promise<void> => {
+    const params = await MarketValidator.marketIdParam.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.marketService.getMarketWithTax({
+      marketId: params.id,
+    });
+    res.status(HttpStatusCodes.OK).json({ market: result });
+  };
+
   createMarket = async (req: Request, res: Response): Promise<void> => {
     const dto = await MarketValidator.createMarket.validate(req.body, {
       abortEarly: false,

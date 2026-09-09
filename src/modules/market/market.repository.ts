@@ -166,6 +166,7 @@ export class MarketRepository {
         countryCode: input.countryCode,
         name: input.name,
         currencyCode: input.currencyCode,
+        appTaxProfileId: input.appTaxProfileId,
         createdBy: input.createdBy,
         updatedBy: input.createdBy,
       })

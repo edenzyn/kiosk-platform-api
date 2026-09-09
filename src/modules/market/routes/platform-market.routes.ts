@@ -29,6 +29,15 @@ platformMarketRouter.get(
   asyncHandler(marketController.getPlatformMarkets),
 );
 
+platformMarketRouter.get(
+  "/:id",
+  accessMiddleware(
+    { platform: PLATFORM_MARKET_READ_WRITE_PERMS },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(marketController.getMarketWithTax),
+);
+
 platformMarketRouter.post(
   "/",
   accessMiddleware(

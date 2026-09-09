@@ -1,20 +1,17 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import type {
   CreateTaxProfileRepoInput,
   CreateTaxProfileRepoResult,
+  FindComponentsByProfileIdRepoInput,
+  FindComponentsByProfileIdRepoResult,
   FindOneTaxProfileRepoInput,
   FindOneTaxProfileRepoResult,
-  FindTaxProfileRulesRepoInput,
-  FindTaxProfileRulesRepoResult,
-  FindTaxRuleComponentsRepoInput,
-  FindTaxRuleComponentsRepoResult,
   UpdateTaxProfileRepoInput,
   UpdateTaxProfileRepoResult,
 } from "../finance.types";
 import { appTaxComponents } from "../schemas/app-tax-component.schema";
 import { appTaxProfiles } from "../schemas/app-tax-profile.schema";
-import { appTaxRules } from "../schemas/app-tax-rule.schema";
 
 export class TaxRepository {
   constructor(private readonly database: Database) {}
@@ -31,36 +28,17 @@ export class TaxRepository {
     return taxProfile ?? null;
   }
 
-  async findRulesByProfileId(
-    input: FindTaxProfileRulesRepoInput,
-  ): Promise<FindTaxProfileRulesRepoResult> {
+  async findComponentsByProfileId(
+    input: FindComponentsByProfileIdRepoInput,
+  ): Promise<FindComponentsByProfileIdRepoResult> {
     return this.database.client
       .select()
-      .from(appTaxRules)
-      .where(eq(appTaxRules.taxProfileId, input.taxProfileId))
-      .orderBy(asc(appTaxRules.priority));
-  }
-
-  async findComponentsByRuleIds(
-    input: FindTaxRuleComponentsRepoInput,
-  ): Promise<FindTaxRuleComponentsRepoResult> {
-    const result: FindTaxRuleComponentsRepoResult = new Map();
-    if (input.taxRuleIds.length === 0) return result;
-
-    const rows = await this.database.client
-      .select()
       .from(appTaxComponents)
-      .where(inArray(appTaxComponents.taxRuleId, input.taxRuleIds));
-
-    for (const row of rows) {
-      const existing = result.get(row.taxRuleId) ?? [];
-      existing.push(row);
-      result.set(row.taxRuleId, existing);
-    }
-    return result;
+      .where(eq(appTaxComponents.taxProfileId, input.taxProfileId))
+      .orderBy(asc(appTaxComponents.createdAt));
   }
 
-  async createTaxProfileWithRules(
+  async createTaxProfileWithComponents(
     input: CreateTaxProfileRepoInput,
   ): Promise<CreateTaxProfileRepoResult> {
     return this.database.client.transaction(async (tx) => {
@@ -76,41 +54,24 @@ export class TaxRepository {
 
       if (!taxProfile) throw new Error("Failed to create tax profile");
 
-      for (const rule of input.rules) {
-        const [insertedRule] = await tx
-          .insert(appTaxRules)
-          .values({
+      if (input.components.length > 0) {
+        await tx.insert(appTaxComponents).values(
+          input.components.map((component) => ({
             taxProfileId: taxProfile.id,
-            name: rule.name,
-            conditionType: rule.conditionType,
-            priority: rule.priority ?? 1,
-            startsAt: rule.startsAt ?? null,
-            endsAt: rule.endsAt ?? null,
+            name: component.name,
+            conditionType: component.conditionType,
+            rate: String(component.rate),
             createdBy: input.createdBy,
             updatedBy: input.createdBy,
-          })
-          .returning();
-
-        if (!insertedRule) throw new Error("Failed to create tax rule");
-
-        if (rule.components.length > 0) {
-          await tx.insert(appTaxComponents).values(
-            rule.components.map((component) => ({
-              taxRuleId: insertedRule.id,
-              name: component.name,
-              rate: String(component.rate),
-              createdBy: input.createdBy,
-              updatedBy: input.createdBy,
-            })),
-          );
-        }
+          })),
+        );
       }
 
       return taxProfile;
     });
   }
 
-  async updateTaxProfileWithRules(
+  async updateTaxProfileWithComponents(
     input: UpdateTaxProfileRepoInput,
   ): Promise<UpdateTaxProfileRepoResult> {
     return this.database.client.transaction(async (tx) => {
@@ -127,49 +88,24 @@ export class TaxRepository {
 
       if (!taxProfile) throw new Error("Tax profile not found");
 
-      const existingRules = await tx
-        .select({ id: appTaxRules.id })
-        .from(appTaxRules)
-        .where(eq(appTaxRules.taxProfileId, taxProfile.id));
-      const existingRuleIds = existingRules.map((rule) => rule.id);
-
-      if (existingRuleIds.length > 0) {
-        await tx
-          .delete(appTaxComponents)
-          .where(inArray(appTaxComponents.taxRuleId, existingRuleIds));
-      }
+      // Simplest correct way to keep components in sync with the possibly-
+      // changed component set: clear everything for this profile, then
+      // re-insert for the new state.
       await tx
-        .delete(appTaxRules)
-        .where(eq(appTaxRules.taxProfileId, taxProfile.id));
+        .delete(appTaxComponents)
+        .where(eq(appTaxComponents.taxProfileId, taxProfile.id));
 
-      for (const rule of input.rules) {
-        const [insertedRule] = await tx
-          .insert(appTaxRules)
-          .values({
+      if (input.components.length > 0) {
+        await tx.insert(appTaxComponents).values(
+          input.components.map((component) => ({
             taxProfileId: taxProfile.id,
-            name: rule.name,
-            conditionType: rule.conditionType,
-            priority: rule.priority ?? 1,
-            startsAt: rule.startsAt ?? null,
-            endsAt: rule.endsAt ?? null,
+            name: component.name,
+            conditionType: component.conditionType,
+            rate: String(component.rate),
             createdBy: input.updatedBy,
             updatedBy: input.updatedBy,
-          })
-          .returning();
-
-        if (!insertedRule) throw new Error("Failed to create tax rule");
-
-        if (rule.components.length > 0) {
-          await tx.insert(appTaxComponents).values(
-            rule.components.map((component) => ({
-              taxRuleId: insertedRule.id,
-              name: component.name,
-              rate: String(component.rate),
-              createdBy: input.updatedBy,
-              updatedBy: input.updatedBy,
-            })),
-          );
-        }
+          })),
+        );
       }
 
       return taxProfile;

@@ -8,7 +8,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { appTaxComponents } from "../../finance/schemas/app-tax-component.schema";
-import { appTaxRules } from "../../finance/schemas/app-tax-rule.schema";
+import { appTaxProfiles } from "../../finance/schemas/app-tax-profile.schema";
 import { licenseTransactions } from "./license-transaction.schema";
 
 export const licenseTransactionTaxes = pgTable(
@@ -18,8 +18,8 @@ export const licenseTransactionTaxes = pgTable(
     transactionId: uuid("transaction_id")
       .notNull()
       .references((): AnyPgColumn => licenseTransactions.id),
-    taxRuleId: uuid("tax_rule_id").references(
-      (): AnyPgColumn => appTaxRules.id,
+    taxProfileId: uuid("tax_profile_id").references(
+      (): AnyPgColumn => appTaxProfiles.id,
     ),
     taxComponentId: uuid("tax_component_id").references(
       (): AnyPgColumn => appTaxComponents.id,

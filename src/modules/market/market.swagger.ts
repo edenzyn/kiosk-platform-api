@@ -160,6 +160,21 @@ export const marketSwaggerPaths: Record<string, unknown> = {
     },
   },
   "/pvt/p/markets/{id}": {
+    get: {
+      tags: ["Markets"],
+      summary: "Get a market by ID",
+      description:
+        "Returns the full market record, including its complete tax profile (with all tax components) if one is assigned.",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": { description: "Market with full tax profile details" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
     patch: {
       tags: ["Markets"],
       summary: "Update a market's name",

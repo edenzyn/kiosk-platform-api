@@ -2,20 +2,22 @@ import {
   boolean,
   decimal,
   pgTable,
+  smallint,
   timestamp,
   uuid,
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { users } from "../../user/schemas/user.schema";
-import { appTaxRules } from "./app-tax-rule.schema";
+import { appTaxProfiles } from "./app-tax-profile.schema";
 
 export const appTaxComponents = pgTable("app_tax_components", {
   id: uuid("id").defaultRandom().primaryKey(),
-  taxRuleId: uuid("tax_rule_id")
+  taxProfileId: uuid("tax_profile_id")
     .notNull()
-    .references((): AnyPgColumn => appTaxRules.id),
+    .references((): AnyPgColumn => appTaxProfiles.id),
   name: varchar("name", { length: 100 }).notNull(),
+  conditionType: smallint("condition_type").notNull(), // AppTaxComponentConditionTypeEnum: 1 = ALWAYS, 2 = INTRA_STATE, 3 = INTER_STATE
   rate: decimal("rate", { precision: 10, scale: 4 }).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

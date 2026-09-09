@@ -1,7 +1,7 @@
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type {
-  CreateTaxProfileRuleDto,
-  TaxProfileWithRules,
+  CreateTaxComponentDto,
+  TaxProfileWithComponents,
 } from "../finance/finance.types";
 import type { MarketEntity } from "./schemas/market.schema";
 
@@ -15,11 +15,11 @@ export interface ActiveMarketEntity {
 export interface TaxConfigurationDto {
   name: string;
   isTaxInclusive: boolean;
-  rules: CreateTaxProfileRuleDto[];
+  components: CreateTaxComponentDto[];
 }
 
 export type MarketWithTaxProfile = MarketEntity & {
-  taxProfile: TaxProfileWithRules | null;
+  taxProfile: TaxProfileWithComponents | null;
 };
 
 // ========================================
@@ -29,10 +29,10 @@ export interface GetActiveMarketsServiceResult {
   markets: ActiveMarketEntity[];
 }
 
-export interface GetMarketByIdServiceInput {
+export interface GetMarketWithTaxServiceInput {
   marketId: string;
 }
-export type GetMarketByIdServiceResult = MarketWithTaxProfile;
+export type GetMarketWithTaxServiceResult = MarketWithTaxProfile;
 
 export interface ValidateOrganizationMarketServiceInput {
   organizationId: string;
@@ -72,7 +72,7 @@ export interface CreateMarketServiceInput {
     countryCode: string;
     name: string;
     currencyCode: string;
-    taxConfiguration?: TaxConfigurationDto | null;
+    taxConfiguration: TaxConfigurationDto;
   };
   currentUser: UserTokenDto;
 }
@@ -84,7 +84,7 @@ export interface UpdateMarketServiceInput {
   marketId: string;
   dto: {
     name: string;
-    taxConfiguration?: TaxConfigurationDto | null;
+    taxConfiguration: TaxConfigurationDto;
   };
   currentUser: UserTokenDto;
 }

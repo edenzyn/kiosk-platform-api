@@ -1,15 +1,19 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { TaxProfileWithComponents } from "../finance/finance.types";
+import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { MarketRepository } from "./market.repository";
 import type {
   CreateMarketServiceInput,
   CreateMarketServiceResult,
   GetActiveMarketsServiceResult,
-  GetMarketByIdServiceInput,
-  GetMarketByIdServiceResult,
+  GetMarketWithTaxServiceInput,
+  GetMarketWithTaxServiceResult,
   GetPlatformMarketsServiceInput,
   GetPlatformMarketsServiceResult,
+  MarketWithTaxProfileSummary,
+  TaxConfigurationDto,
   ToggleMarketStatusServiceInput,
   ToggleMarketStatusServiceResult,
   UpdateMarketServiceInput,
@@ -17,13 +21,89 @@ import type {
   ValidateOrganizationMarketServiceInput,
   ValidateResellerMarketServiceInput,
 } from "./market.types";
+import type { MarketEntity } from "./schemas/market.schema";
 
 export class MarketService {
-  constructor(private readonly marketRepository: MarketRepository) {}
+  constructor(
+    private readonly marketRepository: MarketRepository,
+    private readonly taxRepository: TaxRepository,
+  ) {}
 
-  async getMarketById(
-    input: GetMarketByIdServiceInput,
-  ): Promise<GetMarketByIdServiceResult> {
+  private async _getTaxProfileWithComponents(
+    taxProfileId: string | null,
+  ): Promise<TaxProfileWithComponents | null> {
+    if (!taxProfileId) return null;
+
+    const taxProfile = await this.taxRepository.findOne({ id: taxProfileId });
+    if (!taxProfile) return null;
+
+    const components = await this.taxRepository.findComponentsByProfileId({
+      taxProfileId: taxProfile.id,
+    });
+
+    return { ...taxProfile, components };
+  }
+
+  private async _createOrUpdateTaxProfile(
+    taxConfiguration: TaxConfigurationDto,
+    existingTaxProfileId: string | null,
+    userId: string,
+  ): Promise<string> {
+    if (existingTaxProfileId) {
+      const taxProfile = await this.taxRepository.updateTaxProfileWithComponents({
+        taxProfileId: existingTaxProfileId,
+        name: taxConfiguration.name,
+        isTaxInclusive: taxConfiguration.isTaxInclusive,
+        components: taxConfiguration.components,
+        updatedBy: userId,
+      });
+      return taxProfile.id;
+    }
+
+    const taxProfile = await this.taxRepository.createTaxProfileWithComponents({
+      name: taxConfiguration.name,
+      isTaxInclusive: taxConfiguration.isTaxInclusive,
+      components: taxConfiguration.components,
+      createdBy: userId,
+    });
+    return taxProfile.id;
+  }
+
+  private async _attachTaxProfileSummaries(
+    markets: MarketEntity[],
+  ): Promise<MarketWithTaxProfileSummary[]> {
+    const taxProfileIds = [
+      ...new Set(
+        markets
+          .map((market) => market.appTaxProfileId)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+
+    const taxProfilesById = new Map<string, { id: string; name: string }>();
+    for (const taxProfileId of taxProfileIds) {
+      const taxProfile = await this.taxRepository.findOne({
+        id: taxProfileId,
+      });
+      if (taxProfile) {
+        taxProfilesById.set(taxProfile.id, {
+          id: taxProfile.id,
+          name: taxProfile.name,
+        });
+      }
+    }
+
+    return markets.map((market) => ({
+      ...market,
+      taxProfile: market.appTaxProfileId
+        ? (taxProfilesById.get(market.appTaxProfileId) ?? null)
+        : null,
+    }));
+  }
+
+  async getMarketWithTax(
+    input: GetMarketWithTaxServiceInput,
+  ): Promise<GetMarketWithTaxServiceResult> {
     const market = await this.marketRepository.findOne({ id: input.marketId });
     if (!market) {
       throw new AppError("Market not found", {
@@ -31,7 +111,12 @@ export class MarketService {
         code: ErrorCodes.RESOURCE_NOT_FOUND,
       });
     }
-    return market;
+
+    const taxProfile = await this._getTaxProfileWithComponents(
+      market.appTaxProfileId,
+    );
+
+    return { ...market, taxProfile };
   }
 
   async getActiveMarkets(): Promise<GetActiveMarketsServiceResult> {
@@ -99,7 +184,7 @@ export class MarketService {
     });
 
     return {
-      markets,
+      markets: await this._attachTaxProfileSummaries(markets),
       total,
       page,
       limit,
@@ -112,14 +197,22 @@ export class MarketService {
   ): Promise<CreateMarketServiceResult> {
     await this._checkCountryCodeExists(input.dto.countryCode);
 
+    const appTaxProfileId = await this._createOrUpdateTaxProfile(
+      input.dto.taxConfiguration,
+      null,
+      input.currentUser.id,
+    );
+
     const market = await this.marketRepository.create({
       countryCode: input.dto.countryCode,
       name: input.dto.name,
       currencyCode: input.dto.currencyCode,
+      appTaxProfileId,
       createdBy: input.currentUser.id,
     });
 
-    return { market };
+    const taxProfile = await this._getTaxProfileWithComponents(appTaxProfileId);
+    return { market: { ...market, taxProfile } };
   }
 
   async updateMarket(
@@ -135,13 +228,23 @@ export class MarketService {
       });
     }
 
+    const appTaxProfileId = await this._createOrUpdateTaxProfile(
+      input.dto.taxConfiguration,
+      existing.appTaxProfileId,
+      input.currentUser.id,
+    );
+
     const market = await this.marketRepository.update({
       marketId: input.marketId,
       updatedBy: input.currentUser.id,
-      data: { name: input.dto.name },
+      data: {
+        name: input.dto.name,
+        appTaxProfileId,
+      },
     });
 
-    return { market };
+    const taxProfile = await this._getTaxProfileWithComponents(appTaxProfileId);
+    return { market: { ...market, taxProfile } };
   }
 
   async toggleMarketStatus(

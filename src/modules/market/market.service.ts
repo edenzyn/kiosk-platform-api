@@ -133,6 +133,7 @@ export class MarketService {
     const branch = await this.branchRepository.findOne({
       id: input.effectiveTenant.branchId,
     });
+
     if (!branch) {
       throw new AppError("Branch not found", {
         statusCode: HttpStatusCodes.NOT_FOUND,

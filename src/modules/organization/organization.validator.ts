@@ -98,7 +98,6 @@ export class OrganizationValidator {
   static readonly updateMyOrganizationSettings = Yup.object({
     primaryColor: Yup.string().trim().max(20).optional(),
     languageCode: Yup.string().trim().max(10).optional(),
-    currencyCode: Yup.string().trim().max(3).optional(),
     timezone: Yup.string().trim().max(100).optional(),
     logo: Yup.string().trim().max(255).nullable().optional(),
   }).noUnknown();

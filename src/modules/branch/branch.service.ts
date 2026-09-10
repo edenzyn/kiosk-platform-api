@@ -63,7 +63,6 @@ export class BranchService {
       logo: organizationSettings.logo,
       primaryColor: organizationSettings.primaryColor,
       languageCode: organizationSettings.languageCode,
-      currencyCode: organizationSettings.currencyCode,
       timezone: organizationSettings.timezone,
     });
 

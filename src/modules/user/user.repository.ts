@@ -628,7 +628,6 @@ export class UserRepository {
         userId,
         primaryColor: inheritedSettings?.primaryColor,
         languageCode: inheritedSettings?.languageCode,
-        currencyCode: inheritedSettings?.currencyCode,
       })
       .onConflictDoNothing()
       .returning();

@@ -152,7 +152,7 @@ export interface UpdateOrganizationSettingsRepoInput {
   data: Partial<
     Pick<
       OrganizationSettingsEntity,
-      "logo" | "primaryColor" | "languageCode" | "currencyCode" | "timezone"
+      "logo" | "primaryColor" | "languageCode" | "timezone"
     >
   >;
 }

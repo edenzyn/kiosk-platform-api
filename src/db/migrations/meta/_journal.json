@@ -365,6 +365,13 @@
       "when": 1788961340082,
       "tag": "0051_lucky_spencer_smythe",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789046801136,
+      "tag": "0052_white_white_tiger",
+      "breakpoints": true
     }
   ]
 }

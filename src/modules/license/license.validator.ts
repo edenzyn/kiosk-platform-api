@@ -94,6 +94,7 @@ export const LicenseValidator = {
       licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
       marketId: yup.string().uuid().required("Market is required"),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicensePurchaseAsReseller: yup
@@ -107,6 +108,7 @@ export const LicenseValidator = {
       licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
       marketId: yup.string().uuid().required("Market is required"),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()
@@ -155,6 +157,7 @@ export const LicenseValidator = {
       licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
       marketId: yup.string().uuid().optional(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()

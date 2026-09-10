@@ -72,6 +72,7 @@ export interface PurchaseLicenseServiceInput {
     licensePlanId: string;
     discountRuleId?: string;
     marketId?: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -82,6 +83,20 @@ export interface PurchaseLicenseServiceInput {
 
 export interface PurchaseLicenseServiceResult {
   licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
+}
+
+export interface ResolvedPurchaseTaxComponent {
+  name: string;
+  rate: string;
+  amount: string;
+  taxProfileId: string;
+  taxComponentId: string;
+}
+
+export interface ResolvedPurchaseTax {
+  components: ResolvedPurchaseTaxComponent[];
+  totalTaxAmount: string;
+  isInclusive: boolean;
 }
 
 export interface ResolvedPurchasePricing {
@@ -98,6 +113,10 @@ export interface ResolvedPurchasePricing {
   totalAmount: string;
   unitPrice: string;
   baseUnitPrice: string;
+  tax: ResolvedPurchaseTax | null;
+  // totalAmount already includes tax when tax is present — this is the
+  // amount actually charged via Razorpay.
+  chargeAmount: string;
 }
 
 export interface InitiateLicensePurchaseServiceInput {
@@ -120,6 +139,10 @@ export interface InitiateLicensePurchaseServiceResult {
   subtotalAmount: string;
   discountAmount: string;
   totalAmount: string;
+  taxAmount: string;
+  taxComponents: ResolvedPurchaseTaxComponent[];
+  isTaxInclusive: boolean;
+  grandTotal: string;
 }
 
 export interface RedeemLicenseCodeServiceInput {
@@ -169,6 +192,7 @@ export interface InitiateLicensePurchaseAsResellerServiceInput {
     licensePlanId: string;
     discountRuleId?: string;
     marketId: string;
+    billingInfo: BillingInfoDto;
   };
   resellerId: string;
 }
@@ -182,6 +206,7 @@ export interface PurchaseLicenseAsResellerServiceInput {
     licensePlanId: string;
     discountRuleId?: string;
     marketId: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -976,6 +1001,7 @@ export interface CreatePendingLicenseTransactionRepoInput {
     discountAmount?: string;
     finalUnitPrice: string;
   }>;
+  taxes?: ResolvedPurchaseTaxComponent[];
 }
 export interface CreatePendingLicenseTransactionRepoResult {
   id: string;

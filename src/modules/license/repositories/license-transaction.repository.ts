@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
-import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { LicenseTransactionTypeEnum } from "../../../shared/enums/license/license-transaction-type.enum";
 import type {
   CancelPendingLicenseTransactionRepoInput,
   CancelPendingLicenseTransactionRepoResult,
@@ -12,7 +12,6 @@ import type {
   FinalizeLicenseExtendRepoResult,
   FinalizeLicensePurchaseRepoInput,
   FinalizeLicensePurchaseRepoResult,
-  FindLatestPurchaseSnapshotRepoResult,
   FindLicenseTransactionsForOrganizationRepoInput,
   FindLicenseTransactionsForOrganizationRepoResult,
   FindLicenseTransactionsForResellerRepoInput,
@@ -29,6 +28,7 @@ import type {
 import { licenseHistory } from "../schemas/license-history.schema";
 import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
+import { licenseTransactionTaxes } from "../schemas/license-transaction-tax.schema";
 import { licenseTransactions } from "../schemas/license-transaction.schema";
 import { licenses } from "../schemas/license.schema";
 
@@ -96,10 +96,11 @@ export class LicenseTransactionRepository {
         userId: transactionWithItems.userId,
         performedByName: transactionWithItems.performedByName,
         subtotalAmount: transactionWithItems.subtotalAmount,
-        discountAmount: transactionWithItems.discountAmount,
-        discountPercentage: transactionWithItems.transactionDiscountPercentage,
+        discountAmount: transactionWithItems.transactionDiscountAmount,
+        discountType: transactionWithItems.transactionDiscountType,
+        discountValue: transactionWithItems.transactionDiscountValue,
         totalAmount: transactionWithItems.totalAmount,
-        currency: transactionWithItems.currency,
+        marketId: transactionWithItems.marketId,
         paymentStatus: transactionWithItems.paymentStatus,
         paymentProvider: transactionWithItems.paymentProvider,
         paymentReference: transactionWithItems.paymentReference,
@@ -116,15 +117,15 @@ export class LicenseTransactionRepository {
           licenseId: row.licenseId,
           licenseKey: row.licenseKey,
           deviceType: row.deviceType,
-          pricingPlanId: row.pricingPlanId,
+          planId: row.planId,
           planName: row.planName,
-          actionType: row.actionType as number,
+          transactionType: row.transactionType as number,
           durationDays: row.durationDays as number,
           baseUnitPrice: row.baseUnitPrice as string,
           discountType: row.discountType,
           discountValue: row.discountValue,
-          discountCurrency: row.discountCurrency,
-          unitPrice: row.unitPrice as string,
+          discountAmount: row.discountAmount,
+          finalUnitPrice: row.finalUnitPrice as string,
           createdAt: row.itemCreatedAt as string,
         })),
     };
@@ -139,16 +140,28 @@ export class LicenseTransactionRepository {
         .values({
           organizationId: input.organizationId,
           branchId: input.branchId,
+          marketId: input.marketId,
+          transactionType: input.transactionType,
           subtotalAmount: input.subtotalAmount,
           discountAmount: input.discountAmount,
-          discountPercentage: input.discountPercentage,
+          discountType: input.discountType,
+          discountValue: input.discountValue,
           appliedDiscountRuleId: input.appliedDiscountRuleId,
           totalAmount: input.totalAmount,
-          currency: input.currency,
+          totalTaxAmount: input.totalTaxAmount ?? "0",
           paymentStatus: input.paymentStatus,
           paymentProvider: input.paymentProvider,
           paymentProviderOrderId: input.paymentProviderOrderId,
           intentPayload: input.intentPayload,
+          billingName: input.billingInfo?.name,
+          billingEmail: input.billingInfo?.email,
+          billingPhone: input.billingInfo?.phone,
+          billingAddress: input.billingInfo?.address,
+          billingCity: input.billingInfo?.city,
+          billingState: input.billingInfo?.state,
+          billingPostalCode: input.billingInfo?.postalCode,
+          billingCountry: input.billingInfo?.country,
+          billingTaxId: input.billingInfo?.taxId,
           createdBy: input.userId,
           updatedBy: input.userId,
         })
@@ -163,15 +176,28 @@ export class LicenseTransactionRepository {
           input.items.map((item) => ({
             transactionId: insertedTx.id,
             licenseId: null,
-            pricingPlanId: item.pricingPlanId,
+            planId: item.planId,
             planName: item.planName,
-            actionType: item.actionType,
+            transactionType: item.transactionType,
             durationDays: item.durationDays,
             baseUnitPrice: item.baseUnitPrice,
             discountType: item.discountType,
             discountValue: item.discountValue,
-            discountCurrency: item.discountCurrency,
-            unitPrice: item.unitPrice,
+            discountAmount: item.discountAmount,
+            finalUnitPrice: item.finalUnitPrice,
+          })),
+        );
+      }
+
+      if (input.taxes && input.taxes.length > 0) {
+        await tx.insert(licenseTransactionTaxes).values(
+          input.taxes.map((tax) => ({
+            transactionId: insertedTx.id,
+            taxProfileId: tax.taxProfileId,
+            taxComponentId: tax.taxComponentId,
+            taxName: tax.name,
+            taxRate: tax.rate,
+            taxAmount: tax.amount,
           })),
         );
       }
@@ -240,15 +266,15 @@ export class LicenseTransactionRepository {
           await tx.insert(licenseTransactionItems).values({
             transactionId: finalizedTx.id,
             licenseId: license.id,
-            pricingPlanId: itemSpec.pricingPlanId,
+            planId: itemSpec.planId,
             planName: itemSpec.planName,
-            actionType: itemSpec.actionType,
+            transactionType: itemSpec.transactionType,
             durationDays: itemSpec.durationDays,
             baseUnitPrice: itemSpec.baseUnitPrice,
             discountType: itemSpec.discountType,
             discountValue: itemSpec.discountValue,
-            discountCurrency: itemSpec.discountCurrency,
-            unitPrice: itemSpec.unitPrice,
+            discountAmount: itemSpec.discountAmount,
+            finalUnitPrice: itemSpec.finalUnitPrice,
           });
         }
 
@@ -263,7 +289,7 @@ export class LicenseTransactionRepository {
             newExpiresAt: license.expiresAt,
             transactionId: finalizedTx.id,
             performedBy: input.userId,
-            remarks: "Purchased via pricing plan",
+            remarks: "Purchased via license plan",
           });
 
           if (input.resellerId) {
@@ -382,15 +408,15 @@ export class LicenseTransactionRepository {
       await tx.insert(licenseTransactionItems).values({
         transactionId: finalizedTx.id,
         licenseId: input.licenseId,
-        pricingPlanId: input.transactionItem.pricingPlanId,
+        planId: input.transactionItem.planId,
         planName: input.transactionItem.planName,
-        actionType: input.transactionItem.actionType,
+        transactionType: input.transactionItem.transactionType,
         durationDays: input.transactionItem.durationDays,
         baseUnitPrice: input.transactionItem.baseUnitPrice,
         discountType: input.transactionItem.discountType,
         discountValue: input.transactionItem.discountValue,
-        discountCurrency: input.transactionItem.discountCurrency,
-        unitPrice: input.transactionItem.unitPrice,
+        discountAmount: input.transactionItem.discountAmount,
+        finalUnitPrice: input.transactionItem.finalUnitPrice,
       });
 
       await tx.insert(licenseHistory).values({
@@ -420,39 +446,7 @@ export class LicenseTransactionRepository {
       .where(
         and(
           eq(licenseTransactionItems.licenseId, licenseId),
-          eq(
-            licenseTransactionItems.actionType,
-            LicenseTransactionActionTypeEnum.PURCHASE,
-          ),
-        ),
-      )
-      .orderBy(desc(licenseTransactionItems.createdAt))
-      .limit(1);
-    return item || null;
-  }
-
-  async findLatestPurchaseSnapshot(
-    licenseId: string,
-  ): Promise<FindLatestPurchaseSnapshotRepoResult> {
-    const [item] = await this.database.client
-      .select({
-        durationDays: licenseTransactionItems.durationDays,
-        baseUnitPrice: licenseTransactionItems.baseUnitPrice,
-        currency: licenseTransactions.currency,
-        pricingPlanId: licenseTransactionItems.pricingPlanId,
-      })
-      .from(licenseTransactionItems)
-      .innerJoin(
-        licenseTransactions,
-        eq(licenseTransactionItems.transactionId, licenseTransactions.id),
-      )
-      .where(
-        and(
-          eq(licenseTransactionItems.licenseId, licenseId),
-          eq(
-            licenseTransactionItems.actionType,
-            LicenseTransactionActionTypeEnum.PURCHASE,
-          ),
+          sql`${licenseTransactionItems.transactionType} IN (${LicenseTransactionTypeEnum.ORGANIZATION_PURCHASE}, ${LicenseTransactionTypeEnum.RESELLER_PURCHASE})`,
         ),
       )
       .orderBy(desc(licenseTransactionItems.createdAt))

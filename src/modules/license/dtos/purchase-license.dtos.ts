@@ -20,6 +20,12 @@ export interface InitiateLicensePurchaseRequestDto {
   billingInfo: BillingInfoDto;
 }
 
+export interface PurchaseTaxComponentDto {
+  name: string;
+  rate: string;
+  amount: string;
+}
+
 export interface InitiateLicensePurchaseResponseDto {
   razorpayOrderId: string;
   razorpayKeyId: string;
@@ -28,6 +34,10 @@ export interface InitiateLicensePurchaseResponseDto {
   subtotalAmount: string;
   discountAmount: string;
   totalAmount: string;
+  taxAmount: string;
+  taxComponents: PurchaseTaxComponentDto[];
+  isTaxInclusive: boolean;
+  grandTotal: string;
 }
 
 export interface PurchaseLicenseRequestDto {
@@ -35,6 +45,7 @@ export interface PurchaseLicenseRequestDto {
   licensePlanId: string;
   discountRuleId?: string;
   marketId?: string;
+  billingInfo: BillingInfoDto;
   razorpayOrderId: string;
   razorpayPaymentId: string;
   razorpaySignature: string;

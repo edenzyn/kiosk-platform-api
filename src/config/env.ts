@@ -87,6 +87,12 @@ const EnvSchema = Yup.object({
   REDIS_URL: Yup.string().default("redis://localhost:6379"),
 
   // ==============================
+  // Tax
+  // ==============================
+  COMPANY_STATE: Yup.string().default("KERALA"),
+  COMPANY_COUNTRY: Yup.string().default("IN"),
+
+  // ==============================
   // License
   // ==============================
   LICENSE_ENCRYPTION_KEY: Yup.string()

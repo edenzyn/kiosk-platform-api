@@ -19,7 +19,6 @@ import { RbacContainer } from "../modules/rbac/rbac.container";
 import { ResellerContainer } from "../modules/reseller/reseller.container";
 import { UserContainer } from "../modules/user/user.container";
 import { EmailProvider } from "../shared/providers/email/email.provider";
-import { FrankfurterProvider } from "../shared/providers/finance/frankfurter.provider";
 import { RazorpayProvider } from "../shared/providers/finance/razorpay.provider";
 import { RedisProvider } from "../shared/providers/redis/redis.provider";
 import { S3Provider } from "../shared/providers/s3/s3.provider";
@@ -43,7 +42,6 @@ container.register({
   database: asFunction(initDatabase).singleton(),
   redis: asFunction(initRedis).singleton(),
   redisProvider: asClass(RedisProvider).singleton(),
-  frankfurterProvider: asClass(FrankfurterProvider).singleton(),
   razorpayClient: asFunction(createRazorpayClient).singleton(),
   razorpayProvider: asClass(RazorpayProvider).singleton(),
   queueConnection: asFunction(createQueueConnection).singleton(),

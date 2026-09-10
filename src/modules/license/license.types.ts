@@ -8,6 +8,7 @@ import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import type { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
+import type { BillingInfoDto } from "./dtos/purchase-license.dtos";
 import type { LicensePlanDiscountRuleEntity } from "./schemas/license-plan-discount-rule.schema";
 import type { LicensePlanEntity } from "./schemas/license-plan.schema";
 import type { LicenseRedemptionCodeEntity } from "./schemas/license-redemption-code.schema";
@@ -105,6 +106,7 @@ export interface InitiateLicensePurchaseServiceInput {
     licensePlanId: string;
     discountRuleId?: string;
     marketId?: string;
+    billingInfo: BillingInfoDto;
   };
   effectiveTenant: EffectiveTenant;
   userId: string;
@@ -324,6 +326,8 @@ export type LicensePlanWithMarketPrices = LicensePlanEntity & {
 
 export interface GetLicensePlansServiceInput {
   id?: string;
+  marketId?: string;
+  effectiveTenant?: EffectiveTenant;
 }
 
 export interface GetLicensePlansServiceResult {
@@ -334,6 +338,7 @@ export interface GetDiscountRulesServiceInput {
   targetEntity: number;
   resellerId?: string;
   marketId?: string;
+  effectiveTenant?: EffectiveTenant;
 }
 
 export interface GetDiscountRulesServiceResult {
@@ -957,6 +962,7 @@ export interface CreatePendingLicenseTransactionRepoInput {
   paymentProvider: number;
   paymentProviderOrderId: string;
   intentPayload?: unknown;
+  billingInfo?: BillingInfoDto;
   // Pre-created with a null licenseId — purchase items are known (quantity,
   // duration, price) before any license exists; finalize links them up.
   items?: Array<{

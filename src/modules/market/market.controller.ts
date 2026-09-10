@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { MarketService } from "./market.service";
 import { MarketValidator } from "./market.validator";
@@ -19,6 +20,14 @@ export class MarketController {
   getActiveMarkets = async (_req: Request, res: Response): Promise<void> => {
     const result = await this.marketService.getActiveMarkets();
     res.json(result);
+  };
+
+  getTenantMarkets = async (req: Request, res: Response): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const result = await this.marketService.getTenantMarkets({
+      effectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   getMarketWithTax = async (req: Request, res: Response): Promise<void> => {

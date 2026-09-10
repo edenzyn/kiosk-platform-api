@@ -1,3 +1,4 @@
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type {
   CreateTaxComponentDto,
@@ -27,6 +28,18 @@ export type MarketWithTaxProfile = MarketEntity & {
 // ========================================
 export interface GetActiveMarketsServiceResult {
   markets: ActiveMarketEntity[];
+}
+
+export interface GetTenantMarketsServiceInput {
+  effectiveTenant: EffectiveTenant;
+}
+export interface GetTenantMarketsServiceResult {
+  markets: MarketWithTaxProfile[];
+}
+
+export interface ResolveMarketIdForEffectiveTenantServiceInput {
+  effectiveTenant: EffectiveTenant;
+  marketId?: string;
 }
 
 export interface GetMarketWithTaxServiceInput {
@@ -109,6 +122,11 @@ export interface FindOneMarketRepoInput {
 export type FindOneMarketRepoResult = MarketEntity | null;
 
 export type FindActiveMarketsRepoResult = ActiveMarketEntity[];
+
+export interface FindMarketsMappedToOrganizationRepoInput {
+  organizationId: string;
+}
+export type FindMarketsMappedToOrganizationRepoResult = MarketEntity[];
 
 export interface IsOrganizationMappedToMarketRepoInput {
   organizationId: string;

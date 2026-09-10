@@ -1,6 +1,7 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { BranchRepository } from "../branch/branch.repository";
 import type { TaxProfileWithComponents } from "../finance/finance.types";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { MarketRepository } from "./market.repository";
@@ -12,7 +13,10 @@ import type {
   GetMarketWithTaxServiceResult,
   GetPlatformMarketsServiceInput,
   GetPlatformMarketsServiceResult,
+  GetTenantMarketsServiceInput,
+  GetTenantMarketsServiceResult,
   MarketWithTaxProfileSummary,
+  ResolveMarketIdForEffectiveTenantServiceInput,
   TaxConfigurationDto,
   ToggleMarketStatusServiceInput,
   ToggleMarketStatusServiceResult,
@@ -27,6 +31,7 @@ export class MarketService {
   constructor(
     private readonly marketRepository: MarketRepository,
     private readonly taxRepository: TaxRepository,
+    private readonly branchRepository: BranchRepository,
   ) {}
 
   private async _getTaxProfileWithComponents(
@@ -117,6 +122,70 @@ export class MarketService {
   async getActiveMarkets(): Promise<GetActiveMarketsServiceResult> {
     const markets = await this.marketRepository.findActive();
     return { markets };
+  }
+
+  async resolveMarketIdForEffectiveTenant(
+    input: ResolveMarketIdForEffectiveTenantServiceInput,
+  ): Promise<string | undefined> {
+    if (input.marketId) return input.marketId;
+    if (!input.effectiveTenant.branchId) return undefined;
+
+    const branch = await this.branchRepository.findOne({
+      id: input.effectiveTenant.branchId,
+    });
+    if (!branch) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+    return branch.marketId;
+  }
+
+  async getTenantMarkets(
+    input: GetTenantMarketsServiceInput,
+  ): Promise<GetTenantMarketsServiceResult> {
+    const { organizationId, branchId } = input.effectiveTenant;
+
+    if (branchId) {
+      const branch = await this.branchRepository.findOne({ id: branchId });
+      if (!branch) {
+        throw new AppError("Branch not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      const market = await this.marketRepository.findOne({
+        id: branch.marketId,
+      });
+      if (!market) {
+        throw new AppError("Market not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+
+      const taxProfile = await this._getTaxProfileWithComponents(
+        market.appTaxProfileId,
+      );
+      return { markets: [{ ...market, taxProfile }] };
+    }
+
+    const markets = await this.marketRepository.findMarketsMappedToOrganization(
+      { organizationId },
+    );
+
+    const marketsWithTax = await Promise.all(
+      markets.map(async (market) => {
+        const taxProfile = await this._getTaxProfileWithComponents(
+          market.appTaxProfileId,
+        );
+        return { ...market, taxProfile };
+      }),
+    );
+
+    return { markets: marketsWithTax };
   }
 
   async validateOrganizationMarket(

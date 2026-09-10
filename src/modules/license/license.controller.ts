@@ -51,11 +51,13 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseTransactionService.initiateLicensePurchase({
-      dto: data,
-      effectiveTenant: req.effectiveTenant as EffectiveTenant,
-      userId: user.id,
-    });
+    const result = await this.licenseTransactionService.initiateLicensePurchase(
+      {
+        dto: data,
+        effectiveTenant: req.effectiveTenant as EffectiveTenant,
+        userId: user.id,
+      },
+    );
 
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -99,10 +101,10 @@ export class LicenseController {
   };
 
   redeemLicenseCode = async (req: Request, res: Response): Promise<void> => {
-    const data = await LicenseValidator.redeemLicenseCode.validate(
-      req.body,
-      { abortEarly: false, stripUnknown: true },
-    );
+    const data = await LicenseValidator.redeemLicenseCode.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
 
     const user = req.user as UserTokenDto;
     const result = await this.licenseRedemptionService.redeemLicenseCode({
@@ -175,10 +177,10 @@ export class LicenseController {
   };
 
   verifyLicenseExtend = async (req: Request, res: Response): Promise<void> => {
-    const data = await LicenseValidator.verifyLicenseExtend.validate(
-      req.body,
-      { abortEarly: false, stripUnknown: true },
-    );
+    const data = await LicenseValidator.verifyLicenseExtend.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
 
     const user = req.user as UserTokenDto;
     const result = await this.licenseTransactionService.verifyLicenseExtend({
@@ -211,13 +213,22 @@ export class LicenseController {
 
     const result = await this.licensePlanService.getLicensePlans({
       id: query.id,
+      marketId: query.marketId,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getDiscountRules = async (_req: Request, res: Response): Promise<void> => {
+  getDiscountRules = async (req: Request, res: Response): Promise<void> => {
+    const query = await LicenseValidator.getDiscountRulesQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
     const result = await this.licenseDiscountService.getDiscountRules({
       targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.ORGANIZATIONS,
+      marketId: query.marketId,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -386,10 +397,10 @@ export class LicenseController {
     res: Response,
   ): Promise<void> => {
     const queryDto =
-      await LicenseValidator.getLicenseTransactionsQuery.validate(
-        req.query,
-        { abortEarly: false, stripUnknown: true },
-      );
+      await LicenseValidator.getLicenseTransactionsQuery.validate(req.query, {
+        abortEarly: false,
+        stripUnknown: true,
+      });
 
     const result = await this.licenseTransactionService.getLicenseTransactions({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
@@ -407,10 +418,11 @@ export class LicenseController {
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.licenseTransactionService.getLicenseTransactionItems({
-      transactionId: params.id,
-      effectiveTenant: req.effectiveTenant as EffectiveTenant,
-    });
+    const result =
+      await this.licenseTransactionService.getLicenseTransactionItems({
+        transactionId: params.id,
+        effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
@@ -525,10 +537,11 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseRedemptionService.getRedemptionCodesForReseller({
-      resellerId: user.id,
-      filters: queryDto,
-    });
+    const result =
+      await this.licenseRedemptionService.getRedemptionCodesForReseller({
+        resellerId: user.id,
+        filters: queryDto,
+      });
 
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -558,10 +571,11 @@ export class LicenseController {
     );
 
     const user = req.user as UserTokenDto;
-    const result = await this.licenseRedemptionService.getRedemptionCodeDetailsForReseller({
-      resellerId: user.id,
-      redemptionId: params.id,
-    });
+    const result =
+      await this.licenseRedemptionService.getRedemptionCodeDetailsForReseller({
+        resellerId: user.id,
+        redemptionId: params.id,
+      });
 
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -637,10 +651,10 @@ export class LicenseController {
     res: Response,
   ): Promise<void> => {
     const queryDto =
-      await LicenseValidator.getLicenseTransactionsQuery.validate(
-        req.query,
-        { abortEarly: false, stripUnknown: true },
-      );
+      await LicenseValidator.getLicenseTransactionsQuery.validate(req.query, {
+        abortEarly: false,
+        stripUnknown: true,
+      });
 
     const user = req.user as UserTokenDto;
     const result =
@@ -662,10 +676,12 @@ export class LicenseController {
 
     const user = req.user as UserTokenDto;
     const result =
-      await this.licenseTransactionService.getLicenseTransactionItemsForReseller({
-        transactionId: params.id,
-        resellerId: user.id,
-      });
+      await this.licenseTransactionService.getLicenseTransactionItemsForReseller(
+        {
+          transactionId: params.id,
+          resellerId: user.id,
+        },
+      );
     res.status(HttpStatusCodes.OK).json(result);
   };
 

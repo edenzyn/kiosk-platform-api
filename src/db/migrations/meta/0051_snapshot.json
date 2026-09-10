@@ -1,5 +1,5 @@
 {
-  "id": "f3f481c9-25ca-4bf9-aed1-f3df7b98d7fb",
+  "id": "0016f10f-c455-40cc-8486-572044fcb2fa",
   "prevId": "0fca0be5-c49d-4c09-9b2e-2233f0e076f1",
   "version": "7",
   "dialect": "postgresql",
@@ -2196,6 +2196,60 @@
         "transaction_at": {
           "name": "transaction_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_name": {
+          "name": "billing_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_email": {
+          "name": "billing_email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_phone": {
+          "name": "billing_phone",
+          "type": "varchar(30)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_address": {
+          "name": "billing_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_city": {
+          "name": "billing_city",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_state": {
+          "name": "billing_state",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_postal_code": {
+          "name": "billing_postal_code",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_country": {
+          "name": "billing_country",
+          "type": "varchar(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_tax_id": {
+          "name": "billing_tax_id",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
         },

@@ -2,6 +2,7 @@ import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.con
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import type { MarketService } from "../../market/market.service";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type {
   CreateDiscountRuleServiceInput,
@@ -20,6 +21,7 @@ import type { LicensePlanDiscountRuleEntity } from "../schemas/license-plan-disc
 export class LicenseDiscountService {
   constructor(
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
+    private readonly marketService: MarketService,
   ) {}
 
   private async _attachTargets<T extends { id: string; targetEntity: number }>(
@@ -68,10 +70,17 @@ export class LicenseDiscountService {
   async getDiscountRules(
     input: GetDiscountRulesServiceInput,
   ): Promise<GetDiscountRulesServiceResult> {
+    const marketId = input.effectiveTenant
+      ? await this.marketService.resolveMarketIdForEffectiveTenant({
+          effectiveTenant: input.effectiveTenant,
+          marketId: input.marketId,
+        })
+      : input.marketId;
+
     const rules = await this.licenseDiscountRepository.findActiveDiscountRules({
       targetEntity: input.targetEntity,
       resellerId: input.resellerId,
-      marketId: input.marketId,
+      marketId,
     });
     return {
       rules: await this._attachTargets(rules, { includeResellerTargets: false }),

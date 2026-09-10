@@ -1,6 +1,7 @@
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import type { MarketService } from "../../market/market.service";
 import type {
   CreateLicensePlanServiceInput,
   CreateLicensePlanServiceResult,
@@ -16,16 +17,41 @@ import type {
 import type { LicensePlanRepository } from "../repositories/license-plan.repository";
 
 export class LicensePlanService {
-  constructor(private readonly licensePlanRepository: LicensePlanRepository) {}
+  constructor(
+    private readonly licensePlanRepository: LicensePlanRepository,
+    private readonly marketService: MarketService,
+  ) {}
 
   async getLicensePlans(
     input: GetLicensePlansServiceInput,
   ): Promise<GetLicensePlansServiceResult> {
-    const plans = await this.licensePlanRepository.findLicensePlansWithMarketPrices({
-      id: input.id,
-      isActive: true,
-    });
-    return { plans };
+    const marketId = input.effectiveTenant
+      ? await this.marketService.resolveMarketIdForEffectiveTenant({
+          effectiveTenant: input.effectiveTenant,
+          marketId: input.marketId,
+        })
+      : input.marketId;
+
+    const plans =
+      await this.licensePlanRepository.findLicensePlansWithMarketPrices({
+        id: input.id,
+        isActive: true,
+      });
+
+    if (!marketId) {
+      return { plans };
+    }
+
+    const scopedPlans = plans
+      .map((plan) => ({
+        ...plan,
+        marketPrices: plan.marketPrices.filter(
+          (marketPrice) => marketPrice.marketId === marketId,
+        ),
+      }))
+      .filter((plan) => plan.marketPrices.length > 0);
+
+    return { plans: scopedPlans };
   }
 
   async getPlatformLicensePlans(

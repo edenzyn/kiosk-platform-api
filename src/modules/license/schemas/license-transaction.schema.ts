@@ -53,6 +53,16 @@ export const licenseTransactions = pgTable("license_transactions", {
   intentPayload: jsonb("intent_payload"),
   failureReason: text("failure_reason"),
   transactionAt: timestamp("transaction_at", { withTimezone: true }),
+  // Billing information (snapshot of what the purchaser entered at checkout)
+  billingName: varchar("billing_name", { length: 255 }),
+  billingEmail: varchar("billing_email", { length: 255 }),
+  billingPhone: varchar("billing_phone", { length: 30 }),
+  billingAddress: text("billing_address"),
+  billingCity: varchar("billing_city", { length: 100 }),
+  billingState: varchar("billing_state", { length: 100 }),
+  billingPostalCode: varchar("billing_postal_code", { length: 20 }),
+  billingCountry: varchar("billing_country", { length: 2 }),
+  billingTaxId: varchar("billing_tax_id", { length: 50 }),
   // Audit
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

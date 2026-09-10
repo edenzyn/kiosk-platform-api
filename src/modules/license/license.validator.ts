@@ -5,7 +5,55 @@ import { LicenseDiscountRuleScopeTypeEnum } from "../../shared/enums/license/lic
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
+import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+
+const billingInfoSchema = yup
+  .object({
+    name: yup
+      .string()
+      .trim()
+      .min(2, "Name must be at least 2 characters")
+      .max(255, "Name cannot exceed 255 characters")
+      .required("Billing name is required"),
+    email: emailValidator().required("Billing email is required"),
+    phone: yup
+      .string()
+      .trim()
+      .max(30, "Phone number cannot exceed 30 characters")
+      .required("Billing phone is required"),
+    address: yup
+      .string()
+      .trim()
+      .max(1000, "Address cannot exceed 1000 characters")
+      .required("Billing address is required"),
+    city: yup
+      .string()
+      .trim()
+      .max(100, "City cannot exceed 100 characters")
+      .required("City is required"),
+    state: yup
+      .string()
+      .trim()
+      .max(100, "State cannot exceed 100 characters")
+      .required("State is required"),
+    postalCode: yup
+      .string()
+      .trim()
+      .max(20, "Postal code cannot exceed 20 characters")
+      .required("Postal code is required"),
+    country: yup
+      .string()
+      .trim()
+      .length(2, "Country must be a 2-letter ISO code")
+      .required("Country is required"),
+    taxId: yup
+      .string()
+      .trim()
+      .max(50, "Tax ID cannot exceed 50 characters")
+      .optional(),
+  })
+  .required();
 
 export const LicenseValidator = {
   activate: yup.object({
@@ -93,6 +141,7 @@ export const LicenseValidator = {
       licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
       marketId: yup.string().uuid().optional(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicensePurchase: yup
@@ -138,6 +187,7 @@ export const LicenseValidator = {
   getLicensePlansQuery: yup
     .object({
       id: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().optional(),
     })
     .noUnknown(),
   getDiscountRulesQuery: yup

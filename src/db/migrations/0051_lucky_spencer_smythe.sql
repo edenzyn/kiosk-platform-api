@@ -34,6 +34,15 @@ CREATE TABLE "license_transaction_taxes" (
 );
 --> statement-breakpoint
 ALTER TABLE "license_transactions" ADD COLUMN "total_tax_amount" numeric(10, 2) DEFAULT '0' NOT NULL;--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_name" varchar(255);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_email" varchar(255);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_phone" varchar(30);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_address" text;--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_city" varchar(100);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_state" varchar(100);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_postal_code" varchar(20);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_country" varchar(2);--> statement-breakpoint
+ALTER TABLE "license_transactions" ADD COLUMN "billing_tax_id" varchar(50);--> statement-breakpoint
 ALTER TABLE "markets" ADD COLUMN "app_tax_profile_id" uuid;--> statement-breakpoint
 ALTER TABLE "app_tax_components" ADD CONSTRAINT "app_tax_components_tax_profile_id_app_tax_profiles_id_fk" FOREIGN KEY ("tax_profile_id") REFERENCES "public"."app_tax_profiles"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "app_tax_components" ADD CONSTRAINT "app_tax_components_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

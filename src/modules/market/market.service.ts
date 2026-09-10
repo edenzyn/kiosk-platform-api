@@ -13,6 +13,8 @@ import type {
   GetMarketWithTaxServiceResult,
   GetPlatformMarketsServiceInput,
   GetPlatformMarketsServiceResult,
+  GetResellerMarketsServiceInput,
+  GetResellerMarketsServiceResult,
   GetTenantMarketsServiceInput,
   GetTenantMarketsServiceResult,
   MarketWithTaxProfileSummary,
@@ -176,6 +178,25 @@ export class MarketService {
     const markets = await this.marketRepository.findMarketsMappedToOrganization(
       { organizationId },
     );
+
+    const marketsWithTax = await Promise.all(
+      markets.map(async (market) => {
+        const taxProfile = await this._getTaxProfileWithComponents(
+          market.appTaxProfileId,
+        );
+        return { ...market, taxProfile };
+      }),
+    );
+
+    return { markets: marketsWithTax };
+  }
+
+  async getResellerMarkets(
+    input: GetResellerMarketsServiceInput,
+  ): Promise<GetResellerMarketsServiceResult> {
+    const markets = await this.marketRepository.findMarketsMappedToReseller({
+      resellerId: input.resellerId,
+    });
 
     const marketsWithTax = await Promise.all(
       markets.map(async (market) => {

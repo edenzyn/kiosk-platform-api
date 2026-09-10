@@ -9,6 +9,8 @@ import type {
   FindActiveMarketsRepoResult,
   FindMarketsMappedToOrganizationRepoInput,
   FindMarketsMappedToOrganizationRepoResult,
+  FindMarketsMappedToResellerRepoInput,
+  FindMarketsMappedToResellerRepoResult,
   FindOneByCountryCodeRepoInput,
   FindOneByCountryCodeRepoResult,
   FindOneMarketRepoInput,
@@ -60,6 +62,24 @@ export class MarketRepository {
         and(
           eq(organizationMarketMapper.organizationId, input.organizationId),
           eq(organizationMarketMapper.isActive, true),
+          eq(markets.isActive, true),
+        ),
+      );
+
+    return rows.map((row) => row.market);
+  }
+
+  async findMarketsMappedToReseller(
+    input: FindMarketsMappedToResellerRepoInput,
+  ): Promise<FindMarketsMappedToResellerRepoResult> {
+    const rows = await this.database.client
+      .select({ market: markets })
+      .from(resellerMarketMapper)
+      .innerJoin(markets, eq(resellerMarketMapper.marketId, markets.id))
+      .where(
+        and(
+          eq(resellerMarketMapper.resellerId, input.resellerId),
+          eq(resellerMarketMapper.isActive, true),
           eq(markets.isActive, true),
         ),
       );

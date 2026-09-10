@@ -37,6 +37,13 @@ export interface GetTenantMarketsServiceResult {
   markets: MarketWithTaxProfile[];
 }
 
+export interface GetResellerMarketsServiceInput {
+  resellerId: string;
+}
+export interface GetResellerMarketsServiceResult {
+  markets: MarketWithTaxProfile[];
+}
+
 export interface ResolveMarketIdForEffectiveTenantServiceInput {
   effectiveTenant: EffectiveTenant;
   marketId?: string;
@@ -127,6 +134,11 @@ export interface FindMarketsMappedToOrganizationRepoInput {
   organizationId: string;
 }
 export type FindMarketsMappedToOrganizationRepoResult = MarketEntity[];
+
+export interface FindMarketsMappedToResellerRepoInput {
+  resellerId: string;
+}
+export type FindMarketsMappedToResellerRepoResult = MarketEntity[];
 
 export interface IsOrganizationMappedToMarketRepoInput {
   organizationId: string;

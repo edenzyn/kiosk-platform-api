@@ -206,6 +206,11 @@ export const LicenseValidator = {
       marketId: yup.string().uuid().optional(),
     })
     .noUnknown(),
+  getResellerDiscountRulesQuery: yup
+    .object({
+      marketId: yup.string().uuid().optional(),
+    })
+    .noUnknown(),
   getPlatformDiscountRulesQuery: paginationQuerySchema
     .shape({
       search: yup.string().optional().trim(),

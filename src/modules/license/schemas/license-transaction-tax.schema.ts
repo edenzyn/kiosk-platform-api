@@ -25,7 +25,7 @@ export const licenseTransactionTaxes = pgTable(
       (): AnyPgColumn => appTaxComponents.id,
     ),
     taxName: varchar("tax_name", { length: 100 }).notNull(), // snapshot of the tax component name at transaction time
-    taxRate: decimal("tax_rate", { precision: 10, scale: 4 }).notNull(), // snapshot of the rate applied
+    taxRate: decimal("tax_rate", { precision: 10, scale: 2 }).notNull(), // snapshot of the rate applied
     taxAmount: decimal("tax_amount", { precision: 10, scale: 2 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

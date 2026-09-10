@@ -30,6 +30,14 @@ export class MarketController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getResellerMarkets = async (req: Request, res: Response): Promise<void> => {
+    const user = req.user as UserTokenDto;
+    const result = await this.marketService.getResellerMarkets({
+      resellerId: user.id,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getMarketWithTax = async (req: Request, res: Response): Promise<void> => {
     const params = await MarketValidator.marketIdParam.validate(req.params, {
       abortEarly: false,

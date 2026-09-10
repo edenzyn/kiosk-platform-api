@@ -19,6 +19,7 @@ import { platformLicenseRouter } from "./modules/license/routes/platform-license
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
 import { platformMarketRouter } from "./modules/market/routes/platform-market.routes";
+import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
@@ -135,6 +136,10 @@ export class App {
     this.instance.use(
       `${this.resellerApiV1Prefix}/licenses`,
       resellerLicenseRouter,
+    );
+    this.instance.use(
+      `${this.resellerApiV1Prefix}/markets`,
+      resellerMarketRouter,
     );
   }
 

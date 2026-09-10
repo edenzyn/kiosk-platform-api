@@ -604,10 +604,15 @@ export class LicenseController {
     req: Request,
     res: Response,
   ): Promise<void> => {
+    const query = await LicenseValidator.getResellerDiscountRulesQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
     const user = req.user as UserTokenDto;
     const result = await this.licenseDiscountService.getDiscountRules({
       targetEntity: LicenseDiscountRuleTargetEntityTypeEnum.RESELLERS,
       resellerId: user.id,
+      marketId: query.marketId,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

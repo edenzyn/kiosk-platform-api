@@ -18,7 +18,7 @@ export const appTaxComponents = pgTable("app_tax_components", {
     .references((): AnyPgColumn => appTaxProfiles.id),
   name: varchar("name", { length: 100 }).notNull(),
   conditionType: smallint("condition_type").notNull(), // AppTaxComponentConditionTypeEnum: 1 = ALWAYS, 2 = INTRA_STATE, 3 = INTER_STATE
-  rate: decimal("rate", { precision: 10, scale: 4 }).notNull(),
+  rate: decimal("rate", { precision: 10, scale: 2 }).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()

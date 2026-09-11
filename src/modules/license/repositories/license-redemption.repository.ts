@@ -21,6 +21,7 @@ import { LicenseTransactionTypeEnum } from "../../../shared/enums/license/licens
 import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
 import { licensePlanMarketMapper } from "../../market/schemas/license-plan-market-mapper.schema";
+import { markets } from "../../market/schemas/market.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
 import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
@@ -170,12 +171,15 @@ export class LicenseRedemptionRepository {
         createdAt: licenses.createdAt,
         updatedAt: licenses.updatedAt,
         durationDays: licenseTransactionItems.durationDays,
+        marketId: licenses.marketId,
+        marketCountryCode: markets.countryCode,
       })
       .from(licenseResellerMapper)
       .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
       .leftJoin(organizations, eq(licenses.organizationId, organizations.id))
       .leftJoin(branches, eq(licenses.branchId, branches.id))
       .leftJoin(devices, eq(licenses.deviceId, devices.id))
+      .leftJoin(markets, eq(licenses.marketId, markets.id))
       .leftJoin(
         licenseTransactionItems,
         and(

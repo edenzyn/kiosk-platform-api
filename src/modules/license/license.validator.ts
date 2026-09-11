@@ -83,6 +83,11 @@ export const LicenseValidator = {
         .optional(),
     })
     .noUnknown(),
+  getAvailableLicensesForRedemptionQuery: paginationQuerySchema
+    .shape({
+      marketId: yup.string().uuid().required("Market is required"),
+    })
+    .noUnknown(),
   initiateLicensePurchaseAsReseller: yup
     .object({
       quantity: yup

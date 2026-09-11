@@ -180,6 +180,7 @@ export interface GetAvailableLicensesForRedemptionServiceInput {
   filters: {
     page?: number;
     limit?: number;
+    marketId: string;
   };
 }
 
@@ -246,6 +247,7 @@ export interface RedemptionCodeWithItemCount extends Omit<
   LicenseRedemptionCodeEntity,
   "redeemCodeHash"
 > {
+  marketCurrencyCode: string;
   itemCount: number;
 }
 
@@ -268,11 +270,13 @@ export interface GetRedemptionCodeDetailsForResellerServiceInput {
 export interface RedemptionCodeLicenseDetail {
   licenseId: string;
   licenseKey: string;
+  basePrice: string | null;
   lockedPrice: string | null;
   planName: string | null;
 }
 export interface GetRedemptionCodeDetailsForResellerServiceResult {
   redemptionCode: Omit<LicenseRedemptionCodeEntity, "redeemCodeHash"> & {
+    marketCurrencyCode: string;
     licenses: RedemptionCodeLicenseDetail[];
   };
 }
@@ -536,8 +540,7 @@ export interface GetLicenseExtendInfoServiceInput {
 
 export interface LicenseExtendLockedPricing {
   planName: string | null;
-  basePrice: string;
-  lockedPrice: string;
+  lockedPrice: string | null;
   durationDays: number;
   marketId: string;
 }
@@ -551,7 +554,7 @@ export interface FindRedemptionPricingForLicenseRepoResult {
   planId: string;
   lockedPlanName: string;
   basePrice: string;
-  lockedPrice: string;
+  lockedPrice: string | null;
   durationDays: number;
   marketId: string;
 }
@@ -882,6 +885,7 @@ export type FindLicenseIdsWithActiveRedemptionRepoResult = string[];
 
 export interface FindAvailableLicensesForRedemptionRepoInput {
   resellerId: string;
+  marketId: string;
   page?: number;
   limit?: number;
 }
@@ -938,6 +942,7 @@ export interface FindRedemptionCodeDetailsByIdRepoInput {
 }
 export interface FindRedemptionCodeDetailsByIdRepoResult {
   code: Omit<LicenseRedemptionCodeEntity, "redeemCodeHash">;
+  marketCurrencyCode: string;
   licenses: RedemptionCodeLicenseDetail[];
 }
 

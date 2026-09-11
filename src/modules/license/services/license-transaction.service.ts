@@ -694,6 +694,13 @@ export class LicenseTransactionService {
     };
 
     if (lockedPricing) {
+      if (lockedPricing.lockedPrice === null) {
+        throw new AppError(
+          "This license's redemption sale price has not been verified yet. It cannot be extended until the reseller verifies the sold price.",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
+      }
+
       const market = await this.marketService.getMarketWithTax({
         marketId: lockedPricing.marketId,
       });
@@ -968,7 +975,6 @@ export class LicenseTransactionService {
       isRedeemed: true,
       lockedPricing: {
         planName: lockedPricing.lockedPlanName,
-        basePrice: lockedPricing.basePrice,
         lockedPrice: lockedPricing.lockedPrice,
         durationDays: lockedPricing.durationDays,
         marketId: lockedPricing.marketId,

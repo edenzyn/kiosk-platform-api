@@ -494,10 +494,11 @@ export class LicenseController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const queryDto = await LicenseValidator.getLicensesQuery.validate(
-      req.query,
-      { abortEarly: false, stripUnknown: true },
-    );
+    const queryDto =
+      await LicenseValidator.getAvailableLicensesForRedemptionQuery.validate(
+        req.query,
+        { abortEarly: false, stripUnknown: true },
+      );
 
     const user = req.user as UserTokenDto;
     const result =

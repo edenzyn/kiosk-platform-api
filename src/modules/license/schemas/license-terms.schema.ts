@@ -25,11 +25,11 @@ export const licenseTerms = pgTable("license_terms", {
   marketId: uuid("market_id")
     .notNull()
     .references((): AnyPgColumn => markets.id),
-  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(),
+  basePrice: decimal("base_price", { precision: 10, scale: 2 }).notNull(), // price the license was originally sold to the reseller for
   lockedPrice: decimal("locked_price", {
     precision: 10,
     scale: 2,
-  }).notNull(), // added by reseller
+  }), // price the reseller sold it to the buyer for — set later, via verify
   durationDays: integer("duration_days").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

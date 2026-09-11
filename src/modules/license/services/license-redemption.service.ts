@@ -119,6 +119,7 @@ export class LicenseRedemptionService {
       await this.licenseRedemptionRepository.findAvailableLicensesForRedemption(
         {
           resellerId: input.resellerId,
+          marketId: input.filters.marketId,
           page,
           limit,
         },
@@ -192,6 +193,7 @@ export class LicenseRedemptionService {
           details.code.redeemCode,
           env.LICENSE_ENCRYPTION_KEY,
         ),
+        marketCurrencyCode: details.marketCurrencyCode,
         licenses: details.licenses.map((license) => ({
           ...license,
           licenseKey: decryptData(
@@ -232,6 +234,23 @@ export class LicenseRedemptionService {
     if (!sameLicenseSet) {
       throw new AppError(
         "Submitted licenses do not match this redemption code's bundled licenses",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const basePriceByLicenseId = new Map(
+      details.licenses.map((license) => [
+        license.licenseId,
+        Number(license.basePrice) || 0,
+      ]),
+    );
+    const hasBelowMinimumPrice = items.some(
+      (item) =>
+        item.lockedPrice < (basePriceByLicenseId.get(item.licenseId) ?? 0),
+    );
+    if (hasBelowMinimumPrice) {
+      throw new AppError(
+        "Sold price for a license cannot be less than what it originally cost",
         { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }

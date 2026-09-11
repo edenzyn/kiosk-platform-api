@@ -8,6 +8,7 @@ import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { FileService } from "../file/file.service";
+import type { MarketRepository } from "../market/market.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { BranchRepository } from "./branch.repository";
@@ -33,6 +34,7 @@ export class BranchService {
     private readonly rbacRepository: RbacRepository,
     private readonly organizationRepository: OrganizationRepository,
     private readonly fileService: FileService,
+    private readonly marketRepository: MarketRepository,
   ) {}
 
   async createBranch(
@@ -44,6 +46,17 @@ export class BranchService {
       throw new AppError("Cannot create branch for a different organization", {
         statusCode: HttpStatusCodes.FORBIDDEN,
       });
+    }
+
+    const isMarketMapped = await this.marketRepository.isOrganizationMappedToMarket({
+      organizationId: effectiveTenant.organizationId,
+      marketId: data.marketId,
+    });
+    if (!isMarketMapped) {
+      throw new AppError(
+        "This market is not available for your organization",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
     }
 
     const branch = await this.branchRepository.create({

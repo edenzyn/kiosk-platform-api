@@ -7,6 +7,7 @@ import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/l
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import type { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
+import type { TaxProfileWithComponents } from "../finance/finance.types";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type { BillingInfoDto } from "./dtos/purchase-license.dtos";
 import type { LicensePlanDiscountRuleEntity } from "./schemas/license-plan-discount-rule.schema";
@@ -513,6 +514,7 @@ export interface InitiateLicenseExtendServiceInput {
   licenseId: string;
   dto: {
     licensePlanId?: string;
+    billingInfo: BillingInfoDto;
   };
   userId: string;
   effectiveTenant: EffectiveTenant;
@@ -525,6 +527,7 @@ export interface VerifyLicenseExtendServiceInput {
   licenseId: string;
   dto: {
     licensePlanId?: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -542,8 +545,6 @@ export interface LicenseExtendLockedPricing {
   planName: string | null;
   lockedPrice: string | null;
   durationDays: number;
-  marketId: string;
-  currencyCode: string;
 }
 
 export interface GetLicenseExtendInfoServiceResult {
@@ -551,6 +552,8 @@ export interface GetLicenseExtendInfoServiceResult {
   lockedPricing: LicenseExtendLockedPricing | null;
   marketId: string;
   currencyCode: string;
+  countryCode: string;
+  taxProfile: TaxProfileWithComponents | null;
 }
 
 export interface FindRedemptionPricingForLicenseRepoResult {

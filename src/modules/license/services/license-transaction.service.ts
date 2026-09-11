@@ -49,6 +49,7 @@ import type {
   PurchaseLicenseServiceInput,
   PurchaseLicenseServiceResult,
   ResolvedPurchasePricing,
+  ResolvedPurchaseTax,
   VerifyLicenseExtendServiceInput,
 } from "../license.types";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
@@ -673,12 +674,17 @@ export class LicenseTransactionService {
   private async _resolveLicenseExtendPricing(
     license: LicenseEntity,
     licensePlanId?: string,
+    billingCountry?: string | null,
+    billingState?: string | null,
   ): Promise<{
     price: number;
     currencyCode: string;
     durationDays: number;
     planLabel: string;
     resolvedPlanId: string | null;
+    marketId: string;
+    tax: ResolvedPurchaseTax | null;
+    chargeAmount: string;
   }> {
     const lockedPricing =
       await this.licenseRedemptionRepository.findRedemptionPricingForLicense(
@@ -691,6 +697,7 @@ export class LicenseTransactionService {
       durationDays: number;
       planLabel: string;
       resolvedPlanId: string | null;
+      marketId: string;
     };
 
     if (lockedPricing) {
@@ -710,6 +717,7 @@ export class LicenseTransactionService {
         durationDays: lockedPricing.durationDays,
         planLabel: lockedPricing.lockedPlanName || "Redeemed plan",
         resolvedPlanId: lockedPricing.planId,
+        marketId: lockedPricing.marketId,
       };
     } else {
       if (!licensePlanId) {
@@ -748,10 +756,37 @@ export class LicenseTransactionService {
         durationDays: plan.durationDays,
         planLabel: plan.name,
         resolvedPlanId: plan.id,
+        marketId: license.marketId,
       };
     }
 
-    return resolved;
+    const market = await this.marketService.getMarketWithTax({
+      marketId: resolved.marketId,
+    });
+    const taxBreakdown = calculateTaxBreakdown(
+      market.taxProfile,
+      resolved.price,
+      billingCountry,
+      billingState,
+    );
+    const tax = taxBreakdown
+      ? {
+          components: taxBreakdown.components.map((component) => ({
+            name: component.name,
+            rate: component.rate,
+            amount: component.amount.toFixed(2),
+            taxProfileId: component.taxProfileId,
+            taxComponentId: component.taxComponentId,
+          })),
+          totalTaxAmount: taxBreakdown.totalTax.toFixed(2),
+          isInclusive: taxBreakdown.isInclusive,
+        }
+      : null;
+    const chargeAmount = taxBreakdown
+      ? taxBreakdown.grandTotal.toFixed(2)
+      : resolved.price.toFixed(2);
+
+    return { ...resolved, tax, chargeAmount };
   }
 
   private _computeExtendedExpiry(
@@ -794,17 +829,24 @@ export class LicenseTransactionService {
       });
     }
 
-    const { price, currencyCode, durationDays } =
+    const { price, currencyCode, durationDays, marketId, tax, chargeAmount } =
       await this._resolveLicenseExtendPricing(
         license,
         input.dto.licensePlanId,
+        input.dto.billingInfo.country,
+        input.dto.billingInfo.state,
       );
+
+    await this._validateBillingCountryMatchesMarket(
+      input.dto.billingInfo.country,
+      marketId,
+    );
 
     const { subtotal, discountAmount, totalAmount } =
       calculateLicensePurchasePricing(price, 1, 0);
 
     const order = await this.financeService.createRazorpayOrder({
-      amount: Number(totalAmount),
+      amount: Number(chargeAmount),
       currency: currencyCode,
       receipt: generatePrefixedId("rec_lic_"),
       notes: {
@@ -826,6 +868,7 @@ export class LicenseTransactionService {
       discountValue: null,
       appliedDiscountRuleId: null,
       totalAmount,
+      totalTaxAmount: tax?.totalTaxAmount ?? "0",
       paymentStatus: PaymentStatusEnum.PENDING,
       paymentProvider: PaymentProviderEnum.RAZORPAY,
       paymentProviderOrderId: order.orderId,
@@ -835,6 +878,8 @@ export class LicenseTransactionService {
         durationDays,
         razorpayOrder: order,
       },
+      billingInfo: input.dto.billingInfo,
+      taxes: tax?.components,
     });
 
     return {
@@ -845,11 +890,10 @@ export class LicenseTransactionService {
       subtotalAmount: subtotal,
       discountAmount,
       totalAmount,
-      // Renewals are out of scope for tax calculation for now.
-      taxAmount: "0.00",
-      taxComponents: [],
-      isTaxInclusive: false,
-      grandTotal: totalAmount,
+      taxAmount: tax?.totalTaxAmount ?? "0.00",
+      taxComponents: tax?.components ?? [],
+      isTaxInclusive: tax?.isInclusive ?? false,
+      grandTotal: chargeAmount,
     };
   }
 
@@ -871,17 +915,24 @@ export class LicenseTransactionService {
       await this._checkActiveLicenseExists(license.deviceId, license.id);
     }
 
-    const { price, currencyCode, durationDays, planLabel, resolvedPlanId } =
-      await this._resolveLicenseExtendPricing(
-        license,
-        input.dto.licensePlanId,
-      );
+    const {
+      price,
+      currencyCode,
+      durationDays,
+      planLabel,
+      resolvedPlanId,
+      chargeAmount,
+    } = await this._resolveLicenseExtendPricing(
+      license,
+      input.dto.licensePlanId,
+      input.dto.billingInfo.country,
+      input.dto.billingInfo.state,
+    );
 
     const {
       discountType,
       discountValue,
       discountAmount,
-      totalAmount,
       unitPrice,
       baseUnitPrice,
     } = calculateLicensePurchasePricing(price, 1, 0);
@@ -890,7 +941,7 @@ export class LicenseTransactionService {
       razorpayOrderId: input.dto.razorpayOrderId,
       razorpayPaymentId: input.dto.razorpayPaymentId,
       razorpaySignature: input.dto.razorpaySignature,
-      expectedAmount: totalAmount,
+      expectedAmount: chargeAmount,
       expectedCurrency: currencyCode,
     });
 
@@ -968,21 +1019,22 @@ export class LicenseTransactionService {
       );
 
     if (!lockedPricing) {
-      const market = await this.marketRepository.findOne({
-        id: license.marketId,
+      const market = await this.marketService.getMarketWithTax({
+        marketId: license.marketId,
       });
       return {
         isRedeemed: false,
         lockedPricing: null,
         marketId: license.marketId,
-        currencyCode: market?.currencyCode ?? "",
+        currencyCode: market.currencyCode,
+        countryCode: market.countryCode,
+        taxProfile: market.taxProfile,
       };
     }
 
-    const market = await this.marketRepository.findOne({
-      id: lockedPricing.marketId,
+    const market = await this.marketService.getMarketWithTax({
+      marketId: lockedPricing.marketId,
     });
-    const currencyCode = market?.currencyCode ?? "";
 
     return {
       isRedeemed: true,
@@ -990,11 +1042,11 @@ export class LicenseTransactionService {
         planName: lockedPricing.lockedPlanName,
         lockedPrice: lockedPricing.lockedPrice,
         durationDays: lockedPricing.durationDays,
-        marketId: lockedPricing.marketId,
-        currencyCode,
       },
       marketId: lockedPricing.marketId,
-      currencyCode,
+      currencyCode: market.currencyCode,
+      countryCode: market.countryCode,
+      taxProfile: market.taxProfile,
     };
   }
 

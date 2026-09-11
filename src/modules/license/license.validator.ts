@@ -472,11 +472,13 @@ export const LicenseValidator = {
   initiateLicenseExtend: yup
     .object({
       licensePlanId: yup.string().uuid(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicenseExtend: yup
     .object({
       licensePlanId: yup.string().uuid(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()

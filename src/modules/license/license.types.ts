@@ -543,11 +543,14 @@ export interface LicenseExtendLockedPricing {
   lockedPrice: string | null;
   durationDays: number;
   marketId: string;
+  currencyCode: string;
 }
 
 export interface GetLicenseExtendInfoServiceResult {
   isRedeemed: boolean;
   lockedPricing: LicenseExtendLockedPricing | null;
+  marketId: string;
+  currencyCode: string;
 }
 
 export interface FindRedemptionPricingForLicenseRepoResult {

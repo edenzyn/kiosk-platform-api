@@ -968,8 +968,21 @@ export class LicenseTransactionService {
       );
 
     if (!lockedPricing) {
-      return { isRedeemed: false, lockedPricing: null };
+      const market = await this.marketRepository.findOne({
+        id: license.marketId,
+      });
+      return {
+        isRedeemed: false,
+        lockedPricing: null,
+        marketId: license.marketId,
+        currencyCode: market?.currencyCode ?? "",
+      };
     }
+
+    const market = await this.marketRepository.findOne({
+      id: lockedPricing.marketId,
+    });
+    const currencyCode = market?.currencyCode ?? "";
 
     return {
       isRedeemed: true,
@@ -978,7 +991,10 @@ export class LicenseTransactionService {
         lockedPrice: lockedPricing.lockedPrice,
         durationDays: lockedPricing.durationDays,
         marketId: lockedPricing.marketId,
+        currencyCode,
       },
+      marketId: lockedPricing.marketId,
+      currencyCode,
     };
   }
 

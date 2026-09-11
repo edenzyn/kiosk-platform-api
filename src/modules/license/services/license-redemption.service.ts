@@ -366,7 +366,7 @@ export class LicenseRedemptionService {
       }
       if (branch.marketId !== existing.marketId) {
         throw new AppError(
-          "This redeem code cannot be redeemed by your branch",
+          "This redeem code's market is not available for your branch",
           { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
@@ -376,7 +376,7 @@ export class LicenseRedemptionService {
       );
       if (!isMapped) {
         throw new AppError(
-          "This redeem code cannot be redeemed by your organization",
+          "This redeem code's market is not available for your organization",
           { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }

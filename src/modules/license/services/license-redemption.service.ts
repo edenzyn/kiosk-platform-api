@@ -9,6 +9,8 @@ import {
   hashSha256,
 } from "../../../shared/utils/core/crypto.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
+import type { BranchRepository } from "../../branch/branch.repository";
+import type { MarketRepository } from "../../market/market.repository";
 import type {
   GenerateRedemptionCodeServiceInput,
   GenerateRedemptionCodeServiceResult,
@@ -32,6 +34,8 @@ export class LicenseRedemptionService {
   constructor(
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly licenseRepository: LicenseRepository,
+    private readonly branchRepository: BranchRepository,
+    private readonly marketRepository: MarketRepository,
   ) {}
 
   async generateRedemptionCode(
@@ -349,6 +353,33 @@ export class LicenseRedemptionService {
       throw new AppError("This code has expired.", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
       });
+    }
+
+    const { organizationId, branchId } = input.effectiveTenant;
+    if (branchId) {
+      const branch = await this.branchRepository.findOne({ id: branchId });
+      if (!branch) {
+        throw new AppError("Branch not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+      if (branch.marketId !== existing.marketId) {
+        throw new AppError(
+          "This redeem code cannot be redeemed by your branch",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
+      }
+    } else {
+      const isMapped = await this.marketRepository.isOrganizationMappedToMarket(
+        { organizationId, marketId: existing.marketId },
+      );
+      if (!isMapped) {
+        throw new AppError(
+          "This redeem code cannot be redeemed by your organization",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
+      }
     }
 
     const result = await this.licenseRedemptionRepository.claimRedemptionCode({

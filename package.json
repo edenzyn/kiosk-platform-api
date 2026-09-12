@@ -28,7 +28,7 @@
     "db:seed:functions": "tsx ./src/db/seeds/sql-functions-seed.ts",
     "db:seed:permissions": "tsx ./src/db/seeds/add-permissions-seed.ts",
     "db:seed:platform-user": "tsx ./src/db/seeds/platform-user-seed.ts",
-    "db:seed:all-basic": "npm run db:seed:functions && npm run db:seed:permissions && npm run db:seed:platform"
+    "db:seed:all-basic": "npm run db:seed:functions && npm run db:seed:permissions && npm run db:seed:platform-user"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1125.0",

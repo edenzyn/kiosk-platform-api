@@ -1,4 +1,5 @@
 import {
+  boolean,
   decimal,
   jsonb,
   pgTable,
@@ -38,10 +39,15 @@ export const licenseTransactions = pgTable("license_transactions", {
   appliedDiscountRuleId: uuid("applied_discount_rule_id").references(
     (): AnyPgColumn => licensePlanDiscountRules.id,
   ),
-  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  totalTaxAmount: decimal("total_tax_amount", { precision: 10, scale: 2 })
+  amountBeforeTax: decimal("amount_before_tax", {
+    precision: 10,
+    scale: 2,
+  }).notNull(), // subtotalAmount - discountAmount
+  taxAmount: decimal("tax_amount", { precision: 10, scale: 2 })
     .notNull()
     .default("0"),
+  isTaxInclusive: boolean("is_tax_inclusive").notNull().default(false), // snapshot of the market's tax profile setting at transaction time
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // grand total actually charged: amountBeforeTax + taxAmount
   // Payment
   paymentMethod: smallint("payment_method"), // PaymentMethodEnum: 1 = UPI
   paymentProvider: smallint("payment_provider"), // PaymentProviderEnum: 1 = RAZORPAY

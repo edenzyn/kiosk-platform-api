@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import type {
   CreateTaxProfileRepoInput,
@@ -36,7 +36,12 @@ export class TaxRepository {
     return this.database.client
       .select()
       .from(appTaxComponents)
-      .where(eq(appTaxComponents.taxProfileId, input.taxProfileId))
+      .where(
+        and(
+          eq(appTaxComponents.taxProfileId, input.taxProfileId),
+          eq(appTaxComponents.isActive, true),
+        ),
+      )
       .orderBy(asc(appTaxComponents.createdAt));
   }
 
@@ -101,24 +106,40 @@ export class TaxRepository {
 
       if (!taxProfile) throw new Error("Tax profile not found");
 
-      // Simplest correct way to keep components in sync with the possibly-
-      // changed component set: clear everything for this profile, then
-      // re-insert for the new state.
-      await tx
-        .delete(appTaxComponents)
-        .where(eq(appTaxComponents.taxProfileId, taxProfile.id));
+      if (input.deletedComponentIds.length > 0) {
+        await tx
+          .update(appTaxComponents)
+          .set({
+            isActive: false,
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(inArray(appTaxComponents.id, input.deletedComponentIds));
+      }
 
-      if (input.components.length > 0) {
-        await tx.insert(appTaxComponents).values(
-          input.components.map((component) => ({
+      for (const component of input.components) {
+        if (component.id) {
+          await tx
+            .update(appTaxComponents)
+            .set({
+              name: component.name,
+              conditionType: component.conditionType,
+              rate: String(component.rate),
+              isActive: true,
+              updatedBy: input.updatedBy,
+              updatedAt: new Date(),
+            })
+            .where(eq(appTaxComponents.id, component.id));
+        } else {
+          await tx.insert(appTaxComponents).values({
             taxProfileId: taxProfile.id,
             name: component.name,
             conditionType: component.conditionType,
             rate: String(component.rate),
             createdBy: input.updatedBy,
             updatedBy: input.updatedBy,
-          })),
-        );
+          });
+        }
       }
 
       return taxProfile;

@@ -143,12 +143,12 @@ resellerLicenseRouter.get(
 );
 
 resellerLicenseRouter.get(
-  "/transactions/:id/items",
+  "/transactions/:id/details",
   accessMiddleware(
     { reseller: [UserPermissions.RESELLER_BASIC] },
     UserTypeEnums.RESELLER,
   ),
-  licenseController.getLicenseTransactionItemsForReseller,
+  licenseController.getLicenseTransactionDetailsForReseller,
 );
 
 export { resellerLicenseRouter };

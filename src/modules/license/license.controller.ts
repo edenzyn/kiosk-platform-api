@@ -409,7 +409,7 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getLicenseTransactionItems = async (
+  getLicenseTransactionDetails = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
@@ -419,7 +419,7 @@ export class LicenseController {
     );
 
     const result =
-      await this.licenseTransactionService.getLicenseTransactionItems({
+      await this.licenseTransactionService.getLicenseTransactionDetails({
         transactionId: params.id,
         effectiveTenant: req.effectiveTenant as EffectiveTenant,
       });
@@ -671,7 +671,7 @@ export class LicenseController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getLicenseTransactionItemsForReseller = async (
+  getLicenseTransactionDetailsForReseller = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
@@ -682,7 +682,7 @@ export class LicenseController {
 
     const user = req.user as UserTokenDto;
     const result =
-      await this.licenseTransactionService.getLicenseTransactionItemsForReseller(
+      await this.licenseTransactionService.getLicenseTransactionDetailsForReseller(
         {
           transactionId: params.id,
           resellerId: user.id,

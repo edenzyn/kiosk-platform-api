@@ -17,6 +17,7 @@ export interface TaxConfigurationDto {
   name: string;
   isTaxInclusive: boolean;
   components: CreateTaxComponentDto[];
+  deletedComponentIds?: string[];
 }
 
 export type MarketWithTaxProfile = MarketEntity & {

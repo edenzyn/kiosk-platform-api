@@ -51,6 +51,7 @@ export type TaxProfileWithComponents = AppTaxProfileEntity & {
 };
 
 export interface CreateTaxComponentDto {
+  id?: string;
   name: string;
   conditionType: number;
   rate: number;
@@ -90,6 +91,7 @@ export interface UpdateTaxProfileRepoInput {
   name: string;
   isTaxInclusive: boolean;
   components: CreateTaxComponentDto[];
+  deletedComponentIds: string[];
   updatedBy: string;
 }
 export type UpdateTaxProfileRepoResult = AppTaxProfileEntity;

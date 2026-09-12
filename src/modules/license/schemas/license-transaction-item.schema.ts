@@ -28,8 +28,6 @@ export const licenseTransactionItems = pgTable("license_transaction_items", {
     precision: 10,
     scale: 2,
   }).notNull(),
-  discountType: smallint("discount_type"), // LicenseDiscountTypeEnum: 1 = PERCENTAGE, 2 = FLAT
-  discountValue: decimal("discount_value", { precision: 10, scale: 2 }),
   discountAmount: decimal("discount_amount", { precision: 10, scale: 2 })
     .notNull()
     .default("0"),

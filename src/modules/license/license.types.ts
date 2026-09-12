@@ -96,7 +96,7 @@ export interface ResolvedPurchaseTaxComponent {
 
 export interface ResolvedPurchaseTax {
   components: ResolvedPurchaseTaxComponent[];
-  totalTaxAmount: string;
+  taxAmount: string;
   isInclusive: boolean;
 }
 
@@ -111,12 +111,10 @@ export interface ResolvedPurchasePricing {
   discountType: number;
   discountValue: string;
   discountAmount: string;
-  totalAmount: string;
+  amountBeforeTax: string;
   unitPrice: string;
   baseUnitPrice: string;
   tax: ResolvedPurchaseTax | null;
-  // totalAmount already includes tax when tax is present — this is the
-  // amount actually charged via Razorpay.
   chargeAmount: string;
 }
 
@@ -139,7 +137,7 @@ export interface InitiateLicensePurchaseServiceResult {
   currency: string;
   subtotalAmount: string;
   discountAmount: string;
-  totalAmount: string;
+  amountBeforeTax: string;
   taxAmount: string;
   taxComponents: ResolvedPurchaseTaxComponent[];
   isTaxInclusive: boolean;
@@ -592,11 +590,15 @@ export interface LicenseTransactionListItem {
   discountAmount: string;
   discountType: number | null;
   discountValue: string | null;
+  amountBeforeTax: string;
+  taxAmount: string;
+  isTaxInclusive: boolean;
   totalAmount: string;
   marketId: string;
+  currencyCode: string;
   paymentStatus: number | null;
-  transactionAt: string | null;
-  createdAt: string;
+  transactionAt: Date | null;
+  createdAt: Date;
   itemCount: number;
 }
 
@@ -627,6 +629,13 @@ export interface GetLicenseTransactionsForResellerServiceInput {
 export type GetLicenseTransactionsForResellerServiceResult =
   GetLicenseTransactionsServiceResult;
 
+export interface LicenseTransactionTaxDetail {
+  id: string;
+  name: string;
+  rate: string;
+  amount: string;
+}
+
 export interface LicenseTransactionDetail {
   id: string;
   userId: string | null;
@@ -635,14 +644,19 @@ export interface LicenseTransactionDetail {
   discountAmount: string;
   discountType: number | null;
   discountValue: string | null;
+  amountBeforeTax: string;
+  taxAmount: string;
+  isTaxInclusive: boolean;
   totalAmount: string;
+  taxes: LicenseTransactionTaxDetail[];
   marketId: string;
+  currencyCode: string;
   paymentStatus: number | null;
   paymentProvider: number | null;
   paymentReference: string | null;
   failureReason: string | null;
-  transactionAt: string | null;
-  createdAt: string;
+  transactionAt: Date | null;
+  createdAt: Date;
 }
 
 export interface LicenseTransactionItemDetail {
@@ -656,30 +670,28 @@ export interface LicenseTransactionItemDetail {
   transactionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountType: number | null;
-  discountValue: string | null;
   discountAmount: string | null;
   finalUnitPrice: string;
-  createdAt: string;
+  createdAt: Date;
 }
 
-export interface GetLicenseTransactionItemsServiceInput {
+export interface GetLicenseTransactionDetailsServiceInput {
   transactionId: string;
   effectiveTenant: EffectiveTenant;
 }
 
-export interface GetLicenseTransactionItemsServiceResult {
+export interface GetLicenseTransactionDetailsServiceResult {
   transaction: LicenseTransactionDetail;
   items: LicenseTransactionItemDetail[];
 }
 
-export interface GetLicenseTransactionItemsForResellerServiceInput {
+export interface GetLicenseTransactionDetailsForResellerServiceInput {
   transactionId: string;
   resellerId: string;
 }
 
-export type GetLicenseTransactionItemsForResellerServiceResult =
-  GetLicenseTransactionItemsServiceResult;
+export type GetLicenseTransactionDetailsForResellerServiceResult =
+  GetLicenseTransactionDetailsServiceResult;
 
 export interface CheckLicenseStatusServiceInput {
   licenseId?: string;
@@ -723,10 +735,10 @@ export type LicenseDetailsResult = {
   deviceId: string | null;
   deviceName: string | null;
   status: number;
-  activatedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  activatedAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type LicenseDetailsTransactionItem = {
@@ -737,24 +749,23 @@ export type LicenseDetailsTransactionItem = {
   transactionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountType: number | null;
-  discountValue: string | null;
   discountAmount: string | null;
   finalUnitPrice: string;
-  createdAt: string;
+  createdAt: Date;
   paymentStatus: number | null;
   marketId: string | null;
-  totalAmount: string | null;
+  currencyCode: string | null;
   performedByName: string | null;
 };
 
 export type FindOneLicenseDetailsRepoResult = LicenseDetailsResult | null;
 
-export interface FindLicenseTransactionsRepoInput {
+export interface FindTransactionsForLicenseRepoInput {
   licenseId: string;
   viewerUserType: UserTypeEnums;
 }
-export type FindLicenseTransactionsRepoResult = LicenseDetailsTransactionItem[];
+export type FindTransactionsForLicenseRepoResult =
+  LicenseDetailsTransactionItem[];
 
 export interface FindLicenseTransactionsForOrganizationRepoInput {
   organizationId: string;
@@ -788,58 +799,6 @@ export interface FindTransactionWithItemsRepoResult {
   transaction: LicenseTransactionDetail;
   items: LicenseTransactionItemDetail[];
 }
-
-export type LicenseTransactionListRow = {
-  id: string;
-  userId: string | null;
-  performedByName: string | null;
-  subtotalAmount: string;
-  discountAmount: string;
-  discountType: number | null;
-  discountValue: string | null;
-  totalAmount: string;
-  marketId: string;
-  paymentStatus: number | null;
-  transactionAt: string | null;
-  createdAt: string;
-  itemCount: number;
-  totalCount: string | number;
-};
-
-export type LicenseTransactionItemWithHeaderRow = {
-  // Item fields are nullable: a transaction with no items yet (still
-  // pending, cancelled, or failed before finalizing) returns exactly one
-  // row with every item field NULL, so the transaction header is never lost.
-  itemId: string | null;
-  licenseId: string | null;
-  licenseKey: string | null;
-  deviceType: number | null;
-  planId: string | null;
-  planName: string | null;
-  transactionType: number | null;
-  durationDays: number | null;
-  baseUnitPrice: string | null;
-  discountType: number | null;
-  discountValue: string | null;
-  discountAmount: string | null;
-  finalUnitPrice: string | null;
-  itemCreatedAt: string | null;
-  transactionId: string;
-  userId: string | null;
-  performedByName: string | null;
-  subtotalAmount: string;
-  transactionDiscountAmount: string;
-  transactionDiscountType: number | null;
-  transactionDiscountValue: string | null;
-  totalAmount: string;
-  marketId: string;
-  paymentStatus: number | null;
-  paymentProvider: number | null;
-  paymentReference: string | null;
-  failureReason: string | null;
-  transactionAt: string | null;
-  transactionCreatedAt: string;
-};
 
 export interface FindLicensesRepoInput {
   organizationId?: string;
@@ -992,8 +951,10 @@ export interface CreatePendingLicenseTransactionRepoInput {
   discountType?: number | null;
   discountValue?: string | null;
   appliedDiscountRuleId?: string | null;
+  amountBeforeTax: string;
+  taxAmount?: string;
+  isTaxInclusive?: boolean;
   totalAmount: string;
-  totalTaxAmount?: string;
   paymentStatus: number;
   paymentProvider: number;
   paymentProviderOrderId: string;
@@ -1007,8 +968,6 @@ export interface CreatePendingLicenseTransactionRepoInput {
     transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
     discountAmount?: string;
     finalUnitPrice: string;
   }>;
@@ -1046,8 +1005,6 @@ export interface FinalizeLicensePurchaseRepoInput {
     transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
     discountAmount?: string;
     finalUnitPrice: string;
   }>;
@@ -1095,8 +1052,6 @@ export interface FinalizeLicenseExtendRepoInput {
     transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
     discountAmount?: string;
     finalUnitPrice: string;
   };
@@ -1282,14 +1237,14 @@ export type LicenseHistoryLogItem = {
   targetEntityType: number;
   previousStatus: number | null;
   newStatus: number | null;
-  previousExpiresAt: string | null;
-  newExpiresAt: string | null;
+  previousExpiresAt: Date | null;
+  newExpiresAt: Date | null;
   transactionId: string | null;
   remarks: string | null;
   performedBy: string | null;
   performedByName: string | null;
   performedByEmail: string | null;
-  createdAt: string;
+  createdAt: Date;
 };
 export type FindLicenseHistoryRepoResult = LicenseHistoryLogItem[];
 

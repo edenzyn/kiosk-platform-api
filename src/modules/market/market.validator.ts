@@ -4,6 +4,7 @@ import { AppTaxComponentConditionTypeEnum } from "../../shared/enums/finance/app
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
 const taxComponentSchema = Yup.object({
+  id: Yup.string().uuid("Invalid component ID").optional(),
   name: Yup.string()
     .required("Component name is required")
     .trim()
@@ -30,6 +31,9 @@ const taxConfigurationSchema = Yup.object({
     .of(taxComponentSchema)
     .min(1, "Add at least one tax component")
     .required("Add at least one tax component"),
+  deletedComponentIds: Yup.array()
+    .of(Yup.string().uuid("Invalid component ID").defined())
+    .optional(),
 }).noUnknown();
 
 export class MarketValidator {

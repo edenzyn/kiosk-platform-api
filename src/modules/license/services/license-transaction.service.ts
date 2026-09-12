@@ -30,10 +30,10 @@ import type {
   ExtendLicenseServiceResult,
   GetLicenseExtendInfoServiceInput,
   GetLicenseExtendInfoServiceResult,
-  GetLicenseTransactionItemsForResellerServiceInput,
-  GetLicenseTransactionItemsForResellerServiceResult,
-  GetLicenseTransactionItemsServiceInput,
-  GetLicenseTransactionItemsServiceResult,
+  GetLicenseTransactionDetailsForResellerServiceInput,
+  GetLicenseTransactionDetailsForResellerServiceResult,
+  GetLicenseTransactionDetailsServiceInput,
+  GetLicenseTransactionDetailsServiceResult,
   GetLicenseTransactionsForResellerServiceInput,
   GetLicenseTransactionsForResellerServiceResult,
   GetLicenseTransactionsServiceInput,
@@ -342,7 +342,7 @@ export class LicenseTransactionService {
             taxProfileId: component.taxProfileId,
             taxComponentId: component.taxComponentId,
           })),
-          totalTaxAmount: taxBreakdown.totalTax.toFixed(2),
+          taxAmount: taxBreakdown.totalTax.toFixed(2),
           isInclusive: taxBreakdown.isInclusive,
         }
       : null;
@@ -351,13 +351,16 @@ export class LicenseTransactionService {
       ? taxBreakdown.grandTotal.toFixed(2)
       : pricing.totalAmount;
 
+    const { totalAmount: amountBeforeTax, ...restPricing } = pricing;
+
     return {
       selectedPlan,
       durationDays,
       marketId: params.marketId,
       currencyCode: market.currencyCode,
       appliedDiscountRuleId,
-      ...pricing,
+      ...restPricing,
+      amountBeforeTax,
       tax,
       chargeAmount,
     };
@@ -416,8 +419,10 @@ export class LicenseTransactionService {
       discountType: pricing.discountType,
       discountValue: pricing.discountValue,
       appliedDiscountRuleId: pricing.appliedDiscountRuleId,
-      totalAmount: pricing.totalAmount,
-      totalTaxAmount: pricing.tax?.totalTaxAmount ?? "0",
+      amountBeforeTax: pricing.amountBeforeTax,
+      taxAmount: pricing.tax?.taxAmount ?? "0",
+      isTaxInclusive: pricing.tax?.isInclusive ?? false,
+      totalAmount: pricing.chargeAmount,
       paymentStatus: PaymentStatusEnum.PENDING,
       paymentProvider: PaymentProviderEnum.RAZORPAY,
       paymentProviderOrderId: order.orderId,
@@ -434,9 +439,9 @@ export class LicenseTransactionService {
         transactionType: params.transactionType,
         durationDays: pricing.durationDays,
         baseUnitPrice: pricing.baseUnitPrice,
-        discountType: pricing.discountType,
-        discountValue: pricing.discountValue,
-        discountAmount: pricing.discountAmount,
+        discountAmount: (
+          Number(pricing.discountAmount) / params.quantity
+        ).toFixed(2),
         finalUnitPrice: pricing.unitPrice,
       })),
       taxes: pricing.tax?.components,
@@ -449,8 +454,8 @@ export class LicenseTransactionService {
       currency: order.currency,
       subtotalAmount: pricing.subtotal,
       discountAmount: pricing.discountAmount,
-      totalAmount: pricing.totalAmount,
-      taxAmount: pricing.tax?.totalTaxAmount ?? "0.00",
+      amountBeforeTax: pricing.amountBeforeTax,
+      taxAmount: pricing.tax?.taxAmount ?? "0.00",
       taxComponents: pricing.tax?.components ?? [],
       isTaxInclusive: pricing.tax?.isInclusive ?? false,
       grandTotal: pricing.chargeAmount,
@@ -474,13 +479,13 @@ export class LicenseTransactionService {
     const {
       selectedPlan,
       durationDays,
-      discountType,
-      discountValue,
       discountAmount,
       unitPrice,
       baseUnitPrice,
       marketId,
     } = params.pricing;
+
+    const perUnitDiscountAmount = (Number(discountAmount) / qty).toFixed(2);
 
     const newLicenses = [];
     for (let i = 0; i < qty; i++) {
@@ -522,9 +527,7 @@ export class LicenseTransactionService {
           transactionType: params.transactionType,
           durationDays,
           baseUnitPrice: baseUnitPrice,
-          discountType,
-          discountValue,
-          discountAmount,
+          discountAmount: perUnitDiscountAmount,
           finalUnitPrice: unitPrice,
         })),
       });
@@ -778,7 +781,7 @@ export class LicenseTransactionService {
             taxProfileId: component.taxProfileId,
             taxComponentId: component.taxComponentId,
           })),
-          totalTaxAmount: taxBreakdown.totalTax.toFixed(2),
+          taxAmount: taxBreakdown.totalTax.toFixed(2),
           isInclusive: taxBreakdown.isInclusive,
         }
       : null;
@@ -842,8 +845,11 @@ export class LicenseTransactionService {
       marketId,
     );
 
-    const { subtotal, discountAmount, totalAmount } =
-      calculateLicensePurchasePricing(price, 1, 0);
+    const {
+      subtotal,
+      discountAmount,
+      totalAmount: amountBeforeTax,
+    } = calculateLicensePurchasePricing(price, 1, 0);
 
     const order = await this.financeService.createRazorpayOrder({
       amount: Number(chargeAmount),
@@ -867,8 +873,10 @@ export class LicenseTransactionService {
       discountType: null,
       discountValue: null,
       appliedDiscountRuleId: null,
-      totalAmount,
-      totalTaxAmount: tax?.totalTaxAmount ?? "0",
+      amountBeforeTax,
+      taxAmount: tax?.taxAmount ?? "0",
+      isTaxInclusive: tax?.isInclusive ?? false,
+      totalAmount: chargeAmount,
       paymentStatus: PaymentStatusEnum.PENDING,
       paymentProvider: PaymentProviderEnum.RAZORPAY,
       paymentProviderOrderId: order.orderId,
@@ -889,8 +897,8 @@ export class LicenseTransactionService {
       currency: order.currency,
       subtotalAmount: subtotal,
       discountAmount,
-      totalAmount,
-      taxAmount: tax?.totalTaxAmount ?? "0.00",
+      amountBeforeTax,
+      taxAmount: tax?.taxAmount ?? "0.00",
       taxComponents: tax?.components ?? [],
       isTaxInclusive: tax?.isInclusive ?? false,
       grandTotal: chargeAmount,
@@ -929,13 +937,8 @@ export class LicenseTransactionService {
       input.dto.billingInfo.state,
     );
 
-    const {
-      discountType,
-      discountValue,
-      discountAmount,
-      unitPrice,
-      baseUnitPrice,
-    } = calculateLicensePurchasePricing(price, 1, 0);
+    const { discountAmount, unitPrice, baseUnitPrice } =
+      calculateLicensePurchasePricing(price, 1, 0);
 
     await this.financeService.verifyRazorpayPayment({
       razorpayOrderId: input.dto.razorpayOrderId,
@@ -966,8 +969,6 @@ export class LicenseTransactionService {
           transactionType: LicenseTransactionTypeEnum.RENEWAL,
           durationDays,
           baseUnitPrice,
-          discountType,
-          discountValue,
           discountAmount,
           finalUnitPrice: unitPrice,
         },
@@ -1075,9 +1076,9 @@ export class LicenseTransactionService {
     };
   }
 
-  async getLicenseTransactionItems(
-    input: GetLicenseTransactionItemsServiceInput,
-  ): Promise<GetLicenseTransactionItemsServiceResult> {
+  async getLicenseTransactionDetails(
+    input: GetLicenseTransactionDetailsServiceInput,
+  ): Promise<GetLicenseTransactionDetailsServiceResult> {
     const result =
       await this.licenseTransactionRepository.findTransactionWithItems({
         transactionId: input.transactionId,
@@ -1176,9 +1177,9 @@ export class LicenseTransactionService {
     };
   }
 
-  async getLicenseTransactionItemsForReseller(
-    input: GetLicenseTransactionItemsForResellerServiceInput,
-  ): Promise<GetLicenseTransactionItemsForResellerServiceResult> {
+  async getLicenseTransactionDetailsForReseller(
+    input: GetLicenseTransactionDetailsForResellerServiceInput,
+  ): Promise<GetLicenseTransactionDetailsForResellerServiceResult> {
     const result =
       await this.licenseTransactionRepository.findTransactionWithItems({
         transactionId: input.transactionId,

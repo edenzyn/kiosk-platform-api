@@ -63,6 +63,7 @@ export class MarketService {
           name: taxConfiguration.name,
           isTaxInclusive: taxConfiguration.isTaxInclusive,
           components: taxConfiguration.components,
+          deletedComponentIds: taxConfiguration.deletedComponentIds ?? [],
           updatedBy: userId,
         });
       return taxProfile.id;

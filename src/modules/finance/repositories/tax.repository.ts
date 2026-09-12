@@ -114,7 +114,12 @@ export class TaxRepository {
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(inArray(appTaxComponents.id, input.deletedComponentIds));
+          .where(
+            and(
+              inArray(appTaxComponents.id, input.deletedComponentIds),
+              eq(appTaxComponents.taxProfileId, taxProfile.id),
+            ),
+          );
       }
 
       for (const component of input.components) {
@@ -129,7 +134,38 @@ export class TaxRepository {
               updatedBy: input.updatedBy,
               updatedAt: new Date(),
             })
-            .where(eq(appTaxComponents.id, component.id));
+            .where(
+              and(
+                eq(appTaxComponents.id, component.id),
+                eq(appTaxComponents.taxProfileId, taxProfile.id),
+              ),
+            );
+          continue;
+        }
+
+        const [inactiveMatch] = await tx
+          .select({ id: appTaxComponents.id })
+          .from(appTaxComponents)
+          .where(
+            and(
+              eq(appTaxComponents.taxProfileId, taxProfile.id),
+              eq(appTaxComponents.name, component.name),
+              eq(appTaxComponents.conditionType, component.conditionType),
+              eq(appTaxComponents.isActive, false),
+            ),
+          )
+          .limit(1);
+
+        if (inactiveMatch) {
+          await tx
+            .update(appTaxComponents)
+            .set({
+              rate: String(component.rate),
+              isActive: true,
+              updatedBy: input.updatedBy,
+              updatedAt: new Date(),
+            })
+            .where(eq(appTaxComponents.id, inactiveMatch.id));
         } else {
           await tx.insert(appTaxComponents).values({
             taxProfileId: taxProfile.id,

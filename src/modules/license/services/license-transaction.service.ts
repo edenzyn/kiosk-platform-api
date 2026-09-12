@@ -571,6 +571,13 @@ export class LicenseTransactionService {
     transactionType: LicenseTransactionTypeEnum;
     billingInfo?: BillingInfoDto;
   }): Promise<PurchaseLicenseServiceResult> {
+    if (params.billingInfo) {
+      await this._validateBillingCountryMatchesMarket(
+        params.billingInfo.country,
+        params.marketId,
+      );
+    }
+
     const pricing = await this._resolvePurchasePricing({
       quantity: params.quantity,
       licensePlanId: params.licensePlanId,
@@ -929,12 +936,18 @@ export class LicenseTransactionService {
       durationDays,
       planLabel,
       resolvedPlanId,
+      marketId,
       chargeAmount,
     } = await this._resolveLicenseExtendPricing(
       license,
       input.dto.licensePlanId,
       input.dto.billingInfo.country,
       input.dto.billingInfo.state,
+    );
+
+    await this._validateBillingCountryMatchesMarket(
+      input.dto.billingInfo.country,
+      marketId,
     );
 
     const { discountAmount, unitPrice, baseUnitPrice } =

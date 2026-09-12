@@ -86,6 +86,17 @@ export class LicenseRedemptionService {
       });
     }
 
+    const isMapped = await this.marketRepository.isResellerMappedToMarket({
+      resellerId: input.resellerId,
+      marketId,
+    });
+    if (!isMapped) {
+      throw new AppError("This market is not available for you", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
     const plaintextCode = generateReadableLicenseKey("RDM");
     const encryptedCode = encryptData(
       plaintextCode,

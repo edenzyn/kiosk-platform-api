@@ -11,22 +11,6 @@ export class FinanceController {
   ) {}
 
   // ========================================
-  // ? USER CLIENT APIS
-  // ========================================
-  getExchangeRates = async (_req: Request, res: Response): Promise<void> => {
-    const result = await this.financeService.getLatestRates();
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
-  getSupportedCurrencies = async (
-    _req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const result = await this.financeService.getSupportedCurrencies();
-    res.status(HttpStatusCodes.OK).json(result);
-  };
-
-  // ========================================
   // ? WEBHOOKS
   // ========================================
   razorpayWebhook = async (req: Request, res: Response): Promise<void> => {

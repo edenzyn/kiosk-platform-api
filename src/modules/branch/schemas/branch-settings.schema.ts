@@ -21,9 +21,6 @@ export const branchSettings = pgTable("branch_settings", {
   languageCode: varchar("language_code", { length: 10 })
     .notNull()
     .default("en"),
-  currencyCode: varchar("currency_code", { length: 3 })
-    .notNull()
-    .default("INR"),
   timezone: varchar("timezone", { length: 100 })
     .notNull()
     .default("Asia/Kolkata"),

@@ -1,5 +1,6 @@
 import * as Yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
@@ -18,6 +19,10 @@ export class OrganizationValidator {
     email: emailValidator("Invalid email address").required(
       "Owner email is required",
     ),
+    marketIds: Yup.array()
+      .of(Yup.string().uuid("Invalid market ID").required())
+      .min(1, "Select at least one market")
+      .required("Select at least one market"),
   }).noUnknown();
 
   static readonly getOrganizationsQuery = paginationQuerySchema
@@ -31,10 +36,36 @@ export class OrganizationValidator {
     })
     .noUnknown();
 
+  static readonly getInvitationsQuery = paginationQuerySchema
+    .shape({
+      search: Yup.string().optional().trim(),
+      sortBy: Yup.string()
+        .oneOf(["email", "status", "expiresAt", "createdAt"])
+        .optional()
+        .default("createdAt"),
+      sortOrder: Yup.mixed<SortingOrderEnum>()
+        .oneOf(Object.values(SortingOrderEnum))
+        .optional()
+        .default(SortingOrderEnum.DESC),
+      status: Yup.number()
+        .oneOf(
+          Object.values(UserInvitationStatusEnum) as number[],
+          "Invalid status",
+        )
+        .optional(),
+    })
+    .noUnknown();
+
   static readonly organizationIdParam = Yup.object({
     id: Yup.string()
       .uuid("Invalid organization ID")
       .required("Organization ID is required"),
+  }).noUnknown();
+
+  static readonly invitationIdParam = Yup.object({
+    id: Yup.string()
+      .uuid("Invalid invitation ID")
+      .required("Invitation ID is required"),
   }).noUnknown();
 
   static readonly getById = Yup.object({
@@ -67,7 +98,6 @@ export class OrganizationValidator {
   static readonly updateMyOrganizationSettings = Yup.object({
     primaryColor: Yup.string().trim().max(20).optional(),
     languageCode: Yup.string().trim().max(10).optional(),
-    currencyCode: Yup.string().trim().max(3).optional(),
     timezone: Yup.string().trim().max(100).optional(),
     logo: Yup.string().trim().max(255).nullable().optional(),
   }).noUnknown();

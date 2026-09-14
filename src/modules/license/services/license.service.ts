@@ -288,7 +288,7 @@ export class LicenseService {
       });
     }
 
-    const transactions = await this.licenseTransactionRepository.findLicenseTransactions({
+    const transactions = await this.licenseTransactionRepository.findTransactionsForLicense({
       licenseId: input.licenseId,
       viewerUserType: UserTypeEnums.NORMAL,
     });
@@ -363,6 +363,7 @@ export class LicenseService {
     const history = await this.licenseRepository.findHistory({
       licenseId: input.licenseId,
       targetEntityTypes: [
+        LicenseHistoryTargetEntityTypeEnum.NORMAL,
         LicenseHistoryTargetEntityTypeEnum.RESELLER,
         LicenseHistoryTargetEntityTypeEnum.COMMON,
       ],
@@ -389,7 +390,7 @@ export class LicenseService {
       });
     }
 
-    const transactions = await this.licenseTransactionRepository.findLicenseTransactions({
+    const transactions = await this.licenseTransactionRepository.findTransactionsForLicense({
       licenseId: input.licenseId,
       viewerUserType: UserTypeEnums.RESELLER,
     });

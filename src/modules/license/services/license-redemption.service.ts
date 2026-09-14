@@ -9,6 +9,8 @@ import {
   hashSha256,
 } from "../../../shared/utils/core/crypto.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
+import type { BranchRepository } from "../../branch/branch.repository";
+import type { MarketRepository } from "../../market/market.repository";
 import type {
   GenerateRedemptionCodeServiceInput,
   GenerateRedemptionCodeServiceResult,
@@ -26,14 +28,14 @@ import type {
   VerifyRedemptionCodeServiceResult,
 } from "../license.types";
 import type { LicenseRedemptionRepository } from "../repositories/license-redemption.repository";
-import type { LicenseTransactionRepository } from "../repositories/license-transaction.repository";
 import type { LicenseRepository } from "../repositories/license.repository";
 
 export class LicenseRedemptionService {
   constructor(
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
     private readonly licenseRepository: LicenseRepository,
-    private readonly licenseTransactionRepository: LicenseTransactionRepository,
+    private readonly branchRepository: BranchRepository,
+    private readonly marketRepository: MarketRepository,
   ) {}
 
   async generateRedemptionCode(
@@ -67,28 +69,33 @@ export class LicenseRedemptionService {
       );
     }
 
-    const items = await Promise.all(
-      ownedAvailable.map(async (license) => {
-        const snapshot =
-          await this.licenseTransactionRepository.findLatestPurchaseSnapshot(
-            license.id,
-          );
-        if (!snapshot) {
-          throw new AppError(
-            `No purchase record found for license ${license.id}`,
-            { statusCode: HttpStatusCodes.BAD_REQUEST },
-          );
-        }
-        return {
-          licenseId: license.id,
-          pricingId: snapshot.pricingPlanId,
-          basePrice: snapshot.baseUnitPrice,
-          soldPrice: null, // Not known until the reseller verifies the code after it's claimed.
-          basePriceCurrency: snapshot.currency,
-          durationDays: snapshot.durationDays,
-        };
-      }),
+    const marketIds = new Set(
+      ownedAvailable.map((license) => license.marketId),
     );
+    if (marketIds.size > 1) {
+      throw new AppError(
+        "All licenses bundled into a redemption code must belong to the same market",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const [marketId] = Array.from(marketIds);
+    if (!marketId) {
+      throw new AppError("Could not determine the market for these licenses", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    const isMapped = await this.marketRepository.isResellerMappedToMarket({
+      resellerId: input.resellerId,
+      marketId,
+    });
+    if (!isMapped) {
+      throw new AppError("This market is not available for you", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
 
     const plaintextCode = generateReadableLicenseKey("RDM");
     const encryptedCode = encryptData(
@@ -102,12 +109,13 @@ export class LicenseRedemptionService {
         resellerId: input.resellerId,
         redeemCode: encryptedCode,
         redeemCodeHash: codeHash,
+        marketId,
+        licenseIds,
         status: LicenseRedemptionStatusEnum.GENERATED,
         redeemExpiresAt,
         remarks,
         createdBy: input.resellerId,
         updatedBy: input.resellerId,
-        items,
       },
     );
 
@@ -126,6 +134,7 @@ export class LicenseRedemptionService {
       await this.licenseRedemptionRepository.findAvailableLicensesForRedemption(
         {
           resellerId: input.resellerId,
+          marketId: input.filters.marketId,
           page,
           limit,
         },
@@ -199,9 +208,13 @@ export class LicenseRedemptionService {
           details.code.redeemCode,
           env.LICENSE_ENCRYPTION_KEY,
         ),
-        items: details.items.map((item) => ({
-          ...item,
-          licenseKey: decryptData(item.licenseKey, env.LICENSE_ENCRYPTION_KEY),
+        marketCurrencyCode: details.marketCurrencyCode,
+        licenses: details.licenses.map((license) => ({
+          ...license,
+          licenseKey: decryptData(
+            license.licenseKey,
+            env.LICENSE_ENCRYPTION_KEY,
+          ),
         })),
       },
     };
@@ -210,7 +223,7 @@ export class LicenseRedemptionService {
   async verifyRedemptionCode(
     input: VerifyRedemptionCodeServiceInput,
   ): Promise<VerifyRedemptionCodeServiceResult> {
-    const { totalSoldPrice, soldPriceCurrency, items } = input.dto;
+    const { totalSoldPrice, items } = input.dto;
 
     const details =
       await this.licenseRedemptionRepository.findRedemptionCodeDetailsById({
@@ -226,7 +239,7 @@ export class LicenseRedemptionService {
     }
 
     const bundledLicenseIds = new Set(
-      details.items.map((item) => item.licenseId),
+      details.licenses.map((license) => license.licenseId),
     );
     const submittedLicenseIds = new Set(items.map((item) => item.licenseId));
     const sameLicenseSet =
@@ -240,10 +253,27 @@ export class LicenseRedemptionService {
       );
     }
 
-    const itemsSum = items.reduce((sum, item) => sum + item.soldPrice, 0);
+    const basePriceByLicenseId = new Map(
+      details.licenses.map((license) => [
+        license.licenseId,
+        Number(license.basePrice) || 0,
+      ]),
+    );
+    const hasBelowMinimumPrice = items.some(
+      (item) =>
+        item.lockedPrice < (basePriceByLicenseId.get(item.licenseId) ?? 0),
+    );
+    if (hasBelowMinimumPrice) {
+      throw new AppError(
+        "Sold price for a license cannot be less than what it originally cost",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
+    const itemsSum = items.reduce((sum, item) => sum + item.lockedPrice, 0);
     if (Math.abs(itemsSum - totalSoldPrice) > 0.01) {
       throw new AppError(
-        "Per-license sold prices must add up to the total sold price",
+        "Per-license locked prices must add up to the total sold price",
         { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
@@ -253,10 +283,9 @@ export class LicenseRedemptionService {
         id: input.redemptionId,
         resellerId: input.resellerId,
         totalSoldPrice: totalSoldPrice.toFixed(2),
-        soldPriceCurrency,
         items: items.map((item) => ({
           licenseId: item.licenseId,
-          soldPrice: item.soldPrice.toFixed(2),
+          lockedPrice: item.lockedPrice.toFixed(2),
         })),
       });
 
@@ -335,6 +364,33 @@ export class LicenseRedemptionService {
       throw new AppError("This code has expired.", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
       });
+    }
+
+    const { organizationId, branchId } = input.effectiveTenant;
+    if (branchId) {
+      const branch = await this.branchRepository.findOne({ id: branchId });
+      if (!branch) {
+        throw new AppError("Branch not found", {
+          statusCode: HttpStatusCodes.NOT_FOUND,
+          code: ErrorCodes.RESOURCE_NOT_FOUND,
+        });
+      }
+      if (branch.marketId !== existing.marketId) {
+        throw new AppError(
+          "This redeem code's market is not available for your branch",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
+      }
+    } else {
+      const isMapped = await this.marketRepository.isOrganizationMappedToMarket(
+        { organizationId, marketId: existing.marketId },
+      );
+      if (!isMapped) {
+        throw new AppError(
+          "This redeem code's market is not available for your organization",
+          { statusCode: HttpStatusCodes.BAD_REQUEST },
+        );
+      }
     }
 
     const result = await this.licenseRedemptionRepository.claimRedemptionCode({

@@ -3,6 +3,7 @@ import { branchSwaggerPaths } from "../../../modules/branch/branch.swagger";
 import { deviceSwaggerPaths } from "../../../modules/device/device.swagger";
 import { financeSwaggerPaths } from "../../../modules/finance/finance.swagger";
 import { licenseSwaggerPaths } from "../../../modules/license/license.swagger";
+import { marketSwaggerPaths } from "../../../modules/market/market.swagger";
 import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
@@ -32,11 +33,12 @@ export const swaggerDocument = {
     { name: "Licenses", description: "License purchasing, assignment, extension, and history (org/branch side)" },
     { name: "Reseller Licenses", description: "Reseller license inventory, pricing, and purchasing" },
     { name: "Redemption Codes", description: "Reseller-generated redemption codes bundling licenses for resale" },
-    { name: "Platform Licenses", description: "Platform-managed pricing plans and discount rules" },
+    { name: "Platform Licenses", description: "Platform-managed license plans and discount rules" },
     { name: "Device Licenses", description: "Device-client license activation" },
     { name: "RBAC", description: "Role and permission management within an organization or branch" },
     { name: "Resellers", description: "Reseller account self-service and platform-side reseller management" },
     { name: "Platform", description: "Platform super-admin self-service account" },
+    { name: "Markets", description: "Platform-managed markets (country/currency) used for market-scoped license pricing" },
     { name: "Notifications", description: "Outbound email/WhatsApp sending and inbound WhatsApp webhook" },
     { name: "Finance", description: "Display-only currency exchange rates for the frontend to convert prices with" },
   ],
@@ -125,6 +127,7 @@ export const swaggerDocument = {
     ...branchSwaggerPaths,
     ...deviceSwaggerPaths,
     ...licenseSwaggerPaths,
+    ...marketSwaggerPaths,
     ...rbacSwaggerPaths,
     ...resellerSwaggerPaths,
     ...platformSwaggerPaths,

@@ -28,6 +28,24 @@ export interface GetResellerInvitationsServiceInput {
 export type GetResellerInvitationsServiceResult =
   GetResellerInvitationsResponseDto;
 
+export interface RevokeResellerInvitationServiceInput {
+  invitationId: string;
+  currentUser: UserTokenDto;
+}
+export interface RevokeResellerInvitationServiceResult {
+  message: string;
+  success: boolean;
+}
+
+export interface ResendResellerInvitationServiceInput {
+  invitationId: string;
+  currentUser: UserTokenDto;
+}
+export interface ResendResellerInvitationServiceResult {
+  message: string;
+  success: boolean;
+}
+
 export interface GetResellersServiceInput {
   query: GetResellersRequestDto;
 }

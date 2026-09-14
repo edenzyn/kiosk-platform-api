@@ -71,7 +71,6 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 },
                 languageCode: { type: "string", minLength: 2, maxLength: 10 },
                 timezone: { type: "string", minLength: 1, maxLength: 100 },
-                currencyCode: { type: "string", minLength: 3, maxLength: 3 },
               },
             },
           },

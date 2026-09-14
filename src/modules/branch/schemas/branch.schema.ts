@@ -8,6 +8,7 @@ import {
   varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
+import { markets } from "../../market/schemas/market.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 
@@ -16,6 +17,9 @@ export const branches = pgTable("branches", {
   organizationId: uuid("organization_id")
     .notNull()
     .references((): AnyPgColumn => organizations.id),
+  marketId: uuid("market_id")
+    .notNull()
+    .references((): AnyPgColumn => markets.id),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }),
   mobile: varchar("mobile", { length: 50 }),

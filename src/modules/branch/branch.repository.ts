@@ -175,6 +175,7 @@ export class BranchRepository {
       .insert(branches)
       .values({
         organizationId: data.organizationId,
+        marketId: data.marketId,
         name: data.name,
         email: data.email ?? null,
         mobile: data.mobile ?? null,

@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -8,6 +7,7 @@ import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteResellerTemplate } from "../../shared/utils/emailTemplates/invite-reseller.template";
+import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { NotificationService } from "../notification/notification.service";
 import type { UserRepository } from "../user/user.repository";
@@ -18,6 +18,10 @@ import type {
   GetResellersServiceResult,
   InviteResellerServiceInput,
   InviteResellerServiceResult,
+  ResendResellerInvitationServiceInput,
+  ResendResellerInvitationServiceResult,
+  RevokeResellerInvitationServiceInput,
+  RevokeResellerInvitationServiceResult,
   ToggleResellerStatusServiceInput,
   ToggleResellerStatusServiceResult,
 } from "./reseller.types";
@@ -74,7 +78,7 @@ export class ResellerService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.createInvitation({
       invitation: {
@@ -84,6 +88,7 @@ export class ResellerService {
         organizationId: null,
         branchId: null,
         roleIds: [],
+        marketIds: dto.marketIds,
         token,
         expiresAt,
         status: UserInvitationStatusEnum.PENDING,
@@ -142,10 +147,111 @@ export class ResellerService {
     };
   }
 
+  async revokeResellerInvitation(
+    input: RevokeResellerInvitationServiceInput,
+  ): Promise<RevokeResellerInvitationServiceResult> {
+    const invitation = await this.userRepository.findOneInvitation({
+      id: input.invitationId,
+    });
+
+    if (!invitation || invitation.entityType !== UserTypeEnums.RESELLER) {
+      throw new AppError("Invitation not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.PENDING) {
+      throw new AppError("Only pending invitations can be revoked", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    await this.userRepository.updateInvitation({
+      id: input.invitationId,
+      data: {
+        status: UserInvitationStatusEnum.REVOKED,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    return {
+      message: "Invitation revoked successfully",
+      success: true,
+    };
+  }
+
+  async resendResellerInvitation(
+    input: ResendResellerInvitationServiceInput,
+  ): Promise<ResendResellerInvitationServiceResult> {
+    const invitation = await this.userRepository.findOneInvitation({
+      id: input.invitationId,
+    });
+
+    if (!invitation || invitation.entityType !== UserTypeEnums.RESELLER) {
+      throw new AppError("Invitation not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
+      throw new AppError("Only expired invitations can be resent", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const token = generateToken(
+      {
+        email: invitation.email,
+        entityType: UserTypeEnums.RESELLER,
+        organizationId: null,
+        branchId: null,
+      },
+      env.JWT_INVITE_USER_SECRET,
+      {
+        expiresIn:
+          env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
+      },
+    );
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
+
+    await this.userRepository.updateInvitation({
+      id: input.invitationId,
+      data: {
+        token,
+        expiresAt,
+        status: UserInvitationStatusEnum.PENDING,
+        updatedBy: input.currentUser.id,
+      },
+    });
+
+    try {
+      const template = getInviteResellerTemplate({
+        name: invitation.name || "Reseller",
+        token,
+      });
+
+      await this.notificationService.send(NotificationChannelEnum.EMAIL, {
+        to: invitation.email,
+        ...template,
+      });
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") console.log(error);
+    }
+
+    return {
+      message: "Invitation resent successfully",
+      success: true,
+    };
+  }
+
   async getResellers(
     input: GetResellersServiceInput,
   ): Promise<GetResellersServiceResult> {
-    const { page = 1, limit = 10, search, sortBy, sortOrder, status } =
+    const { page = 1, limit = 10, search, sortBy, sortOrder, status, marketId } =
       input.query;
 
     const isActive =
@@ -154,6 +260,7 @@ export class ResellerService {
     const { resellers, total } = await this.userRepository.findResellers({
       search,
       isActive,
+      marketId,
       page,
       limit,
       sortBy,

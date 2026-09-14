@@ -10,6 +10,10 @@ export class ResellerValidator {
     email: emailValidator("Invalid email address").required(
       "Email is required",
     ),
+    marketIds: Yup.array()
+      .of(Yup.string().uuid("Invalid market ID").required())
+      .min(1, "Select at least one market")
+      .required("Select at least one market"),
   }).noUnknown();
 
   static getInvitationsQuery = paginationQuerySchema
@@ -38,6 +42,7 @@ export class ResellerValidator {
       status: Yup.string()
         .oneOf(["active", "inactive", "all"])
         .optional(),
+      marketId: Yup.string().uuid().optional(),
       sortBy: Yup.string()
         .oneOf(["name", "isActive", "createdAt"])
         .optional(),
@@ -49,5 +54,11 @@ export class ResellerValidator {
 
   static resellerIdParam = Yup.object({
     id: Yup.string().uuid("Invalid reseller ID").required("Reseller ID is required"),
+  }).noUnknown();
+
+  static invitationIdParam = Yup.object({
+    id: Yup.string()
+      .uuid("Invalid invitation ID")
+      .required("Invitation ID is required"),
   }).noUnknown();
 }

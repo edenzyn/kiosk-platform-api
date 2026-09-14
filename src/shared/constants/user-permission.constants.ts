@@ -115,3 +115,11 @@ export const PLATFORM_ORGANIZATION_READ_WRITE_PERMS = [
   UserPermissions.PLATFORM_ORGANIZATION_READ,
   UserPermissions.PLATFORM_ORGANIZATION_WRITE,
 ];
+
+//----------------------
+// Market Module Constants (Platform)
+//----------------------
+export const PLATFORM_MARKET_READ_WRITE_PERMS = [
+  UserPermissions.PLATFORM_MARKET_READ,
+  UserPermissions.PLATFORM_MARKET_WRITE,
+];

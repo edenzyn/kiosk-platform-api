@@ -26,6 +26,9 @@ export enum UserPermissions {
   PLATFORM_SETTING_READ = "platform:setting:read",
   PLATFORM_SETTING_WRITE = "platform:setting:write",
 
+  PLATFORM_MARKET_READ = "platform:market:read",
+  PLATFORM_MARKET_WRITE = "platform:market:write",
+
   // ======================================================
   // Organization
   // ======================================================

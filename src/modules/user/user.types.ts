@@ -148,6 +148,7 @@ export interface FindUsersByRoleIdRepoResult {
 export interface FindResellersRepoInput {
   search?: string;
   isActive?: boolean;
+  marketId?: string;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -206,6 +207,7 @@ export interface FindInvitationsByTenantRepoInput {
   organizationId?: string;
   branchId?: string;
   entityType?: UserTypeEnums;
+  isOrgRegistration?: boolean;
   page?: number;
   limit?: number;
   search?: string;

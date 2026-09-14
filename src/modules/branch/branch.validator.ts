@@ -8,6 +8,7 @@ import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 export const BranchValidator = {
   create: yup.object({
     organizationId: yup.string().uuid().required("Organization ID is required"),
+    marketId: yup.string().uuid().required("Market is required"),
     name: yup.string().max(255).required("Branch name is required"),
     email: emailValidator("Invalid email").nullable().optional(),
     mobile: yup
@@ -91,7 +92,6 @@ export const BranchValidator = {
     .object({
       primaryColor: yup.string().trim().max(20).optional(),
       languageCode: yup.string().trim().max(10).optional(),
-      currencyCode: yup.string().trim().max(3).optional(),
       timezone: yup.string().trim().max(100).optional(),
       logo: yup.string().trim().max(255).nullable().optional(),
     })

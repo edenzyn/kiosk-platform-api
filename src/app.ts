@@ -14,13 +14,13 @@ import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
 import { financeWebhookRouter } from "./modules/finance/routes/finance-webhook.routes";
-import { platformFinanceRouter } from "./modules/finance/routes/platform-finance.routes";
-import { resellerFinanceRouter } from "./modules/finance/routes/reseller-finance.routes";
-import { userFinanceRouter } from "./modules/finance/routes/user-finance.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
 import { resellerLicenseRouter } from "./modules/license/routes/reseller-license.routes";
 import { userLicenseRouter } from "./modules/license/routes/user-license.routes";
+import { platformMarketRouter } from "./modules/market/routes/platform-market.routes";
+import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
+import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -126,8 +126,8 @@ export class App {
       platformLicenseRouter,
     );
     this.instance.use(
-      `${this.platformUserApiV1Prefix}/finance`,
-      platformFinanceRouter,
+      `${this.platformUserApiV1Prefix}/markets`,
+      platformMarketRouter,
     );
   }
 
@@ -138,8 +138,8 @@ export class App {
       resellerLicenseRouter,
     );
     this.instance.use(
-      `${this.resellerApiV1Prefix}/finance`,
-      resellerFinanceRouter,
+      `${this.resellerApiV1Prefix}/markets`,
+      resellerMarketRouter,
     );
   }
 
@@ -160,8 +160,8 @@ export class App {
       userLicenseRouter,
     );
     this.instance.use(
-      `${this.normalUserApiV1Prefix}/finance`,
-      userFinanceRouter,
+      `${this.normalUserApiV1Prefix}/markets`,
+      userMarketRouter,
     );
   }
 

@@ -22,12 +22,12 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.get(
-  "/pricing",
+  "/plans",
   accessMiddleware({
     organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
     branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
   }),
-  licenseController.getPricingPlans,
+  licenseController.getLicensePlans,
 );
 
 userLicenseRouter.get(
@@ -148,12 +148,12 @@ userLicenseRouter.get(
 );
 
 userLicenseRouter.get(
-  "/transactions/:id/items",
+  "/transactions/:id/details",
   accessMiddleware({
     organization: [...ORGANIZATION_LICENSE_READ_WRITE_PERMS],
     branch: [...BRANCH_LICENSE_READ_WRITE_PERMS],
   }),
-  licenseController.getLicenseTransactionItems,
+  licenseController.getLicenseTransactionDetails,
 );
 
 export { userLicenseRouter };

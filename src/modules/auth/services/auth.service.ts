@@ -39,6 +39,7 @@ import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
 import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
+import type { MarketRepository } from "../../market/market.repository";
 import type { NotificationService } from "../../notification/notification.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
 import type { RbacRepository } from "../../rbac/rbac.repository";
@@ -95,6 +96,7 @@ export class AuthService {
     private readonly branchRepository: BranchRepository,
     private readonly oneTimeTokenService: OneTimeTokenService,
     private readonly notificationService: NotificationService,
+    private readonly marketRepository: MarketRepository,
   ) {}
 
   private _generateTokens(
@@ -705,6 +707,14 @@ export class AuthService {
       });
     }
 
+    if (invitation.marketIds && invitation.marketIds.length > 0) {
+      await this.marketRepository.mapResellerToMarkets({
+        resellerId: createdUser.id,
+        marketIds: invitation.marketIds,
+        createdBy: createdUser.id,
+      });
+    }
+
     await this.userRepository.updateInvitation({
       id: invitation.id,
       data: {
@@ -783,6 +793,7 @@ export class AuthService {
         registeredName: dto.registeredName,
         registrationNumber: dto.registrationNumber,
         invitationId: invitation.id,
+        marketIds: invitation.marketIds ?? [],
         owner: {
           name: dto.name,
           email: invitation.email,

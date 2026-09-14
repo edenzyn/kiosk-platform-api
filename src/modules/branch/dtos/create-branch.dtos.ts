@@ -2,6 +2,7 @@ import type { BranchEntity } from "../schemas/branch.schema";
 
 export interface CreateBranchRequestDto {
   organizationId: string;
+  marketId: string;
   name: string;
   email?: string | null;
   mobile?: string | null;

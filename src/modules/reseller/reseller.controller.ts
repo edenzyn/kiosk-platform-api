@@ -31,6 +31,32 @@ export class ResellerController {
     res.json(result);
   };
 
+  revokeInvitation = async (req: Request, res: Response): Promise<void> => {
+    const params = await ResellerValidator.invitationIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.resellerService.revokeResellerInvitation({
+      invitationId: params.id,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  resendInvitation = async (req: Request, res: Response): Promise<void> => {
+    const params = await ResellerValidator.invitationIdParam.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const currentUser = req.user as UserTokenDto;
+    const result = await this.resellerService.resendResellerInvitation({
+      invitationId: params.id,
+      currentUser,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getResellers = async (req: Request, res: Response): Promise<void> => {
     const query = await ResellerValidator.getResellersQuery.validate(
       req.query,

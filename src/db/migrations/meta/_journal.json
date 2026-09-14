@@ -344,6 +344,69 @@
       "when": 1788600000000,
       "tag": "0048_rename_logo_url_to_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1788758572139,
+      "tag": "0049_license-module-redesign",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1788849319270,
+      "tag": "0050_user-invitations-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1788961340082,
+      "tag": "0051_lucky_spencer_smythe",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1789046801136,
+      "tag": "0052_white_white_tiger",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1789049643409,
+      "tag": "0053_late_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1789105336171,
+      "tag": "0054_milky_sasquatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1789188703738,
+      "tag": "0055_transaction-items-fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1789190449279,
+      "tag": "0056_transaction-items-fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1789192364764,
+      "tag": "0057_transaction-items-fix",
+      "breakpoints": true
     }
   ]
 }

@@ -50,7 +50,6 @@ export class UserValidator {
       .optional(),
     languageCode: Yup.string().trim().min(2).max(10).optional(),
     timezone: Yup.string().trim().min(1).max(100).optional(),
-    currencyCode: Yup.string().trim().length(3).optional(),
   }).noUnknown();
 
   static sessionIdParam = Yup.object({

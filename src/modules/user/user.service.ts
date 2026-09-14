@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -22,6 +21,7 @@ import {
   compareHashedData,
   hashData,
 } from "../../shared/utils/core/bcrypt.helper";
+import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
 import { generateToken } from "../../shared/utils/core/jwt.helper";
 import { getInviteUserTemplate } from "../../shared/utils/emailTemplates/invite-user.template";
 import { getTwoFactorOtpTemplate } from "../../shared/utils/emailTemplates/two-factor-otp.template";
@@ -641,7 +641,7 @@ export class UserService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.createInvitation({
       invitation: {
@@ -801,7 +801,7 @@ export class UserService {
           env.JWT_INVITE_USER_EXPIRES_IN as jwt.SignOptions["expiresIn"],
       },
     );
-    const expiresAt = dayjs().add(7, "day").toDate();
+    const expiresAt = resolveExpiryDate(env.JWT_INVITE_USER_EXPIRES_IN);
 
     await this.userRepository.updateInvitation({
       id,

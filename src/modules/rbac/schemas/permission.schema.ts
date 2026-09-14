@@ -13,7 +13,7 @@ export const permissions = pgTable("permissions", {
   id: uuid("id").defaultRandom().primaryKey(),
   key: varchar("key", { length: 255 }).unique().notNull(),
   description: varchar("description", { length: 255 }),
-  scope: smallint("scope").notNull(),
+  scope: smallint("scope").notNull(), // PermissionScope: 1 = PLATFORM, 2 = ORGANIZATION, 3 = BRANCH, 4 = RESELLER, 5 = COMMON
   isPrivileged: boolean("is_privileged").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),

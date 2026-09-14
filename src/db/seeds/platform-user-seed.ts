@@ -81,7 +81,9 @@ export async function runPlatformUserSeed() {
     platformRole = newRole;
     console.log(`✅ Created Role: ${platformRole.name} (${platformRole.id})`);
   } else {
-    console.log(`ℹ️ Existing Role found: ${platformRole.name} (${platformRole.id})`);
+    console.log(
+      `ℹ️ Existing Role found: ${platformRole.name} (${platformRole.id})`,
+    );
   }
 
   // 3. Map permissions to Platform Owner role
@@ -89,12 +91,12 @@ export async function runPlatformUserSeed() {
     const existingMapping = await db
       .select()
       .from(permissionsMapper)
-      .where(
-        eq(permissionsMapper.entityId, platformRole.id),
-      );
+      .where(eq(permissionsMapper.entityId, platformRole.id));
 
     const hasMapping = existingMapping.some(
-      (m) => m.permissionId === perm.id && m.entityType === PermissionEntityType.ROLE,
+      (m) =>
+        m.permissionId === perm.id &&
+        m.entityType === PermissionEntityType.ROLE,
     );
 
     if (!hasMapping) {
@@ -106,7 +108,9 @@ export async function runPlatformUserSeed() {
         branchId: null,
         isActive: true,
       });
-      console.log(`✅ Mapped permission ${perm.key} to role ${platformRole.name}`);
+      console.log(
+        `✅ Mapped permission ${perm.key} to role ${platformRole.name}`,
+      );
     }
   }
 
@@ -135,7 +139,9 @@ export async function runPlatformUserSeed() {
       .returning();
     if (!newUser) throw new Error("Failed to create platform user");
     platformUser = newUser;
-    console.log(`✅ Created Platform User: ${platformUser.email} (${platformUser.id})`);
+    console.log(
+      `✅ Created Platform User: ${platformUser.email} (${platformUser.id})`,
+    );
   } else {
     const [updated] = await db
       .update(users)
@@ -148,7 +154,9 @@ export async function runPlatformUserSeed() {
       .where(eq(users.id, platformUser.id))
       .returning();
     if (updated) platformUser = updated;
-    console.log(`✅ Updated existing Platform User: ${platformUser.email} (${platformUser.id})`);
+    console.log(
+      `✅ Updated existing Platform User: ${platformUser.email} (${platformUser.id})`,
+    );
   }
 
   // 5. Map Platform Owner Role to User
@@ -157,16 +165,20 @@ export async function runPlatformUserSeed() {
     .from(userRolesMapper)
     .where(eq(userRolesMapper.userId, platformUser.id));
 
-  const hasRole = existingUserRole.some((ur) => ur.roleId === platformRole.id);
+  const hasRole = existingUserRole.some((ur) => ur.roleId === platformRole?.id);
 
   if (!hasRole) {
     await db.insert(userRolesMapper).values({
       userId: platformUser.id,
       roleId: platformRole.id,
     });
-    console.log(`✅ Mapped Role ${platformRole.name} to User ${platformUser.email}`);
+    console.log(
+      `✅ Mapped Role ${platformRole.name} to User ${platformUser.email}`,
+    );
   } else {
-    console.log(`ℹ️ Role ${platformRole.name} is already mapped to User ${platformUser.email}`);
+    console.log(
+      `ℹ️ Role ${platformRole.name} is already mapped to User ${platformUser.email}`,
+    );
   }
 
   console.log("\n🎉 Platform User seeding completed successfully!");

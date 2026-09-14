@@ -14,10 +14,13 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../../config/db";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
-import { LicenseTransactionActionTypeEnum } from "../../../shared/enums/license/license-transaction-action-type.enum";
+import { LicenseTransactionTypeEnum } from "../../../shared/enums/license/license-transaction-type.enum";
+import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { branches } from "../../branch/schemas/branch.schema";
 import { devices } from "../../device/device.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
+import { licenseResellerMapper } from "../../reseller/schemas/license-reseller-mapper.schema";
+import { users } from "../../user/schemas/user.schema";
 import type { LicenseWithDetails } from "../dtos/get-licenses.dtos";
 import type {
   ActivateLicenseRepoInput,
@@ -46,7 +49,6 @@ import type {
   UpdateLicenseRepoResult,
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
-import { licenseResellerMapper } from "../schemas/license-reseller-mapper.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses } from "../schemas/license.schema";
 
@@ -107,13 +109,30 @@ export class LicenseRepository {
   async findOneDetails(
     input: FindOneLicenseDetailsRepoInput,
   ): Promise<FindOneLicenseDetailsRepoResult> {
-    const result = await this.database.client.execute<
-      NonNullable<FindOneLicenseDetailsRepoResult>
-    >(
-      sql`SELECT * FROM fn_get_license_details_by_user_type(${input.licenseId}, ${input.viewerUserType})`,
-    );
+    const [license] = await this.database.client
+      .select({
+        id: licenses.id,
+        licenseKey: licenses.licenseKey,
+        organizationId: licenses.organizationId,
+        organizationName: organizations.name,
+        branchId: licenses.branchId,
+        branchName: branches.name,
+        deviceId: licenses.deviceId,
+        deviceName: devices.name,
+        status: licenses.status,
+        activatedAt: licenses.activatedAt,
+        expiresAt: licenses.expiresAt,
+        createdAt: licenses.createdAt,
+        updatedAt: licenses.updatedAt,
+      })
+      .from(licenses)
+      .leftJoin(organizations, eq(organizations.id, licenses.organizationId))
+      .leftJoin(branches, eq(branches.id, licenses.branchId))
+      .leftJoin(devices, eq(devices.id, licenses.deviceId))
+      .where(eq(licenses.id, input.licenseId))
+      .limit(1);
 
-    return result.rows[0] || null;
+    return license || null;
   }
 
   async find(input: FindLicensesRepoInput): Promise<FindLicensesRepoResult> {
@@ -284,8 +303,8 @@ export class LicenseRepository {
         and(
           eq(licenseTransactionItems.licenseId, licenses.id),
           eq(
-            licenseTransactionItems.actionType,
-            LicenseTransactionActionTypeEnum.PURCHASE,
+            licenseTransactionItems.transactionType,
+            LicenseTransactionTypeEnum.RESELLER_PURCHASE,
           ),
         ),
       )
@@ -437,15 +456,46 @@ export class LicenseRepository {
   async findHistory(
     input: FindLicenseHistoryRepoInput,
   ): Promise<FindLicenseHistoryRepoResult> {
-    const targetEntityTypesArrayLiteral = `{${input.targetEntityTypes.join(",")}}`;
+    const isResellerViewer = input.viewerType === UserTypeEnums.RESELLER;
+    const isResellerActor = eq(users.userType, UserTypeEnums.RESELLER);
 
-    const result = await this.database.client.execute<
-      FindLicenseHistoryRepoResult[number]
-    >(
-      sql`SELECT * FROM fn_get_license_history_by_user_type(${input.licenseId}, ${targetEntityTypesArrayLiteral}::smallint[], ${input.viewerType})`,
-    );
+    const performedByName = isResellerViewer
+      ? sql<string | null>`null`
+      : sql<
+          string | null
+        >`case when ${isResellerActor} then 'Reseller' else ${users.name} end`;
+    const performedByEmail = isResellerViewer
+      ? sql<string | null>`null`
+      : sql<
+          string | null
+        >`case when ${isResellerActor} then null else ${users.email} end`;
 
-    return result.rows;
+    return this.database.client
+      .select({
+        id: licenseHistory.id,
+        licenseId: licenseHistory.licenseId,
+        eventType: licenseHistory.eventType,
+        targetEntityType: licenseHistory.targetEntityType,
+        previousStatus: licenseHistory.previousStatus,
+        newStatus: licenseHistory.newStatus,
+        previousExpiresAt: licenseHistory.previousExpiresAt,
+        newExpiresAt: licenseHistory.newExpiresAt,
+        transactionId: licenseHistory.transactionId,
+        remarks: licenseHistory.remarks,
+        performedBy: licenseHistory.performedBy,
+        performedByName,
+        performedByEmail,
+        createdAt: licenseHistory.createdAt,
+      })
+      .from(licenseHistory)
+      .leftJoin(users, eq(users.id, licenseHistory.performedBy))
+      .where(
+        and(
+          eq(licenseHistory.licenseId, input.licenseId),
+          inArray(licenseHistory.targetEntityType, input.targetEntityTypes),
+        ),
+      )
+      .orderBy(desc(licenseHistory.createdAt));
   }
 
   async createHistory(

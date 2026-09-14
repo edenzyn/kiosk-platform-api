@@ -2,6 +2,7 @@ import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.con
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import type { MarketService } from "../../market/market.service";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type {
   CreateDiscountRuleServiceInput,
@@ -15,11 +16,12 @@ import type {
   UpdateDiscountRuleServiceInput,
   UpdateDiscountRuleServiceResult,
 } from "../license.types";
-import type { LicenseDiscountRuleEntity } from "../schemas/license-discount-rule.schema";
+import type { LicensePlanDiscountRuleEntity } from "../schemas/license-plan-discount-rule.schema";
 
 export class LicenseDiscountService {
   constructor(
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
+    private readonly marketService: MarketService,
   ) {}
 
   private async _attachTargets<T extends { id: string; targetEntity: number }>(
@@ -68,9 +70,17 @@ export class LicenseDiscountService {
   async getDiscountRules(
     input: GetDiscountRulesServiceInput,
   ): Promise<GetDiscountRulesServiceResult> {
+    const marketId = input.effectiveTenant
+      ? await this.marketService.resolveMarketIdForEffectiveTenant({
+          effectiveTenant: input.effectiveTenant,
+          marketId: input.marketId,
+        })
+      : input.marketId;
+
     const rules = await this.licenseDiscountRepository.findActiveDiscountRules({
       targetEntity: input.targetEntity,
       resellerId: input.resellerId,
+      marketId,
     });
     return {
       rules: await this._attachTargets(rules, { includeResellerTargets: false }),
@@ -80,8 +90,17 @@ export class LicenseDiscountService {
   async getPlatformDiscountRules(
     input: GetPlatformDiscountRulesServiceInput,
   ): Promise<GetPlatformDiscountRulesServiceResult> {
-    const { page = 1, limit = 10, search, targetEntity, isActive, sortBy, sortOrder } =
-      input.query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      targetEntity,
+      isActive,
+      marketId,
+      discountType,
+      sortBy,
+      sortOrder,
+    } = input.query;
 
     const { rules, total } =
       await this.licenseDiscountRepository.findPaginatedDiscountRules({
@@ -90,6 +109,8 @@ export class LicenseDiscountService {
         search,
         targetEntity,
         isActive,
+        marketId,
+        discountType,
         sortBy,
         sortOrder,
       });
@@ -104,7 +125,7 @@ export class LicenseDiscountService {
   }
 
   private async _fetchTargetsForRule(
-    rule: LicenseDiscountRuleEntity,
+    rule: LicensePlanDiscountRuleEntity,
   ): Promise<{ id: string; name: string }[]> {
     if (
       rule.targetEntity !==
@@ -132,13 +153,14 @@ export class LicenseDiscountService {
       targetEntity: dto.targetEntity,
       discountType: dto.discountType,
       discountValue: dto.discountValue,
-      currency: dto.currency,
+      scopeType: dto.scopeType,
+      marketId: dto.marketId,
       minQuantity: dto.minQuantity,
       maxQuantity: dto.maxQuantity,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt,
       resellerIds: dto.resellerIds,
-      pricingPlanIds: dto.pricingPlanIds,
+      licensePlanIds: dto.licensePlanIds,
       createdBy: currentUser.id,
     });
 
@@ -167,13 +189,14 @@ export class LicenseDiscountService {
       targetEntity: dto.targetEntity,
       discountType: dto.discountType,
       discountValue: dto.discountValue,
-      currency: dto.currency,
+      scopeType: dto.scopeType,
+      marketId: dto.marketId,
       minQuantity: dto.minQuantity,
       maxQuantity: dto.maxQuantity,
       startsAt: dto.startsAt,
       endsAt: dto.endsAt,
       resellerIds: dto.resellerIds,
-      pricingPlanIds: dto.pricingPlanIds,
+      licensePlanIds: dto.licensePlanIds,
       updatedBy: currentUser.id,
     });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "license_transactions" ADD COLUMN "is_tax_inclusive" boolean DEFAULT false NOT NULL;

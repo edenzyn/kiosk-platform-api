@@ -1,35 +1,9 @@
-// ========================================
-// ? CACHE ENTITY
-// ========================================
-export interface CachedExchangeRatesEntity {
-  base: string;
-  rates: Record<string, number>;
-  rateDate: string;
-  fetchedAt: string;
-}
-
-export interface SupportedCurrencyEntity {
-  code: string;
-  name: string;
-  symbol: string;
-}
-
-export interface CachedSupportedCurrenciesEntity {
-  currencies: SupportedCurrencyEntity[];
-  fetchedAt: string;
-}
+import type { AppTaxComponentEntity } from "./schemas/app-tax-component.schema";
+import type { AppTaxProfileEntity } from "./schemas/app-tax-profile.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
 // ========================================
-export type GetLatestExchangeRatesServiceResult = CachedExchangeRatesEntity;
-
-export type RefreshExchangeRatesServiceResult =
-  CachedExchangeRatesEntity | null;
-
-export type GetSupportedCurrenciesServiceResult =
-  CachedSupportedCurrenciesEntity;
-
 export interface HandleRazorpayWebhookServiceInput {
   headers: Record<string, string | string[] | undefined>;
   body: RazorpayWebhookPayload;
@@ -66,3 +40,58 @@ export interface VerifyRazorpayPaymentServiceInput {
   expectedAmount: string;
   expectedCurrency: string;
 }
+
+// ========================================
+// ? TAX — SHARED TYPES
+// ========================================
+// Tax configuration is embedded in the Market create/update/get APIs
+// (MarketService), not exposed as standalone tax-profile endpoints.
+export type TaxProfileWithComponents = AppTaxProfileEntity & {
+  components: AppTaxComponentEntity[];
+};
+
+export interface CreateTaxComponentDto {
+  id?: string;
+  name: string;
+  conditionType: number;
+  rate: number;
+}
+
+// ========================================
+// ? TAX — REPOSITORY INPUTS & RESULTS
+// ========================================
+export interface FindOneTaxProfileRepoInput {
+  id: string;
+}
+export type FindOneTaxProfileRepoResult = AppTaxProfileEntity | null;
+
+export interface FindComponentsByProfileIdRepoInput {
+  taxProfileId: string;
+}
+export type FindComponentsByProfileIdRepoResult = AppTaxComponentEntity[];
+
+export interface FindTaxProfileSummariesByIdsRepoInput {
+  taxProfileIds: string[];
+}
+export type FindTaxProfileSummariesByIdsRepoResult = Array<{
+  id: string;
+  name: string;
+}>;
+
+export interface CreateTaxProfileRepoInput {
+  name: string;
+  isTaxInclusive: boolean;
+  components: CreateTaxComponentDto[];
+  createdBy: string;
+}
+export type CreateTaxProfileRepoResult = AppTaxProfileEntity;
+
+export interface UpdateTaxProfileRepoInput {
+  taxProfileId: string;
+  name: string;
+  isTaxInclusive: boolean;
+  components: CreateTaxComponentDto[];
+  deletedComponentIds: string[];
+  updatedBy: string;
+}
+export type UpdateTaxProfileRepoResult = AppTaxProfileEntity;

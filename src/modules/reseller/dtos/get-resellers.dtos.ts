@@ -14,6 +14,7 @@ export interface GetResellersRequestDto {
   limit?: number;
   search?: string;
   status?: "active" | "inactive" | "all";
+  marketId?: string;
   sortBy?: string;
   sortOrder?: SortingOrderEnum;
 }

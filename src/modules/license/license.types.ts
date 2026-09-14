@@ -1,16 +1,19 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
+import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
 import { LicenseHistoryEventTypeEnum } from "../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import type { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
+import type { TaxProfileWithComponents } from "../finance/finance.types";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
-import type { LicenseDiscountRuleEntity } from "./schemas/license-discount-rule.schema";
-import type { LicensePricingEntity } from "./schemas/license-pricing.schema";
+import type { BillingInfoDto } from "./dtos/purchase-license.dtos";
+import type { LicensePlanDiscountRuleEntity } from "./schemas/license-plan-discount-rule.schema";
+import type { LicensePlanEntity } from "./schemas/license-plan.schema";
 import type { LicenseRedemptionCodeEntity } from "./schemas/license-redemption-code.schema";
-import type { LicenseRedemptionItemEntity } from "./schemas/license-redemption-item.schema";
+import type { LicenseTermsEntity } from "./schemas/license-terms.schema";
 import type { LicenseEntity } from "./schemas/license.schema";
 
 // ========================================
@@ -67,8 +70,10 @@ export interface GetLicensesServiceResult {
 export interface PurchaseLicenseServiceInput {
   dto: {
     quantity: number;
-    pricingPlanId: string;
+    licensePlanId: string;
     discountRuleId?: string;
+    marketId?: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -81,27 +86,45 @@ export interface PurchaseLicenseServiceResult {
   licenses: Omit<LicenseEntity, "createdBy" | "updatedBy">[];
 }
 
+export interface ResolvedPurchaseTaxComponent {
+  name: string;
+  rate: string;
+  amount: string;
+  taxProfileId: string;
+  taxComponentId: string;
+}
+
+export interface ResolvedPurchaseTax {
+  components: ResolvedPurchaseTaxComponent[];
+  taxAmount: string;
+  isInclusive: boolean;
+}
+
 export interface ResolvedPurchasePricing {
-  selectedPlan: LicensePricingEntity;
+  selectedPlan: LicensePlanEntity;
   durationDays: number;
-  currency: string;
+  marketId: string;
+  currencyCode: string;
   appliedDiscountRuleId: string | null;
   subtotal: string;
   discountPercentage: string;
   discountType: number;
   discountValue: string;
-  discountCurrency: string;
   discountAmount: string;
-  totalAmount: string;
+  amountBeforeTax: string;
   unitPrice: string;
   baseUnitPrice: string;
+  tax: ResolvedPurchaseTax | null;
+  chargeAmount: string;
 }
 
 export interface InitiateLicensePurchaseServiceInput {
   dto: {
     quantity: number;
-    pricingPlanId: string;
+    licensePlanId: string;
     discountRuleId?: string;
+    marketId?: string;
+    billingInfo: BillingInfoDto;
   };
   effectiveTenant: EffectiveTenant;
   userId: string;
@@ -114,7 +137,11 @@ export interface InitiateLicensePurchaseServiceResult {
   currency: string;
   subtotalAmount: string;
   discountAmount: string;
-  totalAmount: string;
+  amountBeforeTax: string;
+  taxAmount: string;
+  taxComponents: ResolvedPurchaseTaxComponent[];
+  isTaxInclusive: boolean;
+  grandTotal: string;
 }
 
 export interface RedeemLicenseCodeServiceInput {
@@ -152,6 +179,7 @@ export interface GetAvailableLicensesForRedemptionServiceInput {
   filters: {
     page?: number;
     limit?: number;
+    marketId: string;
   };
 }
 
@@ -161,8 +189,10 @@ export type GetAvailableLicensesForRedemptionServiceResult =
 export interface InitiateLicensePurchaseAsResellerServiceInput {
   dto: {
     quantity: number;
-    pricingPlanId: string;
+    licensePlanId: string;
     discountRuleId?: string;
+    marketId: string;
+    billingInfo: BillingInfoDto;
   };
   resellerId: string;
 }
@@ -173,8 +203,10 @@ export type InitiateLicensePurchaseAsResellerServiceResult =
 export interface PurchaseLicenseAsResellerServiceInput {
   dto: {
     quantity: number;
-    pricingPlanId: string;
+    licensePlanId: string;
     discountRuleId?: string;
+    marketId: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -208,14 +240,13 @@ export type GetLicenseDetailsForResellerServiceResult =
 export interface RedemptionCodeWithItems extends Omit<
   LicenseRedemptionCodeEntity,
   "redeemCodeHash"
-> {
-  items: LicenseRedemptionItemEntity[];
-}
+> {}
 
 export interface RedemptionCodeWithItemCount extends Omit<
   LicenseRedemptionCodeEntity,
   "redeemCodeHash"
 > {
+  marketCurrencyCode: string;
   itemCount: number;
 }
 
@@ -235,12 +266,17 @@ export interface GetRedemptionCodeDetailsForResellerServiceInput {
   resellerId: string;
   redemptionId: string;
 }
-export interface RedemptionItemWithLicenseKey extends LicenseRedemptionItemEntity {
+export interface RedemptionCodeLicenseDetail {
+  licenseId: string;
   licenseKey: string;
+  basePrice: string | null;
+  lockedPrice: string | null;
+  planName: string | null;
 }
 export interface GetRedemptionCodeDetailsForResellerServiceResult {
   redemptionCode: Omit<LicenseRedemptionCodeEntity, "redeemCodeHash"> & {
-    items: RedemptionItemWithLicenseKey[];
+    marketCurrencyCode: string;
+    licenses: RedemptionCodeLicenseDetail[];
   };
 }
 
@@ -249,8 +285,7 @@ export interface VerifyRedemptionCodeServiceInput {
   redemptionId: string;
   dto: {
     totalSoldPrice: number;
-    soldPriceCurrency: string;
-    items: Array<{ licenseId: string; soldPrice: number }>;
+    items: Array<{ licenseId: string; lockedPrice: number }>;
   };
 }
 export type VerifyRedemptionCodeServiceResult = boolean;
@@ -302,17 +337,36 @@ export interface AssignLicenseToDeviceServiceResult {
   license: LicenseWithDetails;
 }
 
-export interface GetLicensePricingPlansServiceInput {
+export type LicensePlanWithPrice = LicensePlanEntity & {
+  price: string | null;
+  marketId?: string | null;
+  currencyCode?: string | null;
+};
+
+export type LicensePlanWithMarketPrices = LicensePlanEntity & {
+  marketPrices: Array<{
+    marketId: string;
+    marketName: string;
+    currencyCode: string;
+    price: string;
+  }>;
+};
+
+export interface GetLicensePlansServiceInput {
   id?: string;
+  marketId?: string;
+  effectiveTenant?: EffectiveTenant;
 }
 
-export interface GetLicensePricingPlansServiceResult {
-  plans: LicensePricingEntity[];
+export interface GetLicensePlansServiceResult {
+  plans: LicensePlanWithMarketPrices[];
 }
 
 export interface GetDiscountRulesServiceInput {
   targetEntity: number;
   resellerId?: string;
+  marketId?: string;
+  effectiveTenant?: EffectiveTenant;
 }
 
 export interface GetDiscountRulesServiceResult {
@@ -327,7 +381,7 @@ export interface DiscountRuleTarget {
   name: string;
 }
 
-export type DiscountRuleWithTargets = LicenseDiscountRuleEntity & {
+export type DiscountRuleWithTargets = LicensePlanDiscountRuleEntity & {
   targets: DiscountRuleTarget[];
 };
 
@@ -338,6 +392,8 @@ export interface GetPlatformDiscountRulesServiceInput {
     search?: string;
     targetEntity?: number;
     isActive?: boolean;
+    marketId?: string;
+    discountType?: LicenseDiscountTypeEnum;
     sortBy?: string;
     sortOrder?: "asc" | "desc";
   };
@@ -357,13 +413,14 @@ export interface CreateDiscountRuleServiceInput {
     targetEntity: number;
     discountType: number;
     discountValue: number;
-    currency?: string;
+    scopeType: number;
+    marketId?: string | null;
     minQuantity: number;
     maxQuantity?: number | null;
     startsAt?: Date | null;
     endsAt?: Date | null;
     resellerIds?: string[];
-    pricingPlanIds?: string[];
+    licensePlanIds?: string[];
   };
   currentUser: UserTokenDto;
 }
@@ -388,57 +445,63 @@ export interface ToggleDiscountRuleStatusServiceInput {
 }
 
 export interface ToggleDiscountRuleStatusServiceResult {
-  rule: LicenseDiscountRuleEntity;
+  rule: LicensePlanDiscountRuleEntity;
 }
 
-export interface GetPlatformPricingPlansServiceInput {
+export interface GetPlatformLicensePlansServiceInput {
   query: {
+    page: number;
+    limit: number;
+    search?: string;
     isActive?: boolean;
+    marketId?: string;
   };
 }
 
-export interface GetPlatformPricingPlansServiceResult {
-  plans: LicensePricingEntity[];
+export interface GetPlatformLicensePlansServiceResult {
+  plans: (LicensePlanWithMarketPrices | LicensePlanWithPrice)[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
-export interface CreatePricingPlanServiceInput {
+export interface CreateLicensePlanServiceInput {
   dto: {
     name: string;
     deviceType: DeviceTypeEnum;
     durationDays: number;
-    price: number;
-    currency: string;
+    marketPrices: Array<{ marketId: string; price: number }>;
   };
   currentUser: UserTokenDto;
 }
 
-export interface CreatePricingPlanServiceResult {
-  plan: LicensePricingEntity;
+export interface CreateLicensePlanServiceResult {
+  plan: LicensePlanWithMarketPrices;
 }
 
-export interface TogglePricingPlanStatusServiceInput {
+export interface ToggleLicensePlanStatusServiceInput {
   planId: string;
   currentUser: UserTokenDto;
 }
 
-export interface TogglePricingPlanStatusServiceResult {
-  plan: LicensePricingEntity;
+export interface ToggleLicensePlanStatusServiceResult {
+  plan: LicensePlanEntity;
 }
 
-export interface UpdatePricingPlanServiceInput {
+export interface UpdateLicensePlanServiceInput {
   planId: string;
   dto: {
     name: string;
     deviceType: DeviceTypeEnum;
     durationDays: number;
-    price: number;
-    currency: string;
+    marketPrices?: Array<{ marketId: string; price: number }>;
   };
   currentUser: UserTokenDto;
 }
 
-export interface UpdatePricingPlanServiceResult {
-  plan: LicensePricingEntity;
+export interface UpdateLicensePlanServiceResult {
+  plan: LicensePlanWithMarketPrices;
 }
 
 export interface ExtendLicenseServiceResult {
@@ -448,7 +511,8 @@ export interface ExtendLicenseServiceResult {
 export interface InitiateLicenseExtendServiceInput {
   licenseId: string;
   dto: {
-    pricingPlanId?: string;
+    licensePlanId?: string;
+    billingInfo: BillingInfoDto;
   };
   userId: string;
   effectiveTenant: EffectiveTenant;
@@ -460,7 +524,8 @@ export type InitiateLicenseExtendServiceResult =
 export interface VerifyLicenseExtendServiceInput {
   licenseId: string;
   dto: {
-    pricingPlanId?: string;
+    licensePlanId?: string;
+    billingInfo: BillingInfoDto;
     razorpayOrderId: string;
     razorpayPaymentId: string;
     razorpaySignature: string;
@@ -476,26 +541,26 @@ export interface GetLicenseExtendInfoServiceInput {
 
 export interface LicenseExtendLockedPricing {
   planName: string | null;
-  basePrice: string;
-  basePriceCurrency: string;
-  soldPrice: string | null;
-  soldPriceCurrency: string | null;
+  lockedPrice: string | null;
   durationDays: number;
 }
 
 export interface GetLicenseExtendInfoServiceResult {
   isRedeemed: boolean;
   lockedPricing: LicenseExtendLockedPricing | null;
+  marketId: string;
+  currencyCode: string;
+  countryCode: string;
+  taxProfile: TaxProfileWithComponents | null;
 }
 
 export interface FindRedemptionPricingForLicenseRepoResult {
-  pricingId: string | null;
-  planName: string | null;
+  planId: string;
+  lockedPlanName: string;
   basePrice: string;
-  basePriceCurrency: string;
-  soldPrice: string | null;
-  soldPriceCurrency: string | null;
+  lockedPrice: string | null;
   durationDays: number;
+  marketId: string;
 }
 
 export interface GetLicenseHistoryServiceInput {
@@ -523,12 +588,17 @@ export interface LicenseTransactionListItem {
   performedByName: string | null;
   subtotalAmount: string;
   discountAmount: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  amountBeforeTax: string;
+  taxAmount: string;
+  isTaxInclusive: boolean;
   totalAmount: string;
-  currency: string;
+  marketId: string;
+  currencyCode: string;
   paymentStatus: number | null;
-  transactionAt: string | null;
-  createdAt: string;
+  transactionAt: Date | null;
+  createdAt: Date;
   itemCount: number;
 }
 
@@ -559,21 +629,34 @@ export interface GetLicenseTransactionsForResellerServiceInput {
 export type GetLicenseTransactionsForResellerServiceResult =
   GetLicenseTransactionsServiceResult;
 
+export interface LicenseTransactionTaxDetail {
+  id: string;
+  name: string;
+  rate: string;
+  amount: string;
+}
+
 export interface LicenseTransactionDetail {
   id: string;
   userId: string | null;
   performedByName: string | null;
   subtotalAmount: string;
   discountAmount: string;
-  discountPercentage: string | null;
+  discountType: number | null;
+  discountValue: string | null;
+  amountBeforeTax: string;
+  taxAmount: string;
+  isTaxInclusive: boolean;
   totalAmount: string;
-  currency: string;
+  taxes: LicenseTransactionTaxDetail[];
+  marketId: string;
+  currencyCode: string;
   paymentStatus: number | null;
   paymentProvider: number | null;
   paymentReference: string | null;
   failureReason: string | null;
-  transactionAt: string | null;
-  createdAt: string;
+  transactionAt: Date | null;
+  createdAt: Date;
 }
 
 export interface LicenseTransactionItemDetail {
@@ -582,35 +665,33 @@ export interface LicenseTransactionItemDetail {
   licenseId: string | null;
   licenseKey: string | null;
   deviceType: number | null;
-  pricingPlanId: string | null;
+  planId: string | null;
   planName: string | null;
-  actionType: number;
+  transactionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountType: number | null;
-  discountValue: string | null;
-  discountCurrency: string | null;
-  unitPrice: string;
-  createdAt: string;
+  discountAmount: string | null;
+  finalUnitPrice: string;
+  createdAt: Date;
 }
 
-export interface GetLicenseTransactionItemsServiceInput {
+export interface GetLicenseTransactionDetailsServiceInput {
   transactionId: string;
   effectiveTenant: EffectiveTenant;
 }
 
-export interface GetLicenseTransactionItemsServiceResult {
+export interface GetLicenseTransactionDetailsServiceResult {
   transaction: LicenseTransactionDetail;
   items: LicenseTransactionItemDetail[];
 }
 
-export interface GetLicenseTransactionItemsForResellerServiceInput {
+export interface GetLicenseTransactionDetailsForResellerServiceInput {
   transactionId: string;
   resellerId: string;
 }
 
-export type GetLicenseTransactionItemsForResellerServiceResult =
-  GetLicenseTransactionItemsServiceResult;
+export type GetLicenseTransactionDetailsForResellerServiceResult =
+  GetLicenseTransactionDetailsServiceResult;
 
 export interface CheckLicenseStatusServiceInput {
   licenseId?: string;
@@ -654,38 +735,37 @@ export type LicenseDetailsResult = {
   deviceId: string | null;
   deviceName: string | null;
   status: number;
-  activatedAt: string | null;
-  expiresAt: string | null;
-  createdAt: string;
-  updatedAt: string;
+  activatedAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 export type LicenseDetailsTransactionItem = {
   id: string;
   transactionId: string;
-  pricingPlanId: string | null;
+  planId: string | null;
   planName: string | null;
-  actionType: number;
+  transactionType: number;
   durationDays: number;
   baseUnitPrice: string;
-  discountType: number | null;
-  discountValue: string | null;
-  discountCurrency: string | null;
-  unitPrice: string;
-  createdAt: string;
+  discountAmount: string | null;
+  finalUnitPrice: string;
+  createdAt: Date;
   paymentStatus: number | null;
-  currency: string | null;
-  totalAmount: string | null;
+  marketId: string | null;
+  currencyCode: string | null;
   performedByName: string | null;
 };
 
 export type FindOneLicenseDetailsRepoResult = LicenseDetailsResult | null;
 
-export interface FindLicenseTransactionsRepoInput {
+export interface FindTransactionsForLicenseRepoInput {
   licenseId: string;
   viewerUserType: UserTypeEnums;
 }
-export type FindLicenseTransactionsRepoResult = LicenseDetailsTransactionItem[];
+export type FindTransactionsForLicenseRepoResult =
+  LicenseDetailsTransactionItem[];
 
 export interface FindLicenseTransactionsForOrganizationRepoInput {
   organizationId: string;
@@ -719,56 +799,6 @@ export interface FindTransactionWithItemsRepoResult {
   transaction: LicenseTransactionDetail;
   items: LicenseTransactionItemDetail[];
 }
-
-export type LicenseTransactionListRow = {
-  id: string;
-  userId: string | null;
-  performedByName: string | null;
-  subtotalAmount: string;
-  discountAmount: string;
-  discountPercentage: string | null;
-  totalAmount: string;
-  currency: string;
-  paymentStatus: number | null;
-  transactionAt: string | null;
-  createdAt: string;
-  itemCount: number;
-  totalCount: string | number;
-};
-
-export type LicenseTransactionItemWithHeaderRow = {
-  // Item fields are nullable: a transaction with no items yet (still
-  // pending, cancelled, or failed before finalizing) returns exactly one
-  // row with every item field NULL, so the transaction header is never lost.
-  itemId: string | null;
-  licenseId: string | null;
-  licenseKey: string | null;
-  deviceType: number | null;
-  pricingPlanId: string | null;
-  planName: string | null;
-  actionType: number | null;
-  durationDays: number | null;
-  baseUnitPrice: string | null;
-  discountType: number | null;
-  discountValue: string | null;
-  discountCurrency: string | null;
-  unitPrice: string | null;
-  itemCreatedAt: string | null;
-  transactionId: string;
-  userId: string | null;
-  performedByName: string | null;
-  subtotalAmount: string;
-  discountAmount: string;
-  transactionDiscountPercentage: string | null;
-  totalAmount: string;
-  currency: string;
-  paymentStatus: number | null;
-  paymentProvider: number | null;
-  paymentReference: string | null;
-  failureReason: string | null;
-  transactionAt: string | null;
-  transactionCreatedAt: string;
-};
 
 export interface FindLicensesRepoInput {
   organizationId?: string;
@@ -820,6 +850,7 @@ export type FindLicenseIdsWithActiveRedemptionRepoResult = string[];
 
 export interface FindAvailableLicensesForRedemptionRepoInput {
   resellerId: string;
+  marketId: string;
   page?: number;
   limit?: number;
 }
@@ -832,19 +863,13 @@ export interface CreateRedemptionCodeRepoInput {
   resellerId: string;
   redeemCode: string;
   redeemCodeHash: string;
+  marketId: string;
+  licenseIds: string[];
   status: LicenseRedemptionStatusEnum;
   redeemExpiresAt?: Date | null;
   remarks?: string | null;
   createdBy: string;
   updatedBy: string;
-  items: Array<{
-    licenseId: string;
-    pricingId?: string | null;
-    basePrice: string;
-    soldPrice: string | null;
-    basePriceCurrency: string;
-    durationDays: number;
-  }>;
 }
 export type CreateRedemptionCodeRepoResult = RedemptionCodeWithItems;
 
@@ -882,15 +907,15 @@ export interface FindRedemptionCodeDetailsByIdRepoInput {
 }
 export interface FindRedemptionCodeDetailsByIdRepoResult {
   code: Omit<LicenseRedemptionCodeEntity, "redeemCodeHash">;
-  items: RedemptionItemWithLicenseKey[];
+  marketCurrencyCode: string;
+  licenses: RedemptionCodeLicenseDetail[];
 }
 
 export interface VerifyRedemptionCodeRepoInput {
   id: string;
   resellerId: string;
   totalSoldPrice: string;
-  soldPriceCurrency: string;
-  items: Array<{ licenseId: string; soldPrice: string }>;
+  items: Array<{ licenseId: string; lockedPrice: string }>;
 }
 export type VerifyRedemptionCodeRepoResult = boolean;
 
@@ -910,13 +935,6 @@ export type ClaimRedemptionCodeRepoResult =
   | { ok: true; licenses: LicenseEntity[] }
   | { ok: false; reason: "not_claimable" | "licenses_unavailable" };
 
-export type FindLatestPurchaseSnapshotRepoResult = {
-  durationDays: number;
-  baseUnitPrice: string;
-  currency: string;
-  pricingPlanId: string | null;
-} | null;
-
 export interface FindLicensesForStatusCheckRepoInput {
   statuses?: number[];
 }
@@ -926,29 +944,34 @@ export interface CreatePendingLicenseTransactionRepoInput {
   userId: string;
   organizationId?: string | null;
   branchId?: string | null;
+  marketId: string;
+  transactionType: number;
   subtotalAmount: string;
   discountAmount: string;
-  discountPercentage?: string;
+  discountType?: number | null;
+  discountValue?: string | null;
   appliedDiscountRuleId?: string | null;
+  amountBeforeTax: string;
+  taxAmount?: string;
+  isTaxInclusive?: boolean;
   totalAmount: string;
-  currency: string;
   paymentStatus: number;
   paymentProvider: number;
   paymentProviderOrderId: string;
   intentPayload?: unknown;
+  billingInfo?: BillingInfoDto;
   // Pre-created with a null licenseId — purchase items are known (quantity,
   // duration, price) before any license exists; finalize links them up.
   items?: Array<{
-    pricingPlanId?: string | null;
-    planName?: string | null;
-    actionType: number;
+    planId: string;
+    planName: string;
+    transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
-    discountCurrency?: string | null;
-    unitPrice: string;
+    discountAmount?: string;
+    finalUnitPrice: string;
   }>;
+  taxes?: ResolvedPurchaseTaxComponent[];
 }
 export interface CreatePendingLicenseTransactionRepoResult {
   id: string;
@@ -967,6 +990,9 @@ export interface FinalizeLicensePurchaseRepoInput {
     licenseKeyHash: string;
     organizationId: string | null;
     branchId: string | null;
+    marketId: string;
+    currentPlanId: string;
+    isRedeemed?: boolean;
     deviceType: number;
     status: number;
     expiresAt?: Date | null;
@@ -974,15 +1000,13 @@ export interface FinalizeLicensePurchaseRepoInput {
     updatedBy: string;
   }>;
   transactionItems?: Array<{
-    pricingPlanId?: string | null;
-    planName?: string | null;
-    actionType: number;
+    planId: string;
+    planName: string;
+    transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
-    discountCurrency?: string | null;
-    unitPrice: string;
+    discountAmount?: string;
+    finalUnitPrice: string;
   }>;
 }
 export type FinalizeLicensePurchaseRepoResult = LicenseEntity[] | null;
@@ -1023,15 +1047,13 @@ export interface FinalizeLicenseExtendRepoInput {
   newExpiresAt: Date;
   newStatus: number;
   transactionItem: {
-    pricingPlanId?: string | null;
-    planName?: string | null;
-    actionType: number;
+    planId: string;
+    planName: string;
+    transactionType: number;
     durationDays: number;
     baseUnitPrice: string;
-    discountType?: number | null;
-    discountValue?: string | null;
-    discountCurrency?: string | null;
-    unitPrice: string;
+    discountAmount?: string;
+    finalUnitPrice: string;
   };
   historyEvent: {
     eventType: LicenseHistoryEventTypeEnum;
@@ -1063,17 +1085,19 @@ export type UpdateLicenseRepoResult = LicenseEntity & {
 };
 
 // Pricing & Discount Schema
-export interface FindLicensePricingPlansRepoInput {
+export interface FindLicensePlansRepoInput {
   id?: string;
   isActive?: boolean;
+  marketId?: string;
 }
-export type FindLicensePricingPlansRepoResult = LicensePricingEntity[];
+export type FindLicensePlansRepoResult = LicensePlanWithPrice[];
 
 export interface FindActiveDiscountRulesRepoInput {
   targetEntity: number;
   resellerId?: string;
+  marketId?: string;
 }
-export type FindActiveDiscountRulesRepoResult = LicenseDiscountRuleEntity[];
+export type FindActiveDiscountRulesRepoResult = LicensePlanDiscountRuleEntity[];
 
 export interface FindPaginatedDiscountRulesRepoInput {
   page: number;
@@ -1081,11 +1105,13 @@ export interface FindPaginatedDiscountRulesRepoInput {
   search?: string;
   targetEntity?: number;
   isActive?: boolean;
+  marketId?: string;
+  discountType?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
 export interface FindPaginatedDiscountRulesRepoResult {
-  rules: LicenseDiscountRuleEntity[];
+  rules: LicensePlanDiscountRuleEntity[];
   total: number;
 }
 
@@ -1103,16 +1129,18 @@ export interface CreateDiscountRuleWithTargetsRepoInput {
   targetEntity: number;
   discountType: number;
   discountValue: number;
-  currency?: string | null;
+  scopeType: number;
+  marketId?: string | null;
   minQuantity: number;
   maxQuantity?: number | null;
   startsAt?: Date | null;
   endsAt?: Date | null;
   resellerIds?: string[];
-  pricingPlanIds?: string[];
+  licensePlanIds?: string[];
   createdBy: string;
 }
-export type CreateDiscountRuleWithTargetsRepoResult = LicenseDiscountRuleEntity;
+export type CreateDiscountRuleWithTargetsRepoResult =
+  LicensePlanDiscountRuleEntity;
 
 export interface UpdateDiscountRuleWithTargetsRepoInput {
   ruleId: string;
@@ -1120,28 +1148,31 @@ export interface UpdateDiscountRuleWithTargetsRepoInput {
   targetEntity: number;
   discountType: number;
   discountValue: number;
-  currency?: string | null;
+  scopeType: number;
+  marketId?: string | null;
   minQuantity: number;
   maxQuantity?: number | null;
   startsAt?: Date | null;
   endsAt?: Date | null;
   resellerIds?: string[];
-  pricingPlanIds?: string[];
+  licensePlanIds?: string[];
   updatedBy: string;
 }
-export type UpdateDiscountRuleWithTargetsRepoResult = LicenseDiscountRuleEntity;
+export type UpdateDiscountRuleWithTargetsRepoResult =
+  LicensePlanDiscountRuleEntity;
 
 export interface FindOneDiscountRuleRepoInput {
   ruleId: string;
 }
-export type FindOneDiscountRuleRepoResult = LicenseDiscountRuleEntity | null;
+export type FindOneDiscountRuleRepoResult =
+  LicensePlanDiscountRuleEntity | null;
 
 export interface UpdateDiscountRuleRepoInput {
   ruleId: string;
   updatedBy: string;
   data: Partial<
     Pick<
-      LicenseDiscountRuleEntity,
+      LicensePlanDiscountRuleEntity,
       | "name"
       | "isActive"
       | "minQuantity"
@@ -1151,35 +1182,35 @@ export interface UpdateDiscountRuleRepoInput {
     >
   >;
 }
-export type UpdateDiscountRuleRepoResult = LicenseDiscountRuleEntity;
+export type UpdateDiscountRuleRepoResult = LicensePlanDiscountRuleEntity;
 
-export interface FindPricingPlansPaginatedRepoInput {
+export interface FindLicensePlansPaginatedRepoInput {
   page: number;
   limit: number;
   search?: string;
   isActive?: boolean;
+  marketId?: string;
 }
-export interface FindPricingPlansPaginatedRepoResult {
-  plans: LicensePricingEntity[];
+export interface FindLicensePlansPaginatedRepoResult {
+  plans: (LicensePlanWithMarketPrices | LicensePlanWithPrice)[];
   total: number;
 }
 
-export interface CreatePricingPlanRepoInput {
+export interface CreateLicensePlanRepoInput {
   name: string;
   deviceType: DeviceTypeEnum;
   durationDays: number;
-  price: number;
-  currency: string;
+  marketPrices: Array<{ marketId: string; price: number }>;
   createdBy: string;
 }
-export type CreatePricingPlanRepoResult = LicensePricingEntity;
+export type CreateLicensePlanRepoResult = LicensePlanWithMarketPrices;
 
-export interface FindOnePricingPlanRepoInput {
+export interface FindOneLicensePlanRepoInput {
   id: string;
 }
-export type FindOnePricingPlanRepoResult = LicensePricingEntity | null;
+export type FindOneLicensePlanRepoResult = LicensePlanEntity | null;
 
-export interface UpdatePricingPlanRepoInput {
+export interface UpdateLicensePlanRepoInput {
   id: string;
   updatedBy: string;
   data: Partial<{
@@ -1187,11 +1218,10 @@ export interface UpdatePricingPlanRepoInput {
     name: string;
     deviceType: DeviceTypeEnum;
     durationDays: number;
-    price: string;
-    currency: string;
+    marketPrices: Array<{ marketId: string; price: number }>;
   }>;
 }
-export type UpdatePricingPlanRepoResult = LicensePricingEntity;
+export type UpdateLicensePlanRepoResult = LicensePlanWithMarketPrices;
 
 // License History Schema
 export interface FindLicenseHistoryRepoInput {
@@ -1207,14 +1237,14 @@ export type LicenseHistoryLogItem = {
   targetEntityType: number;
   previousStatus: number | null;
   newStatus: number | null;
-  previousExpiresAt: string | null;
-  newExpiresAt: string | null;
+  previousExpiresAt: Date | null;
+  newExpiresAt: Date | null;
   transactionId: string | null;
   remarks: string | null;
   performedBy: string | null;
   performedByName: string | null;
   performedByEmail: string | null;
-  createdAt: string;
+  createdAt: Date;
 };
 export type FindLicenseHistoryRepoResult = LicenseHistoryLogItem[];
 
@@ -1230,3 +1260,11 @@ export interface CreateLicenseHistoryRepoInput {
   remarks?: string | null;
 }
 export type CreateLicenseHistoryRepoResult = void;
+
+// License Terms Schema
+export interface CreateLicenseTermsForLicensesRepoInput {
+  licenseIds: string[];
+  marketId: string;
+  createdBy: string;
+}
+export type CreateLicenseTermsForLicensesRepoResult = LicenseTermsEntity[];

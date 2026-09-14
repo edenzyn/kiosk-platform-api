@@ -29,6 +29,24 @@ platformResellerRouter.get(
   asyncHandler(resellerController.getInvitations),
 );
 
+platformResellerRouter.post(
+  "/invitations/:id/revoke",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_RESELLER_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(resellerController.revokeInvitation),
+);
+
+platformResellerRouter.post(
+  "/invitations/:id/resend",
+  accessMiddleware(
+    { platform: [UserPermissions.PLATFORM_RESELLER_WRITE] },
+    UserTypeEnums.PLATFORM,
+  ),
+  asyncHandler(resellerController.resendInvitation),
+);
+
 platformResellerRouter.get(
   "/",
   accessMiddleware(

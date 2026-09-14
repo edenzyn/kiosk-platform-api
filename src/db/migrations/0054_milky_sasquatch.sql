@@ -1,0 +1,1 @@
+ALTER TABLE "license_terms" ALTER COLUMN "locked_price" DROP NOT NULL;

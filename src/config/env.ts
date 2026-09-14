@@ -87,6 +87,12 @@ const EnvSchema = Yup.object({
   REDIS_URL: Yup.string().default("redis://localhost:6379"),
 
   // ==============================
+  // Tax
+  // ==============================
+  COMPANY_STATE: Yup.string().default("KERALA"),
+  COMPANY_COUNTRY: Yup.string().default("IN"),
+
+  // ==============================
   // License
   // ==============================
   LICENSE_ENCRYPTION_KEY: Yup.string()
@@ -112,24 +118,6 @@ const EnvSchema = Yup.object({
   AUTH_SESSION_CLEANUP_CRON: Yup.string().default("0 4 * * *"),
   LICENSE_STATUS_CHECK_CRON: Yup.string().default("0 */6 * * *"),
   ONE_TIME_TOKEN_CLEANUP_CRON: Yup.string().default("0 * * * *"),
-
-  // ==============================
-  // Finance / Exchange Rate (Frankfurter)
-  // ==============================
-  FRANKFURTER_API_BASE_URL: Yup.string().default(
-    "https://api.frankfurter.dev/v2",
-  ),
-  FRANKFURTER_BASE_CURRENCY: Yup.string().default("INR"),
-  FINANCE_EXCHANGE_RATE_SYNC_CRON: Yup.string().default("0 3,9,15,21 * * *"),
-  FINANCE_EXCHANGE_RATE_SYNC_TIMEZONE: Yup.string().default("Asia/Kolkata"),
-  FINANCE_EXCHANGE_RATE_CACHE_TTL_HOURS: Yup.number()
-    .integer()
-    .positive()
-    .default(24),
-  FINANCE_CURRENCIES_CACHE_TTL_DAYS: Yup.number()
-    .integer()
-    .positive()
-    .default(7),
 
   // ==============================
   // Payment (Razorpay)

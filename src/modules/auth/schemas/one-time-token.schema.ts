@@ -17,8 +17,8 @@ export const oneTimeTokens = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    type: smallint("type").$type<OneTimeTokenTypeEnum>().notNull(),
-    channel: smallint("channel").$type<NotificationChannelEnum>().notNull(),
+    type: smallint("type").$type<OneTimeTokenTypeEnum>().notNull(), // OneTimeTokenTypeEnum: 1 = TWO_FACTOR_SETUP, 2 = TWO_FACTOR_LOGIN, 3 = EMAIL_CHANGE, 4 = MOBILE_CHANGE, 5 = PASSWORD_RESET
+    channel: smallint("channel").$type<NotificationChannelEnum>().notNull(), // NotificationChannelEnum: 1 = EMAIL, 2 = WHATSAPP
     /**
      * Where the code was delivered. For contact-change flows this doubles as
      * the pending new email / mobile applied once the code is verified.

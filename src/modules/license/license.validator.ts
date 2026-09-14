@@ -1,10 +1,59 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
+import { LicenseDiscountRuleScopeTypeEnum } from "../../shared/enums/license/license-discount-rule-scope-type.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../shared/enums/license/license-discount-type.enum";
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
+import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+
+const billingInfoSchema = yup
+  .object({
+    name: yup
+      .string()
+      .trim()
+      .min(2, "Name must be at least 2 characters")
+      .max(255, "Name cannot exceed 255 characters")
+      .required("Billing name is required"),
+    email: emailValidator().required("Billing email is required"),
+    phone: yup
+      .string()
+      .trim()
+      .max(30, "Phone number cannot exceed 30 characters")
+      .required("Billing phone is required"),
+    address: yup
+      .string()
+      .trim()
+      .max(1000, "Address cannot exceed 1000 characters")
+      .required("Billing address is required"),
+    city: yup
+      .string()
+      .trim()
+      .max(100, "City cannot exceed 100 characters")
+      .required("City is required"),
+    state: yup
+      .string()
+      .trim()
+      .max(100, "State cannot exceed 100 characters")
+      .required("State is required"),
+    postalCode: yup
+      .string()
+      .trim()
+      .max(20, "Postal code cannot exceed 20 characters")
+      .required("Postal code is required"),
+    country: yup
+      .string()
+      .trim()
+      .length(2, "Country must be a 2-letter ISO code")
+      .required("Country is required"),
+    taxId: yup
+      .string()
+      .trim()
+      .max(50, "Tax ID cannot exceed 50 characters")
+      .optional(),
+  })
+  .required();
 
 export const LicenseValidator = {
   activate: yup.object({
@@ -34,6 +83,11 @@ export const LicenseValidator = {
         .optional(),
     })
     .noUnknown(),
+  getAvailableLicensesForRedemptionQuery: paginationQuerySchema
+    .shape({
+      marketId: yup.string().uuid().required("Market is required"),
+    })
+    .noUnknown(),
   initiateLicensePurchaseAsReseller: yup
     .object({
       quantity: yup
@@ -42,8 +96,10 @@ export const LicenseValidator = {
         .integer("Quantity must be an integer")
         .min(1, "Quantity must be at least 1")
         .required("Quantity is required"),
-      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().required("Market is required"),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicensePurchaseAsReseller: yup
@@ -54,8 +110,10 @@ export const LicenseValidator = {
         .integer("Quantity must be an integer")
         .min(1, "Quantity must be at least 1")
         .required("Quantity is required"),
-      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().required("Market is required"),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()
@@ -87,8 +145,10 @@ export const LicenseValidator = {
         .integer("Quantity must be an integer")
         .min(1, "Quantity must be at least 1")
         .required("Quantity is required"),
-      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().optional(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicensePurchase: yup
@@ -99,8 +159,10 @@ export const LicenseValidator = {
         .integer("Quantity must be an integer")
         .min(1, "Quantity must be at least 1")
         .required("Quantity is required"),
-      pricingPlanId: yup.string().uuid().required("Pricing plan is required"),
+      licensePlanId: yup.string().uuid().required("License plan is required"),
       discountRuleId: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().optional(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()
@@ -130,9 +192,10 @@ export const LicenseValidator = {
       deviceId: yup.string().uuid().required("Device ID is required"),
     })
     .noUnknown(),
-  getPricingPlansQuery: yup
+  getLicensePlansQuery: yup
     .object({
       id: yup.string().uuid().optional(),
+      marketId: yup.string().uuid().optional(),
     })
     .noUnknown(),
   getDiscountRulesQuery: yup
@@ -145,6 +208,12 @@ export const LicenseValidator = {
           "Invalid target entity",
         )
         .required("Target entity is required"),
+      marketId: yup.string().uuid().optional(),
+    })
+    .noUnknown(),
+  getResellerDiscountRulesQuery: yup
+    .object({
+      marketId: yup.string().uuid().optional(),
     })
     .noUnknown(),
   getPlatformDiscountRulesQuery: paginationQuerySchema
@@ -159,6 +228,12 @@ export const LicenseValidator = {
         )
         .optional(),
       isActive: yup.boolean().optional(),
+      marketId: yup.string().uuid().optional(),
+      discountType: yup
+        .number()
+        .typeError("Discount type must be a number")
+        .oneOf(Object.values(LicenseDiscountTypeEnum) as number[], "Invalid discount type")
+        .optional(),
       sortBy: yup
         .string()
         .oneOf(["name", "discountValue", "createdAt"])
@@ -210,14 +285,33 @@ export const LicenseValidator = {
           },
         )
         .required("Discount value is required"),
-      currency: yup
+      scopeType: yup
+        .number()
+        .typeError("Scope type must be a number")
+        .oneOf(
+          Object.values(LicenseDiscountRuleScopeTypeEnum) as number[],
+          "Invalid scope type",
+        )
+        .test(
+          "flat-must-be-market",
+          "A flat discount must be market-scoped",
+          function (value) {
+            const { discountType } = this.parent as { discountType?: number };
+            if (discountType === LicenseDiscountTypeEnum.FLAT) {
+              return value === LicenseDiscountRuleScopeTypeEnum.MARKET;
+            }
+            return true;
+          },
+        )
+        .required("Scope type is required"),
+      marketId: yup
         .string()
-        .trim()
-        .uppercase()
-        .length(3, "Currency must be a 3-letter ISO code")
-        .when("discountType", {
-          is: LicenseDiscountTypeEnum.FLAT,
-          then: (schema) => schema.required("Currency is required for flat discounts"),
+        .uuid()
+        .when(["scopeType", "discountType"], {
+          is: (scopeType: number, discountType: number) =>
+            scopeType === LicenseDiscountRuleScopeTypeEnum.MARKET ||
+            discountType === LicenseDiscountTypeEnum.FLAT,
+          then: (schema) => schema.required("Market is required"),
           otherwise: (schema) => schema.strip(),
         }),
       minQuantity: yup
@@ -266,15 +360,15 @@ export const LicenseValidator = {
               .required("Select at least one reseller"),
           otherwise: (schema) => schema.strip(),
         }),
-      pricingPlanIds: yup
+      licensePlanIds: yup
         .array()
         .of(yup.string().uuid().required())
         .when("targetEntity", {
           is: LicenseDiscountRuleTargetEntityTypeEnum.LICENSE_PLAN_INDIVIDUAL,
           then: (schema) =>
             schema
-              .min(1, "Select at least one pricing plan")
-              .required("Select at least one pricing plan"),
+              .min(1, "Select at least one license plan")
+              .required("Select at least one license plan"),
           otherwise: (schema) => schema.strip(),
         }),
     })
@@ -287,12 +381,14 @@ export const LicenseValidator = {
         .required("Discount rule ID is required"),
     })
     .noUnknown(),
-  getPlatformPricingPlansQuery: yup
-    .object({
+  getPlatformLicensePlansQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().optional().trim(),
       isActive: yup.boolean().optional(),
+      marketId: yup.string().uuid().optional(),
     })
     .noUnknown(),
-  createPricingPlan: yup
+  createLicensePlan: yup
     .object({
       name: yup
         .string()
@@ -311,35 +407,78 @@ export const LicenseValidator = {
         .integer("Duration must be an integer")
         .min(1, "Duration must be at least 1 day")
         .required("Duration is required"),
-      price: yup
-        .number()
-        .typeError("Price must be a number")
-        .min(0, "Price cannot be negative")
-        .required("Price is required"),
-      currency: yup
-        .string()
-        .trim()
-        .uppercase()
-        .length(3, "Currency must be a 3-letter ISO code")
-        .required("Currency is required"),
+      marketPrices: yup
+        .array()
+        .of(
+          yup
+            .object({
+              marketId: yup.string().uuid().required(),
+              price: yup
+                .number()
+                .typeError("Price must be a number")
+                .positive("Price must be greater than 0")
+                .required(),
+            })
+            .required(),
+        )
+        .min(1, "At least one market price is required")
+        .required("Market prices are required"),
     })
     .noUnknown(),
-  pricingPlanIdParam: yup
+  updateLicensePlan: yup
+    .object({
+      name: yup
+        .string()
+        .trim()
+        .min(2, "Name must be at least 2 characters")
+        .max(255, "Name cannot exceed 255 characters")
+        .required("Name is required"),
+      deviceType: yup
+        .number()
+        .typeError("Device type must be a number")
+        .oneOf(Object.values(DeviceTypeEnum) as number[], "Invalid device type")
+        .required("Device type is required"),
+      durationDays: yup
+        .number()
+        .typeError("Duration must be a number")
+        .integer("Duration must be an integer")
+        .min(1, "Duration must be at least 1 day")
+        .required("Duration is required"),
+      marketPrices: yup
+        .array()
+        .of(
+          yup
+            .object({
+              marketId: yup.string().uuid().required(),
+              price: yup
+                .number()
+                .typeError("Price must be a number")
+                .positive("Price must be greater than 0")
+                .required(),
+            })
+            .required(),
+        )
+        .optional(),
+    })
+    .noUnknown(),
+  licensePlanIdParam: yup
     .object({
       id: yup
         .string()
-        .uuid("Invalid pricing plan ID")
-        .required("Pricing plan ID is required"),
+        .uuid("Invalid license plan ID")
+        .required("License plan ID is required"),
     })
     .noUnknown(),
   initiateLicenseExtend: yup
     .object({
-      pricingPlanId: yup.string().uuid(),
+      licensePlanId: yup.string().uuid(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
     })
     .noUnknown(),
   verifyLicenseExtend: yup
     .object({
-      pricingPlanId: yup.string().uuid(),
+      licensePlanId: yup.string().uuid(),
+      billingInfo: billingInfoSchema.required("Billing information is required"),
       razorpayOrderId: yup
         .string()
         .trim()
@@ -386,23 +525,17 @@ export const LicenseValidator = {
         .typeError("Total sold price must be a number")
         .min(0, "Total sold price cannot be negative")
         .required("Total sold price is required"),
-      soldPriceCurrency: yup
-        .string()
-        .trim()
-        .uppercase()
-        .length(3, "Currency must be a 3-letter ISO code")
-        .required("Currency is required"),
       items: yup
         .array()
         .of(
           yup
             .object({
               licenseId: yup.string().uuid().required(),
-              soldPrice: yup
+              lockedPrice: yup
                 .number()
-                .typeError("Sold price must be a number")
-                .min(0, "Sold price cannot be negative")
-                .required("Sold price is required"),
+                .typeError("Locked price must be a number")
+                .min(0, "Locked price cannot be negative")
+                .required("Locked price is required"),
             })
             .required(),
         )

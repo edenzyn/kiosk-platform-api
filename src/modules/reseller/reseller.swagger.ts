@@ -53,7 +53,6 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
                 },
                 languageCode: { type: "string", minLength: 2, maxLength: 10 },
                 timezone: { type: "string", minLength: 1, maxLength: 100 },
-                currencyCode: { type: "string", minLength: 3, maxLength: 3 },
               },
             },
           },
@@ -364,10 +363,16 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name", "email"],
+              required: ["name", "email", "marketIds"],
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 email: { type: "string", format: "email" },
+                marketIds: {
+                  type: "array",
+                  items: { type: "string", format: "uuid" },
+                  minItems: 1,
+                  description: "Markets this reseller can purchase/sell licenses in, once the invitation is accepted",
+                },
               },
             },
           },
@@ -443,6 +448,64 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/p/resellers/invitations/{id}/revoke": {
+    post: {
+      tags: ["Resellers"],
+      summary: "Revoke a reseller invitation",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": {
+          description: "Invitation revoked",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "400": { description: "Only pending invitations can be revoked" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/p/resellers/invitations/{id}/resend": {
+    post: {
+      tags: ["Resellers"],
+      summary: "Resend an expired reseller invitation",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      responses: {
+        "200": {
+          description: "Invitation resent",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "400": { description: "Only expired invitations can be resent" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/p/resellers/": {
     get: {
       tags: ["Resellers"],
@@ -455,6 +518,12 @@ export const resellerSwaggerPaths: Record<string, unknown> = {
           name: "status",
           in: "query",
           schema: { type: "string", enum: ["active", "inactive", "all"] },
+        },
+        {
+          name: "marketId",
+          in: "query",
+          schema: { type: "string", format: "uuid" },
+          description: "Only return resellers mapped to this market",
         },
         {
           name: "sortBy",

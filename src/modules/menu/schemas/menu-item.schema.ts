@@ -30,7 +30,7 @@ export const menuItems = pgTable("menu_items", {
   name: varchar("name", { length: 150 }).notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  sku: varchar("sku", { length: 100 }),
+  code: varchar("code", { length: 100 }),
   image: varchar("image", { length: 255 }),
   takeawayChargeEnabled: boolean("takeaway_charge_enabled")
     .default(false)

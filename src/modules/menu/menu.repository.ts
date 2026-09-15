@@ -1,7 +1,5 @@
 import { and, asc, count, eq, ilike, or, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { menuCategories } from "./schemas/menu-category.schema";
-import { menuItems } from "./schemas/menu-item.schema";
 import type {
   CreateMenuCategoryRepoInput,
   CreateMenuCategoryRepoResult,
@@ -16,6 +14,8 @@ import type {
   FindOneMenuItemRepoInput,
   FindOneMenuItemRepoResult,
 } from "./menu.types";
+import { menuCategories } from "./schemas/menu-category.schema";
+import { menuItems } from "./schemas/menu-item.schema";
 
 export class MenuRepository {
   constructor(private readonly database: Database) {}
@@ -164,7 +164,9 @@ export class MenuRepository {
     return item || null;
   }
 
-  async findItems(input: FindMenuItemsRepoInput): Promise<FindMenuItemsRepoResult> {
+  async findItems(
+    input: FindMenuItemsRepoInput,
+  ): Promise<FindMenuItemsRepoResult> {
     const { organizationId, branchId, categoryId, isListed, search } = input;
     const conditions = [
       eq(menuItems.organizationId, organizationId),
@@ -194,7 +196,9 @@ export class MenuRepository {
     return { items: rows };
   }
 
-  async createItem(input: CreateMenuItemRepoInput): Promise<CreateMenuItemRepoResult> {
+  async createItem(
+    input: CreateMenuItemRepoInput,
+  ): Promise<CreateMenuItemRepoResult> {
     const { data } = input;
     const [item] = await this.database.client
       .insert(menuItems)

@@ -161,6 +161,11 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                 type: "object",
                 properties: {
                   items: { type: "array", items: menuItemSchema },
+                  currencyCode: {
+                    type: "string",
+                    description:
+                      "ISO currency code of the branch's market - all item prices are denominated in it.",
+                  },
                 },
               },
             },

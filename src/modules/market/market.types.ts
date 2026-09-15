@@ -136,6 +136,11 @@ export interface FindMarketsMappedToOrganizationRepoInput {
 }
 export type FindMarketsMappedToOrganizationRepoResult = MarketEntity[];
 
+export interface FindMarketByBranchRepoInput {
+  branchId: string;
+}
+export type FindMarketByBranchRepoResult = MarketEntity | null;
+
 export interface FindMarketsMappedToResellerRepoInput {
   resellerId: string;
 }

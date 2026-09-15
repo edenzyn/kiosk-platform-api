@@ -1,12 +1,12 @@
 import { and, asc, count, desc, eq, ilike, ne, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { organizationMarketMapper } from "./schemas/organization-market-mapper.schema";
-import { resellerMarketMapper } from "./schemas/reseller-market-mapper.schema";
-import { markets } from "./schemas/market.schema";
+import { branches } from "../branch/schemas/branch.schema";
 import type {
   CreateMarketRepoInput,
   CreateMarketRepoResult,
   FindActiveMarketsRepoResult,
+  FindMarketByBranchRepoInput,
+  FindMarketByBranchRepoResult,
   FindMarketsMappedToOrganizationRepoInput,
   FindMarketsMappedToOrganizationRepoResult,
   FindMarketsMappedToResellerRepoInput,
@@ -25,11 +25,16 @@ import type {
   UpdateMarketRepoInput,
   UpdateMarketRepoResult,
 } from "./market.types";
+import { markets } from "./schemas/market.schema";
+import { organizationMarketMapper } from "./schemas/organization-market-mapper.schema";
+import { resellerMarketMapper } from "./schemas/reseller-market-mapper.schema";
 
 export class MarketRepository {
   constructor(private readonly database: Database) {}
 
-  async findOne(input: FindOneMarketRepoInput): Promise<FindOneMarketRepoResult> {
+  async findOne(
+    input: FindOneMarketRepoInput,
+  ): Promise<FindOneMarketRepoResult> {
     const [market] = await this.database.client
       .select()
       .from(markets)
@@ -67,6 +72,19 @@ export class MarketRepository {
       );
 
     return rows.map((row) => row.market);
+  }
+
+  async findMarketByBranch(
+    input: FindMarketByBranchRepoInput,
+  ): Promise<FindMarketByBranchRepoResult> {
+    const [row] = await this.database.client
+      .select({ market: markets })
+      .from(branches)
+      .innerJoin(markets, eq(branches.marketId, markets.id))
+      .where(eq(branches.id, input.branchId))
+      .limit(1);
+
+    return row?.market ?? null;
   }
 
   async findMarketsMappedToReseller(
@@ -123,7 +141,9 @@ export class MarketRepository {
     return !!mapping;
   }
 
-  async mapResellerToMarkets(input: MapResellerToMarketsRepoInput): Promise<void> {
+  async mapResellerToMarkets(
+    input: MapResellerToMarketsRepoInput,
+  ): Promise<void> {
     if (input.marketIds.length === 0) return;
 
     await this.database.client.insert(resellerMarketMapper).values(

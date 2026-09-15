@@ -77,6 +77,7 @@ export interface GetMenuItemsServiceInput {
 
 export interface GetMenuItemsServiceResult {
   items: MenuItemEntity[];
+  currencyCode: string;
 }
 
 // ========================================

@@ -1,6 +1,7 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { MarketRepository } from "../market/market.repository";
 import type { MenuRepository } from "./menu.repository";
 import type {
   CreateMenuCategoryServiceInput,
@@ -14,7 +15,10 @@ import type {
 } from "./menu.types";
 
 export class MenuService {
-  constructor(private readonly menuRepository: MenuRepository) {}
+  constructor(
+    private readonly menuRepository: MenuRepository,
+    private readonly marketRepository: MarketRepository,
+  ) {}
 
   // ========================================
   // ? MENU CATEGORY SERVICES
@@ -138,14 +142,25 @@ export class MenuService {
       });
     }
 
-    const { items } = await this.menuRepository.findItems({
-      organizationId: effectiveTenant.organizationId,
-      branchId: effectiveTenant.branchId,
-      categoryId: filters.categoryId,
-      isListed: filters.isListed,
-      search: filters.search,
-    });
+    const [{ items }, market] = await Promise.all([
+      this.menuRepository.findItems({
+        organizationId: effectiveTenant.organizationId,
+        branchId: effectiveTenant.branchId,
+        categoryId: filters.categoryId,
+        isListed: filters.isListed,
+        search: filters.search,
+      }),
+      this.marketRepository.findMarketByBranch({
+        branchId: effectiveTenant.branchId,
+      }),
+    ]);
 
-    return { items };
+    if (!market) {
+      throw new AppError("No market is configured for this branch", {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+      });
+    }
+
+    return { items, currencyCode: market.currencyCode };
   }
 }

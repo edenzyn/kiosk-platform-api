@@ -17,7 +17,7 @@ export const itemModifiers = pgTable("item_modifiers", {
     .notNull()
     .references((): AnyPgColumn => menuItems.id),
   name: varchar("name", { length: 100 }).notNull(),
-  selectionType: smallint("selection_type").notNull(), // ItemModifierSelectionTypeEnum: 1 = SINGLE, 2 = MULTIPLE
+  selectionType: smallint("selection_type").notNull(), // ItemModifierSelectionTypeEnum: 1 = SINGLE_REQUIRED, 2 = SINGLE, 3 = MULTIPLE
   minSelection: integer("min_selection").default(0).notNull(),
   maxSelection: integer("max_selection").default(1).notNull(),
   displayOrder: integer("display_order").default(0).notNull(),

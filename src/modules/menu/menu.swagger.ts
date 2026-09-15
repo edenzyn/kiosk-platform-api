@@ -369,6 +369,56 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                   description:
                     "Key returned by PUT /pvt/u/menu/items/image, after the file has been uploaded to its URL.",
                 },
+                modifiers: {
+                  type: "array",
+                  description:
+                    "Modifier groups saved with the item in one transaction.",
+                  items: {
+                    type: "object",
+                    required: [
+                      "name",
+                      "selectionType",
+                      "minSelection",
+                      "maxSelection",
+                      "displayOrder",
+                      "options",
+                    ],
+                    properties: {
+                      name: { type: "string", minLength: 2, maxLength: 100 },
+                      selectionType: {
+                        type: "integer",
+                        enum: [1, 2, 3],
+                        description:
+                          "1=SINGLE_REQUIRED (min 1, max 1), 2=SINGLE (min 0, max 1), 3=MULTIPLE (min <= max <= option count)",
+                      },
+                      minSelection: { type: "integer", minimum: 0 },
+                      maxSelection: { type: "integer", minimum: 1 },
+                      displayOrder: { type: "integer", minimum: 0 },
+                      options: {
+                        type: "array",
+                        minItems: 1,
+                        items: {
+                          type: "object",
+                          required: ["name", "price", "displayOrder"],
+                          properties: {
+                            name: {
+                              type: "string",
+                              minLength: 1,
+                              maxLength: 100,
+                            },
+                            price: { type: "number", minimum: 0 },
+                            isDefault: {
+                              type: "boolean",
+                              description:
+                                "Defaults count must not exceed maxSelection",
+                            },
+                            displayOrder: { type: "integer", minimum: 0 },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
           },

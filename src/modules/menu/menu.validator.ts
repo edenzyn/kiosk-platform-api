@@ -1,6 +1,7 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { DietaryTypeEnum } from "../../shared/enums/menu/dietary-type.enum";
+import { ItemModifierSelectionTypeEnum } from "../../shared/enums/menu/item-modifier-selection-type.enum";
 import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
@@ -15,6 +16,106 @@ const menuImageKeySchema = yup
 const DIETARY_TYPE_VALUES = Object.values(DietaryTypeEnum).filter(
   (value): value is number => typeof value === "number",
 );
+
+const displayOrderSchema = yup
+  .number()
+  .typeError("Display order must be a number")
+  .integer("Display order must be an integer")
+  .min(0, "Display order cannot be negative")
+  .required("Display order is required");
+
+const itemModifierOptionSchema = yup
+  .object({
+    name: yup
+      .string()
+      .trim()
+      .min(1, "Option name is required")
+      .max(100, "Option name must be at most 100 characters")
+      .required("Option name is required"),
+    price: yup
+      .number()
+      .typeError("Option price must be a number")
+      .min(0, "Option price cannot be negative")
+      .required("Option price is required"),
+    isDefault: yup.boolean().optional(),
+    displayOrder: displayOrderSchema,
+  })
+  .noUnknown();
+
+// Fixed min/max for the single-select types; MULTIPLE is checked against its options.
+const SINGLE_SELECTION_BOUNDS: Partial<
+  Record<ItemModifierSelectionTypeEnum, { min: number; max: number }>
+> = {
+  [ItemModifierSelectionTypeEnum.SINGLE_REQUIRED]: { min: 1, max: 1 },
+  [ItemModifierSelectionTypeEnum.SINGLE]: { min: 0, max: 1 },
+};
+
+const itemModifierSchema = yup
+  .object({
+    name: yup
+      .string()
+      .trim()
+      .min(2, "Modifier name must be at least 2 characters")
+      .max(100, "Modifier name must be at most 100 characters")
+      .required("Modifier name is required"),
+    selectionType: yup
+      .number()
+      .typeError("Selection type must be a number")
+      .oneOf(
+        Object.values(ItemModifierSelectionTypeEnum).filter(
+          (value): value is number => typeof value === "number",
+        ),
+        "Invalid selection type",
+      )
+      .required("Selection type is required"),
+    minSelection: yup
+      .number()
+      .typeError("Minimum selection must be a number")
+      .integer("Minimum selection must be an integer")
+      .min(0, "Minimum selection cannot be negative")
+      .required("Minimum selection is required"),
+    maxSelection: yup
+      .number()
+      .typeError("Maximum selection must be a number")
+      .integer("Maximum selection must be an integer")
+      .min(1, "Maximum selection must be at least 1")
+      .required("Maximum selection is required"),
+    displayOrder: displayOrderSchema,
+    options: yup
+      .array()
+      .of(itemModifierOptionSchema)
+      .min(1, "Each modifier needs at least one option")
+      .required("Modifier options are required"),
+  })
+  .noUnknown()
+  .test(
+    "modifier-selection-limits",
+    "Selection limits don't match the selection type or the number of options",
+    function (modifier) {
+      if (!modifier?.options?.length) return true;
+      const { selectionType, minSelection, maxSelection, options } = modifier;
+      const fixed =
+        SINGLE_SELECTION_BOUNDS[selectionType as ItemModifierSelectionTypeEnum];
+
+      const isValid = fixed
+        ? minSelection === fixed.min && maxSelection === fixed.max
+        : minSelection <= maxSelection && maxSelection <= options.length;
+
+      return isValid || this.createError({ path: `${this.path}.maxSelection` });
+    },
+  )
+  .test(
+    "modifier-default-options",
+    "Too many default options for this modifier's maximum selection",
+    function (modifier) {
+      if (!modifier?.options?.length) return true;
+      const defaultCount = modifier.options.filter((o) => o.isDefault).length;
+      return (
+        defaultCount <= modifier.maxSelection ||
+        this.createError({ path: `${this.path}.options` })
+      );
+    },
+  );
 
 export const MenuValidator = {
   // ========================================
@@ -111,6 +212,7 @@ export const MenuValidator = {
         .min(0, "Display order cannot be negative")
         .optional(),
       image: menuImageKeySchema,
+      modifiers: yup.array().of(itemModifierSchema).optional(),
     })
     .noUnknown(),
   // ========================================

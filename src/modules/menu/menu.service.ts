@@ -164,6 +164,7 @@ export class MenuService {
         displayOrder: data.displayOrder,
         image: data.image ?? null,
         createdBy: user.id,
+        modifiers: data.modifiers ?? [],
       },
     });
 

@@ -16,6 +16,8 @@ import type {
   FindOneMenuItemRepoInput,
   FindOneMenuItemRepoResult,
 } from "./menu.types";
+import { itemModifierOptions } from "./schemas/item-modifier-option.schema";
+import { itemModifiers } from "./schemas/item-modifier.schema";
 import { menuCategories } from "./schemas/menu-category.schema";
 import { menuItems } from "./schemas/menu-item.schema";
 
@@ -251,35 +253,67 @@ export class MenuRepository {
     input: CreateMenuItemRepoInput,
   ): Promise<CreateMenuItemRepoResult> {
     const { data } = input;
-    const [item] = await this.database.client
-      .insert(menuItems)
-      .values({
-        organizationId: data.organizationId,
-        branchId: data.branchId,
-        categoryId: data.categoryId,
-        name: data.name,
-        description: data.description ?? null,
-        price: data.price,
-        code: data.code ?? null,
-        takeawayChargeEnabled: data.takeawayChargeEnabled,
-        takeawayChargeAmount: data.takeawayChargeAmount ?? null,
-        isFeatured: data.isFeatured,
-        isListed: data.isListed,
-        calories: data.calories ?? null,
-        dietaryType: data.dietaryType,
-        hasAlcohol: data.hasAlcohol,
-        isSpicy: data.isSpicy,
-        displayOrder: data.displayOrder,
-        image: data.image ?? null,
-        createdBy: data.createdBy,
-      })
-      .returning();
+    return this.database.client.transaction(async (tx) => {
+      const [item] = await tx
+        .insert(menuItems)
+        .values({
+          organizationId: data.organizationId,
+          branchId: data.branchId,
+          categoryId: data.categoryId,
+          name: data.name,
+          description: data.description ?? null,
+          price: data.price,
+          code: data.code ?? null,
+          takeawayChargeEnabled: data.takeawayChargeEnabled,
+          takeawayChargeAmount: data.takeawayChargeAmount ?? null,
+          isFeatured: data.isFeatured,
+          isListed: data.isListed,
+          calories: data.calories ?? null,
+          dietaryType: data.dietaryType,
+          hasAlcohol: data.hasAlcohol,
+          isSpicy: data.isSpicy,
+          displayOrder: data.displayOrder,
+          image: data.image ?? null,
+          createdBy: data.createdBy,
+        })
+        .returning();
 
-    if (!item) {
-      throw new Error("Failed to create menu item");
-    }
+      if (!item) {
+        throw new Error("Failed to create menu item");
+      }
 
-    return item;
+      for (const modifier of data.modifiers) {
+        const [createdModifier] = await tx
+          .insert(itemModifiers)
+          .values({
+            menuItemId: item.id,
+            name: modifier.name,
+            selectionType: modifier.selectionType,
+            minSelection: modifier.minSelection,
+            maxSelection: modifier.maxSelection,
+            displayOrder: modifier.displayOrder,
+            createdBy: data.createdBy,
+          })
+          .returning({ id: itemModifiers.id });
+
+        if (!createdModifier) {
+          throw new Error("Failed to create item modifier");
+        }
+
+        await tx.insert(itemModifierOptions).values(
+          modifier.options.map((option) => ({
+            itemModifierId: createdModifier.id,
+            name: option.name,
+            price: String(option.price),
+            isDefault: option.isDefault,
+            displayOrder: option.displayOrder,
+            createdBy: data.createdBy,
+          })),
+        );
+      }
+
+      return item;
+    });
   }
 
   private itemOrderBy(

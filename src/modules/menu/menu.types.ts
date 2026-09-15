@@ -5,7 +5,10 @@ import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enu
 import type { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
 import type { CreateMenuCategoryRequestDto } from "./dtos/create-menu-category.dtos";
-import type { CreateMenuItemRequestDto } from "./dtos/create-menu-item.dtos";
+import type {
+  CreateItemModifierBodyDto,
+  CreateMenuItemRequestDto,
+} from "./dtos/create-menu-item.dtos";
 import type { MenuCategoryEntity } from "./schemas/menu-category.schema";
 import type { MenuItemEntity } from "./schemas/menu-item.schema";
 
@@ -84,6 +87,7 @@ export interface CreateMenuItemServiceInput {
     isSpicy?: boolean;
     displayOrder?: number;
     image?: string | null;
+    modifiers?: CreateItemModifierBodyDto[];
   };
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;

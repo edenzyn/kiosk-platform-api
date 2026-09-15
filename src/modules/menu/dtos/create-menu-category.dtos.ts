@@ -8,8 +8,7 @@ export interface CreateMenuCategoryBodyDto {
   displayOrder?: number;
 }
 
-export interface CreateMenuCategoryRequestDto
-  extends CreateMenuCategoryBodyDto {
+export interface CreateMenuCategoryRequestDto extends CreateMenuCategoryBodyDto {
   organizationId: string;
   branchId: string;
   createdBy: string;

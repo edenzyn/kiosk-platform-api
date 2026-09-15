@@ -33,8 +33,8 @@ export interface UpdateMenuItemBodyDto {
   hasAlcohol?: boolean;
   isSpicy?: boolean;
   displayOrder?: number;
-  /** Omit to keep the current image, `null` to remove it, or a new upload key. */
-  image?: string | null;
+  /** Omit to keep the current image, or pass a new upload key to replace it. */
+  image?: string;
   /**
    * The item's complete modifier list. Groups/options missing from it are
    * deactivated rather than deleted, so past orders can still reference them.

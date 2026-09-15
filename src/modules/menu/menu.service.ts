@@ -56,13 +56,11 @@ export class MenuService {
       });
     }
 
-    if (data.image) {
-      await this.fileService.finalizeMenuImage({
-        type: MenuImageTypeEnum.CATEGORY,
-        image: data.image,
-        maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
-      });
-    }
+    await this.fileService.finalizeMenuImage({
+      type: MenuImageTypeEnum.CATEGORY,
+      image: data.image,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
+    });
 
     const category = await this.menuRepository.createCategory({
       data: {
@@ -70,7 +68,7 @@ export class MenuService {
         branchId: effectiveTenant.branchId,
         name: data.name,
         description: data.description ?? null,
-        image: data.image ?? null,
+        image: data.image,
         isListed: data.isListed,
         displayOrder: data.displayOrder,
         createdBy: user.id,
@@ -194,13 +192,11 @@ export class MenuService {
       });
     }
 
-    if (data.image) {
-      await this.fileService.finalizeMenuImage({
-        type: MenuImageTypeEnum.ITEM,
-        image: data.image,
-        maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
-      });
-    }
+    await this.fileService.finalizeMenuImage({
+      type: MenuImageTypeEnum.ITEM,
+      image: data.image,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
+    });
 
     const item = await this.menuRepository.createItem({
       data: {
@@ -223,7 +219,7 @@ export class MenuService {
         hasAlcohol: data.hasAlcohol,
         isSpicy: data.isSpicy,
         displayOrder: data.displayOrder,
-        image: data.image ?? null,
+        image: data.image,
         createdBy: user.id,
         modifiers: data.modifiers ?? [],
       },
@@ -459,26 +455,24 @@ export class MenuService {
   }
 
   /**
-   * Works out what to store for an edited image field: `undefined` keeps the
-   * current image, `null` removes it, and a new key is finalized. The old image
-   * is returned so it can be deleted once the record is saved.
+   * Works out what to store for an edited image: `undefined` keeps the current
+   * image, and a new key is finalized. The replaced image is returned so it can
+   * be deleted once the record is saved.
    */
   private async resolveImageChange(
     type: MenuImageTypeEnum,
     currentImage: string | null,
-    nextImage: string | null | undefined,
-  ): Promise<{ image: string | null | undefined; staleImage: string | null }> {
+    nextImage: string | undefined,
+  ): Promise<{ image: string | undefined; staleImage: string | null }> {
     if (nextImage === undefined || nextImage === currentImage) {
       return { image: undefined, staleImage: null };
     }
 
-    if (nextImage) {
-      await this.fileService.finalizeMenuImage({
-        type,
-        image: nextImage,
-        maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
-      });
-    }
+    await this.fileService.finalizeMenuImage({
+      type,
+      image: nextImage,
+      maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
+    });
 
     return { image: nextImage, staleImage: currentImage };
   }

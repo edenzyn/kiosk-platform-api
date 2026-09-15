@@ -57,7 +57,7 @@ export interface CreateMenuCategoryServiceInput {
   data: {
     name: string;
     description?: string | null;
-    image?: string | null;
+    image: string;
     isListed?: boolean;
     displayOrder?: number;
   };
@@ -122,7 +122,7 @@ export interface CreateMenuItemServiceInput {
     hasAlcohol?: boolean;
     isSpicy?: boolean;
     displayOrder?: number;
-    image?: string | null;
+    image: string;
     modifiers?: CreateItemModifierBodyDto[];
   };
   user: UserTokenDto;

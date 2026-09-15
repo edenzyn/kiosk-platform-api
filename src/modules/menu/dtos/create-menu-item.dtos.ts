@@ -33,7 +33,7 @@ export interface CreateMenuItemBodyDto {
   hasAlcohol?: boolean;
   isSpicy?: boolean;
   displayOrder?: number;
-  image?: string | null;
+  image: string;
   modifiers?: CreateItemModifierBodyDto[];
 }
 

@@ -4,8 +4,8 @@ export interface UpdateMenuCategoryBodyDto {
   id: string;
   name: string;
   description?: string | null;
-  /** Omit to keep the current image, `null` to remove it, or a new upload key. */
-  image?: string | null;
+  /** Omit to keep the current image, or pass a new upload key to replace it. */
+  image?: string;
   isListed?: boolean;
   displayOrder?: number;
 }

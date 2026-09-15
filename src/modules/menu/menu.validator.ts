@@ -9,8 +9,12 @@ const MENU_IMAGE_KEY_REGEX = /^[0-9a-f-]{36}\.(png|jpeg|webp)$/;
 const menuImageKeySchema = yup
   .string()
   .trim()
-  .matches(MENU_IMAGE_KEY_REGEX, "Invalid image")
-  .nullable()
+  .matches(MENU_IMAGE_KEY_REGEX, "Invalid image");
+// Every category and item needs an image: required on create, and on update it
+// may be omitted (keep the current one) or replaced, but never cleared.
+const requiredImageSchema = menuImageKeySchema.required("Image is required");
+const replaceableImageSchema = menuImageKeySchema
+  .nonNullable("Image is required")
   .optional();
 
 const DIETARY_TYPE_VALUES = Object.values(DietaryTypeEnum).filter(
@@ -135,7 +139,6 @@ const categoryFields = {
     .max(100, "Category name must be at most 100 characters")
     .required("Category name is required"),
   description: yup.string().trim().nullable().optional(),
-  image: menuImageKeySchema,
   isListed: yup.boolean().optional(),
   displayOrder: displayOrderSchema.optional(),
 };
@@ -193,18 +196,20 @@ const itemFields = {
   hasAlcohol: yup.boolean().optional(),
   isSpicy: yup.boolean().optional(),
   displayOrder: displayOrderSchema.optional(),
-  image: menuImageKeySchema,
 };
 
 export const MenuValidator = {
   // ========================================
   // ? MENU CATEGORY SCHEMAS
   // ========================================
-  createCategory: yup.object(categoryFields).noUnknown(),
+  createCategory: yup
+    .object({ ...categoryFields, image: requiredImageSchema })
+    .noUnknown(),
   updateCategory: yup
     .object({
       id: recordIdSchema.required("Category is required"),
       ...categoryFields,
+      image: replaceableImageSchema,
     })
     .noUnknown(),
   updateCategoryStatus: yup
@@ -228,6 +233,7 @@ export const MenuValidator = {
     .object({
       categoryId: recordIdSchema.required("Category is required"),
       ...itemFields,
+      image: requiredImageSchema,
       modifiers: yup.array().of(itemModifierSchema).optional(),
     })
     .noUnknown(),
@@ -235,6 +241,7 @@ export const MenuValidator = {
     .object({
       id: recordIdSchema.required("Item is required"),
       ...itemFields,
+      image: replaceableImageSchema,
       modifiers: yup.array().of(itemModifierSchema).optional(),
     })
     .noUnknown(),

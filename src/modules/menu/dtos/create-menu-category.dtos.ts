@@ -3,7 +3,7 @@ import type { MenuCategoryWithImageUrl } from "../menu.types";
 export interface CreateMenuCategoryBodyDto {
   name: string;
   description?: string | null;
-  image?: string | null;
+  image: string;
   isListed?: boolean;
   displayOrder?: number;
 }

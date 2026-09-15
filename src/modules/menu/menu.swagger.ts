@@ -260,13 +260,12 @@ export const menuSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name"],
+              required: ["name", "image"],
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 description: { type: "string", nullable: true },
                 image: {
                   type: "string",
-                  nullable: true,
                   description:
                     "Key returned by PUT /pvt/u/menu/categories/image, after the file has been uploaded to its URL.",
                 },
@@ -370,7 +369,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["categoryId", "name", "price"],
+              required: ["categoryId", "name", "price", "image"],
               properties: {
                 categoryId: { type: "string", format: "uuid" },
                 name: { type: "string", minLength: 2, maxLength: 100 },
@@ -397,7 +396,6 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                 displayOrder: { type: "integer", minimum: 0 },
                 image: {
                   type: "string",
-                  nullable: true,
                   description:
                     "Key returned by PUT /pvt/u/menu/items/image, after the file has been uploaded to its URL.",
                 },
@@ -494,7 +492,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                   type: "string",
                   nullable: true,
                   description:
-                    "Omit to keep the current image, null to remove it, or a new key from PUT /pvt/u/menu/categories/image.",
+                    "Omit to keep the current image, or pass a new key from PUT /pvt/u/menu/categories/image to replace it. Cannot be cleared.",
                 },
                 isListed: { type: "boolean" },
                 displayOrder: { type: "integer", minimum: 0 },
@@ -599,7 +597,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       tags: ["Menu"],
       summary: "Update a menu item and its modifiers",
       description:
-        "Takes the same fields as item creation (without categoryId). `modifiers` is the complete list: groups/options with an `id` are updated, ones without are created, and existing ones left out are deactivated. Omit `modifiers` to leave them unchanged. `image`: omit to keep, null to remove, or a new upload key.",
+        "Takes the same fields as item creation (without categoryId). `modifiers` is the complete list: groups/options with an `id` are updated, ones without are created, and existing ones left out are deactivated. Omit `modifiers` to leave them unchanged. `image`: omit to keep the current image, or pass a new upload key to replace it (it cannot be cleared).",
       parameters: [menuIdParam],
       requestBody: {
         required: true,

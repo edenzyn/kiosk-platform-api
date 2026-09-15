@@ -108,7 +108,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
               type: "object",
               required: ["name"],
               properties: {
-                name: { type: "string", maxLength: 100 },
+                name: { type: "string", minLength: 2, maxLength: 100 },
                 description: { type: "string", nullable: true },
                 banner: { type: "string", maxLength: 255, nullable: true },
                 isListed: { type: "boolean" },
@@ -191,7 +191,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
               required: ["categoryId", "name", "price"],
               properties: {
                 categoryId: { type: "string", format: "uuid" },
-                name: { type: "string", maxLength: 150 },
+                name: { type: "string", minLength: 2, maxLength: 100 },
                 description: { type: "string", nullable: true },
                 price: { type: "number", minimum: 0 },
                 code: { type: "string", maxLength: 100, nullable: true },

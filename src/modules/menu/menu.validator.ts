@@ -14,7 +14,8 @@ export const MenuValidator = {
       name: yup
         .string()
         .trim()
-        .max(100, "Category name must be less than 100 characters")
+        .min(2, "Category name must be at least 2 characters")
+        .max(100, "Category name must be at most 100 characters")
         .required("Category name is required"),
       description: yup.string().trim().nullable().optional(),
       banner: yup
@@ -49,7 +50,8 @@ export const MenuValidator = {
       name: yup
         .string()
         .trim()
-        .max(150, "Item name must be less than 150 characters")
+        .min(2, "Item name must be at least 2 characters")
+        .max(100, "Item name must be at most 100 characters")
         .required("Item name is required"),
       description: yup.string().trim().nullable().optional(),
       price: yup

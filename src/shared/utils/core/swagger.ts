@@ -4,6 +4,7 @@ import { deviceSwaggerPaths } from "../../../modules/device/device.swagger";
 import { financeSwaggerPaths } from "../../../modules/finance/finance.swagger";
 import { licenseSwaggerPaths } from "../../../modules/license/license.swagger";
 import { marketSwaggerPaths } from "../../../modules/market/market.swagger";
+import { menuSwaggerPaths } from "../../../modules/menu/menu.swagger";
 import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
@@ -128,6 +129,7 @@ export const swaggerDocument = {
     ...deviceSwaggerPaths,
     ...licenseSwaggerPaths,
     ...marketSwaggerPaths,
+    ...menuSwaggerPaths,
     ...rbacSwaggerPaths,
     ...resellerSwaggerPaths,
     ...platformSwaggerPaths,

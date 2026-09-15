@@ -23,7 +23,7 @@ export const menuCategories = pgTable("menu_categories", {
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
   banner: varchar("banner", { length: 255 }),
-  showOnMenu: boolean("show_on_menu").default(true).notNull(),
+  isListed: boolean("is_listed").default(true).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

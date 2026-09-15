@@ -83,6 +83,19 @@ export const BRANCH_DEVICE_READ_WRITE_PERMS = [
 ];
 
 //----------------------
+// Menu Module Constants
+//----------------------
+export const ORGANIZATION_MENU_READ_WRITE_PERMS = [
+  UserPermissions.ORGANIZATION_MENU_READ,
+  UserPermissions.ORGANIZATION_MENU_WRITE,
+];
+
+export const BRANCH_MENU_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_MENU_READ,
+  UserPermissions.BRANCH_MENU_WRITE,
+];
+
+//----------------------
 // License Module Constants
 //----------------------
 export const ORGANIZATION_LICENSE_READ_WRITE_PERMS = [

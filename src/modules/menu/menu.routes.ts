@@ -45,4 +45,22 @@ menuRouter
     menuController.createItem,
   );
 
+menuRouter.put(
+  "/categories/image",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+    branch: [UserPermissions.BRANCH_MENU_WRITE],
+  }),
+  menuController.requestCategoryImageUpload,
+);
+
+menuRouter.put(
+  "/items/image",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+    branch: [UserPermissions.BRANCH_MENU_WRITE],
+  }),
+  menuController.requestItemImageUpload,
+);
+
 export { menuRouter };

@@ -6,7 +6,16 @@ const menuCategorySchema = {
     branchId: { type: "string", format: "uuid" },
     name: { type: "string" },
     description: { type: "string", nullable: true },
-    banner: { type: "string", nullable: true },
+    image: {
+      type: "string",
+      nullable: true,
+      description: "Storage key of the category image.",
+    },
+    imageUrl: {
+      type: "string",
+      nullable: true,
+      description: "Short-lived signed URL for displaying the image.",
+    },
     isListed: { type: "boolean" },
     isActive: { type: "boolean" },
     displayOrder: { type: "integer" },
@@ -40,7 +49,16 @@ const menuItemSchema = {
     description: { type: "string", nullable: true },
     price: { type: "string" },
     code: { type: "string", nullable: true },
-    image: { type: "string", nullable: true },
+    image: {
+      type: "string",
+      nullable: true,
+      description: "Storage key of the item image.",
+    },
+    imageUrl: {
+      type: "string",
+      nullable: true,
+      description: "Short-lived signed URL for displaying the image.",
+    },
     takeawayChargeEnabled: { type: "boolean" },
     takeawayChargeAmount: { type: "string", nullable: true },
     isFeatured: { type: "boolean" },
@@ -62,6 +80,104 @@ const menuItemSchema = {
 };
 
 export const menuSwaggerPaths: Record<string, unknown> = {
+  "/pvt/u/menu/items/image": {
+    put: {
+      tags: ["Menu"],
+      summary: "Request a menu item image upload URL",
+      description:
+        "Returns a presigned URL to PUT the image to, and the key to send as `image` when creating the item. The item create call verifies the upload landed.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["contentType", "fileSize"],
+              properties: {
+                contentType: {
+                  type: "string",
+                  enum: ["image/png", "image/jpeg", "image/webp"],
+                },
+                fileSize: {
+                  type: "integer",
+                  description: "Size in bytes, max 5MB",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Upload URL issued",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  image: { type: "string" },
+                  uploadUrl: { type: "string" },
+                  expiresIn: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/u/menu/categories/image": {
+    put: {
+      tags: ["Menu"],
+      summary: "Request a menu category image upload URL",
+      description:
+        "Returns a presigned URL to PUT the image to, and the key to send as `image` when creating the category. The category create call verifies the upload landed.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["contentType", "fileSize"],
+              properties: {
+                contentType: {
+                  type: "string",
+                  enum: ["image/png", "image/jpeg", "image/webp"],
+                },
+                fileSize: {
+                  type: "integer",
+                  description: "Size in bytes, max 5MB",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Upload URL issued",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  image: { type: "string" },
+                  uploadUrl: { type: "string" },
+                  expiresIn: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
   "/pvt/u/menu/categories": {
     get: {
       tags: ["Menu"],
@@ -69,6 +185,8 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       description:
         "Returns every menu category for the effective branch, each annotated with its item count. Requires a branch-scoped effective tenant.",
       parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
         { name: "isActive", in: "query", schema: { type: "boolean" } },
         { name: "isListed", in: "query", schema: { type: "boolean" } },
         { name: "search", in: "query", schema: { type: "string" } },
@@ -85,6 +203,10 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                     type: "array",
                     items: menuCategoryWithItemCountSchema,
                   },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
                 },
               },
             },
@@ -110,7 +232,12 @@ export const menuSwaggerPaths: Record<string, unknown> = {
               properties: {
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 description: { type: "string", nullable: true },
-                banner: { type: "string", maxLength: 255, nullable: true },
+                image: {
+                  type: "string",
+                  nullable: true,
+                  description:
+                    "Key returned by PUT /pvt/u/menu/categories/image, after the file has been uploaded to its URL.",
+                },
                 isListed: { type: "boolean" },
                 displayOrder: { type: "integer", minimum: 0 },
               },
@@ -143,6 +270,8 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       description:
         "Returns every item under the given category for the effective branch. Requires a branch-scoped effective tenant.",
       parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
         {
           name: "categoryId",
           in: "query",
@@ -150,7 +279,24 @@ export const menuSwaggerPaths: Record<string, unknown> = {
           schema: { type: "string", format: "uuid" },
         },
         { name: "isListed", in: "query", schema: { type: "boolean" } },
+        {
+          name: "dietaryType",
+          in: "query",
+          description: "1=VEGETARIAN, 2=NON_VEGETARIAN",
+          schema: { type: "integer", enum: [1, 2] },
+        },
         { name: "search", in: "query", schema: { type: "string" } },
+        {
+          name: "sortBy",
+          in: "query",
+          description: "Defaults to the merchant display order when omitted",
+          schema: { type: "string", enum: ["name", "price", "createdAt"] },
+        },
+        {
+          name: "sortOrder",
+          in: "query",
+          schema: { type: "string", enum: ["asc", "desc"] },
+        },
       ],
       responses: {
         "200": {
@@ -161,6 +307,10 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                 type: "object",
                 properties: {
                   items: { type: "array", items: menuItemSchema },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
                   currencyCode: {
                     type: "string",
                     description:
@@ -213,6 +363,12 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                 hasAlcohol: { type: "boolean" },
                 isSpicy: { type: "boolean" },
                 displayOrder: { type: "integer", minimum: 0 },
+                image: {
+                  type: "string",
+                  nullable: true,
+                  description:
+                    "Key returned by PUT /pvt/u/menu/items/image, after the file has been uploaded to its URL.",
+                },
               },
             },
           },

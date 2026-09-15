@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { CreateMenuCategoryBodyDto } from "./dtos/create-menu-category.dtos";
 import type { CreateMenuItemBodyDto } from "./dtos/create-menu-item.dtos";
 import { MenuValidator } from "./menu.validator";
@@ -58,6 +59,30 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.CREATED).json({ item });
+  };
+
+  requestItemImageUpload = (req: Request, res: Response): Promise<void> =>
+    this.requestImageUpload(MenuImageTypeEnum.ITEM, req, res);
+
+  requestCategoryImageUpload = (req: Request, res: Response): Promise<void> =>
+    this.requestImageUpload(MenuImageTypeEnum.CATEGORY, req, res);
+
+  private requestImageUpload = async (
+    type: MenuImageTypeEnum,
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const data = await MenuValidator.requestImageUpload.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.menuService.requestImageUpload({
+      type,
+      contentType: data.contentType,
+      fileSize: data.fileSize,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   getItems = async (req: Request, res: Response): Promise<void> => {

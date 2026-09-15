@@ -1,5 +1,5 @@
 import type { DietaryTypeEnum } from "../../../shared/enums/menu/dietary-type.enum";
-import type { MenuItemEntity } from "../schemas/menu-item.schema";
+import type { MenuItemWithImageUrl } from "../menu.types";
 
 export interface CreateMenuItemBodyDto {
   categoryId: string;
@@ -16,6 +16,7 @@ export interface CreateMenuItemBodyDto {
   hasAlcohol?: boolean;
   isSpicy?: boolean;
   displayOrder?: number;
+  image?: string | null;
 }
 
 export interface CreateMenuItemRequestDto
@@ -32,5 +33,5 @@ export interface CreateMenuItemRequestDto
 }
 
 export interface CreateMenuItemResponseDto {
-  item: MenuItemEntity;
+  item: MenuItemWithImageUrl;
 }

@@ -1,4 +1,4 @@
-import type { MenuCategoryEntity } from "../schemas/menu-category.schema";
+import type { MenuCategoryWithItemCount } from "../menu.types";
 
 export interface GetMenuCategoriesQueryDto {
   isActive?: boolean;
@@ -6,10 +6,6 @@ export interface GetMenuCategoriesQueryDto {
   search?: string;
 }
 
-export interface MenuCategoryWithItemCountDto extends MenuCategoryEntity {
-  itemCount: number;
-}
-
 export interface GetMenuCategoriesResponseDto {
-  categories: MenuCategoryWithItemCountDto[];
+  categories: MenuCategoryWithItemCount[];
 }

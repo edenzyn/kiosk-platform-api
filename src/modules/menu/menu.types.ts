@@ -1,13 +1,28 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { DietaryTypeEnum } from "../../shared/enums/menu/dietary-type.enum";
+import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import type { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
+import type { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
 import type { CreateMenuCategoryRequestDto } from "./dtos/create-menu-category.dtos";
 import type { CreateMenuItemRequestDto } from "./dtos/create-menu-item.dtos";
 import type { MenuCategoryEntity } from "./schemas/menu-category.schema";
 import type { MenuItemEntity } from "./schemas/menu-item.schema";
 
-export interface MenuCategoryWithItemCount extends MenuCategoryEntity {
+export interface MenuCategoryWithImageUrl extends MenuCategoryEntity {
+  imageUrl: string | null;
+}
+
+export interface MenuCategoryWithItemCount extends MenuCategoryWithImageUrl {
   itemCount: number;
+}
+
+export type MenuCategoryRowWithItemCount = MenuCategoryEntity & {
+  itemCount: number;
+};
+
+export interface MenuItemWithImageUrl extends MenuItemEntity {
+  imageUrl: string | null;
 }
 
 // ========================================
@@ -17,7 +32,7 @@ export interface CreateMenuCategoryServiceInput {
   data: {
     name: string;
     description?: string | null;
-    banner?: string | null;
+    image?: string | null;
     isListed?: boolean;
     displayOrder?: number;
   };
@@ -25,18 +40,27 @@ export interface CreateMenuCategoryServiceInput {
   effectiveTenant: EffectiveTenant;
 }
 
-export type CreateMenuCategoryServiceResult = MenuCategoryEntity;
+export type CreateMenuCategoryServiceResult = MenuCategoryWithImageUrl;
+
+export interface PaginationResult {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 export interface GetMenuCategoriesServiceInput {
   effectiveTenant: EffectiveTenant;
   filters?: {
+    page?: number;
+    limit?: number;
     isActive?: boolean;
     isListed?: boolean;
     search?: string;
   };
 }
 
-export interface GetMenuCategoriesServiceResult {
+export interface GetMenuCategoriesServiceResult extends PaginationResult {
   categories: MenuCategoryWithItemCount[];
 }
 
@@ -59,24 +83,42 @@ export interface CreateMenuItemServiceInput {
     hasAlcohol?: boolean;
     isSpicy?: boolean;
     displayOrder?: number;
+    image?: string | null;
   };
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
 }
 
-export type CreateMenuItemServiceResult = MenuItemEntity;
+export type CreateMenuItemServiceResult = MenuItemWithImageUrl;
+
+export interface RequestMenuImageUploadServiceInput {
+  type: MenuImageTypeEnum;
+  contentType: string;
+  fileSize: number;
+}
+
+export interface RequestMenuImageUploadServiceResult {
+  image: string;
+  uploadUrl: string;
+  expiresIn: number;
+}
 
 export interface GetMenuItemsServiceInput {
   effectiveTenant: EffectiveTenant;
   filters: {
+    page?: number;
+    limit?: number;
     categoryId: string;
     isListed?: boolean;
+    dietaryType?: number;
     search?: string;
+    sortBy?: MenuItemSortByEnum;
+    sortOrder?: SortingOrderEnum;
   };
 }
 
-export interface GetMenuItemsServiceResult {
-  items: MenuItemEntity[];
+export interface GetMenuItemsServiceResult extends PaginationResult {
+  items: MenuItemWithImageUrl[];
   currencyCode: string;
 }
 
@@ -91,6 +133,8 @@ export interface FindOneMenuCategoryRepoInput {
 export type FindOneMenuCategoryRepoResult = MenuCategoryEntity | null;
 
 export interface FindMenuCategoriesRepoInput {
+  page: number;
+  limit: number;
   organizationId: string;
   branchId: string;
   isActive?: boolean;
@@ -98,7 +142,8 @@ export interface FindMenuCategoriesRepoInput {
   search?: string;
 }
 export interface FindMenuCategoriesRepoResult {
-  categories: MenuCategoryWithItemCount[];
+  categories: MenuCategoryRowWithItemCount[];
+  total: number;
 }
 
 export interface CreateMenuCategoryRepoInput {
@@ -117,14 +162,20 @@ export interface FindOneMenuItemRepoInput {
 export type FindOneMenuItemRepoResult = MenuItemEntity | null;
 
 export interface FindMenuItemsRepoInput {
+  page: number;
+  limit: number;
   organizationId: string;
   branchId: string;
   categoryId: string;
   isListed?: boolean;
+  dietaryType?: number;
   search?: string;
+  sortBy?: MenuItemSortByEnum;
+  sortOrder?: SortingOrderEnum;
 }
 export interface FindMenuItemsRepoResult {
   items: MenuItemEntity[];
+  total: number;
 }
 
 export interface CreateMenuItemRepoInput {

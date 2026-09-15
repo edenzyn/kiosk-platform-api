@@ -1,9 +1,9 @@
-import type { MenuCategoryEntity } from "../schemas/menu-category.schema";
+import type { MenuCategoryWithImageUrl } from "../menu.types";
 
 export interface CreateMenuCategoryBodyDto {
   name: string;
   description?: string | null;
-  banner?: string | null;
+  image?: string | null;
   isListed?: boolean;
   displayOrder?: number;
 }
@@ -16,5 +16,5 @@ export interface CreateMenuCategoryRequestDto
 }
 
 export interface CreateMenuCategoryResponseDto {
-  category: MenuCategoryEntity;
+  category: MenuCategoryWithImageUrl;
 }

@@ -1,5 +1,16 @@
 import * as yup from "yup";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { DietaryTypeEnum } from "../../shared/enums/menu/dietary-type.enum";
+import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+
+const MENU_IMAGE_KEY_REGEX = /^[0-9a-f-]{36}\.(png|jpeg|webp)$/;
+const menuImageKeySchema = yup
+  .string()
+  .trim()
+  .matches(MENU_IMAGE_KEY_REGEX, "Invalid image")
+  .nullable()
+  .optional();
 
 const DIETARY_TYPE_VALUES = Object.values(DietaryTypeEnum).filter(
   (value): value is number => typeof value === "number",
@@ -18,12 +29,7 @@ export const MenuValidator = {
         .max(100, "Category name must be at most 100 characters")
         .required("Category name is required"),
       description: yup.string().trim().nullable().optional(),
-      banner: yup
-        .string()
-        .trim()
-        .max(255, "Banner must be less than 255 characters")
-        .nullable()
-        .optional(),
+      image: menuImageKeySchema,
       isListed: yup.boolean().optional(),
       displayOrder: yup
         .number()
@@ -33,8 +39,8 @@ export const MenuValidator = {
         .optional(),
     })
     .noUnknown(),
-  getCategoriesQuery: yup
-    .object({
+  getCategoriesQuery: paginationQuerySchema
+    .shape({
       isActive: yup.boolean().optional(),
       isListed: yup.boolean().optional(),
       search: yup.string().trim().optional(),
@@ -104,13 +110,40 @@ export const MenuValidator = {
         .integer("Display order must be an integer")
         .min(0, "Display order cannot be negative")
         .optional(),
+      image: menuImageKeySchema,
     })
     .noUnknown(),
-  getItemsQuery: yup
+  // ========================================
+  // ? MENU IMAGE SCHEMAS
+  // ========================================
+  requestImageUpload: yup
     .object({
+      contentType: yup.string().required("File content type is required"),
+      fileSize: yup
+        .number()
+        .integer()
+        .positive()
+        .required("File size is required"),
+    })
+    .noUnknown(),
+  getItemsQuery: paginationQuerySchema
+    .shape({
       categoryId: yup.string().uuid().required("Category is required"),
       isListed: yup.boolean().optional(),
+      dietaryType: yup
+        .number()
+        .typeError("Dietary type must be a number")
+        .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
+        .optional(),
       search: yup.string().trim().optional(),
+      sortBy: yup
+        .string()
+        .oneOf(Object.values(MenuItemSortByEnum), "Invalid sort field")
+        .optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
     })
     .noUnknown(),
 };

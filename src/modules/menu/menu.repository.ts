@@ -1,5 +1,7 @@
-import { and, asc, count, eq, ilike, or, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
 import type {
   CreateMenuCategoryRepoInput,
   CreateMenuCategoryRepoResult,
@@ -54,7 +56,15 @@ export class MenuRepository {
   async findCategories(
     input: FindMenuCategoriesRepoInput,
   ): Promise<FindMenuCategoriesRepoResult> {
-    const { organizationId, branchId, isActive, isListed, search } = input;
+    const {
+      page,
+      limit,
+      organizationId,
+      branchId,
+      isActive,
+      isListed,
+      search,
+    } = input;
     const conditions = [
       eq(menuCategories.organizationId, organizationId),
       eq(menuCategories.branchId, branchId),
@@ -77,6 +87,14 @@ export class MenuRepository {
       );
     }
 
+    const condition = and(...conditions);
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(menuCategories)
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
     const rows = await this.database.client
       .select({
         id: menuCategories.id,
@@ -84,7 +102,7 @@ export class MenuRepository {
         branchId: menuCategories.branchId,
         name: menuCategories.name,
         description: menuCategories.description,
-        banner: menuCategories.banner,
+        image: menuCategories.image,
         isListed: menuCategories.isListed,
         isActive: menuCategories.isActive,
         displayOrder: menuCategories.displayOrder,
@@ -96,15 +114,23 @@ export class MenuRepository {
       })
       .from(menuCategories)
       .leftJoin(menuItems, eq(menuItems.categoryId, menuCategories.id))
-      .where(and(...conditions))
+      .where(condition)
       .groupBy(menuCategories.id)
-      .orderBy(asc(menuCategories.displayOrder), asc(menuCategories.name));
+      // id breaks ties so pages never overlap or skip rows.
+      .orderBy(
+        asc(menuCategories.displayOrder),
+        asc(menuCategories.name),
+        asc(menuCategories.id),
+      )
+      .limit(limit)
+      .offset((page - 1) * limit);
 
     return {
       categories: rows.map((row) => ({
         ...row,
         itemCount: Number(row.itemCount),
       })),
+      total,
     };
   }
 
@@ -119,7 +145,7 @@ export class MenuRepository {
         branchId: data.branchId,
         name: data.name,
         description: data.description ?? null,
-        banner: data.banner ?? null,
+        image: data.image ?? null,
         isListed: data.isListed,
         displayOrder: data.displayOrder,
         createdBy: data.createdBy,
@@ -167,7 +193,18 @@ export class MenuRepository {
   async findItems(
     input: FindMenuItemsRepoInput,
   ): Promise<FindMenuItemsRepoResult> {
-    const { organizationId, branchId, categoryId, isListed, search } = input;
+    const {
+      page,
+      limit,
+      organizationId,
+      branchId,
+      categoryId,
+      isListed,
+      dietaryType,
+      search,
+      sortBy,
+      sortOrder,
+    } = input;
     const conditions = [
       eq(menuItems.organizationId, organizationId),
       eq(menuItems.branchId, branchId),
@@ -176,6 +213,10 @@ export class MenuRepository {
 
     if (isListed !== undefined) {
       conditions.push(eq(menuItems.isListed, isListed));
+    }
+
+    if (dietaryType !== undefined) {
+      conditions.push(eq(menuItems.dietaryType, dietaryType));
     }
 
     if (search) {
@@ -187,13 +228,23 @@ export class MenuRepository {
       );
     }
 
+    const condition = and(...conditions);
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(menuItems)
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
     const rows = await this.database.client
       .select()
       .from(menuItems)
-      .where(and(...conditions))
-      .orderBy(asc(menuItems.displayOrder), asc(menuItems.name));
+      .where(condition)
+      .orderBy(...this.itemOrderBy(sortBy, sortOrder))
+      .limit(limit)
+      .offset((page - 1) * limit);
 
-    return { items: rows };
+    return { items: rows, total };
   }
 
   async createItem(
@@ -219,6 +270,7 @@ export class MenuRepository {
         hasAlcohol: data.hasAlcohol,
         isSpicy: data.isSpicy,
         displayOrder: data.displayOrder,
+        image: data.image ?? null,
         createdBy: data.createdBy,
       })
       .returning();
@@ -228,5 +280,30 @@ export class MenuRepository {
     }
 
     return item;
+  }
+
+  private itemOrderBy(
+    sortBy?: MenuItemSortByEnum,
+    sortOrder: SortingOrderEnum = SortingOrderEnum.ASC,
+  ): SQL[] {
+    const direction = sortOrder === SortingOrderEnum.DESC ? desc : asc;
+    const sortColumn = {
+      [MenuItemSortByEnum.NAME]: menuItems.name,
+      [MenuItemSortByEnum.PRICE]: menuItems.price,
+      [MenuItemSortByEnum.CREATED_AT]: menuItems.createdAt,
+    };
+
+    if (!sortBy) {
+      return [
+        asc(menuItems.displayOrder),
+        asc(menuItems.name),
+        asc(menuItems.id),
+      ];
+    }
+    return [
+      direction(sortColumn[sortBy]),
+      asc(menuItems.name),
+      asc(menuItems.id),
+    ];
   }
 }

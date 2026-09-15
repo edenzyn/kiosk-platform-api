@@ -1,0 +1,1 @@
+ALTER TABLE "menu_categories" RENAME COLUMN "banner" TO "image";

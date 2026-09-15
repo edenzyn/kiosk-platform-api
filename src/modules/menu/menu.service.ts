@@ -1,6 +1,9 @@
+import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { FileService } from "../file/file.service";
 import type { MarketRepository } from "../market/market.repository";
 import type { MenuRepository } from "./menu.repository";
 import type {
@@ -12,12 +15,17 @@ import type {
   GetMenuCategoriesServiceResult,
   GetMenuItemsServiceInput,
   GetMenuItemsServiceResult,
+  RequestMenuImageUploadServiceInput,
+  RequestMenuImageUploadServiceResult,
 } from "./menu.types";
+import type { MenuCategoryEntity } from "./schemas/menu-category.schema";
+import type { MenuItemEntity } from "./schemas/menu-item.schema";
 
 export class MenuService {
   constructor(
     private readonly menuRepository: MenuRepository,
     private readonly marketRepository: MarketRepository,
+    private readonly fileService: FileService,
   ) {}
 
   // ========================================
@@ -35,20 +43,28 @@ export class MenuService {
       });
     }
 
+    if (data.image) {
+      await this.fileService.finalizeMenuImage({
+        type: MenuImageTypeEnum.CATEGORY,
+        image: data.image,
+        maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
+      });
+    }
+
     const category = await this.menuRepository.createCategory({
       data: {
         organizationId: effectiveTenant.organizationId,
         branchId: effectiveTenant.branchId,
         name: data.name,
         description: data.description ?? null,
-        banner: data.banner ?? null,
+        image: data.image ?? null,
         isListed: data.isListed,
         displayOrder: data.displayOrder,
         createdBy: user.id,
       },
     });
 
-    return category;
+    return this.withImageUrl(MenuImageTypeEnum.CATEGORY, category);
   }
 
   async getCategories(
@@ -63,7 +79,12 @@ export class MenuService {
       });
     }
 
-    const { categories } = await this.menuRepository.findCategories({
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const { categories, total } = await this.menuRepository.findCategories({
+      page,
+      limit,
       organizationId: effectiveTenant.organizationId,
       branchId: effectiveTenant.branchId,
       isActive: filters.isActive,
@@ -71,7 +92,17 @@ export class MenuService {
       search: filters.search,
     });
 
-    return { categories };
+    return {
+      categories: await Promise.all(
+        categories.map((category) =>
+          this.withImageUrl(MenuImageTypeEnum.CATEGORY, category),
+        ),
+      ),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   // ========================================
@@ -102,6 +133,14 @@ export class MenuService {
       });
     }
 
+    if (data.image) {
+      await this.fileService.finalizeMenuImage({
+        type: MenuImageTypeEnum.ITEM,
+        image: data.image,
+        maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
+      });
+    }
+
     const item = await this.menuRepository.createItem({
       data: {
         organizationId: effectiveTenant.organizationId,
@@ -123,11 +162,39 @@ export class MenuService {
         hasAlcohol: data.hasAlcohol,
         isSpicy: data.isSpicy,
         displayOrder: data.displayOrder,
+        image: data.image ?? null,
         createdBy: user.id,
       },
     });
 
-    return item;
+    return this.withImageUrl(MenuImageTypeEnum.ITEM, item);
+  }
+
+  async requestImageUpload(
+    input: RequestMenuImageUploadServiceInput,
+  ): Promise<RequestMenuImageUploadServiceResult> {
+    const { type, contentType, fileSize } = input;
+    const config = FILE_UPLOAD_CONFIG.MENU_IMAGE;
+
+    if (
+      !config.acceptedTypes.includes(
+        contentType as (typeof config.acceptedTypes)[number],
+      )
+    ) {
+      throw new AppError("Unsupported or missing image content type", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    if (fileSize > config.maxSizeBytes) {
+      throw new AppError("Image is too large", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.VALIDATION_ERROR,
+      });
+    }
+
+    return this.fileService.createMenuImageUploadUrl({ type, contentType });
   }
 
   async getItems(
@@ -142,13 +209,21 @@ export class MenuService {
       });
     }
 
-    const [{ items }, market] = await Promise.all([
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const [{ items, total }, market] = await Promise.all([
       this.menuRepository.findItems({
+        page,
+        limit,
         organizationId: effectiveTenant.organizationId,
         branchId: effectiveTenant.branchId,
         categoryId: filters.categoryId,
         isListed: filters.isListed,
+        dietaryType: filters.dietaryType,
         search: filters.search,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder,
       }),
       this.marketRepository.findMarketByBranch({
         branchId: effectiveTenant.branchId,
@@ -161,6 +236,31 @@ export class MenuService {
       });
     }
 
-    return { items, currencyCode: market.currencyCode };
+    return {
+      items: await Promise.all(
+        items.map((item) => this.withImageUrl(MenuImageTypeEnum.ITEM, item)),
+      ),
+      currencyCode: market.currencyCode,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  // ========================================
+  // ? HELPERS
+  // ========================================
+  private async withImageUrl<T extends MenuItemEntity | MenuCategoryEntity>(
+    type: MenuImageTypeEnum,
+    record: T,
+  ): Promise<T & { imageUrl: string | null }> {
+    if (!record.image) return { ...record, imageUrl: null };
+
+    const { imageUrl } = await this.fileService.generateMenuImageUrl({
+      type,
+      image: record.image,
+    });
+    return { ...record, imageUrl };
   }
 }

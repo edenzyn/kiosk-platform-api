@@ -414,6 +414,13 @@
       "when": 1789393480733,
       "tag": "0058_add-menu-module",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1789455058499,
+      "tag": "0059_rename-category-banner-to-image",
+      "breakpoints": true
     }
   ]
 }

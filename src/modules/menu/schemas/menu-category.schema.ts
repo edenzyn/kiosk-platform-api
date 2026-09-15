@@ -22,7 +22,7 @@ export const menuCategories = pgTable("menu_categories", {
     .references((): AnyPgColumn => branches.id),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
-  banner: varchar("banner", { length: 255 }),
+  image: varchar("image", { length: 255 }),
   isListed: boolean("is_listed").default(true).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   displayOrder: integer("display_order").default(0).notNull(),

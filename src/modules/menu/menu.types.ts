@@ -9,6 +9,19 @@ import type {
   CreateItemModifierBodyDto,
   CreateMenuItemRequestDto,
 } from "./dtos/create-menu-item.dtos";
+import type {
+  UpdateMenuCategoryBodyDto,
+  UpdateMenuCategoryRequestDto,
+} from "./dtos/update-menu-category.dtos";
+import type { UpdateMenuCategoryStatusBodyDto } from "./dtos/update-menu-category-status.dtos";
+import type {
+  UpdateItemModifierBodyDto,
+  UpdateMenuItemBodyDto,
+  UpdateMenuItemRequestDto,
+} from "./dtos/update-menu-item.dtos";
+import type { UpdateMenuItemStatusBodyDto } from "./dtos/update-menu-item-status.dtos";
+import type { ItemModifierOptionEntity } from "./schemas/item-modifier-option.schema";
+import type { ItemModifierEntity } from "./schemas/item-modifier.schema";
 import type { MenuCategoryEntity } from "./schemas/menu-category.schema";
 import type { MenuItemEntity } from "./schemas/menu-item.schema";
 
@@ -28,6 +41,15 @@ export interface MenuItemWithImageUrl extends MenuItemEntity {
   imageUrl: string | null;
 }
 
+export interface ItemModifierWithOptions extends ItemModifierEntity {
+  options: ItemModifierOptionEntity[];
+}
+
+/** An item with its active modifier groups and options, in display order. */
+export interface MenuItemDetails extends MenuItemWithImageUrl {
+  modifiers: ItemModifierWithOptions[];
+}
+
 // ========================================
 // ? MENU CATEGORY SERVICE INPUTS & RESULTS
 // ========================================
@@ -44,6 +66,20 @@ export interface CreateMenuCategoryServiceInput {
 }
 
 export type CreateMenuCategoryServiceResult = MenuCategoryWithImageUrl;
+
+export interface UpdateMenuCategoryServiceInput {
+  data: UpdateMenuCategoryBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type UpdateMenuCategoryServiceResult = MenuCategoryWithImageUrl;
+
+export interface UpdateMenuCategoryStatusServiceInput {
+  data: UpdateMenuCategoryStatusBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type UpdateMenuCategoryStatusServiceResult = MenuCategoryWithImageUrl;
 
 export interface PaginationResult {
   total: number;
@@ -94,6 +130,26 @@ export interface CreateMenuItemServiceInput {
 }
 
 export type CreateMenuItemServiceResult = MenuItemWithImageUrl;
+
+export interface GetMenuItemServiceInput {
+  id: string;
+  effectiveTenant: EffectiveTenant;
+}
+export type GetMenuItemServiceResult = MenuItemDetails;
+
+export interface UpdateMenuItemServiceInput {
+  data: UpdateMenuItemBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type UpdateMenuItemServiceResult = MenuItemWithImageUrl;
+
+export interface UpdateMenuItemStatusServiceInput {
+  data: UpdateMenuItemStatusBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type UpdateMenuItemStatusServiceResult = MenuItemWithImageUrl;
 
 export interface RequestMenuImageUploadServiceInput {
   type: MenuImageTypeEnum;
@@ -155,6 +211,12 @@ export interface CreateMenuCategoryRepoInput {
 }
 export type CreateMenuCategoryRepoResult = MenuCategoryEntity;
 
+export interface UpdateMenuCategoryRepoInput {
+  id: string;
+  data: Partial<UpdateMenuCategoryRequestDto> & { updatedBy: string };
+}
+export type UpdateMenuCategoryRepoResult = MenuCategoryEntity;
+
 // ========================================
 // ? MENU ITEM REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -186,3 +248,25 @@ export interface CreateMenuItemRepoInput {
   data: CreateMenuItemRequestDto;
 }
 export type CreateMenuItemRepoResult = MenuItemEntity;
+
+export interface FindItemModifiersRepoInput {
+  menuItemId: string;
+}
+export type FindItemModifiersRepoResult = ItemModifierWithOptions[];
+
+export interface UpdateMenuItemRepoInput {
+  id: string;
+  data: UpdateMenuItemRequestDto;
+  /** Complete desired modifier list; omit to leave modifiers untouched. */
+  modifiers?: UpdateItemModifierBodyDto[];
+  /** Current active modifiers, used to work out what to update or deactivate. */
+  existingModifiers: ItemModifierWithOptions[];
+}
+export type UpdateMenuItemRepoResult = MenuItemEntity;
+
+export interface UpdateMenuItemStatusRepoInput {
+  id: string;
+  isListed: boolean;
+  updatedBy: string;
+}
+export type UpdateMenuItemStatusRepoResult = MenuItemEntity;

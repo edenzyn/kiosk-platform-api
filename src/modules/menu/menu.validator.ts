@@ -17,15 +17,29 @@ const DIETARY_TYPE_VALUES = Object.values(DietaryTypeEnum).filter(
   (value): value is number => typeof value === "number",
 );
 
+const recordIdSchema = yup.string().uuid("Invalid id");
+
 const displayOrderSchema = yup
   .number()
   .typeError("Display order must be a number")
   .integer("Display order must be an integer")
-  .min(0, "Display order cannot be negative")
-  .required("Display order is required");
+  .min(0, "Display order cannot be negative");
 
+// ========================================
+// ? MODIFIER SCHEMAS
+// ========================================
+// Fixed min/max for the single-select types; MULTIPLE is checked against its options.
+const SINGLE_SELECTION_BOUNDS: Partial<
+  Record<ItemModifierSelectionTypeEnum, { min: number; max: number }>
+> = {
+  [ItemModifierSelectionTypeEnum.SINGLE_REQUIRED]: { min: 1, max: 1 },
+  [ItemModifierSelectionTypeEnum.SINGLE]: { min: 0, max: 1 },
+};
+
+// `id` points an update at an existing group/option; create never reads it.
 const itemModifierOptionSchema = yup
   .object({
+    id: recordIdSchema.optional(),
     name: yup
       .string()
       .trim()
@@ -38,20 +52,13 @@ const itemModifierOptionSchema = yup
       .min(0, "Option price cannot be negative")
       .required("Option price is required"),
     isDefault: yup.boolean().optional(),
-    displayOrder: displayOrderSchema,
+    displayOrder: displayOrderSchema.required("Display order is required"),
   })
   .noUnknown();
 
-// Fixed min/max for the single-select types; MULTIPLE is checked against its options.
-const SINGLE_SELECTION_BOUNDS: Partial<
-  Record<ItemModifierSelectionTypeEnum, { min: number; max: number }>
-> = {
-  [ItemModifierSelectionTypeEnum.SINGLE_REQUIRED]: { min: 1, max: 1 },
-  [ItemModifierSelectionTypeEnum.SINGLE]: { min: 0, max: 1 },
-};
-
 const itemModifierSchema = yup
   .object({
+    id: recordIdSchema.optional(),
     name: yup
       .string()
       .trim()
@@ -80,7 +87,7 @@ const itemModifierSchema = yup
       .integer("Maximum selection must be an integer")
       .min(1, "Maximum selection must be at least 1")
       .required("Maximum selection is required"),
-    displayOrder: displayOrderSchema,
+    displayOrder: displayOrderSchema.required("Display order is required"),
     options: yup
       .array()
       .of(itemModifierOptionSchema)
@@ -117,27 +124,93 @@ const itemModifierSchema = yup
     },
   );
 
+// ========================================
+// ? SHARED RECORD FIELDS
+// ========================================
+const categoryFields = {
+  name: yup
+    .string()
+    .trim()
+    .min(2, "Category name must be at least 2 characters")
+    .max(100, "Category name must be at most 100 characters")
+    .required("Category name is required"),
+  description: yup.string().trim().nullable().optional(),
+  image: menuImageKeySchema,
+  isListed: yup.boolean().optional(),
+  displayOrder: displayOrderSchema.optional(),
+};
+
+const itemFields = {
+  name: yup
+    .string()
+    .trim()
+    .min(2, "Item name must be at least 2 characters")
+    .max(100, "Item name must be at most 100 characters")
+    .required("Item name is required"),
+  description: yup.string().trim().nullable().optional(),
+  price: yup
+    .number()
+    .typeError("Price must be a number")
+    .min(0, "Price cannot be negative")
+    .required("Price is required"),
+  code: yup
+    .string()
+    .trim()
+    .max(100, "Code must be less than 100 characters")
+    .nullable()
+    .optional(),
+  takeawayChargeEnabled: yup.boolean().optional(),
+  takeawayChargeAmount: yup
+    .number()
+    .typeError("Takeaway charge must be a number")
+    .min(0, "Takeaway charge cannot be negative")
+    .nullable()
+    .optional()
+    .test(
+      "takeaway-charge-amount-required",
+      "Takeaway charge amount is required when takeaway charge is enabled",
+      function (value) {
+        const { takeawayChargeEnabled } = this.parent as {
+          takeawayChargeEnabled?: boolean;
+        };
+        if (!takeawayChargeEnabled) return true;
+        return value !== undefined && value !== null;
+      },
+    ),
+  isFeatured: yup.boolean().optional(),
+  isListed: yup.boolean().optional(),
+  calories: yup
+    .number()
+    .typeError("Calories must be a number")
+    .min(0, "Calories cannot be negative")
+    .nullable()
+    .optional(),
+  dietaryType: yup
+    .number()
+    .typeError("Dietary type must be a number")
+    .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
+    .optional(),
+  hasAlcohol: yup.boolean().optional(),
+  isSpicy: yup.boolean().optional(),
+  displayOrder: displayOrderSchema.optional(),
+  image: menuImageKeySchema,
+};
+
 export const MenuValidator = {
   // ========================================
   // ? MENU CATEGORY SCHEMAS
   // ========================================
-  createCategory: yup
+  createCategory: yup.object(categoryFields).noUnknown(),
+  updateCategory: yup
     .object({
-      name: yup
-        .string()
-        .trim()
-        .min(2, "Category name must be at least 2 characters")
-        .max(100, "Category name must be at most 100 characters")
-        .required("Category name is required"),
-      description: yup.string().trim().nullable().optional(),
-      image: menuImageKeySchema,
-      isListed: yup.boolean().optional(),
-      displayOrder: yup
-        .number()
-        .typeError("Display order must be a number")
-        .integer("Display order must be an integer")
-        .min(0, "Display order cannot be negative")
-        .optional(),
+      id: recordIdSchema.required("Category is required"),
+      ...categoryFields,
+    })
+    .noUnknown(),
+  updateCategoryStatus: yup
+    .object({
+      id: recordIdSchema.required("Category is required"),
+      isListed: yup.boolean().required("Listing status is required"),
     })
     .noUnknown(),
   getCategoriesQuery: paginationQuerySchema
@@ -153,84 +226,32 @@ export const MenuValidator = {
   // ========================================
   createItem: yup
     .object({
-      categoryId: yup.string().uuid().required("Category is required"),
-      name: yup
-        .string()
-        .trim()
-        .min(2, "Item name must be at least 2 characters")
-        .max(100, "Item name must be at most 100 characters")
-        .required("Item name is required"),
-      description: yup.string().trim().nullable().optional(),
-      price: yup
-        .number()
-        .typeError("Price must be a number")
-        .min(0, "Price cannot be negative")
-        .required("Price is required"),
-      code: yup
-        .string()
-        .trim()
-        .max(100, "Code must be less than 100 characters")
-        .nullable()
-        .optional(),
-      takeawayChargeEnabled: yup.boolean().optional(),
-      takeawayChargeAmount: yup
-        .number()
-        .typeError("Takeaway charge must be a number")
-        .min(0, "Takeaway charge cannot be negative")
-        .nullable()
-        .optional()
-        .test(
-          "takeaway-charge-amount-required",
-          "Takeaway charge amount is required when takeaway charge is enabled",
-          function (value) {
-            const { takeawayChargeEnabled } = this.parent as {
-              takeawayChargeEnabled?: boolean;
-            };
-            if (!takeawayChargeEnabled) return true;
-            return value !== undefined && value !== null;
-          },
-        ),
-      isFeatured: yup.boolean().optional(),
-      isListed: yup.boolean().optional(),
-      calories: yup
-        .number()
-        .typeError("Calories must be a number")
-        .min(0, "Calories cannot be negative")
-        .nullable()
-        .optional(),
-      dietaryType: yup
-        .number()
-        .typeError("Dietary type must be a number")
-        .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
-        .optional(),
-      hasAlcohol: yup.boolean().optional(),
-      isSpicy: yup.boolean().optional(),
-      displayOrder: yup
-        .number()
-        .typeError("Display order must be a number")
-        .integer("Display order must be an integer")
-        .min(0, "Display order cannot be negative")
-        .optional(),
-      image: menuImageKeySchema,
+      categoryId: recordIdSchema.required("Category is required"),
+      ...itemFields,
       modifiers: yup.array().of(itemModifierSchema).optional(),
     })
     .noUnknown(),
-  // ========================================
-  // ? MENU IMAGE SCHEMAS
-  // ========================================
-  requestImageUpload: yup
+  updateItem: yup
     .object({
-      contentType: yup.string().required("File content type is required"),
-      fileSize: yup
-        .number()
-        .integer()
-        .positive()
-        .required("File size is required"),
+      id: recordIdSchema.required("Item is required"),
+      ...itemFields,
+      modifiers: yup.array().of(itemModifierSchema).optional(),
+    })
+    .noUnknown(),
+  updateItemStatus: yup
+    .object({
+      id: recordIdSchema.required("Item is required"),
+      isListed: yup.boolean().required("Listing status is required"),
+    })
+    .noUnknown(),
+  itemIdParams: yup
+    .object({
+      id: recordIdSchema.required("Item is required"),
     })
     .noUnknown(),
   getItemsQuery: paginationQuerySchema
     .shape({
-      categoryId: yup.string().uuid().required("Category is required"),
+      categoryId: recordIdSchema.required("Category is required"),
       isListed: yup.boolean().optional(),
       dietaryType: yup
         .number()
@@ -246,6 +267,20 @@ export const MenuValidator = {
         .string()
         .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
         .optional(),
+    })
+    .noUnknown(),
+
+  // ========================================
+  // ? MENU IMAGE SCHEMAS
+  // ========================================
+  requestImageUpload: yup
+    .object({
+      contentType: yup.string().required("File content type is required"),
+      fileSize: yup
+        .number()
+        .integer()
+        .positive()
+        .required("File size is required"),
     })
     .noUnknown(),
 };

@@ -5,6 +5,8 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { CreateMenuCategoryBodyDto } from "./dtos/create-menu-category.dtos";
 import type { CreateMenuItemBodyDto } from "./dtos/create-menu-item.dtos";
+import type { UpdateMenuCategoryBodyDto } from "./dtos/update-menu-category.dtos";
+import type { UpdateMenuItemBodyDto } from "./dtos/update-menu-item.dtos";
 import { MenuValidator } from "./menu.validator";
 import type { MenuService } from "./menu.service";
 
@@ -26,6 +28,34 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.CREATED).json({ category });
+  };
+
+  updateCategory = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.updateCategory.validate(
+      { ...req.body, id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const category = await this.menuService.updateCategory({
+      data: data as UpdateMenuCategoryBodyDto,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ category });
+  };
+
+  updateCategoryStatus = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.updateCategoryStatus.validate(
+      { ...req.body, id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const category = await this.menuService.updateCategoryStatus({
+      data,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ category });
   };
 
   getCategories = async (req: Request, res: Response): Promise<void> => {
@@ -59,6 +89,47 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.CREATED).json({ item });
+  };
+
+  getItem = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.itemIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const item = await this.menuService.getItem({
+      id: params.id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ item });
+  };
+
+  updateItem = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.updateItem.validate(
+      { ...req.body, id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const item = await this.menuService.updateItem({
+      data: data as UpdateMenuItemBodyDto,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ item });
+  };
+
+  updateItemStatus = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.updateItemStatus.validate(
+      { ...req.body, id: req.params.id },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const item = await this.menuService.updateItemStatus({
+      data,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ item });
   };
 
   requestItemImageUpload = (req: Request, res: Response): Promise<void> =>

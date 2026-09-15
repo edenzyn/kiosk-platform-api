@@ -63,4 +63,46 @@ menuRouter.put(
   menuController.requestItemImageUpload,
 );
 
+menuRouter.patch(
+  "/categories/:id",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+    branch: [UserPermissions.BRANCH_MENU_WRITE],
+  }),
+  menuController.updateCategory,
+);
+menuRouter.patch(
+  "/categories/:id/status",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+    branch: [UserPermissions.BRANCH_MENU_WRITE],
+  }),
+  menuController.updateCategoryStatus,
+);
+
+menuRouter
+  .route("/items/:id")
+  .get(
+    accessMiddleware({
+      organization: [...ORGANIZATION_MENU_READ_WRITE_PERMS],
+      branch: [...BRANCH_MENU_READ_WRITE_PERMS],
+    }),
+    menuController.getItem,
+  )
+  .patch(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+      branch: [UserPermissions.BRANCH_MENU_WRITE],
+    }),
+    menuController.updateItem,
+  );
+menuRouter.patch(
+  "/items/:id/status",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+    branch: [UserPermissions.BRANCH_MENU_WRITE],
+  }),
+  menuController.updateItemStatus,
+);
+
 export { menuRouter };

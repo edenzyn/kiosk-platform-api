@@ -1,4 +1,14 @@
-import { and, asc, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  type SQL,
+} from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
@@ -15,11 +25,29 @@ import type {
   FindOneMenuCategoryRepoResult,
   FindOneMenuItemRepoInput,
   FindOneMenuItemRepoResult,
+  FindItemModifiersRepoInput,
+  FindItemModifiersRepoResult,
+  ItemModifierWithOptions,
+  UpdateMenuCategoryRepoInput,
+  UpdateMenuCategoryRepoResult,
+  UpdateMenuItemStatusRepoInput,
+  UpdateMenuItemStatusRepoResult,
+  UpdateMenuItemRepoInput,
+  UpdateMenuItemRepoResult,
 } from "./menu.types";
+import type { CreateItemModifierBodyDto } from "./dtos/create-menu-item.dtos";
+import type {
+  UpdateItemModifierBodyDto,
+  UpdateItemModifierOptionBodyDto,
+} from "./dtos/update-menu-item.dtos";
 import { itemModifierOptions } from "./schemas/item-modifier-option.schema";
 import { itemModifiers } from "./schemas/item-modifier.schema";
 import { menuCategories } from "./schemas/menu-category.schema";
 import { menuItems } from "./schemas/menu-item.schema";
+
+type Transaction = Parameters<
+  Parameters<Database["client"]["transaction"]>[0]
+>[0];
 
 export class MenuRepository {
   constructor(private readonly database: Database) {}
@@ -161,6 +189,22 @@ export class MenuRepository {
     return category;
   }
 
+  async updateCategory(
+    input: UpdateMenuCategoryRepoInput,
+  ): Promise<UpdateMenuCategoryRepoResult> {
+    const [category] = await this.database.client
+      .update(menuCategories)
+      .set({ ...input.data, updatedAt: new Date() })
+      .where(eq(menuCategories.id, input.id))
+      .returning();
+
+    if (!category) {
+      throw new Error("Failed to update menu category");
+    }
+
+    return category;
+  }
+
   // ========================================
   // ? MENU ITEM SCHEMA METHODS
   // ========================================
@@ -283,37 +327,246 @@ export class MenuRepository {
       }
 
       for (const modifier of data.modifiers) {
-        const [createdModifier] = await tx
-          .insert(itemModifiers)
-          .values({
-            menuItemId: item.id,
-            name: modifier.name,
-            selectionType: modifier.selectionType,
-            minSelection: modifier.minSelection,
-            maxSelection: modifier.maxSelection,
-            displayOrder: modifier.displayOrder,
-            createdBy: data.createdBy,
-          })
-          .returning({ id: itemModifiers.id });
+        await this.insertModifier(tx, item.id, modifier, data.createdBy);
+      }
 
-        if (!createdModifier) {
-          throw new Error("Failed to create item modifier");
-        }
+      return item;
+    });
+  }
 
-        await tx.insert(itemModifierOptions).values(
-          modifier.options.map((option) => ({
-            itemModifierId: createdModifier.id,
-            name: option.name,
-            price: String(option.price),
-            isDefault: option.isDefault,
-            displayOrder: option.displayOrder,
-            createdBy: data.createdBy,
-          })),
+  async findItemModifiers(
+    input: FindItemModifiersRepoInput,
+  ): Promise<FindItemModifiersRepoResult> {
+    const modifiers = await this.database.client
+      .select()
+      .from(itemModifiers)
+      .where(
+        and(
+          eq(itemModifiers.menuItemId, input.menuItemId),
+          eq(itemModifiers.isActive, true),
+        ),
+      )
+      .orderBy(asc(itemModifiers.displayOrder), asc(itemModifiers.id));
+
+    if (modifiers.length === 0) return [];
+
+    const options = await this.database.client
+      .select()
+      .from(itemModifierOptions)
+      .where(
+        and(
+          inArray(
+            itemModifierOptions.itemModifierId,
+            modifiers.map((modifier) => modifier.id),
+          ),
+          eq(itemModifierOptions.isActive, true),
+        ),
+      )
+      .orderBy(
+        asc(itemModifierOptions.displayOrder),
+        asc(itemModifierOptions.id),
+      );
+
+    return modifiers.map((modifier) => ({
+      ...modifier,
+      options: options.filter((o) => o.itemModifierId === modifier.id),
+    }));
+  }
+
+  async updateItem(
+    input: UpdateMenuItemRepoInput,
+  ): Promise<UpdateMenuItemRepoResult> {
+    const { id, data, modifiers, existingModifiers } = input;
+
+    return this.database.client.transaction(async (tx) => {
+      const [item] = await tx
+        .update(menuItems)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(menuItems.id, id))
+        .returning();
+
+      if (!item) {
+        throw new Error("Failed to update menu item");
+      }
+
+      if (modifiers) {
+        await this.syncModifiers(
+          tx,
+          item.id,
+          modifiers,
+          existingModifiers,
+          data.updatedBy,
         );
       }
 
       return item;
     });
+  }
+
+  async updateItemStatus(
+    input: UpdateMenuItemStatusRepoInput,
+  ): Promise<UpdateMenuItemStatusRepoResult> {
+    const [item] = await this.database.client
+      .update(menuItems)
+      .set({
+        isListed: input.isListed,
+        updatedBy: input.updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(menuItems.id, input.id))
+      .returning();
+
+    if (!item) {
+      throw new Error("Failed to update menu item status");
+    }
+
+    return item;
+  }
+
+  // ========================================
+  // ? MODIFIER HELPERS
+  // ========================================
+  private async insertModifier(
+    tx: Transaction,
+    menuItemId: string,
+    modifier: CreateItemModifierBodyDto,
+    userId: string,
+  ): Promise<void> {
+    const [createdModifier] = await tx
+      .insert(itemModifiers)
+      .values({
+        menuItemId,
+        name: modifier.name,
+        selectionType: modifier.selectionType,
+        minSelection: modifier.minSelection,
+        maxSelection: modifier.maxSelection,
+        displayOrder: modifier.displayOrder,
+        createdBy: userId,
+      })
+      .returning({ id: itemModifiers.id });
+
+    if (!createdModifier) {
+      throw new Error("Failed to create item modifier");
+    }
+
+    await tx.insert(itemModifierOptions).values(
+      modifier.options.map((option) => ({
+        itemModifierId: createdModifier.id,
+        name: option.name,
+        price: String(option.price),
+        isDefault: option.isDefault,
+        displayOrder: option.displayOrder,
+        createdBy: userId,
+      })),
+    );
+  }
+
+  /**
+   * Makes the item's active modifiers match `modifiers`: rows sent with an id are
+   * updated, rows without one are inserted, and existing rows that were left out
+   * are deactivated (not deleted) so past orders can still reference them.
+   */
+  private async syncModifiers(
+    tx: Transaction,
+    menuItemId: string,
+    modifiers: UpdateItemModifierBodyDto[],
+    existingModifiers: ItemModifierWithOptions[],
+    userId: string,
+  ): Promise<void> {
+    const keptModifierIds = new Set(modifiers.map((m) => m.id).filter(Boolean));
+    const removedModifierIds = existingModifiers
+      .map((m) => m.id)
+      .filter((existingId) => !keptModifierIds.has(existingId));
+
+    if (removedModifierIds.length > 0) {
+      await tx
+        .update(itemModifiers)
+        .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+        .where(inArray(itemModifiers.id, removedModifierIds));
+      await tx
+        .update(itemModifierOptions)
+        .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+        .where(inArray(itemModifierOptions.itemModifierId, removedModifierIds));
+    }
+
+    for (const modifier of modifiers) {
+      if (!modifier.id) {
+        await this.insertModifier(tx, menuItemId, modifier, userId);
+        continue;
+      }
+
+      await tx
+        .update(itemModifiers)
+        .set({
+          name: modifier.name,
+          selectionType: modifier.selectionType,
+          minSelection: modifier.minSelection,
+          maxSelection: modifier.maxSelection,
+          displayOrder: modifier.displayOrder,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(itemModifiers.id, modifier.id));
+
+      const existingOptions =
+        existingModifiers.find((m) => m.id === modifier.id)?.options ?? [];
+      await this.syncOptions(
+        tx,
+        modifier.id,
+        modifier.options,
+        existingOptions.map((o) => o.id),
+        userId,
+      );
+    }
+  }
+
+  private async syncOptions(
+    tx: Transaction,
+    itemModifierId: string,
+    options: UpdateItemModifierOptionBodyDto[],
+    existingOptionIds: string[],
+    userId: string,
+  ): Promise<void> {
+    const keptOptionIds = new Set(options.map((o) => o.id).filter(Boolean));
+    const removedOptionIds = existingOptionIds.filter(
+      (existingId) => !keptOptionIds.has(existingId),
+    );
+
+    if (removedOptionIds.length > 0) {
+      await tx
+        .update(itemModifierOptions)
+        .set({ isActive: false, updatedBy: userId, updatedAt: new Date() })
+        .where(inArray(itemModifierOptions.id, removedOptionIds));
+    }
+
+    const newOptions = options.filter((option) => !option.id);
+    if (newOptions.length > 0) {
+      await tx.insert(itemModifierOptions).values(
+        newOptions.map((option) => ({
+          itemModifierId,
+          name: option.name,
+          price: String(option.price),
+          isDefault: option.isDefault,
+          displayOrder: option.displayOrder,
+          createdBy: userId,
+        })),
+      );
+    }
+
+    for (const option of options) {
+      if (!option.id) continue;
+      await tx
+        .update(itemModifierOptions)
+        .set({
+          name: option.name,
+          price: String(option.price),
+          isDefault: option.isDefault ?? false,
+          displayOrder: option.displayOrder,
+          updatedBy: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(itemModifierOptions.id, option.id));
+    }
   }
 
   private itemOrderBy(

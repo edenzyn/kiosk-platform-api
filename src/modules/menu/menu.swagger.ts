@@ -79,6 +79,38 @@ const menuItemSchema = {
   },
 };
 
+const menuIdParam = {
+  name: "id",
+  in: "path",
+  required: true,
+  schema: { type: "string", format: "uuid" },
+};
+
+const menuErrorResponses = {
+  "400": { $ref: "#/components/responses/ValidationError" },
+  "401": { $ref: "#/components/responses/Unauthorized" },
+  "403": { $ref: "#/components/responses/Forbidden" },
+  "404": { $ref: "#/components/responses/NotFound" },
+};
+
+const categoryResponse = (description: string) => ({
+  description,
+  content: {
+    "application/json": {
+      schema: { type: "object", properties: { category: menuCategorySchema } },
+    },
+  },
+});
+
+const itemResponse = (description: string) => ({
+  description,
+  content: {
+    "application/json": {
+      schema: { type: "object", properties: { item: menuItemSchema } },
+    },
+  },
+});
+
 export const menuSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/menu/items/image": {
     put: {
@@ -440,6 +472,165 @@ export const menuSwaggerPaths: Record<string, unknown> = {
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": { $ref: "#/components/responses/Forbidden" },
         "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/u/menu/categories/{id}": {
+    patch: {
+      tags: ["Menu"],
+      summary: "Update a menu category",
+      parameters: [menuIdParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["name"],
+              properties: {
+                name: { type: "string", minLength: 2, maxLength: 100 },
+                description: { type: "string", nullable: true },
+                image: {
+                  type: "string",
+                  nullable: true,
+                  description:
+                    "Omit to keep the current image, null to remove it, or a new key from PUT /pvt/u/menu/categories/image.",
+                },
+                isListed: { type: "boolean" },
+                displayOrder: { type: "integer", minimum: 0 },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": categoryResponse("Category updated"),
+        ...menuErrorResponses,
+      },
+    },
+  },
+  "/pvt/u/menu/categories/{id}/status": {
+    patch: {
+      tags: ["Menu"],
+      summary: "List or unlist a menu category",
+      parameters: [menuIdParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["isListed"],
+              properties: { isListed: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": categoryResponse("Category status updated"),
+        ...menuErrorResponses,
+      },
+    },
+  },
+  "/pvt/u/menu/items/{id}": {
+    get: {
+      tags: ["Menu"],
+      summary: "Get a menu item with its modifiers",
+      description:
+        "Returns the item with its active modifier groups and options, each sorted by displayOrder.",
+      parameters: [menuIdParam],
+      responses: {
+        "200": {
+          description: "Menu item details",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  item: {
+                    allOf: [
+                      menuItemSchema,
+                      {
+                        type: "object",
+                        properties: {
+                          modifiers: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                id: { type: "string", format: "uuid" },
+                                name: { type: "string" },
+                                selectionType: {
+                                  type: "integer",
+                                  enum: [1, 2, 3],
+                                },
+                                minSelection: { type: "integer" },
+                                maxSelection: { type: "integer" },
+                                displayOrder: { type: "integer" },
+                                options: {
+                                  type: "array",
+                                  items: {
+                                    type: "object",
+                                    properties: {
+                                      id: { type: "string", format: "uuid" },
+                                      name: { type: "string" },
+                                      price: { type: "string" },
+                                      isDefault: { type: "boolean" },
+                                      displayOrder: { type: "integer" },
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        ...menuErrorResponses,
+      },
+    },
+    patch: {
+      tags: ["Menu"],
+      summary: "Update a menu item and its modifiers",
+      description:
+        "Takes the same fields as item creation (without categoryId). `modifiers` is the complete list: groups/options with an `id` are updated, ones without are created, and existing ones left out are deactivated. Omit `modifiers` to leave them unchanged. `image`: omit to keep, null to remove, or a new upload key.",
+      parameters: [menuIdParam],
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { type: "object" } } },
+      },
+      responses: {
+        "200": itemResponse("Item updated"),
+        ...menuErrorResponses,
+      },
+    },
+  },
+  "/pvt/u/menu/items/{id}/status": {
+    patch: {
+      tags: ["Menu"],
+      summary: "Update a menu item's status (list or unlist)",
+      parameters: [menuIdParam],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["isListed"],
+              properties: { isListed: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": itemResponse("Item status updated"),
+        ...menuErrorResponses,
       },
     },
   },

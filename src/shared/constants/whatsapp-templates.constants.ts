@@ -4,6 +4,5 @@ export const WHATSAPP_TEMPLATES = {
 } as const;
 
 export const WHATSAPP_TEMPLATE_LANGUAGES = {
-  ENGLISH_US: "en_US",
   ENGLISH: "en",
 };

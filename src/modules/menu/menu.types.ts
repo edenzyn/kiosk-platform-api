@@ -15,6 +15,11 @@ import type {
 } from "./dtos/update-menu-category.dtos";
 import type { UpdateMenuCategoryStatusBodyDto } from "./dtos/update-menu-category-status.dtos";
 import type {
+  ImportMenuCsvBodyDto,
+  ImportMenuCsvResponseDto,
+  ImportMenuCsvRowDto,
+} from "./dtos/import-menu-csv.dtos";
+import type {
   UpdateItemModifierBodyDto,
   UpdateMenuItemBodyDto,
   UpdateMenuItemRequestDto,
@@ -270,3 +275,47 @@ export interface UpdateMenuItemStatusRepoInput {
   updatedBy: string;
 }
 export type UpdateMenuItemStatusRepoResult = MenuItemEntity;
+
+// ========================================
+// ? MENU IMPORT INPUTS & RESULTS
+// ========================================
+export interface ImportMenuCsvServiceInput {
+  data: ImportMenuCsvBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type ImportMenuCsvServiceResult = ImportMenuCsvResponseDto;
+
+export interface FindCategoriesByNamesRepoInput {
+  organizationId: string;
+  branchId: string;
+  /** Lowercased names; compared against `lower(name)`. */
+  names: string[];
+}
+export type FindCategoriesByNamesRepoResult = MenuCategoryEntity[];
+
+export interface FindItemNamesByCategoryIdsRepoInput {
+  categoryIds: string[];
+}
+export interface FindItemNamesByCategoryIdsRepoResult {
+  categoryId: string;
+  name: string;
+}
+
+export interface ImportMenuCsvRepoInput {
+  organizationId: string;
+  branchId: string;
+  userId: string;
+  /** Categories to create first; items reference them by `categoryKey`. */
+  newCategories: { categoryKey: string; name: string; displayOrder: number }[];
+  /** Ids of categories that already existed, keyed the same way. */
+  existingCategoryIds: Map<string, string>;
+  items: (ImportMenuCsvRowDto & {
+    categoryKey: string;
+    displayOrder: number;
+  })[];
+}
+export interface ImportMenuCsvRepoResult {
+  categoriesCreated: number;
+  itemsCreated: number;
+}

@@ -7,6 +7,7 @@ import {
   ilike,
   inArray,
   or,
+  sql,
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
@@ -34,6 +35,12 @@ import type {
   UpdateMenuItemStatusRepoResult,
   UpdateMenuItemRepoInput,
   UpdateMenuItemRepoResult,
+  FindCategoriesByNamesRepoInput,
+  FindCategoriesByNamesRepoResult,
+  FindItemNamesByCategoryIdsRepoInput,
+  FindItemNamesByCategoryIdsRepoResult,
+  ImportMenuCsvRepoInput,
+  ImportMenuCsvRepoResult,
 } from "./menu.types";
 import type { CreateItemModifierBodyDto } from "./dtos/create-menu-item.dtos";
 import type {
@@ -203,6 +210,106 @@ export class MenuRepository {
     }
 
     return category;
+  }
+
+  async findCategoriesByNames(
+    input: FindCategoriesByNamesRepoInput,
+  ): Promise<FindCategoriesByNamesRepoResult> {
+    if (input.names.length === 0) return [];
+
+    return this.database.client
+      .select()
+      .from(menuCategories)
+      .where(
+        and(
+          eq(menuCategories.organizationId, input.organizationId),
+          eq(menuCategories.branchId, input.branchId),
+          inArray(sql`lower(${menuCategories.name})`, input.names),
+        ),
+      );
+  }
+
+  async findItemNamesByCategoryIds(
+    input: FindItemNamesByCategoryIdsRepoInput,
+  ): Promise<FindItemNamesByCategoryIdsRepoResult[]> {
+    if (input.categoryIds.length === 0) return [];
+
+    return this.database.client
+      .select({ categoryId: menuItems.categoryId, name: menuItems.name })
+      .from(menuItems)
+      .where(inArray(menuItems.categoryId, input.categoryIds));
+  }
+
+  /** Creates the missing categories and all items in one transaction. */
+  async importMenuCsv(
+    input: ImportMenuCsvRepoInput,
+  ): Promise<ImportMenuCsvRepoResult> {
+    const { organizationId, branchId, userId } = input;
+
+    return this.database.client.transaction(async (tx) => {
+      const categoryIdByKey = new Map(input.existingCategoryIds);
+
+      if (input.newCategories.length > 0) {
+        const created = await tx
+          .insert(menuCategories)
+          .values(
+            input.newCategories.map((category) => ({
+              organizationId,
+              branchId,
+              name: category.name,
+              // Imported categories stay hidden until they are reviewed.
+              isListed: false,
+              displayOrder: category.displayOrder,
+              createdBy: userId,
+            })),
+          )
+          .returning({ id: menuCategories.id, name: menuCategories.name });
+
+        for (const category of created) {
+          categoryIdByKey.set(category.name.toLowerCase(), category.id);
+        }
+      }
+
+      if (input.items.length > 0) {
+        await tx.insert(menuItems).values(
+          input.items.map((item) => {
+            const categoryId = categoryIdByKey.get(item.categoryKey);
+            if (!categoryId) {
+              throw new Error(
+                `Failed to resolve category for item "${item.itemName}"`,
+              );
+            }
+
+            return {
+              organizationId,
+              branchId,
+              categoryId,
+              name: item.itemName,
+              description: item.description ?? null,
+              price: String(item.price),
+              takeawayChargeEnabled: item.takeawayChargeEnabled,
+              takeawayChargeAmount:
+                item.takeawayChargeAmount != null
+                  ? String(item.takeawayChargeAmount)
+                  : null,
+              isFeatured: item.isFeatured,
+              isListed: item.isListed,
+              calories: item.calories != null ? String(item.calories) : null,
+              dietaryType: item.dietaryType,
+              hasAlcohol: item.hasAlcohol,
+              isSpicy: item.isSpicy,
+              displayOrder: item.displayOrder,
+              createdBy: userId,
+            };
+          }),
+        );
+      }
+
+      return {
+        categoriesCreated: input.newCategories.length,
+        itemsCreated: input.items.length,
+      };
+    });
   }
 
   // ========================================

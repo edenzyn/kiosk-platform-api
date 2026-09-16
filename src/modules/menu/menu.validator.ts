@@ -198,6 +198,69 @@ const itemFields = {
   displayOrder: displayOrderSchema.optional(),
 };
 
+const MENU_CSV_MAX_ROWS = 1000;
+
+/** A CSV row: the same rules as item creation, minus images and modifiers. */
+const importMenuCsvRowSchema = yup
+  .object({
+    categoryName: yup
+      .string()
+      .trim()
+      .min(2, "Category name must be at least 2 characters")
+      .max(100, "Category name must be at most 100 characters")
+      .required("Category name is required"),
+    itemName: yup
+      .string()
+      .trim()
+      .min(2, "Item name must be at least 2 characters")
+      .max(100, "Item name must be at most 100 characters")
+      .required("Item name is required"),
+    description: yup
+      .string()
+      .trim()
+      .max(1000, "Description must be at most 1000 characters")
+      .nullable()
+      .optional(),
+    price: yup
+      .number()
+      .typeError("Price must be a number")
+      .min(0, "Price cannot be negative")
+      .required("Price is required"),
+    dietaryType: yup
+      .number()
+      .typeError("Dietary type must be a number")
+      .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
+      .required("Dietary type is required"),
+    calories: yup
+      .number()
+      .typeError("Calories must be a number")
+      .min(0, "Calories cannot be negative")
+      .nullable()
+      .optional(),
+    hasAlcohol: yup.boolean().optional(),
+    isSpicy: yup.boolean().optional(),
+    isFeatured: yup.boolean().optional(),
+    isListed: yup.boolean().optional(),
+    takeawayChargeEnabled: yup.boolean().optional(),
+    takeawayChargeAmount: yup
+      .number()
+      .typeError("Takeaway charge must be a number")
+      .min(0, "Takeaway charge cannot be negative")
+      .nullable()
+      .optional()
+      .test(
+        "takeaway-charge-amount-required",
+        "Takeaway charge amount is required when takeaway charge is enabled",
+        function (value) {
+          const { takeawayChargeEnabled } = this.parent as {
+            takeawayChargeEnabled?: boolean;
+          };
+          return !takeawayChargeEnabled || value != null;
+        },
+      ),
+  })
+  .noUnknown();
+
 export const MenuValidator = {
   // ========================================
   // ? MENU CATEGORY SCHEMAS
@@ -274,6 +337,47 @@ export const MenuValidator = {
         .string()
         .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
         .optional(),
+    })
+    .noUnknown(),
+
+  // ========================================
+  // ? MENU IMPORT SCHEMAS
+  // ========================================
+  importMenuCsv: yup
+    .object({
+      rows: yup
+        .array()
+        .of(importMenuCsvRowSchema)
+        .min(1, "At least one row is required")
+        .max(
+          MENU_CSV_MAX_ROWS,
+          `Import up to ${MENU_CSV_MAX_ROWS} rows at a time`,
+        )
+        .required("Rows are required")
+        .test(
+          "no-duplicate-items",
+          "The file has the same item twice in one category",
+          function (rows) {
+            if (!rows) return true;
+            const seen = new Set<string>();
+            const entries = rows as {
+              categoryName: string;
+              itemName: string;
+            }[];
+
+            for (const [index, row] of entries.entries()) {
+              const key = `${row.categoryName}|${row.itemName}`.toLowerCase();
+              if (seen.has(key)) {
+                return this.createError({
+                  path: `${this.path}[${index}].itemName`,
+                  message: `"${row.itemName}" appears more than once in "${row.categoryName}"`,
+                });
+              }
+              seen.add(key);
+            }
+            return true;
+          },
+        ),
     })
     .noUnknown(),
 

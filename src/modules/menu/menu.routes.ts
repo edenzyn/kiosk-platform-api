@@ -63,6 +63,14 @@ menuRouter.put(
   menuController.requestItemImageUpload,
 );
 
+menuRouter.post(
+  "/imports",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+  }),
+  menuController.importMenuCsv,
+);
+
 menuRouter.patch(
   "/categories/:id",
   accessMiddleware({

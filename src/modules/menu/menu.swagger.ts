@@ -632,4 +632,106 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/menu/imports": {
+    post: {
+      tags: ["Menu"],
+      summary: "Import categories and items from a parsed CSV",
+      description:
+        "Adds the rows of a CSV to the effective branch. Categories that already exist (matched by name, case-insensitive) are reused; missing ones are created **unlisted** so they can be reviewed first. An item whose name already exists in its category is skipped and reported instead of duplicated. Requires organization-level menu write: branch-scoped users are rejected.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["rows"],
+              properties: {
+                rows: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 1000,
+                  description:
+                    "Parsed CSV rows. The same item may not appear twice in one category.",
+                  items: {
+                    type: "object",
+                    required: [
+                      "categoryName",
+                      "itemName",
+                      "price",
+                      "dietaryType",
+                    ],
+                    properties: {
+                      categoryName: {
+                        type: "string",
+                        minLength: 2,
+                        maxLength: 100,
+                      },
+                      itemName: {
+                        type: "string",
+                        minLength: 2,
+                        maxLength: 100,
+                      },
+                      description: {
+                        type: "string",
+                        maxLength: 1000,
+                        nullable: true,
+                      },
+                      price: { type: "number", minimum: 0 },
+                      dietaryType: {
+                        type: "integer",
+                        enum: [1, 2],
+                        description: "1=VEGETARIAN, 2=NON_VEGETARIAN",
+                      },
+                      calories: { type: "number", minimum: 0, nullable: true },
+                      hasAlcohol: { type: "boolean" },
+                      isSpicy: { type: "boolean" },
+                      takeawayChargeEnabled: { type: "boolean" },
+                      takeawayChargeAmount: {
+                        type: "number",
+                        minimum: 0,
+                        nullable: true,
+                        description:
+                          "Required when takeawayChargeEnabled is true",
+                      },
+                      isFeatured: { type: "boolean" },
+                      isListed: { type: "boolean" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "201": {
+          description: "Import finished",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  categoriesCreated: { type: "integer" },
+                  categoriesMatched: { type: "integer" },
+                  itemsCreated: { type: "integer" },
+                  skippedItems: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        categoryName: { type: "string" },
+                        itemName: { type: "string" },
+                        reason: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        ...menuErrorResponses,
+      },
+    },
+  },
 };

@@ -6,6 +6,7 @@ import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum"
 import { AppError } from "../../shared/errors/app-error";
 import type { FileService } from "../file/file.service";
 import type { MarketRepository } from "../market/market.repository";
+import type { SkippedMenuCsvItemDto } from "./dtos/import-menu-csv.dtos";
 import type { UpdateItemModifierBodyDto } from "./dtos/update-menu-item.dtos";
 import type { MenuRepository } from "./menu.repository";
 import type {
@@ -19,6 +20,8 @@ import type {
   GetMenuItemServiceResult,
   GetMenuItemsServiceInput,
   GetMenuItemsServiceResult,
+  ImportMenuCsvServiceInput,
+  ImportMenuCsvServiceResult,
   ItemModifierWithOptions,
   RequestMenuImageUploadServiceInput,
   RequestMenuImageUploadServiceResult,
@@ -388,6 +391,99 @@ export class MenuService {
     });
 
     return this.withImageUrl(MenuImageTypeEnum.ITEM, item);
+  }
+
+  // ========================================
+  // ? MENU IMPORT SERVICES
+  // ========================================
+  async importMenuCsv(
+    input: ImportMenuCsvServiceInput,
+  ): Promise<ImportMenuCsvServiceResult> {
+    const { data, user, effectiveTenant } = input;
+    const branchId = this.requireBranchId(effectiveTenant);
+
+    const orderedKeys: string[] = [];
+    const nameByKey = new Map<string, string>();
+
+    for (const row of data.rows) {
+      const key = row.categoryName.trim().toLowerCase();
+      if (!nameByKey.has(key)) {
+        nameByKey.set(key, row.categoryName.trim());
+        orderedKeys.push(key);
+      }
+    }
+
+    const existingCategories = await this.menuRepository.findCategoriesByNames({
+      organizationId: effectiveTenant.organizationId,
+      branchId,
+      names: orderedKeys,
+    });
+    const existingCategoryIds = new Map(
+      existingCategories.map((category) => [
+        category.name.trim().toLowerCase(),
+        category.id,
+      ]),
+    );
+
+    const existingItemKeys = new Set(
+      (
+        await this.menuRepository.findItemNamesByCategoryIds({
+          categoryIds: existingCategories.map((category) => category.id),
+        })
+      ).map((item) => `${item.categoryId}|${item.name.trim().toLowerCase()}`),
+    );
+
+    const newCategories = orderedKeys
+      .filter((key) => !existingCategoryIds.has(key))
+      .map((key, index) => ({
+        categoryKey: key,
+        name: nameByKey.get(key) as string,
+        displayOrder: index,
+      }));
+
+    const skippedItems: SkippedMenuCsvItemDto[] = [];
+    const itemsByCategory = new Map<string, number>();
+    const items = [];
+
+    for (const row of data.rows) {
+      const key = row.categoryName.trim().toLowerCase();
+      const existingCategoryId = existingCategoryIds.get(key);
+
+      if (
+        existingCategoryId &&
+        existingItemKeys.has(
+          `${existingCategoryId}|${row.itemName.trim().toLowerCase()}`,
+        )
+      ) {
+        skippedItems.push({
+          categoryName: row.categoryName,
+          itemName: row.itemName,
+          reason: "An item with this name already exists in the category",
+        });
+        continue;
+      }
+
+      const displayOrder = itemsByCategory.get(key) ?? 0;
+      itemsByCategory.set(key, displayOrder + 1);
+      items.push({ ...row, categoryKey: key, displayOrder });
+    }
+
+    const { categoriesCreated, itemsCreated } =
+      await this.menuRepository.importMenuCsv({
+        organizationId: effectiveTenant.organizationId,
+        branchId,
+        userId: user.id,
+        newCategories,
+        existingCategoryIds,
+        items,
+      });
+
+    return {
+      categoriesCreated,
+      categoriesMatched: existingCategoryIds.size,
+      itemsCreated,
+      skippedItems,
+    };
   }
 
   // ========================================

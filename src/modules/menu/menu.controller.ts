@@ -5,6 +5,7 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { CreateMenuCategoryBodyDto } from "./dtos/create-menu-category.dtos";
 import type { CreateMenuItemBodyDto } from "./dtos/create-menu-item.dtos";
+import type { ImportMenuCsvBodyDto } from "./dtos/import-menu-csv.dtos";
 import type { UpdateMenuCategoryBodyDto } from "./dtos/update-menu-category.dtos";
 import type { UpdateMenuItemBodyDto } from "./dtos/update-menu-item.dtos";
 import { MenuValidator } from "./menu.validator";
@@ -130,6 +131,23 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json({ item });
+  };
+
+  // ========================================
+  // ? MENU IMPORT APIS
+  // ========================================
+  importMenuCsv = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.importMenuCsv.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.menuService.importMenuCsv({
+      data: data as ImportMenuCsvBodyDto,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.CREATED).json(result);
   };
 
   requestItemImageUpload = (req: Request, res: Response): Promise<void> =>

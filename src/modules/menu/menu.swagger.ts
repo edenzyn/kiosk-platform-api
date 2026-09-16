@@ -637,7 +637,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       tags: ["Menu"],
       summary: "Import categories and items from a parsed CSV",
       description:
-        "Adds the rows of a CSV to the effective branch. Categories that already exist (matched by name, case-insensitive) are reused; missing ones are created **unlisted** so they can be reviewed first. An item whose name already exists in its category is skipped and reported instead of duplicated. Requires organization-level menu write: branch-scoped users are rejected.",
+        "Adds the rows of a CSV to the effective branch. Categories that already exist (matched by name, case-insensitive) are reused; missing ones are created. Both new categories and every imported item are created **unlisted** so they can be reviewed before they show on the menu. An item whose name already exists in its category is skipped and reported instead of duplicated.",
       requestBody: {
         required: true,
         content: {
@@ -694,7 +694,6 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                           "Required when takeawayChargeEnabled is true",
                       },
                       isFeatured: { type: "boolean" },
-                      isListed: { type: "boolean" },
                     },
                   },
                 },

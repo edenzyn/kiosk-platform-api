@@ -240,7 +240,6 @@ const importMenuCsvRowSchema = yup
     hasAlcohol: yup.boolean().optional(),
     isSpicy: yup.boolean().optional(),
     isFeatured: yup.boolean().optional(),
-    isListed: yup.boolean().optional(),
     takeawayChargeEnabled: yup.boolean().optional(),
     takeawayChargeAmount: yup
       .number()

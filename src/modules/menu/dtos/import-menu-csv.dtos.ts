@@ -13,7 +13,6 @@ export interface ImportMenuCsvRowDto {
   takeawayChargeEnabled?: boolean;
   takeawayChargeAmount?: number | null;
   isFeatured?: boolean;
-  isListed?: boolean;
 }
 
 export interface ImportMenuCsvBodyDto {
@@ -27,7 +26,7 @@ export interface SkippedMenuCsvItemDto {
 }
 
 export interface ImportMenuCsvResponseDto {
-  /** Categories that did not exist yet and were created unlisted. */
+  /** Categories that did not exist yet and were created (always unlisted). */
   categoriesCreated: number;
   /** Categories the rows were added to that already existed. */
   categoriesMatched: number;

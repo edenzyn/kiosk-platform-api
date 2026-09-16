@@ -13,11 +13,22 @@ import {
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
+import type { CreateItemModifierBodyDto } from "./dtos/create-menu-item.dtos";
+import type {
+  UpdateItemModifierBodyDto,
+  UpdateItemModifierOptionBodyDto,
+} from "./dtos/update-menu-item.dtos";
 import type {
   CreateMenuCategoryRepoInput,
   CreateMenuCategoryRepoResult,
   CreateMenuItemRepoInput,
   CreateMenuItemRepoResult,
+  FindCategoriesByNamesRepoInput,
+  FindCategoriesByNamesRepoResult,
+  FindItemModifiersRepoInput,
+  FindItemModifiersRepoResult,
+  FindItemNamesByCategoryIdsRepoInput,
+  FindItemNamesByCategoryIdsRepoResult,
   FindMenuCategoriesRepoInput,
   FindMenuCategoriesRepoResult,
   FindMenuItemsRepoInput,
@@ -26,27 +37,16 @@ import type {
   FindOneMenuCategoryRepoResult,
   FindOneMenuItemRepoInput,
   FindOneMenuItemRepoResult,
-  FindItemModifiersRepoInput,
-  FindItemModifiersRepoResult,
+  ImportMenuCsvRepoInput,
+  ImportMenuCsvRepoResult,
   ItemModifierWithOptions,
   UpdateMenuCategoryRepoInput,
   UpdateMenuCategoryRepoResult,
-  UpdateMenuItemStatusRepoInput,
-  UpdateMenuItemStatusRepoResult,
   UpdateMenuItemRepoInput,
   UpdateMenuItemRepoResult,
-  FindCategoriesByNamesRepoInput,
-  FindCategoriesByNamesRepoResult,
-  FindItemNamesByCategoryIdsRepoInput,
-  FindItemNamesByCategoryIdsRepoResult,
-  ImportMenuCsvRepoInput,
-  ImportMenuCsvRepoResult,
+  UpdateMenuItemStatusRepoInput,
+  UpdateMenuItemStatusRepoResult,
 } from "./menu.types";
-import type { CreateItemModifierBodyDto } from "./dtos/create-menu-item.dtos";
-import type {
-  UpdateItemModifierBodyDto,
-  UpdateItemModifierOptionBodyDto,
-} from "./dtos/update-menu-item.dtos";
 import { itemModifierOptions } from "./schemas/item-modifier-option.schema";
 import { itemModifiers } from "./schemas/item-modifier.schema";
 import { menuCategories } from "./schemas/menu-category.schema";
@@ -293,7 +293,7 @@ export class MenuRepository {
                   ? String(item.takeawayChargeAmount)
                   : null,
               isFeatured: item.isFeatured,
-              isListed: item.isListed,
+              isListed: false,
               calories: item.calories != null ? String(item.calories) : null,
               dietaryType: item.dietaryType,
               hasAlcohol: item.hasAlcohol,

@@ -4,7 +4,13 @@ import type { DietaryTypeEnum } from "../../shared/enums/menu/dietary-type.enum"
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
+import type { CloneMenuBodyDto } from "./dtos/clone-menu.dtos";
 import type { CreateMenuCategoryRequestDto } from "./dtos/create-menu-category.dtos";
+import type {
+  BranchMenuTreeCategoryRow,
+  GetBranchMenuTreeParamsDto,
+  GetBranchMenuTreeResponseDto,
+} from "./dtos/get-branch-menu-tree.dtos";
 import type {
   CreateItemModifierBodyDto,
   CreateMenuItemRequestDto,
@@ -16,7 +22,6 @@ import type {
 import type { UpdateMenuCategoryStatusBodyDto } from "./dtos/update-menu-category-status.dtos";
 import type {
   ImportMenuCsvBodyDto,
-  ImportMenuCsvResponseDto,
   ImportMenuCsvRowDto,
 } from "./dtos/import-menu-csv.dtos";
 import type {
@@ -284,38 +289,88 @@ export interface ImportMenuCsvServiceInput {
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
 }
-export type ImportMenuCsvServiceResult = ImportMenuCsvResponseDto;
-
-export interface FindCategoriesByNamesRepoInput {
-  organizationId: string;
-  branchId: string;
-  /** Lowercased names; compared against `lower(name)`. */
-  names: string[];
-}
-export type FindCategoriesByNamesRepoResult = MenuCategoryEntity[];
-
-export interface FindItemNamesByCategoryIdsRepoInput {
-  categoryIds: string[];
-}
-export interface FindItemNamesByCategoryIdsRepoResult {
-  categoryId: string;
-  name: string;
-}
 
 export interface ImportMenuCsvRepoInput {
   organizationId: string;
   branchId: string;
   userId: string;
-  /** Categories to create first; items reference them by `categoryKey`. */
-  newCategories: { categoryKey: string; name: string; displayOrder: number }[];
-  /** Ids of categories that already existed, keyed the same way. */
-  existingCategoryIds: Map<string, string>;
-  items: (ImportMenuCsvRowDto & {
-    categoryKey: string;
-    displayOrder: number;
-  })[];
+  rows: ImportMenuCsvRowDto[];
 }
-export interface ImportMenuCsvRepoResult {
-  categoriesCreated: number;
-  itemsCreated: number;
+
+/** Categories to reuse by name or create; extra fields only apply on create. */
+export interface FindOrCreateCategoriesInput {
+  organizationId: string;
+  branchId: string;
+  userId: string;
+  categories: {
+    name: string;
+    description?: string | null;
+    image?: string | null;
+  }[];
+}
+
+// ========================================
+// ? MENU CLONE INPUTS & RESULTS
+// ========================================
+export interface GetBranchMenuTreeServiceInput {
+  params: GetBranchMenuTreeParamsDto;
+  effectiveTenant: EffectiveTenant;
+}
+export type GetBranchMenuTreeServiceResult = GetBranchMenuTreeResponseDto;
+
+export interface CloneMenuServiceInput {
+  data: CloneMenuBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface FindBranchMenuTreeRepoInput {
+  organizationId: string;
+  branchId: string;
+}
+/** Rows come back in response shape; see the DTO file for their fields. */
+export type FindBranchMenuTreeRepoResult = BranchMenuTreeCategoryRow[];
+
+/** Rows ready to insert: names and prices are already resolved by the service. */
+export interface CloneMenuRepoOption {
+  name: string;
+  price: string;
+  isDefault: boolean;
+  displayOrder: number;
+}
+export interface CloneMenuRepoModifier {
+  name: string;
+  selectionType: number;
+  minSelection: number;
+  maxSelection: number;
+  displayOrder: number;
+  options: CloneMenuRepoOption[];
+}
+export interface CloneMenuRepoItem {
+  name: string;
+  description: string | null;
+  price: string;
+  code: string | null;
+  image: string | null;
+  takeawayChargeEnabled: boolean;
+  takeawayChargeAmount: string | null;
+  isFeatured: boolean;
+  calories: string | null;
+  dietaryType: number;
+  hasAlcohol: boolean;
+  isSpicy: boolean;
+  displayOrder: number;
+  modifiers: CloneMenuRepoModifier[];
+}
+export interface CloneMenuRepoCategory {
+  name: string;
+  description: string | null;
+  image: string | null;
+  items: CloneMenuRepoItem[];
+}
+export interface CloneMenuRepoInput {
+  organizationId: string;
+  branchId: string;
+  userId: string;
+  categories: CloneMenuRepoCategory[];
 }

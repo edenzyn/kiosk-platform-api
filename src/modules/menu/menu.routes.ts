@@ -71,6 +71,22 @@ menuRouter.post(
   menuController.importMenuCsv,
 );
 
+menuRouter.get(
+  "/branches/:branchId/tree",
+  accessMiddleware({
+    organization: [...ORGANIZATION_MENU_READ_WRITE_PERMS],
+  }),
+  menuController.getBranchMenuTree,
+);
+
+menuRouter.post(
+  "/clones",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+  }),
+  menuController.cloneMenu,
+);
+
 menuRouter.patch(
   "/categories/:id",
   accessMiddleware({

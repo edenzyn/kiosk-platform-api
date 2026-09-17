@@ -200,6 +200,56 @@ const itemFields = {
 
 const MENU_CSV_MAX_ROWS = 1000;
 
+// ========================================
+// ? MENU CLONE SCHEMAS
+// ========================================
+const CLONE_MAX_CATEGORIES = 200;
+const CLONE_MAX_ITEMS_PER_CATEGORY = 500;
+
+/** A price the user overrode in the review step; blank keeps the source price. */
+const clonePriceSchema = yup
+  .number()
+  .typeError("Price must be a number")
+  .min(0, "Price cannot be negative")
+  .max(99999999, "Price is too large")
+  .optional();
+
+const cloneMenuOptionSchema = yup
+  .object({
+    id: recordIdSchema.required("Option is required"),
+    price: clonePriceSchema,
+  })
+  .noUnknown();
+
+const cloneMenuModifierSchema = yup
+  .object({
+    id: recordIdSchema.required("Modifier is required"),
+    options: yup.array().of(cloneMenuOptionSchema).optional(),
+  })
+  .noUnknown();
+
+const cloneMenuItemSchema = yup
+  .object({
+    id: recordIdSchema.required("Item is required"),
+    price: clonePriceSchema,
+    modifiers: yup.array().of(cloneMenuModifierSchema).optional(),
+  })
+  .noUnknown();
+
+const cloneMenuCategorySchema = yup
+  .object({
+    id: recordIdSchema.required("Category is required"),
+    items: yup
+      .array()
+      .of(cloneMenuItemSchema)
+      .max(
+        CLONE_MAX_ITEMS_PER_CATEGORY,
+        `A category can carry at most ${CLONE_MAX_ITEMS_PER_CATEGORY} items`,
+      )
+      .required("Items are required"),
+  })
+  .noUnknown();
+
 /** A CSV row: the same rules as item creation, minus images and modifiers. */
 const importMenuCsvRowSchema = yup
   .object({
@@ -352,29 +402,40 @@ export const MenuValidator = {
           MENU_CSV_MAX_ROWS,
           `Import up to ${MENU_CSV_MAX_ROWS} rows at a time`,
         )
-        .required("Rows are required")
-        .test(
-          "no-duplicate-items",
-          "The file has the same item twice in one category",
-          function (rows) {
-            if (!rows) return true;
-            const seen = new Set<string>();
-            const entries = rows as {
-              categoryName: string;
-              itemName: string;
-            }[];
+        .required("Rows are required"),
+    })
+    .noUnknown(),
 
-            for (const [index, row] of entries.entries()) {
-              const key = `${row.categoryName}|${row.itemName}`.toLowerCase();
-              if (seen.has(key)) {
-                return this.createError({
-                  path: `${this.path}[${index}].itemName`,
-                  message: `"${row.itemName}" appears more than once in "${row.categoryName}"`,
-                });
-              }
-              seen.add(key);
-            }
-            return true;
+  // ========================================
+  // ? MENU CLONE SCHEMAS
+  // ========================================
+  getBranchMenuTree: yup
+    .object({
+      branchId: recordIdSchema.required("Branch is required"),
+    })
+    .noUnknown(),
+
+  cloneMenu: yup
+    .object({
+      sourceBranchId: recordIdSchema.required("Source branch is required"),
+      categories: yup
+        .array()
+        .of(cloneMenuCategorySchema)
+        .min(1, "Select at least one category to clone")
+        .max(
+          CLONE_MAX_CATEGORIES,
+          `Clone up to ${CLONE_MAX_CATEGORIES} categories at a time`,
+        )
+        .required("Categories are required")
+        .test(
+          "no-duplicate-categories",
+          "The same category was sent twice",
+          function (categories) {
+            if (!categories) return true;
+            const ids = (categories as { id: string }[]).map(
+              (category) => category.id,
+            );
+            return new Set(ids).size === ids.length;
           },
         ),
     })

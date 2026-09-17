@@ -632,12 +632,204 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/menu/branches/{branchId}/tree": {
+    get: {
+      tags: ["Menu"],
+      summary: "Read another branch's menu, for the clone picker",
+      description:
+        "Returns every **active** category of the given branch with its items, modifiers and options, so the user can pick what to clone. The branch must belong to the caller's organization and must not be the branch currently selected. `currencyCode` is the currency of the branch being cloned **into**, so prices can be shown and edited in it.",
+      parameters: [
+        {
+          name: "branchId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Source menu",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  sourceBranch: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      name: { type: "string" },
+                    },
+                  },
+                  currencyCode: { type: "string" },
+                  categories: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        name: { type: "string" },
+                        description: { type: "string", nullable: true },
+                        image: { type: "string", nullable: true },
+                        imageUrl: { type: "string", nullable: true },
+                        displayOrder: { type: "integer" },
+                        items: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string", format: "uuid" },
+                              name: { type: "string" },
+                              description: { type: "string", nullable: true },
+                              price: { type: "string" },
+                              code: { type: "string", nullable: true },
+                              image: { type: "string", nullable: true },
+                              imageUrl: { type: "string", nullable: true },
+                              takeawayChargeEnabled: { type: "boolean" },
+                              takeawayChargeAmount: {
+                                type: "string",
+                                nullable: true,
+                              },
+                              isFeatured: { type: "boolean" },
+                              calories: { type: "string", nullable: true },
+                              dietaryType: { type: "integer", enum: [1, 2] },
+                              isSpicy: { type: "boolean" },
+                              hasAlcohol: { type: "boolean" },
+                              displayOrder: { type: "integer" },
+                              modifiers: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    id: { type: "string", format: "uuid" },
+                                    name: { type: "string" },
+                                    selectionType: {
+                                      type: "integer",
+                                      enum: [1, 2, 3],
+                                      description:
+                                        "1=SINGLE_REQUIRED, 2=SINGLE, 3=MULTIPLE",
+                                    },
+                                    minSelection: { type: "integer" },
+                                    maxSelection: { type: "integer" },
+                                    displayOrder: { type: "integer" },
+                                    options: {
+                                      type: "array",
+                                      items: {
+                                        type: "object",
+                                        properties: {
+                                          id: {
+                                            type: "string",
+                                            format: "uuid",
+                                          },
+                                          itemModifierId: {
+                                            type: "string",
+                                            format: "uuid",
+                                          },
+                                          name: { type: "string" },
+                                          price: { type: "string" },
+                                          isDefault: { type: "boolean" },
+                                          displayOrder: { type: "integer" },
+                                        },
+                                      },
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        ...menuErrorResponses,
+      },
+    },
+  },
+  "/pvt/u/menu/clones": {
+    post: {
+      tags: ["Menu"],
+      summary: "Clone picked categories and items from another branch",
+      description:
+        "Copies the selected categories, items, modifiers and options from `sourceBranchId` into the effective branch. Only ids and price overrides are accepted: every other field is read from the source. A category that already exists in the target (same name, ignoring case) is reused; every selected item is always created. Cloned rows reuse the source's image keys, and everything created is **unlisted** pending review.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["sourceBranchId", "categories"],
+              properties: {
+                sourceBranchId: { type: "string", format: "uuid" },
+                categories: {
+                  type: "array",
+                  minItems: 1,
+                  maxItems: 200,
+                  items: {
+                    type: "object",
+                    required: ["id", "items"],
+                    properties: {
+                      id: {
+                        type: "string",
+                        format: "uuid",
+                        description: "Source category id",
+                      },
+                      items: {
+                        type: "array",
+                        maxItems: 500,
+                        items: {
+                          type: "object",
+                          required: ["id"],
+                          properties: {
+                            id: {
+                              type: "string",
+                              format: "uuid",
+                              description: "Source item id",
+                            },
+                            price: {
+                              type: "number",
+                              minimum: 0,
+                              description:
+                                "Overrides the source price when sent",
+                            },
+                            options: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                required: ["id"],
+                                properties: {
+                                  id: { type: "string", format: "uuid" },
+                                  price: { type: "number", minimum: 0 },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "204": { description: "Clone finished" },
+        ...menuErrorResponses,
+      },
+    },
+  },
   "/pvt/u/menu/imports": {
     post: {
       tags: ["Menu"],
       summary: "Import categories and items from a parsed CSV",
       description:
-        "Adds the rows of a CSV to the effective branch. Categories that already exist (matched by name, case-insensitive) are reused; missing ones are created. Both new categories and every imported item are created **unlisted** so they can be reviewed before they show on the menu. An item whose name already exists in its category is skipped and reported instead of duplicated.",
+        "Adds the rows of a CSV to the effective branch. A category that already exists (same name, ignoring case) is reused; any other is created. Every row becomes a new item, even if an item with the same name exists. New categories and all imported items are created **unlisted** so they can be reviewed first.",
       requestBody: {
         required: true,
         content: {
@@ -650,8 +842,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
                   type: "array",
                   minItems: 1,
                   maxItems: 1000,
-                  description:
-                    "Parsed CSV rows. The same item may not appear twice in one category.",
+                  description: "Parsed CSV rows.",
                   items: {
                     type: "object",
                     required: [
@@ -703,32 +894,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
         },
       },
       responses: {
-        "201": {
-          description: "Import finished",
-          content: {
-            "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  categoriesCreated: { type: "integer" },
-                  categoriesMatched: { type: "integer" },
-                  itemsCreated: { type: "integer" },
-                  skippedItems: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        categoryName: { type: "string" },
-                        itemName: { type: "string" },
-                        reason: { type: "string" },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        "204": { description: "Import finished" },
         ...menuErrorResponses,
       },
     },

@@ -19,16 +19,15 @@ import type {
   UpdateItemModifierOptionBodyDto,
 } from "./dtos/update-menu-item.dtos";
 import type {
+  CloneMenuRepoInput,
   CreateMenuCategoryRepoInput,
   CreateMenuCategoryRepoResult,
   CreateMenuItemRepoInput,
   CreateMenuItemRepoResult,
-  FindCategoriesByNamesRepoInput,
-  FindCategoriesByNamesRepoResult,
+  FindBranchMenuTreeRepoInput,
+  FindBranchMenuTreeRepoResult,
   FindItemModifiersRepoInput,
   FindItemModifiersRepoResult,
-  FindItemNamesByCategoryIdsRepoInput,
-  FindItemNamesByCategoryIdsRepoResult,
   FindMenuCategoriesRepoInput,
   FindMenuCategoriesRepoResult,
   FindMenuItemsRepoInput,
@@ -37,8 +36,8 @@ import type {
   FindOneMenuCategoryRepoResult,
   FindOneMenuItemRepoInput,
   FindOneMenuItemRepoResult,
+  FindOrCreateCategoriesInput,
   ImportMenuCsvRepoInput,
-  ImportMenuCsvRepoResult,
   ItemModifierWithOptions,
   UpdateMenuCategoryRepoInput,
   UpdateMenuCategoryRepoResult,
@@ -55,6 +54,9 @@ import { menuItems } from "./schemas/menu-item.schema";
 type Transaction = Parameters<
   Parameters<Database["client"]["transaction"]>[0]
 >[0];
+
+/** Category names match ignoring case and surrounding spaces. */
+const categoryKey = (name: string): string => name.trim().toLowerCase();
 
 export class MenuRepository {
   constructor(private readonly database: Database) {}
@@ -212,104 +214,278 @@ export class MenuRepository {
     return category;
   }
 
-  async findCategoriesByNames(
-    input: FindCategoriesByNamesRepoInput,
-  ): Promise<FindCategoriesByNamesRepoResult> {
-    if (input.names.length === 0) return [];
-
-    return this.database.client
-      .select()
+  async findBranchMenuTree(
+    input: FindBranchMenuTreeRepoInput,
+  ): Promise<FindBranchMenuTreeRepoResult> {
+    const categories = await this.database.client
+      .select({
+        id: menuCategories.id,
+        name: menuCategories.name,
+        description: menuCategories.description,
+        image: menuCategories.image,
+        displayOrder: menuCategories.displayOrder,
+      })
       .from(menuCategories)
       .where(
         and(
           eq(menuCategories.organizationId, input.organizationId),
           eq(menuCategories.branchId, input.branchId),
-          inArray(sql`lower(${menuCategories.name})`, input.names),
+          eq(menuCategories.isActive, true),
         ),
-      );
-  }
+      )
+      .orderBy(asc(menuCategories.displayOrder), asc(menuCategories.name));
 
-  async findItemNamesByCategoryIds(
-    input: FindItemNamesByCategoryIdsRepoInput,
-  ): Promise<FindItemNamesByCategoryIdsRepoResult[]> {
-    if (input.categoryIds.length === 0) return [];
+    if (categories.length === 0) return [];
 
-    return this.database.client
-      .select({ categoryId: menuItems.categoryId, name: menuItems.name })
+    const items = await this.database.client
+      .select({
+        id: menuItems.id,
+        categoryId: menuItems.categoryId,
+        name: menuItems.name,
+        description: menuItems.description,
+        price: menuItems.price,
+        code: menuItems.code,
+        image: menuItems.image,
+        takeawayChargeEnabled: menuItems.takeawayChargeEnabled,
+        takeawayChargeAmount: menuItems.takeawayChargeAmount,
+        isFeatured: menuItems.isFeatured,
+        calories: menuItems.calories,
+        dietaryType: menuItems.dietaryType,
+        hasAlcohol: menuItems.hasAlcohol,
+        isSpicy: menuItems.isSpicy,
+        displayOrder: menuItems.displayOrder,
+      })
       .from(menuItems)
-      .where(inArray(menuItems.categoryId, input.categoryIds));
+      .where(
+        inArray(
+          menuItems.categoryId,
+          categories.map((category) => category.id),
+        ),
+      )
+      .orderBy(asc(menuItems.displayOrder), asc(menuItems.name));
+
+    if (items.length === 0) {
+      return categories.map((category) => ({ ...category, items: [] }));
+    }
+
+    const modifiers = await this.database.client
+      .select({
+        id: itemModifiers.id,
+        menuItemId: itemModifiers.menuItemId,
+        name: itemModifiers.name,
+        selectionType: itemModifiers.selectionType,
+        minSelection: itemModifiers.minSelection,
+        maxSelection: itemModifiers.maxSelection,
+        displayOrder: itemModifiers.displayOrder,
+      })
+      .from(itemModifiers)
+      .where(
+        and(
+          inArray(
+            itemModifiers.menuItemId,
+            items.map((item) => item.id),
+          ),
+          eq(itemModifiers.isActive, true),
+        ),
+      )
+      .orderBy(asc(itemModifiers.displayOrder), asc(itemModifiers.id));
+
+    const options =
+      modifiers.length === 0
+        ? []
+        : await this.database.client
+            .select({
+              id: itemModifierOptions.id,
+              itemModifierId: itemModifierOptions.itemModifierId,
+              name: itemModifierOptions.name,
+              price: itemModifierOptions.price,
+              isDefault: itemModifierOptions.isDefault,
+              displayOrder: itemModifierOptions.displayOrder,
+            })
+            .from(itemModifierOptions)
+            .where(
+              and(
+                inArray(
+                  itemModifierOptions.itemModifierId,
+                  modifiers.map((modifier) => modifier.id),
+                ),
+                eq(itemModifierOptions.isActive, true),
+              ),
+            )
+            .orderBy(
+              asc(itemModifierOptions.displayOrder),
+              asc(itemModifierOptions.id),
+            );
+
+    const modifiersWithOptions = modifiers.map((modifier) => ({
+      ...modifier,
+      options: options.filter(
+        (option) => option.itemModifierId === modifier.id,
+      ),
+    }));
+
+    return categories.map((category) => ({
+      ...category,
+      items: items
+        .filter((item) => item.categoryId === category.id)
+        .map(({ categoryId: _categoryId, ...item }) => ({
+          ...item,
+          modifiers: modifiersWithOptions
+            .filter((modifier) => modifier.menuItemId === item.id)
+            .map(({ menuItemId: _menuItemId, ...modifier }) => modifier),
+        })),
+    }));
   }
 
-  /** Creates the missing categories and all items in one transaction. */
-  async importMenuCsv(
-    input: ImportMenuCsvRepoInput,
-  ): Promise<ImportMenuCsvRepoResult> {
+  /** Writes the picked categories, items and modifiers in one transaction. */
+  async cloneMenu(input: CloneMenuRepoInput): Promise<void> {
     const { organizationId, branchId, userId } = input;
 
     return this.database.client.transaction(async (tx) => {
-      const categoryIdByKey = new Map(input.existingCategoryIds);
+      const categoryIdByName = await this.findOrCreateCategories(tx, input);
 
-      if (input.newCategories.length > 0) {
-        const created = await tx
-          .insert(menuCategories)
-          .values(
-            input.newCategories.map((category) => ({
-              organizationId,
-              branchId,
-              name: category.name,
-              // Imported categories stay hidden until they are reviewed.
-              isListed: false,
-              displayOrder: category.displayOrder,
-              createdBy: userId,
-            })),
-          )
-          .returning({ id: menuCategories.id, name: menuCategories.name });
+      for (const category of input.categories) {
+        const categoryId = categoryIdByName.get(categoryKey(category.name));
+        if (!categoryId) throw new Error("Failed to resolve menu category");
 
-        for (const category of created) {
-          categoryIdByKey.set(category.name.toLowerCase(), category.id);
-        }
-      }
-
-      if (input.items.length > 0) {
-        await tx.insert(menuItems).values(
-          input.items.map((item) => {
-            const categoryId = categoryIdByKey.get(item.categoryKey);
-            if (!categoryId) {
-              throw new Error(
-                `Failed to resolve category for item "${item.itemName}"`,
-              );
-            }
-
-            return {
+        for (const { modifiers, ...item } of category.items) {
+          const [createdItem] = await tx
+            .insert(menuItems)
+            .values({
+              ...item,
               organizationId,
               branchId,
               categoryId,
-              name: item.itemName,
-              description: item.description ?? null,
-              price: String(item.price),
-              takeawayChargeEnabled: item.takeawayChargeEnabled,
-              takeawayChargeAmount:
-                item.takeawayChargeAmount != null
-                  ? String(item.takeawayChargeAmount)
-                  : null,
-              isFeatured: item.isFeatured,
               isListed: false,
-              calories: item.calories != null ? String(item.calories) : null,
-              dietaryType: item.dietaryType,
-              hasAlcohol: item.hasAlcohol,
-              isSpicy: item.isSpicy,
-              displayOrder: item.displayOrder,
               createdBy: userId,
-            };
-          }),
-        );
-      }
+            })
+            .returning({ id: menuItems.id });
+          if (!createdItem) throw new Error("Failed to clone menu item");
 
-      return {
-        categoriesCreated: input.newCategories.length,
-        itemsCreated: input.items.length,
-      };
+          for (const { options, ...modifier } of modifiers) {
+            const [createdModifier] = await tx
+              .insert(itemModifiers)
+              .values({
+                ...modifier,
+                menuItemId: createdItem.id,
+                createdBy: userId,
+              })
+              .returning({ id: itemModifiers.id });
+            if (!createdModifier) throw new Error("Failed to clone modifier");
+
+            await tx.insert(itemModifierOptions).values(
+              options.map((option) => ({
+                ...option,
+                itemModifierId: createdModifier.id,
+                createdBy: userId,
+              })),
+            );
+          }
+        }
+      }
     });
+  }
+
+  // File order is kept inside each category.
+  /** Creates the missing categories and all items in one transaction. */
+  async importMenuCsv(input: ImportMenuCsvRepoInput): Promise<void> {
+    const { organizationId, branchId, userId, rows } = input;
+
+    return this.database.client.transaction(async (tx) => {
+      const categoryIdByName = await this.findOrCreateCategories(tx, {
+        organizationId,
+        branchId,
+        userId,
+        categories: rows.map((row) => ({ name: row.categoryName })),
+      });
+
+      await tx.insert(menuItems).values(
+        rows.map((row, index) => ({
+          organizationId,
+          branchId,
+          categoryId: categoryIdByName.get(
+            categoryKey(row.categoryName),
+          ) as string,
+          name: row.itemName,
+          description: row.description ?? null,
+          price: String(row.price),
+          takeawayChargeEnabled: row.takeawayChargeEnabled,
+          takeawayChargeAmount:
+            row.takeawayChargeAmount != null
+              ? String(row.takeawayChargeAmount)
+              : null,
+          isFeatured: row.isFeatured,
+          isListed: false,
+          calories: row.calories != null ? String(row.calories) : null,
+          dietaryType: row.dietaryType,
+          hasAlcohol: row.hasAlcohol,
+          isSpicy: row.isSpicy,
+          displayOrder: index,
+          createdBy: userId,
+        })),
+      );
+    });
+  }
+
+  /**
+   * Maps each category name to an id in the branch: an existing category with
+   * the same name (ignoring case) is reused, anything else is created unlisted.
+   */
+  private async findOrCreateCategories(
+    tx: Transaction,
+    input: FindOrCreateCategoriesInput,
+  ): Promise<Map<string, string>> {
+    const { organizationId, branchId, userId } = input;
+    const incoming = new Map(
+      input.categories.map((category) => [
+        categoryKey(category.name),
+        category,
+      ]),
+    );
+
+    const existing = await tx
+      .select({ id: menuCategories.id, name: menuCategories.name })
+      .from(menuCategories)
+      .where(
+        and(
+          eq(menuCategories.organizationId, organizationId),
+          eq(menuCategories.branchId, branchId),
+          inArray(sql`lower(trim(${menuCategories.name}))`, [
+            ...incoming.keys(),
+          ]),
+        ),
+      );
+
+    const categoryIdByName = new Map(
+      existing.map((category) => [categoryKey(category.name), category.id]),
+    );
+    const missing = [...incoming.entries()].filter(
+      ([key]) => !categoryIdByName.has(key),
+    );
+
+    if (missing.length > 0) {
+      const created = await tx
+        .insert(menuCategories)
+        .values(
+          missing.map(([, category], index) => ({
+            organizationId,
+            branchId,
+            name: category.name.trim(),
+            description: category.description ?? null,
+            image: category.image ?? null,
+            isListed: false,
+            displayOrder: index,
+            createdBy: userId,
+          })),
+        )
+        .returning({ id: menuCategories.id, name: menuCategories.name });
+
+      for (const category of created) {
+        categoryIdByName.set(categoryKey(category.name), category.id);
+      }
+    }
+
+    return categoryIdByName;
   }
 
   // ========================================

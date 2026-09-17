@@ -4,16 +4,23 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { BranchRepository } from "../branch/branch.repository";
+import type { BranchEntity } from "../branch/schemas/branch.schema";
 import type { FileService } from "../file/file.service";
 import type { MarketRepository } from "../market/market.repository";
-import type { SkippedMenuCsvItemDto } from "./dtos/import-menu-csv.dtos";
+import type { CloneMenuModifierBodyDto } from "./dtos/clone-menu.dtos";
+import type { BranchMenuTreeModifierRow } from "./dtos/get-branch-menu-tree.dtos";
 import type { UpdateItemModifierBodyDto } from "./dtos/update-menu-item.dtos";
 import type { MenuRepository } from "./menu.repository";
 import type {
+  CloneMenuRepoModifier,
+  CloneMenuServiceInput,
   CreateMenuCategoryServiceInput,
   CreateMenuCategoryServiceResult,
   CreateMenuItemServiceInput,
   CreateMenuItemServiceResult,
+  GetBranchMenuTreeServiceInput,
+  GetBranchMenuTreeServiceResult,
   GetMenuCategoriesServiceInput,
   GetMenuCategoriesServiceResult,
   GetMenuItemServiceInput,
@@ -21,7 +28,6 @@ import type {
   GetMenuItemsServiceInput,
   GetMenuItemsServiceResult,
   ImportMenuCsvServiceInput,
-  ImportMenuCsvServiceResult,
   ItemModifierWithOptions,
   RequestMenuImageUploadServiceInput,
   RequestMenuImageUploadServiceResult,
@@ -41,6 +47,7 @@ export class MenuService {
   constructor(
     private readonly menuRepository: MenuRepository,
     private readonly marketRepository: MarketRepository,
+    private readonly branchRepository: BranchRepository,
     private readonly fileService: FileService,
   ) {}
 
@@ -125,7 +132,7 @@ export class MenuService {
     const { data, user, effectiveTenant } = input;
     const existing = await this.findCategoryOrThrow(data.id, effectiveTenant);
 
-    const { image, staleImage } = await this.resolveImageChange(
+    const image = await this.resolveImageChange(
       MenuImageTypeEnum.CATEGORY,
       existing.image,
       data.image,
@@ -142,13 +149,6 @@ export class MenuService {
         updatedBy: user.id,
       },
     });
-
-    if (staleImage) {
-      await this.fileService.deleteMenuImage({
-        type: MenuImageTypeEnum.CATEGORY,
-        image: staleImage,
-      });
-    }
 
     return this.withImageUrl(MenuImageTypeEnum.CATEGORY, category);
   }
@@ -336,7 +336,7 @@ export class MenuService {
       this.assertModifierIdsBelongToItem(data.modifiers, existingModifiers);
     }
 
-    const { image, staleImage } = await this.resolveImageChange(
+    const image = await this.resolveImageChange(
       MenuImageTypeEnum.ITEM,
       existing.image,
       data.image,
@@ -368,13 +368,6 @@ export class MenuService {
       existingModifiers,
     });
 
-    if (staleImage) {
-      await this.fileService.deleteMenuImage({
-        type: MenuImageTypeEnum.ITEM,
-        image: staleImage,
-      });
-    }
-
     return this.withImageUrl(MenuImageTypeEnum.ITEM, item);
   }
 
@@ -396,100 +389,205 @@ export class MenuService {
   // ========================================
   // ? MENU IMPORT SERVICES
   // ========================================
-  async importMenuCsv(
-    input: ImportMenuCsvServiceInput,
-  ): Promise<ImportMenuCsvServiceResult> {
+  async importMenuCsv(input: ImportMenuCsvServiceInput): Promise<void> {
     const { data, user, effectiveTenant } = input;
-    const branchId = this.requireBranchId(effectiveTenant);
 
-    const orderedKeys: string[] = [];
-    const nameByKey = new Map<string, string>();
-
-    for (const row of data.rows) {
-      const key = row.categoryName.trim().toLowerCase();
-      if (!nameByKey.has(key)) {
-        nameByKey.set(key, row.categoryName.trim());
-        orderedKeys.push(key);
-      }
-    }
-
-    const existingCategories = await this.menuRepository.findCategoriesByNames({
+    return this.menuRepository.importMenuCsv({
       organizationId: effectiveTenant.organizationId,
-      branchId,
-      names: orderedKeys,
+      branchId: this.requireBranchId(effectiveTenant),
+      userId: user.id,
+      rows: data.rows,
     });
-    const existingCategoryIds = new Map(
-      existingCategories.map((category) => [
-        category.name.trim().toLowerCase(),
-        category.id,
-      ]),
+  }
+
+  // ========================================
+  // ? MENU CLONE SERVICES
+  // ========================================
+  async getBranchMenuTree(
+    input: GetBranchMenuTreeServiceInput,
+  ): Promise<GetBranchMenuTreeServiceResult> {
+    const { params, effectiveTenant } = input;
+    const targetBranchId = this.requireBranchId(effectiveTenant);
+    const sourceBranch = await this.findCloneSourceOrThrow(
+      params.branchId,
+      effectiveTenant,
+      targetBranchId,
     );
 
-    const existingItemKeys = new Set(
-      (
-        await this.menuRepository.findItemNamesByCategoryIds({
-          categoryIds: existingCategories.map((category) => category.id),
-        })
-      ).map((item) => `${item.categoryId}|${item.name.trim().toLowerCase()}`),
-    );
-
-    const newCategories = orderedKeys
-      .filter((key) => !existingCategoryIds.has(key))
-      .map((key, index) => ({
-        categoryKey: key,
-        name: nameByKey.get(key) as string,
-        displayOrder: index,
-      }));
-
-    const skippedItems: SkippedMenuCsvItemDto[] = [];
-    const itemsByCategory = new Map<string, number>();
-    const items = [];
-
-    for (const row of data.rows) {
-      const key = row.categoryName.trim().toLowerCase();
-      const existingCategoryId = existingCategoryIds.get(key);
-
-      if (
-        existingCategoryId &&
-        existingItemKeys.has(
-          `${existingCategoryId}|${row.itemName.trim().toLowerCase()}`,
-        )
-      ) {
-        skippedItems.push({
-          categoryName: row.categoryName,
-          itemName: row.itemName,
-          reason: "An item with this name already exists in the category",
-        });
-        continue;
-      }
-
-      const displayOrder = itemsByCategory.get(key) ?? 0;
-      itemsByCategory.set(key, displayOrder + 1);
-      items.push({ ...row, categoryKey: key, displayOrder });
-    }
-
-    const { categoriesCreated, itemsCreated } =
-      await this.menuRepository.importMenuCsv({
+    const [categories, market] = await Promise.all([
+      this.menuRepository.findBranchMenuTree({
         organizationId: effectiveTenant.organizationId,
-        branchId,
-        userId: user.id,
-        newCategories,
-        existingCategoryIds,
-        items,
+        branchId: sourceBranch.id,
+      }),
+      this.marketRepository.findMarketByBranch({ branchId: targetBranchId }),
+    ]);
+
+    if (!market) {
+      throw new AppError("No market is configured for this branch", {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
       });
+    }
 
     return {
-      categoriesCreated,
-      categoriesMatched: existingCategoryIds.size,
-      itemsCreated,
-      skippedItems,
+      sourceBranch: { id: sourceBranch.id, name: sourceBranch.name },
+      currencyCode: market.currencyCode,
+      categories: await Promise.all(
+        categories.map(async (category) => ({
+          ...(await this.withImageUrl(MenuImageTypeEnum.CATEGORY, category)),
+          items: await Promise.all(
+            category.items.map((item) =>
+              this.withImageUrl(MenuImageTypeEnum.ITEM, item),
+            ),
+          ),
+        })),
+      ),
     };
+  }
+
+  async cloneMenu(input: CloneMenuServiceInput): Promise<void> {
+    const { data, user, effectiveTenant } = input;
+    const branchId = this.requireBranchId(effectiveTenant);
+    const sourceBranch = await this.findCloneSourceOrThrow(
+      data.sourceBranchId,
+      effectiveTenant,
+      branchId,
+    );
+
+    const sourceCategories = await this.menuRepository.findBranchMenuTree({
+      organizationId: effectiveTenant.organizationId,
+      branchId: sourceBranch.id,
+    });
+
+    const categories = data.categories.map((picked) => {
+      const category = sourceCategories.find((c) => c.id === picked.id);
+      if (!category)
+        throw new AppError(
+          "The source menu changed while you were picking. Reload and try again.",
+          {
+            statusCode: HttpStatusCodes.BAD_REQUEST,
+            code: ErrorCodes.BAD_REQUEST,
+          },
+        );
+
+      return {
+        name: category.name,
+        description: category.description,
+        image: category.image,
+        items: picked.items.map((pickedItem, index) => {
+          const item = category.items.find((i) => i.id === pickedItem.id);
+          if (!item)
+            throw new AppError(
+              "The source menu changed while you were picking. Reload and try again.",
+              {
+                statusCode: HttpStatusCodes.BAD_REQUEST,
+                code: ErrorCodes.BAD_REQUEST,
+              },
+            );
+
+          const { id: _id, modifiers, ...fields } = item;
+          return {
+            ...fields,
+            price:
+              pickedItem.price != null ? String(pickedItem.price) : item.price,
+            displayOrder: index,
+            modifiers: this.buildClonedModifiers(
+              modifiers,
+              pickedItem.modifiers,
+            ),
+          };
+        }),
+      };
+    });
+
+    return this.menuRepository.cloneMenu({
+      organizationId: effectiveTenant.organizationId,
+      branchId,
+      userId: user.id,
+      categories,
+    });
   }
 
   // ========================================
   // ? HELPERS
   // ========================================
-  private async withImageUrl<T extends MenuItemEntity | MenuCategoryEntity>(
+  private buildClonedModifiers(
+    sourceModifiers: BranchMenuTreeModifierRow[],
+    selected?: CloneMenuModifierBodyDto[],
+  ): CloneMenuRepoModifier[] {
+    const selectionById = selected
+      ? new Map(selected.map((modifier) => [modifier.id, modifier]))
+      : null;
+
+    const modifiers: CloneMenuRepoModifier[] = [];
+
+    for (const modifier of sourceModifiers) {
+      const chosen = selectionById?.get(modifier.id);
+      if (selectionById && !chosen) continue;
+
+      const chosenOptions = chosen?.options;
+      const optionPriceById = new Map(
+        (chosenOptions ?? [])
+          .filter((option) => option.price != null)
+          .map((option) => [option.id, option.price as number]),
+      );
+      const keptOptions = chosenOptions
+        ? modifier.options.filter((option) =>
+            chosenOptions.some((chosen) => chosen.id === option.id),
+          )
+        : modifier.options;
+
+      if (keptOptions.length === 0) continue;
+
+      const maxSelection = Math.min(modifier.maxSelection, keptOptions.length);
+
+      modifiers.push({
+        name: modifier.name,
+        selectionType: modifier.selectionType,
+        minSelection: Math.min(modifier.minSelection, maxSelection),
+        maxSelection,
+        displayOrder: modifier.displayOrder,
+        options: keptOptions.map((option) => ({
+          name: option.name,
+          price: optionPriceById.has(option.id)
+            ? String(optionPriceById.get(option.id))
+            : option.price,
+          isDefault: option.isDefault,
+          displayOrder: option.displayOrder,
+        })),
+      });
+    }
+
+    return modifiers;
+  }
+
+  /** A clone source must be another branch of the same organization. */
+  private async findCloneSourceOrThrow(
+    sourceBranchId: string,
+    effectiveTenant: EffectiveTenant,
+    targetBranchId: string,
+  ): Promise<BranchEntity> {
+    if (sourceBranchId === targetBranchId) {
+      throw new AppError("Pick a different branch to clone from", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const branch = await this.branchRepository.findOne({
+      id: sourceBranchId,
+      organizationId: effectiveTenant.organizationId,
+    });
+
+    if (!branch) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+    return branch;
+  }
+
+  private async withImageUrl<T extends { image: string | null }>(
     type: MenuImageTypeEnum,
     record: T,
   ): Promise<T & { imageUrl: string | null }> {
@@ -550,19 +648,12 @@ export class MenuService {
     return item;
   }
 
-  /**
-   * Works out what to store for an edited image: `undefined` keeps the current
-   * image, and a new key is finalized. The replaced image is returned so it can
-   * be deleted once the record is saved.
-   */
   private async resolveImageChange(
     type: MenuImageTypeEnum,
     currentImage: string | null,
     nextImage: string | undefined,
-  ): Promise<{ image: string | undefined; staleImage: string | null }> {
-    if (nextImage === undefined || nextImage === currentImage) {
-      return { image: undefined, staleImage: null };
-    }
+  ): Promise<string | undefined> {
+    if (nextImage === undefined || nextImage === currentImage) return undefined;
 
     await this.fileService.finalizeMenuImage({
       type,
@@ -570,10 +661,9 @@ export class MenuService {
       maxSizeBytes: FILE_UPLOAD_CONFIG.MENU_IMAGE.maxSizeBytes,
     });
 
-    return { image: nextImage, staleImage: currentImage };
+    return nextImage;
   }
 
-  /** Rejects ids that don't belong to this item, so edits can't touch other items' modifiers. */
   private assertModifierIdsBelongToItem(
     modifiers: UpdateItemModifierBodyDto[],
     existingModifiers: ItemModifierWithOptions[],

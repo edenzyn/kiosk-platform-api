@@ -18,18 +18,3 @@ export interface ImportMenuCsvRowDto {
 export interface ImportMenuCsvBodyDto {
   rows: ImportMenuCsvRowDto[];
 }
-
-export interface SkippedMenuCsvItemDto {
-  categoryName: string;
-  itemName: string;
-  reason: string;
-}
-
-export interface ImportMenuCsvResponseDto {
-  /** Categories that did not exist yet and were created (always unlisted). */
-  categoriesCreated: number;
-  /** Categories the rows were added to that already existed. */
-  categoriesMatched: number;
-  itemsCreated: number;
-  skippedItems: SkippedMenuCsvItemDto[];
-}

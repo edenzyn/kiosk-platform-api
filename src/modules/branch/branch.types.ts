@@ -171,6 +171,8 @@ export interface FindBranchesRepoResult {
 export interface FindBranchesForFiltersRepoInput {
   organizationId?: string;
   branchIds?: string[];
+  /** Leaves this branch out of the result, e.g. when picking a *other* branch. */
+  excludeBranchId?: string;
 }
 export type FindBranchesForFiltersRepoResult = Array<{
   id: string;

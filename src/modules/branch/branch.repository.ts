@@ -6,6 +6,7 @@ import {
   eq,
   ilike,
   inArray,
+  ne,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -141,7 +142,7 @@ export class BranchRepository {
   async findBranchesForFilters(
     input: FindBranchesForFiltersRepoInput,
   ): Promise<FindBranchesForFiltersRepoResult> {
-    const { organizationId, branchIds } = input;
+    const { organizationId, branchIds, excludeBranchId } = input;
     const conditions = [];
 
     if (organizationId) {
@@ -150,6 +151,10 @@ export class BranchRepository {
 
     if (branchIds && branchIds.length > 0) {
       conditions.push(inArray(branches.id, branchIds));
+    }
+
+    if (excludeBranchId) {
+      conditions.push(ne(branches.id, excludeBranchId));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;

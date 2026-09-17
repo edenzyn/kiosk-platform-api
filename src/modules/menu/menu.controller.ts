@@ -3,6 +3,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
+import type { CloneMenuBodyDto } from "./dtos/clone-menu.dtos";
 import type { CreateMenuCategoryBodyDto } from "./dtos/create-menu-category.dtos";
 import type { CreateMenuItemBodyDto } from "./dtos/create-menu-item.dtos";
 import type { ImportMenuCsvBodyDto } from "./dtos/import-menu-csv.dtos";
@@ -142,12 +143,42 @@ export class MenuController {
       stripUnknown: true,
     });
 
-    const result = await this.menuService.importMenuCsv({
+    await this.menuService.importMenuCsv({
       data: data as ImportMenuCsvBodyDto,
       user: req.user as UserTokenDto,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
-    res.status(HttpStatusCodes.CREATED).json(result);
+    res.status(HttpStatusCodes.NO_CONTENT).send();
+  };
+
+  // ========================================
+  // ? MENU CLONE APIS
+  // ========================================
+  getBranchMenuTree = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.getBranchMenuTree.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.menuService.getBranchMenuTree({
+      params,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  cloneMenu = async (req: Request, res: Response): Promise<void> => {
+    const data = await MenuValidator.cloneMenu.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    await this.menuService.cloneMenu({
+      data: data as CloneMenuBodyDto,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 
   requestItemImageUpload = (req: Request, res: Response): Promise<void> =>

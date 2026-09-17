@@ -24,6 +24,8 @@ import type {
   CreateMenuCategoryRepoResult,
   CreateMenuItemRepoInput,
   CreateMenuItemRepoResult,
+  DeleteMenuCategoryRepoInput,
+  DeleteMenuItemRepoInput,
   FindBranchMenuTreeRepoInput,
   FindBranchMenuTreeRepoResult,
   FindItemModifiersRepoInput,
@@ -67,7 +69,7 @@ export class MenuRepository {
   async findOneCategory(
     input: FindOneMenuCategoryRepoInput,
   ): Promise<FindOneMenuCategoryRepoResult> {
-    const conditions: (SQL | undefined)[] = [];
+    const conditions: (SQL | undefined)[] = [eq(menuCategories.isActive, true)];
 
     if (input.id !== undefined) {
       conditions.push(eq(menuCategories.id, input.id));
@@ -79,7 +81,7 @@ export class MenuRepository {
       conditions.push(eq(menuCategories.branchId, input.branchId));
     }
 
-    if (conditions.length === 0) {
+    if (conditions.length === 1) {
       return null;
     }
 
@@ -109,9 +111,7 @@ export class MenuRepository {
       eq(menuCategories.branchId, branchId),
     ];
 
-    if (isActive !== undefined) {
-      conditions.push(eq(menuCategories.isActive, isActive));
-    }
+    conditions.push(eq(menuCategories.isActive, isActive ?? true));
 
     if (isListed !== undefined) {
       conditions.push(eq(menuCategories.isListed, isListed));
@@ -152,7 +152,13 @@ export class MenuRepository {
         itemCount: count(menuItems.id),
       })
       .from(menuCategories)
-      .leftJoin(menuItems, eq(menuItems.categoryId, menuCategories.id))
+      .leftJoin(
+        menuItems,
+        and(
+          eq(menuItems.categoryId, menuCategories.id),
+          eq(menuItems.isActive, true),
+        ),
+      )
       .where(condition)
       .groupBy(menuCategories.id)
       // id breaks ties so pages never overlap or skip rows.
@@ -214,6 +220,22 @@ export class MenuRepository {
     return category;
   }
 
+  async deleteCategory(input: DeleteMenuCategoryRepoInput): Promise<void> {
+    const { id, updatedBy } = input;
+
+    await this.database.client.transaction(async (tx) => {
+      await tx
+        .update(menuCategories)
+        .set({ isActive: false, updatedBy, updatedAt: new Date() })
+        .where(eq(menuCategories.id, id));
+
+      await tx
+        .update(menuItems)
+        .set({ isActive: false, updatedBy, updatedAt: new Date() })
+        .where(and(eq(menuItems.categoryId, id), eq(menuItems.isActive, true)));
+    });
+  }
+
   async findBranchMenuTree(
     input: FindBranchMenuTreeRepoInput,
   ): Promise<FindBranchMenuTreeRepoResult> {
@@ -257,9 +279,12 @@ export class MenuRepository {
       })
       .from(menuItems)
       .where(
-        inArray(
-          menuItems.categoryId,
-          categories.map((category) => category.id),
+        and(
+          inArray(
+            menuItems.categoryId,
+            categories.map((category) => category.id),
+          ),
+          eq(menuItems.isActive, true),
         ),
       )
       .orderBy(asc(menuItems.displayOrder), asc(menuItems.name));
@@ -450,6 +475,7 @@ export class MenuRepository {
         and(
           eq(menuCategories.organizationId, organizationId),
           eq(menuCategories.branchId, branchId),
+          eq(menuCategories.isActive, true),
           inArray(sql`lower(trim(${menuCategories.name}))`, [
             ...incoming.keys(),
           ]),
@@ -494,7 +520,7 @@ export class MenuRepository {
   async findOneItem(
     input: FindOneMenuItemRepoInput,
   ): Promise<FindOneMenuItemRepoResult> {
-    const conditions: (SQL | undefined)[] = [];
+    const conditions: (SQL | undefined)[] = [eq(menuItems.isActive, true)];
 
     if (input.id !== undefined) {
       conditions.push(eq(menuItems.id, input.id));
@@ -506,7 +532,7 @@ export class MenuRepository {
       conditions.push(eq(menuItems.branchId, input.branchId));
     }
 
-    if (conditions.length === 0) {
+    if (conditions.length === 1) {
       return null;
     }
 
@@ -538,6 +564,7 @@ export class MenuRepository {
       eq(menuItems.organizationId, organizationId),
       eq(menuItems.branchId, branchId),
       eq(menuItems.categoryId, categoryId),
+      eq(menuItems.isActive, true),
     ];
 
     if (isListed !== undefined) {
@@ -704,6 +731,17 @@ export class MenuRepository {
     }
 
     return item;
+  }
+
+  async deleteItem(input: DeleteMenuItemRepoInput): Promise<void> {
+    await this.database.client
+      .update(menuItems)
+      .set({
+        isActive: false,
+        updatedBy: input.updatedBy,
+        updatedAt: new Date(),
+      })
+      .where(eq(menuItems.id, input.id));
   }
 
   // ========================================

@@ -19,6 +19,8 @@ import type {
   CreateMenuCategoryServiceResult,
   CreateMenuItemServiceInput,
   CreateMenuItemServiceResult,
+  DeleteMenuCategoryServiceInput,
+  DeleteMenuItemServiceInput,
   GetBranchMenuTreeServiceInput,
   GetBranchMenuTreeServiceResult,
   GetMenuCategoriesServiceInput,
@@ -165,6 +167,16 @@ export class MenuService {
     });
 
     return this.withImageUrl(MenuImageTypeEnum.CATEGORY, category);
+  }
+
+  async deleteCategory(input: DeleteMenuCategoryServiceInput): Promise<void> {
+    const { id, user, effectiveTenant } = input;
+    const existing = await this.findCategoryOrThrow(id, effectiveTenant);
+
+    await this.menuRepository.deleteCategory({
+      id: existing.id,
+      updatedBy: user.id,
+    });
   }
 
   // ========================================
@@ -384,6 +396,16 @@ export class MenuService {
     });
 
     return this.withImageUrl(MenuImageTypeEnum.ITEM, item);
+  }
+
+  async deleteItem(input: DeleteMenuItemServiceInput): Promise<void> {
+    const { id, user, effectiveTenant } = input;
+    const existing = await this.findItemOrThrow(id, effectiveTenant);
+
+    await this.menuRepository.deleteItem({
+      id: existing.id,
+      updatedBy: user.id,
+    });
   }
 
   // ========================================

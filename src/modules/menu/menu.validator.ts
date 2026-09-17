@@ -330,6 +330,11 @@ export const MenuValidator = {
       isListed: yup.boolean().required("Listing status is required"),
     })
     .noUnknown(),
+  categoryIdParams: yup
+    .object({
+      id: recordIdSchema.required("Category is required"),
+    })
+    .noUnknown(),
   getCategoriesQuery: paginationQuerySchema
     .shape({
       isActive: yup.boolean().optional(),

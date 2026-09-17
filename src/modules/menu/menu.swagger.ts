@@ -529,6 +529,17 @@ export const menuSwaggerPaths: Record<string, unknown> = {
         ...menuErrorResponses,
       },
     },
+    delete: {
+      tags: ["Menu"],
+      summary: "Delete a menu category",
+      description:
+        "Soft-deletes the category (isActive: false) along with every item still active under it. Nothing is removed from the database, so past orders referencing these rows are unaffected; there is no restore endpoint yet.",
+      parameters: [menuIdParam],
+      responses: {
+        "204": { description: "Category deleted" },
+        ...menuErrorResponses,
+      },
+    },
   },
   "/pvt/u/menu/items/{id}": {
     get: {
@@ -605,6 +616,17 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": itemResponse("Item updated"),
+        ...menuErrorResponses,
+      },
+    },
+    delete: {
+      tags: ["Menu"],
+      summary: "Delete a menu item",
+      description:
+        "Soft-deletes the item (isActive: false). Its modifiers and options are left as they are — they're never queried independently of the item, so this is enough to hide them too. There is no restore endpoint yet.",
+      parameters: [menuIdParam],
+      responses: {
+        "204": { description: "Item deleted" },
         ...menuErrorResponses,
       },
     },

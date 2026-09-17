@@ -60,6 +60,20 @@ export class MenuController {
     res.status(HttpStatusCodes.OK).json({ category });
   };
 
+  deleteCategory = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.categoryIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    await this.menuService.deleteCategory({
+      id: params.id,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.NO_CONTENT).send();
+  };
+
   getCategories = async (req: Request, res: Response): Promise<void> => {
     const queryDto = await MenuValidator.getCategoriesQuery.validate(
       req.query,
@@ -132,6 +146,20 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json({ item });
+  };
+
+  deleteItem = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.itemIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    await this.menuService.deleteItem({
+      id: params.id,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 
   // ========================================

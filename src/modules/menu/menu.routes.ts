@@ -87,14 +87,22 @@ menuRouter.post(
   menuController.cloneMenu,
 );
 
-menuRouter.patch(
-  "/categories/:id",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
-    branch: [UserPermissions.BRANCH_MENU_WRITE],
-  }),
-  menuController.updateCategory,
-);
+menuRouter
+  .route("/categories/:id")
+  .patch(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+      branch: [UserPermissions.BRANCH_MENU_WRITE],
+    }),
+    menuController.updateCategory,
+  )
+  .delete(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+      branch: [UserPermissions.BRANCH_MENU_WRITE],
+    }),
+    menuController.deleteCategory,
+  );
 menuRouter.patch(
   "/categories/:id/status",
   accessMiddleware({
@@ -119,6 +127,13 @@ menuRouter
       branch: [UserPermissions.BRANCH_MENU_WRITE],
     }),
     menuController.updateItem,
+  )
+  .delete(
+    accessMiddleware({
+      organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
+      branch: [UserPermissions.BRANCH_MENU_WRITE],
+    }),
+    menuController.deleteItem,
   );
 menuRouter.patch(
   "/items/:id/status",

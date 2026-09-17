@@ -91,6 +91,12 @@ export interface UpdateMenuCategoryStatusServiceInput {
 }
 export type UpdateMenuCategoryStatusServiceResult = MenuCategoryWithImageUrl;
 
+export interface DeleteMenuCategoryServiceInput {
+  id: string;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
 export interface PaginationResult {
   total: number;
   page: number;
@@ -161,6 +167,12 @@ export interface UpdateMenuItemStatusServiceInput {
 }
 export type UpdateMenuItemStatusServiceResult = MenuItemWithImageUrl;
 
+export interface DeleteMenuItemServiceInput {
+  id: string;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
 export interface RequestMenuImageUploadServiceInput {
   type: MenuImageTypeEnum;
   contentType: string;
@@ -227,6 +239,11 @@ export interface UpdateMenuCategoryRepoInput {
 }
 export type UpdateMenuCategoryRepoResult = MenuCategoryEntity;
 
+export interface DeleteMenuCategoryRepoInput {
+  id: string;
+  updatedBy: string;
+}
+
 // ========================================
 // ? MENU ITEM REPOSITORY INPUTS & RESULTS
 // ========================================
@@ -280,6 +297,11 @@ export interface UpdateMenuItemStatusRepoInput {
   updatedBy: string;
 }
 export type UpdateMenuItemStatusRepoResult = MenuItemEntity;
+
+export interface DeleteMenuItemRepoInput {
+  id: string;
+  updatedBy: string;
+}
 
 // ========================================
 // ? MENU IMPORT INPUTS & RESULTS

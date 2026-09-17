@@ -41,6 +41,7 @@ export const menuItems = pgTable("menu_items", {
   }),
   isFeatured: boolean("is_featured").default(false).notNull(),
   isListed: boolean("is_listed").default(true).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
   calories: decimal("calories", { precision: 10, scale: 2 }),
   dietaryType: smallint("dietary_type")
     .default(DietaryTypeEnum.NON_VEGETARIAN)

@@ -1,5 +1,5 @@
-import type { DeviceEntity } from "../../device/device.schema";
-import type { LicenseEntity } from "../../license/schemas/license.schema";
+import type { DeviceAuthResponseDto } from "../../device/dtos/device-auth.dtos";
+import type { LicenseAuthResponseDto } from "../../license/dtos/device-auth.dtos";
 
 export interface LoginDeviceRequestDto {
   deviceCode: string;
@@ -7,9 +7,6 @@ export interface LoginDeviceRequestDto {
 }
 
 export interface LoginDeviceResponseDto {
-  device: Omit<
-    DeviceEntity,
-    "pin" | "isActive" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy"
-  >;
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"> | null;
+  device: DeviceAuthResponseDto;
+  license: LicenseAuthResponseDto | null;
 }

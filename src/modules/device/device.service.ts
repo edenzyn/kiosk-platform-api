@@ -8,6 +8,7 @@ import type { BranchRepository } from "../branch/branch.repository";
 import type { LicenseService } from "../license/services/license.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { DeviceRepository } from "./device.repository";
+import { DeviceMapper } from "./device.mapper";
 import { DeviceEntity } from "./device.schema";
 import type {
   CreateDeviceServiceInput,
@@ -170,21 +171,12 @@ export class DeviceService {
       device.branchId,
     );
 
-    const {
-      pin,
-      isActive,
-      createdAt,
-      updatedAt,
-      createdBy,
-      updatedBy,
-      ...deviceWithoutPin
-    } = device;
     const licenseInfo = await this.licenseService.getLicenseForDevice({
       deviceId: input.id,
     });
 
     return {
-      device: deviceWithoutPin,
+      device: DeviceMapper.toDeviceAuthResponse(device),
       license: licenseInfo.license,
     };
   }

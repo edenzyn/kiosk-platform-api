@@ -12,6 +12,7 @@ import {
   hashSha256,
 } from "../../../shared/utils/core/crypto.helper";
 import type { DeviceRepository } from "../../device/device.repository";
+import { LicenseMapper } from "../license.mapper";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
@@ -567,14 +568,7 @@ export class LicenseService {
       deviceId: input.deviceId,
     });
     if (activeLicense) {
-      const {
-        createdBy,
-        updatedBy,
-        licenseKey: _lk,
-        licenseKeyHash: _lkh,
-        ...rest
-      } = activeLicense;
-      return { license: rest };
+      return { license: LicenseMapper.toDeviceAuthResponse(activeLicense) };
     }
 
     const anyLicense = await this.licenseRepository.findOne({
@@ -584,24 +578,14 @@ export class LicenseService {
       const { license: evaluatedLicense, gracePeriodExpiresAt } =
         await this._evaluateAndUpdateLicenseStatus(anyLicense);
 
-      const {
-        createdBy,
-        updatedBy,
-        licenseKey: _lk,
-        licenseKeyHash: _lkh,
-        ...rest
-      } = evaluatedLicense;
-
-      if (evaluatedLicense.status === LicenseStatusEnum.GRACE_PERIOD) {
-        return {
-          license: {
-            ...rest,
-            gracePeriodExpiresAt,
-          },
-        };
-      }
-
-      return { license: rest };
+      return {
+        license: LicenseMapper.toDeviceAuthResponse(
+          evaluatedLicense,
+          evaluatedLicense.status === LicenseStatusEnum.GRACE_PERIOD
+            ? gracePeriodExpiresAt
+            : undefined,
+        ),
+      };
     }
 
     return { license: null };

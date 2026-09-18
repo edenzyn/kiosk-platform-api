@@ -37,6 +37,7 @@ import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
 import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
+import { DeviceMapper } from "../../device/device.mapper";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
 import type { MarketRepository } from "../../market/market.repository";
@@ -904,15 +905,6 @@ export class AuthService {
           refreshToken: generatedTokens.refreshToken,
         };
 
-        const {
-          pin,
-          isActive,
-          createdAt,
-          updatedAt,
-          createdBy,
-          updatedBy,
-          ...deviceWithoutPin
-        } = device;
         const licenseInfo = await this.licenseService.getLicenseForDevice({
           deviceId: device.id,
         });
@@ -920,7 +912,7 @@ export class AuthService {
         return {
           clientType: ClientTypeEnum.DEVICE_CLIENT,
           tokens,
-          device: deviceWithoutPin,
+          device: DeviceMapper.toDeviceAuthResponse(device),
           license: licenseInfo.license,
         };
       }
@@ -1077,23 +1069,13 @@ export class AuthService {
       },
     });
 
-    const {
-      pin,
-      isActive,
-      createdAt,
-      updatedAt,
-      createdBy,
-      updatedBy,
-      ...deviceWithoutPin
-    } = device;
-
     const licenseInfo = await this.licenseService.getLicenseForDevice({
       deviceId: device.id,
     });
 
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,
-      device: deviceWithoutPin,
+      device: DeviceMapper.toDeviceAuthResponse(device),
       tokens: {
         accessToken: generatedTokens.accessToken,
         refreshToken: generatedTokens.refreshToken,

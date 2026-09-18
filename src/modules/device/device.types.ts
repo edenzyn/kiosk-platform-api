@@ -2,9 +2,10 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
-import type { LicenseEntity } from "../license/schemas/license.schema";
+import type { LicenseAuthResponseDto } from "../license/dtos/device-auth.dtos";
 import type { DeviceEntity, DeviceWithBranchEntity } from "./device.schema";
 import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
+import type { DeviceAuthResponseDto } from "./dtos/device-auth.dtos";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -70,14 +71,8 @@ export interface DeviceAuthCheckServiceInput {
 }
 
 export interface DeviceAuthCheckServiceResult {
-  device: Omit<
-    DeviceEntity,
-    "pin" | "isActive" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy"
-  >;
-  license: Omit<
-    LicenseEntity,
-    "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
-  > | null;
+  device: DeviceAuthResponseDto;
+  license: LicenseAuthResponseDto | null;
 }
 
 // ========================================

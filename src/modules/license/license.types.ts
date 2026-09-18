@@ -37,6 +37,7 @@ export interface ActivateLicenseServiceInput {
     licenseKey: string;
   };
   deviceId: string;
+  deviceOrganizationId: string;
   deviceBranchId: string;
   deviceType: DeviceTypeEnum;
 }

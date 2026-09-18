@@ -170,7 +170,15 @@ export class DeviceService {
       device.branchId,
     );
 
-    const { pin, ...deviceWithoutPin } = device;
+    const {
+      pin,
+      isActive,
+      createdAt,
+      updatedAt,
+      createdBy,
+      updatedBy,
+      ...deviceWithoutPin
+    } = device;
     const licenseInfo = await this.licenseService.getLicenseForDevice({
       deviceId: input.id,
     });

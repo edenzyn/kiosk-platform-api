@@ -705,6 +705,7 @@ export class LicenseController {
     const result = await this.licenseService.activateLicenseByKey({
       dto: data as ActivateLicenseRequestDto,
       deviceId: device.id,
+      deviceOrganizationId: device.organizationId,
       deviceBranchId: device.branchId,
       deviceType: device.type,
     });

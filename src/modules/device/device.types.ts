@@ -70,7 +70,10 @@ export interface DeviceAuthCheckServiceInput {
 }
 
 export interface DeviceAuthCheckServiceResult {
-  device: Omit<DeviceEntity, "pin">;
+  device: Omit<
+    DeviceEntity,
+    "pin" | "isActive" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy"
+  >;
   license: Omit<
     LicenseEntity,
     "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"

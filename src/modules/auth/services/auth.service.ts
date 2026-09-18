@@ -904,7 +904,15 @@ export class AuthService {
           refreshToken: generatedTokens.refreshToken,
         };
 
-        const { pin, ...deviceWithoutPin } = device;
+        const {
+          pin,
+          isActive,
+          createdAt,
+          updatedAt,
+          createdBy,
+          updatedBy,
+          ...deviceWithoutPin
+        } = device;
         const licenseInfo = await this.licenseService.getLicenseForDevice({
           deviceId: device.id,
         });
@@ -1069,7 +1077,15 @@ export class AuthService {
       },
     });
 
-    const { pin, ...deviceWithoutPin } = device;
+    const {
+      pin,
+      isActive,
+      createdAt,
+      updatedAt,
+      createdBy,
+      updatedBy,
+      ...deviceWithoutPin
+    } = device;
 
     const licenseInfo = await this.licenseService.getLicenseForDevice({
       deviceId: device.id,

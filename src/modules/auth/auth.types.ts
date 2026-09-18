@@ -79,7 +79,10 @@ export interface LoginDeviceServiceInput {
 
 export interface LoginDeviceServiceResult {
   clientType: ClientTypeEnum.DEVICE_CLIENT;
-  device: Omit<DeviceEntity, "pin">;
+  device: Omit<
+    DeviceEntity,
+    "pin" | "isActive" | "createdAt" | "updatedAt" | "createdBy" | "updatedBy"
+  >;
   tokens: AuthTokens;
   license: Omit<LicenseEntity, "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"> | null;
 }

@@ -338,11 +338,6 @@ export class BranchService {
   ): Promise<FinalizeBranchLogoServiceResult> {
     const { branchId, effectiveTenant, logo } = input;
 
-    const { settings: existing } = await this.getBranchSettings({
-      branchId,
-      effectiveTenant,
-    });
-
     await this.fileService.finalizeBrandLogo({
       logo,
       maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
@@ -353,10 +348,6 @@ export class BranchService {
       data: { logo },
       effectiveTenant,
     });
-
-    if (existing.logo) {
-      await this.fileService.deleteBrandLogo(existing.logo);
-    }
 
     const { brandLogoUrl, expiresIn } =
       await this.fileService.generateBrandLogoUrl(logo);
@@ -373,7 +364,6 @@ export class BranchService {
 
     if (!settings.logo) return;
 
-    await this.fileService.deleteBrandLogo(settings.logo);
     await this.updateBranchSettings({
       branchId,
       data: { logo: null },

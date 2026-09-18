@@ -436,9 +436,6 @@ export class OrganizationService {
   ): Promise<FinalizeOrganizationLogoServiceResult> {
     const { organizationId, logo } = input;
 
-    const { settings: existing } =
-      await this.getMyOrganizationSettings(organizationId);
-
     await this.fileService.finalizeBrandLogo({
       logo,
       maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
@@ -448,10 +445,6 @@ export class OrganizationService {
       organizationId,
       data: { logo },
     });
-
-    if (existing.logo) {
-      await this.fileService.deleteBrandLogo(existing.logo);
-    }
 
     const { brandLogoUrl, expiresIn } =
       await this.fileService.generateBrandLogoUrl(logo);
@@ -464,7 +457,6 @@ export class OrganizationService {
 
     if (!settings.logo) return;
 
-    await this.fileService.deleteBrandLogo(settings.logo);
     await this.updateMyOrganizationSettings({
       organizationId,
       data: { logo: null },

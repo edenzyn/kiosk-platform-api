@@ -7,8 +7,12 @@ import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/licens
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import { decryptData, hashSha256 } from "../../../shared/utils/core/crypto.helper";
+import {
+  decryptData,
+  hashSha256,
+} from "../../../shared/utils/core/crypto.helper";
 import type { DeviceRepository } from "../../device/device.repository";
+import { LicenseMapper } from "../license.mapper";
 import type {
   ActivateLicenseServiceInput,
   ActivateLicenseServiceResult,
@@ -34,8 +38,8 @@ import type {
   GetLicensesServiceInput,
   GetLicensesServiceResult,
 } from "../license.types";
-import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseTransactionRepository } from "../repositories/license-transaction.repository";
+import type { LicenseRepository } from "../repositories/license.repository";
 import type { LicenseEntity } from "../schemas/license.schema";
 
 export class LicenseService {
@@ -192,6 +196,13 @@ export class LicenseService {
       });
     }
 
+    if (license.branchId && license.branchId !== device.branchId) {
+      throw new AppError(
+        "This license was purchased for a different branch and cannot be assigned to this device.",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
     if (license.deviceType !== device.deviceType) {
       throw new AppError(
         "This license was purchased for a different device type and cannot be assigned to this device.",
@@ -201,9 +212,10 @@ export class LicenseService {
 
     await this._checkActiveLicenseExists(input.deviceId);
 
-    const purchaseItem = await this.licenseTransactionRepository.findOneLatestPurchaseItem(
-      license.id,
-    );
+    const purchaseItem =
+      await this.licenseTransactionRepository.findOneLatestPurchaseItem(
+        license.id,
+      );
     const durationDays = purchaseItem?.durationDays as number;
     const expiresAt = dayjs().add(durationDays, "day").toDate();
 
@@ -211,6 +223,7 @@ export class LicenseService {
       licenseId: license.id,
       data: {
         deviceId: input.deviceId,
+        branchId: license.branchId ?? device.branchId,
         status: LicenseStatusEnum.ACTIVE,
         activatedAt: new Date(),
         expiresAt,
@@ -288,10 +301,11 @@ export class LicenseService {
       });
     }
 
-    const transactions = await this.licenseTransactionRepository.findTransactionsForLicense({
-      licenseId: input.licenseId,
-      viewerUserType: UserTypeEnums.NORMAL,
-    });
+    const transactions =
+      await this.licenseTransactionRepository.findTransactionsForLicense({
+        licenseId: input.licenseId,
+        viewerUserType: UserTypeEnums.NORMAL,
+      });
 
     const decryptedLicense = {
       ...license,
@@ -390,10 +404,11 @@ export class LicenseService {
       });
     }
 
-    const transactions = await this.licenseTransactionRepository.findTransactionsForLicense({
-      licenseId: input.licenseId,
-      viewerUserType: UserTypeEnums.RESELLER,
-    });
+    const transactions =
+      await this.licenseTransactionRepository.findTransactionsForLicense({
+        licenseId: input.licenseId,
+        viewerUserType: UserTypeEnums.RESELLER,
+      });
 
     const decryptedLicense = {
       ...license,
@@ -553,14 +568,7 @@ export class LicenseService {
       deviceId: input.deviceId,
     });
     if (activeLicense) {
-      const {
-        createdBy,
-        updatedBy,
-        licenseKey: _lk,
-        licenseKeyHash: _lkh,
-        ...rest
-      } = activeLicense;
-      return { license: rest };
+      return { license: LicenseMapper.toDeviceAuthResponse(activeLicense) };
     }
 
     const anyLicense = await this.licenseRepository.findOne({
@@ -570,24 +578,14 @@ export class LicenseService {
       const { license: evaluatedLicense, gracePeriodExpiresAt } =
         await this._evaluateAndUpdateLicenseStatus(anyLicense);
 
-      const {
-        createdBy,
-        updatedBy,
-        licenseKey: _lk,
-        licenseKeyHash: _lkh,
-        ...rest
-      } = evaluatedLicense;
-
-      if (evaluatedLicense.status === LicenseStatusEnum.GRACE_PERIOD) {
-        return {
-          license: {
-            ...rest,
-            gracePeriodExpiresAt,
-          },
-        };
-      }
-
-      return { license: rest };
+      return {
+        license: LicenseMapper.toDeviceAuthResponse(
+          evaluatedLicense,
+          evaluatedLicense.status === LicenseStatusEnum.GRACE_PERIOD
+            ? gracePeriodExpiresAt
+            : undefined,
+        ),
+      };
     }
 
     return { license: null };
@@ -600,6 +598,7 @@ export class LicenseService {
 
     const license = await this.licenseRepository.findOne({
       licenseKeyHash: keyHash,
+      organizationId: input.deviceOrganizationId,
     });
 
     if (!license) {
@@ -626,6 +625,13 @@ export class LicenseService {
       });
     }
 
+    if (license.branchId && license.branchId !== input.deviceBranchId) {
+      throw new AppError(
+        "This license was purchased for a different branch and cannot be activated on this device.",
+        { statusCode: HttpStatusCodes.BAD_REQUEST },
+      );
+    }
+
     if (license.deviceType !== input.deviceType) {
       throw new AppError(
         "This license was purchased for a different device type and cannot be activated on this device.",
@@ -635,9 +641,10 @@ export class LicenseService {
 
     await this._checkActiveLicenseExists(input.deviceId);
 
-    const purchaseItem = await this.licenseTransactionRepository.findOneLatestPurchaseItem(
-      license.id,
-    );
+    const purchaseItem =
+      await this.licenseTransactionRepository.findOneLatestPurchaseItem(
+        license.id,
+      );
     const durationDays = purchaseItem?.durationDays as number;
     const expiresAt = dayjs().add(durationDays, "day").toDate();
 

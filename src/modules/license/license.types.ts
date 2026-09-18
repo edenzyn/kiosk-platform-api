@@ -15,6 +15,7 @@ import type { LicensePlanEntity } from "./schemas/license-plan.schema";
 import type { LicenseRedemptionCodeEntity } from "./schemas/license-redemption-code.schema";
 import type { LicenseTermsEntity } from "./schemas/license-terms.schema";
 import type { LicenseEntity } from "./schemas/license.schema";
+import type { LicenseAuthResponseDto } from "./dtos/device-auth.dtos";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -24,12 +25,7 @@ export interface GetLicenseForDeviceServiceInput {
 }
 
 export interface GetLicenseForDeviceServiceResult {
-  license:
-    | (Omit<
-        LicenseEntity,
-        "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"
-      > & { gracePeriodExpiresAt?: string })
-    | null;
+  license: LicenseAuthResponseDto | null;
 }
 
 export interface ActivateLicenseServiceInput {
@@ -37,6 +33,7 @@ export interface ActivateLicenseServiceInput {
     licenseKey: string;
   };
   deviceId: string;
+  deviceOrganizationId: string;
   deviceBranchId: string;
   deviceType: DeviceTypeEnum;
 }

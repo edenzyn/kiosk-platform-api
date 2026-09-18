@@ -66,6 +66,12 @@ export const BranchValidator = {
         .optional(),
     })
     .noUnknown(),
+  getBranchesForFiltersQuery: yup
+    .object({
+      /** `ex=true` drops the branch in scope and lists the org's others. */
+      ex: yup.boolean().default(false),
+    })
+    .noUnknown(),
   updateDetails: yup
     .object({
       name: yup.string().max(255).optional(),

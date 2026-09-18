@@ -6,7 +6,9 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
+import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { FileService } from "../file/file.service";
 import type { MarketRepository } from "../market/market.repository";
 import type { OrganizationRepository } from "../organization/organization.repository";
@@ -48,15 +50,15 @@ export class BranchService {
       });
     }
 
-    const isMarketMapped = await this.marketRepository.isOrganizationMappedToMarket({
-      organizationId: effectiveTenant.organizationId,
-      marketId: data.marketId,
-    });
+    const isMarketMapped =
+      await this.marketRepository.isOrganizationMappedToMarket({
+        organizationId: effectiveTenant.organizationId,
+        marketId: data.marketId,
+      });
     if (!isMarketMapped) {
-      throw new AppError(
-        "This market is not available for your organization",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
-      );
+      throw new AppError("This market is not available for your organization", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
     }
 
     const branch = await this.branchRepository.create({
@@ -161,8 +163,21 @@ export class BranchService {
     };
   }
 
-  async getBranchesForFilters(effectiveTenant: EffectiveTenant) {
+  async getBranchesForFilters(
+    effectiveTenant: EffectiveTenant,
+    user: UserTokenDto,
+    filters: { ex?: boolean } = {},
+  ) {
     const orgIdFilter = effectiveTenant.organizationId;
+
+    if (filters.ex) {
+      if (getUserScope(user) === UserScopeTypeEnums.BRANCH) return [];
+
+      return this.branchRepository.findBranchesForFilters({
+        organizationId: orgIdFilter,
+        excludeBranchId: effectiveTenant.branchId ?? undefined,
+      });
+    }
 
     let branchIdsFilter: string[] | undefined = undefined;
     if (effectiveTenant.branchId) {
@@ -323,11 +338,6 @@ export class BranchService {
   ): Promise<FinalizeBranchLogoServiceResult> {
     const { branchId, effectiveTenant, logo } = input;
 
-    const { settings: existing } = await this.getBranchSettings({
-      branchId,
-      effectiveTenant,
-    });
-
     await this.fileService.finalizeBrandLogo({
       logo,
       maxSizeBytes: FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes,
@@ -338,10 +348,6 @@ export class BranchService {
       data: { logo },
       effectiveTenant,
     });
-
-    if (existing.logo) {
-      await this.fileService.deleteBrandLogo(existing.logo);
-    }
 
     const { brandLogoUrl, expiresIn } =
       await this.fileService.generateBrandLogoUrl(logo);
@@ -358,7 +364,6 @@ export class BranchService {
 
     if (!settings.logo) return;
 
-    await this.fileService.deleteBrandLogo(settings.logo);
     await this.updateBranchSettings({
       branchId,
       data: { logo: null },

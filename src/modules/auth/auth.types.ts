@@ -4,8 +4,8 @@ import type { NotificationChannelEnum } from "../../shared/enums/notification/no
 import type { OneTimeTokenTypeEnum } from "../../shared/enums/one-time-token/one-time-token-type.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import type { OneTimeTokenEntity } from "./schemas/one-time-token.schema";
-import type { DeviceEntity } from "../device/device.schema";
-import type { LicenseEntity } from "../license/schemas/license.schema";
+import type { DeviceAuthResponseDto } from "../device/dtos/device-auth.dtos";
+import type { LicenseAuthResponseDto } from "../license/dtos/device-auth.dtos";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
 import type { UserSettingsEntity } from "../user/schemas/user-settings.schema";
 import type { UserEntity } from "../user/schemas/user.schema";
@@ -79,9 +79,9 @@ export interface LoginDeviceServiceInput {
 
 export interface LoginDeviceServiceResult {
   clientType: ClientTypeEnum.DEVICE_CLIENT;
-  device: Omit<DeviceEntity, "pin">;
+  device: DeviceAuthResponseDto;
   tokens: AuthTokens;
-  license: Omit<LicenseEntity, "createdBy" | "updatedBy" | "licenseKey" | "licenseKeyHash"> | null;
+  license: LicenseAuthResponseDto | null;
 }
 
 export interface AcceptInvitationServiceInput {

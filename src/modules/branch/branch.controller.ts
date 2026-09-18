@@ -41,9 +41,19 @@ export class BranchController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  getBranchesForFilters = async (req: Request, res: Response): Promise<void> => {
+  getBranchesForFilters = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const queryDto = await BranchValidator.getBranchesForFiltersQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
     const result = await this.branchService.getBranchesForFilters(
       req.effectiveTenant as EffectiveTenant,
+      req.user as UserTokenDto,
+      queryDto,
     );
     res.status(HttpStatusCodes.OK).json(result);
   };

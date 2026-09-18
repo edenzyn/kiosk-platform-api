@@ -34,11 +34,12 @@ import {
   verifyToken,
 } from "../../../shared/utils/core/jwt.helper";
 import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
+import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
+import { DeviceMapper } from "../../device/device.mapper";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
-import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import type { MarketRepository } from "../../market/market.repository";
 import type { NotificationService } from "../../notification/notification.service";
 import type { OrganizationRepository } from "../../organization/organization.repository";
@@ -904,7 +905,6 @@ export class AuthService {
           refreshToken: generatedTokens.refreshToken,
         };
 
-        const { pin, ...deviceWithoutPin } = device;
         const licenseInfo = await this.licenseService.getLicenseForDevice({
           deviceId: device.id,
         });
@@ -912,7 +912,7 @@ export class AuthService {
         return {
           clientType: ClientTypeEnum.DEVICE_CLIENT,
           tokens,
-          device: deviceWithoutPin,
+          device: DeviceMapper.toDeviceAuthResponse(device),
           license: licenseInfo.license,
         };
       }
@@ -988,10 +988,10 @@ export class AuthService {
           userScope,
         );
       const settings = await this.userService.getOrCreateSettings({
-      id: user.id,
-      organizationId: user.organizationId,
-      branchId: user.branchId,
-    });
+        id: user.id,
+        organizationId: user.organizationId,
+        branchId: user.branchId,
+      });
 
       return {
         clientType: ClientTypeEnum.USER_CLIENT,
@@ -1069,15 +1069,13 @@ export class AuthService {
       },
     });
 
-    const { pin, ...deviceWithoutPin } = device;
-
     const licenseInfo = await this.licenseService.getLicenseForDevice({
       deviceId: device.id,
     });
 
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,
-      device: deviceWithoutPin,
+      device: DeviceMapper.toDeviceAuthResponse(device),
       tokens: {
         accessToken: generatedTokens.accessToken,
         refreshToken: generatedTokens.refreshToken,
@@ -1113,12 +1111,13 @@ export class AuthService {
     });
 
     const token = `${verificationId}.${code}`;
+    const resetPath = `reset-password?token=${token}`;
 
     if (dto.email) {
       const baseUrl = env.USER_CLIENT_BASE_URL.replace(/\/$/, "");
       const template = getForgotPasswordTemplate({
         name: user.name,
-        resetLink: `${baseUrl}/reset-password?token=${token}`,
+        resetLink: `${baseUrl}/${resetPath}`,
       });
       await this.notificationService.send(NotificationChannelEnum.EMAIL, {
         to: dto.email,
@@ -1131,7 +1130,7 @@ export class AuthService {
           name: WHATSAPP_TEMPLATES.FORGOT_PASSWORD,
           languageCode: WHATSAPP_TEMPLATE_LANGUAGES.ENGLISH,
           bodyParams: [user.name, env.APP_NAME],
-          buttons: [{ index: 0, param: token }],
+          buttons: [{ index: 0, param: resetPath }],
         },
       });
     }

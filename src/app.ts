@@ -21,6 +21,7 @@ import { userLicenseRouter } from "./modules/license/routes/user-license.routes"
 import { platformMarketRouter } from "./modules/market/routes/platform-market.routes";
 import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
+import { menuRouter } from "./modules/menu/menu.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -155,6 +156,7 @@ export class App {
       `${this.normalUserApiV1Prefix}/devices`,
       userDeviceRouter,
     );
+    this.instance.use(`${this.normalUserApiV1Prefix}/menu`, menuRouter);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,

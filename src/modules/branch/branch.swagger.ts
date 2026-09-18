@@ -138,7 +138,16 @@ export const branchSwaggerPaths: Record<string, unknown> = {
       tags: ["Branches"],
       summary: "List branches for filter dropdowns",
       description:
-        "Returns a lightweight id/name list of branches within the effective tenant's organization, for populating filter dropdowns.",
+        "Returns a lightweight id/name list of branches within the effective tenant's organization, for populating filter dropdowns. By default a branch-scoped effective tenant narrows this to that one branch; pass `ex=true` to get the organization's **other** branches instead (the one in scope left out), which is what a cross-branch picker needs. `ex=true` returns an empty list for a branch-scoped user, who has no other branches to see.",
+      parameters: [
+        {
+          name: "ex",
+          in: "query",
+          required: false,
+          schema: { type: "boolean", default: false },
+          description: "Exclude the branch in scope and list the org's others",
+        },
+      ],
       responses: {
         "200": {
           description: "List of branch id/name pairs",
@@ -167,7 +176,12 @@ export const branchSwaggerPaths: Record<string, unknown> = {
       tags: ["Branches"],
       summary: "Update a branch",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       requestBody: {
         required: true,

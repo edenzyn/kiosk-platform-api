@@ -4,9 +4,11 @@ import { env } from "../config/env";
 import { AppError } from "../shared/errors/app-error";
 
 export function applyCors(app: Express): void {
-  const whiteList = [env.CORS_ORIGIN_1, env.CORS_ORIGIN_2].filter(
-    Boolean,
-  ) as string[];
+  const whiteList = [
+    env.CORS_ORIGIN_1,
+    env.CORS_ORIGIN_2,
+    env.CORS_ORIGIN_3,
+  ].filter(Boolean) as string[];
 
   app.use(
     cors({

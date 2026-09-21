@@ -8,6 +8,11 @@ const defaultOptions: CookieOptions = {
   path: "/",
 };
 
+export const DEVICE_COOKIE_OPTIONS: Partial<CookieOptions> = {
+  sameSite: "none",
+  secure: true,
+};
+
 export function setCookie(
   res: Response,
   key: string,
@@ -22,6 +27,10 @@ export function setCookie(
   });
 }
 
-export function clearCookie(res: Response, key: string): void {
-  res.clearCookie(key, { ...defaultOptions });
+export function clearCookie(
+  res: Response,
+  key: string,
+  options?: Partial<CookieOptions>,
+): void {
+  res.clearCookie(key, { ...defaultOptions, ...options });
 }

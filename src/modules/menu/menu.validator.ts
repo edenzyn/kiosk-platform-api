@@ -343,6 +343,12 @@ export const MenuValidator = {
     })
     .noUnknown(),
 
+  getDeviceCategoriesQuery: paginationQuerySchema
+    .shape({
+      search: yup.string().trim().optional(),
+    })
+    .noUnknown(),
+
   // ========================================
   // ? MENU ITEM SCHEMAS
   // ========================================

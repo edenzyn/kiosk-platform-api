@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
@@ -86,6 +87,26 @@ export class MenuController {
     const result = await this.menuService.getCategories({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       filters: queryDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getDeviceCategories = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await MenuValidator.getDeviceCategoriesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const device = req.device as DeviceTokenDto;
+    const result = await this.menuService.getCategories({
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+      filters: { ...queryDto, isActive: true, isListed: true },
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

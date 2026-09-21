@@ -210,6 +210,44 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/d/menu/categories": {
+    get: {
+      tags: ["Menu"],
+      summary: "List the device branch's menu categories",
+      description:
+        "Device-client endpoint. Returns the active, listed menu categories of the branch the calling device belongs to, paginated for infinite scrolling. The branch is taken from the device session, never from the request.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        { name: "search", in: "query", schema: { type: "string" } },
+      ],
+      responses: {
+        "200": {
+          description: "Page of menu categories",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  categories: {
+                    type: "array",
+                    items: menuCategoryWithItemCountSchema,
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
   "/pvt/u/menu/categories": {
     get: {
       tags: ["Menu"],

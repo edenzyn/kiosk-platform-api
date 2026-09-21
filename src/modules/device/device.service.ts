@@ -5,6 +5,7 @@ import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
 import type { BranchRepository } from "../branch/branch.repository";
+import type { BranchService } from "../branch/branch.service";
 import type { LicenseService } from "../license/services/license.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import type { DeviceRepository } from "./device.repository";
@@ -30,6 +31,7 @@ export class DeviceService {
     private readonly licenseService: LicenseService,
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
+    private readonly branchService: BranchService,
   ) {}
 
   // ========================================
@@ -175,9 +177,14 @@ export class DeviceService {
       deviceId: input.id,
     });
 
+    const brandLogoUrl = await this.branchService.getBrandLogoUrl(
+      device.branchId,
+    );
+
     return {
       device: DeviceMapper.toDeviceAuthResponse(device),
       license: licenseInfo.license,
+      brandLogoUrl,
     };
   }
 }

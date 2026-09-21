@@ -261,6 +261,12 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   device: deviceSchema,
                   license: licenseSchema,
+                  brandLogoUrl: {
+                    type: "string",
+                    nullable: true,
+                    description:
+                      "Short-lived signed URL of the device's branch logo, or null when the branch has none.",
+                  },
                 },
               },
             },

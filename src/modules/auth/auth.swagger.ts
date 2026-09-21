@@ -238,7 +238,7 @@ export const authSwaggerPaths: Record<string, unknown> = {
       responses: {
         "200": {
           description:
-            "Device authenticated; sets device auth cookies. Returns `{ device, license }` (license is the currently-assigned license, if any).",
+            "Device authenticated; sets device auth cookies. Returns `{ device, license, brandLogoUrl }` (license is the currently-assigned license, if any; brandLogoUrl is a short-lived signed URL of the device's branch logo, or null).",
         },
         "400": { $ref: "#/components/responses/ValidationError" },
         "401": { description: "Invalid device code or PIN" },

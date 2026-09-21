@@ -293,6 +293,7 @@ export class AuthController {
     res.status(HttpStatusCodes.OK).json({
       device: result.device,
       license: result.license,
+      brandLogoUrl: result.brandLogoUrl,
     });
   };
 

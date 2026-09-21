@@ -9,4 +9,5 @@ export interface LoginDeviceRequestDto {
 export interface LoginDeviceResponseDto {
   device: DeviceAuthResponseDto;
   license: LicenseAuthResponseDto | null;
+  brandLogoUrl: string | null;
 }

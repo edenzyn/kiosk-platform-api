@@ -73,6 +73,7 @@ export interface DeviceAuthCheckServiceInput {
 export interface DeviceAuthCheckServiceResult {
   device: DeviceAuthResponseDto;
   license: LicenseAuthResponseDto | null;
+  brandLogoUrl: string | null;
 }
 
 // ========================================

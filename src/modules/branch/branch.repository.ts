@@ -240,6 +240,16 @@ export class BranchRepository {
     return created;
   }
 
+  async findSettings(branchId: string): Promise<BranchSettingsEntity | null> {
+    const [settings] = await this.database.client
+      .select()
+      .from(branchSettings)
+      .where(eq(branchSettings.branchId, branchId))
+      .limit(1);
+
+    return settings ?? null;
+  }
+
   async getOrCreateSettings(branchId: string): Promise<BranchSettingsEntity> {
     const [existing] = await this.database.client
       .select()

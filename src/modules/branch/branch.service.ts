@@ -275,6 +275,16 @@ export class BranchService {
     return { branch, settings, brandLogoUrl };
   }
 
+  async getBrandLogoUrl(branchId: string): Promise<string | null> {
+    const settings = await this.branchRepository.findSettings(branchId);
+    if (!settings?.logo) return null;
+
+    const { brandLogoUrl } = await this.fileService.generateBrandLogoUrl(
+      settings.logo,
+    );
+    return brandLogoUrl;
+  }
+
   async updateBranchSettings(
     input: UpdateBranchSettingsServiceInput,
   ): Promise<UpdateBranchSettingsServiceResult> {

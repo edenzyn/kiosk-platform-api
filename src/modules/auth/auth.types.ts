@@ -82,6 +82,7 @@ export interface LoginDeviceServiceResult {
   device: DeviceAuthResponseDto;
   tokens: AuthTokens;
   license: LicenseAuthResponseDto | null;
+  brandLogoUrl: string | null;
 }
 
 export interface AcceptInvitationServiceInput {
@@ -121,7 +122,7 @@ export interface RefreshTokenServiceInput {
 
 export type RefreshTokenServiceResult =
   | LoginServiceResult
-  | LoginDeviceServiceResult;
+  | Omit<LoginDeviceServiceResult, "brandLogoUrl">;
 
 export interface LogoutServiceInput {
   refreshToken: string;

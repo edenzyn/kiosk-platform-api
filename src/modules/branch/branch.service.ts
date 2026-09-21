@@ -28,6 +28,7 @@ import type {
   UpdateBranchSettingsServiceResult,
 } from "./branch.types";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
+import type { BranchBrandingDto } from "./dtos/get-branch-branding.dtos";
 import type { UpdateBranchRequestDto } from "./dtos/update-branch.dtos";
 
 export class BranchService {
@@ -275,14 +276,20 @@ export class BranchService {
     return { branch, settings, brandLogoUrl };
   }
 
-  async getBrandLogoUrl(branchId: string): Promise<string | null> {
-    const settings = await this.branchRepository.findSettings(branchId);
-    if (!settings?.logo) return null;
+  async getBranding(branchId: string): Promise<BranchBrandingDto> {
+    const settings = await this.branchRepository.getOrCreateSettings(branchId);
 
-    const { brandLogoUrl } = await this.fileService.generateBrandLogoUrl(
-      settings.logo,
-    );
-    return brandLogoUrl;
+    const logoUrl = settings.logo
+      ? (await this.fileService.generateBrandLogoUrl(settings.logo))
+          .brandLogoUrl
+      : null;
+
+    return {
+      logoUrl,
+      primaryColor: settings.primaryColor,
+      languageCode: settings.languageCode,
+      timezone: settings.timezone,
+    };
   }
 
   async updateBranchSettings(

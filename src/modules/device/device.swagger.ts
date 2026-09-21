@@ -261,11 +261,21 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                 properties: {
                   device: deviceSchema,
                   license: licenseSchema,
-                  brandLogoUrl: {
-                    type: "string",
-                    nullable: true,
+                  branding: {
+                    type: "object",
                     description:
-                      "Short-lived signed URL of the device's branch logo, or null when the branch has none.",
+                      "Branch branding the device themes itself with.",
+                    properties: {
+                      logoUrl: {
+                        type: "string",
+                        nullable: true,
+                        description:
+                          "Short-lived signed URL of the branch logo, or null when none is set.",
+                      },
+                      primaryColor: { type: "string", example: "#10b981" },
+                      languageCode: { type: "string", example: "en" },
+                      timezone: { type: "string", example: "Asia/Dubai" },
+                    },
                   },
                 },
               },

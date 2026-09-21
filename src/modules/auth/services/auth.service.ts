@@ -1075,9 +1075,7 @@ export class AuthService {
       deviceId: device.id,
     });
 
-    const brandLogoUrl = await this.branchService.getBrandLogoUrl(
-      device.branchId,
-    );
+    const branding = await this.branchService.getBranding(device.branchId);
 
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,
@@ -1087,7 +1085,7 @@ export class AuthService {
         refreshToken: generatedTokens.refreshToken,
       },
       license: licenseInfo.license,
-      brandLogoUrl,
+      branding,
     };
   }
 

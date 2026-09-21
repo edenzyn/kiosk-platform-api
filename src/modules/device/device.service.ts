@@ -177,14 +177,12 @@ export class DeviceService {
       deviceId: input.id,
     });
 
-    const brandLogoUrl = await this.branchService.getBrandLogoUrl(
-      device.branchId,
-    );
+    const branding = await this.branchService.getBranding(device.branchId);
 
     return {
       device: DeviceMapper.toDeviceAuthResponse(device),
       license: licenseInfo.license,
-      brandLogoUrl,
+      branding,
     };
   }
 }

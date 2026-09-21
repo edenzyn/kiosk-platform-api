@@ -4,6 +4,7 @@ import type { NotificationChannelEnum } from "../../shared/enums/notification/no
 import type { OneTimeTokenTypeEnum } from "../../shared/enums/one-time-token/one-time-token-type.enum";
 import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";
 import type { OneTimeTokenEntity } from "./schemas/one-time-token.schema";
+import type { BranchBrandingDto } from "../branch/dtos/get-branch-branding.dtos";
 import type { DeviceAuthResponseDto } from "../device/dtos/device-auth.dtos";
 import type { LicenseAuthResponseDto } from "../license/dtos/device-auth.dtos";
 import type { UserScope } from "../user/dtos/check-auth.dtos";
@@ -82,7 +83,7 @@ export interface LoginDeviceServiceResult {
   device: DeviceAuthResponseDto;
   tokens: AuthTokens;
   license: LicenseAuthResponseDto | null;
-  brandLogoUrl: string | null;
+  branding: BranchBrandingDto;
 }
 
 export interface AcceptInvitationServiceInput {
@@ -122,7 +123,7 @@ export interface RefreshTokenServiceInput {
 
 export type RefreshTokenServiceResult =
   | LoginServiceResult
-  | Omit<LoginDeviceServiceResult, "brandLogoUrl">;
+  | Omit<LoginDeviceServiceResult, "branding">;
 
 export interface LogoutServiceInput {
   refreshToken: string;

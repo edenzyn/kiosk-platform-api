@@ -106,7 +106,12 @@ export class MenuController {
         organizationId: device.organizationId,
         branchId: device.branchId,
       },
-      filters: { ...queryDto, isActive: true, isListed: true },
+      filters: {
+        ...queryDto,
+        isActive: true,
+        isListed: true,
+        onlyListedItems: true,
+      },
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
@@ -126,6 +131,26 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.CREATED).json({ item });
+  };
+
+  getDeviceItems = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await MenuValidator.getDeviceItemsQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const device = req.device as DeviceTokenDto;
+    const result = await this.menuService.getItems({
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+      filters: { ...queryDto, isListed: true },
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   getItem = async (req: Request, res: Response): Promise<void> => {

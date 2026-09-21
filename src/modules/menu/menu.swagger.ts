@@ -332,6 +332,59 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/d/menu/items": {
+    get: {
+      tags: ["Menu"],
+      summary: "List the device branch's menu items for a category",
+      description:
+        "Device-client endpoint (kiosk and counter devices). Returns the active, listed items of one category in the calling device's branch, paginated for infinite scrolling. The branch is taken from the device session, never from the request.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        {
+          name: "categoryId",
+          in: "query",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "dietaryType",
+          in: "query",
+          description: "1=VEGETARIAN, 2=NON_VEGETARIAN",
+          schema: { type: "integer", enum: [1, 2] },
+        },
+        { name: "search", in: "query", schema: { type: "string" } },
+      ],
+      responses: {
+        "200": {
+          description: "Page of menu items",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  items: { type: "array", items: menuItemSchema },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                  currencyCode: {
+                    type: "string",
+                    description:
+                      "ISO currency code of the branch's market - all item prices are denominated in it.",
+                  },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
   "/pvt/u/menu/items": {
     get: {
       tags: ["Menu"],

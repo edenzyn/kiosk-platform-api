@@ -112,6 +112,7 @@ export interface GetMenuCategoriesServiceInput {
     isActive?: boolean;
     isListed?: boolean;
     search?: string;
+    onlyListedItems?: boolean;
   };
 }
 
@@ -222,6 +223,7 @@ export interface FindMenuCategoriesRepoInput {
   isActive?: boolean;
   isListed?: boolean;
   search?: string;
+  onlyListedItems?: boolean;
 }
 export interface FindMenuCategoriesRepoResult {
   categories: MenuCategoryRowWithItemCount[];

@@ -113,6 +113,7 @@ export class MenuService {
       isActive: filters.isActive,
       isListed: filters.isListed,
       search: filters.search,
+      onlyListedItems: filters.onlyListedItems,
     });
 
     return {

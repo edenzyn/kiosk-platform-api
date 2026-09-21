@@ -105,6 +105,7 @@ export class MenuRepository {
       isActive,
       isListed,
       search,
+      onlyListedItems,
     } = input;
     const conditions = [
       eq(menuCategories.organizationId, organizationId),
@@ -157,6 +158,7 @@ export class MenuRepository {
         and(
           eq(menuItems.categoryId, menuCategories.id),
           eq(menuItems.isActive, true),
+          onlyListedItems ? eq(menuItems.isListed, true) : undefined,
         ),
       )
       .where(condition)

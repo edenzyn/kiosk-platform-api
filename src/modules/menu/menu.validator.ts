@@ -379,6 +379,17 @@ export const MenuValidator = {
       id: recordIdSchema.required("Item is required"),
     })
     .noUnknown(),
+  getDeviceItemsQuery: paginationQuerySchema
+    .shape({
+      categoryId: recordIdSchema.required("Category is required"),
+      dietaryType: yup
+        .number()
+        .typeError("Dietary type must be a number")
+        .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
+        .optional(),
+      search: yup.string().trim().optional(),
+    })
+    .noUnknown(),
   getItemsQuery: paginationQuerySchema
     .shape({
       categoryId: recordIdSchema.required("Category is required"),

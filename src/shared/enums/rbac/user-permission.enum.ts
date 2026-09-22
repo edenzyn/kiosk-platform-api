@@ -61,6 +61,9 @@ export enum UserPermissions {
   ORGANIZATION_MENU_READ = "organization:menu:read",
   ORGANIZATION_MENU_WRITE = "organization:menu:write",
 
+  ORGANIZATION_TAX_READ = "organization:tax:read",
+  ORGANIZATION_TAX_WRITE = "organization:tax:write",
+
   // ======================================================
   // Branch
   // ======================================================
@@ -89,6 +92,9 @@ export enum UserPermissions {
 
   BRANCH_MENU_READ = "branch:menu:read",
   BRANCH_MENU_WRITE = "branch:menu:write",
+
+  BRANCH_TAX_READ = "branch:tax:read",
+  BRANCH_TAX_WRITE = "branch:tax:write",
 
   // ======================================================
   // Reseller

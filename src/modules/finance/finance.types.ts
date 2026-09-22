@@ -1,5 +1,92 @@
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type {
+  CreateTenantTaxProfileBodyDto,
+  TenantTaxComponentBodyDto,
+  UpdateTenantTaxProfileBodyDto,
+  UpdateTenantTaxProfileStatusBodyDto,
+} from "./dtos/tenant-tax-profile.dtos";
 import type { AppTaxComponentEntity } from "./schemas/app-tax-component.schema";
 import type { AppTaxProfileEntity } from "./schemas/app-tax-profile.schema";
+import type { TenantTaxComponentEntity } from "./schemas/tenant-tax-component.schema";
+import type { TenantTaxProfileEntity } from "./schemas/tenant-tax-profile.schema";
+
+// ========================================
+// ? TENANT TAX TYPES
+// ========================================
+export interface TenantTaxProfileWithComponents extends TenantTaxProfileEntity {
+  components: TenantTaxComponentEntity[];
+}
+
+export interface TenantTaxComponentRepoInput extends TenantTaxComponentBodyDto {
+  rate: number;
+}
+
+export interface FindTenantTaxProfilesRepoInput {
+  organizationId: string;
+  branchId: string;
+}
+
+export interface FindOneTenantTaxProfileRepoInput {
+  id: string;
+  organizationId: string;
+  branchId: string;
+}
+
+export interface CreateTenantTaxProfileRepoInput {
+  data: {
+    organizationId: string;
+    branchId: string;
+    name: string;
+    isTaxInclusive: boolean;
+    components: TenantTaxComponentRepoInput[];
+    createdBy: string;
+  };
+}
+
+export interface UpdateTenantTaxProfileRepoInput {
+  data: {
+    id: string;
+    organizationId: string;
+    branchId: string;
+    name: string;
+    isTaxInclusive: boolean;
+    components: TenantTaxComponentRepoInput[];
+    updatedBy: string;
+  };
+}
+
+export interface UpdateTenantTaxProfileStatusRepoInput {
+  data: {
+    id: string;
+    organizationId: string;
+    branchId: string;
+    isActive: boolean;
+    updatedBy: string;
+  };
+}
+
+export interface GetTenantTaxProfilesServiceInput {
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface CreateTenantTaxProfileServiceInput {
+  data: CreateTenantTaxProfileBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface UpdateTenantTaxProfileServiceInput {
+  data: UpdateTenantTaxProfileBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface UpdateTenantTaxProfileStatusServiceInput {
+  data: UpdateTenantTaxProfileStatusBodyDto;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS

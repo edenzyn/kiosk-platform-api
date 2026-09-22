@@ -11,9 +11,22 @@ import type {
   FindTaxProfileSummariesByIdsRepoResult,
   UpdateTaxProfileRepoInput,
   UpdateTaxProfileRepoResult,
+  CreateTenantTaxProfileRepoInput,
+  FindOneTenantTaxProfileRepoInput,
+  FindTenantTaxProfilesRepoInput,
+  TenantTaxComponentRepoInput,
+  TenantTaxProfileWithComponents,
+  UpdateTenantTaxProfileRepoInput,
+  UpdateTenantTaxProfileStatusRepoInput,
 } from "../finance.types";
 import { appTaxComponents } from "../schemas/app-tax-component.schema";
 import { appTaxProfiles } from "../schemas/app-tax-profile.schema";
+import { tenantTaxComponents } from "../schemas/tenant-tax-component.schema";
+import { tenantTaxProfiles } from "../schemas/tenant-tax-profile.schema";
+
+type Transaction = Parameters<
+  Parameters<Database["client"]["transaction"]>[0]
+>[0];
 
 export class TaxRepository {
   constructor(private readonly database: Database) {}
@@ -180,5 +193,233 @@ export class TaxRepository {
 
       return taxProfile;
     });
+  }
+
+  // ========================================
+  // ? TENANT TAX PROFILES
+  // ========================================
+  async findTenantProfiles(
+    input: FindTenantTaxProfilesRepoInput,
+  ): Promise<TenantTaxProfileWithComponents[]> {
+    const profiles = await this.database.client
+      .select()
+      .from(tenantTaxProfiles)
+      .where(
+        and(
+          eq(tenantTaxProfiles.organizationId, input.organizationId),
+          eq(tenantTaxProfiles.branchId, input.branchId),
+        ),
+      )
+      .orderBy(asc(tenantTaxProfiles.name));
+
+    if (profiles.length === 0) return [];
+
+    const components = await this.database.client
+      .select()
+      .from(tenantTaxComponents)
+      .where(
+        inArray(
+          tenantTaxComponents.taxProfileId,
+          profiles.map((profile) => profile.id),
+        ),
+      )
+      .orderBy(asc(tenantTaxComponents.name));
+
+    return profiles.map((profile) => ({
+      ...profile,
+      components: components.filter(
+        (component) => component.taxProfileId === profile.id,
+      ),
+    }));
+  }
+
+  async findOneTenantProfile(
+    input: FindOneTenantTaxProfileRepoInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
+    const [profile] = await this.database.client
+      .select()
+      .from(tenantTaxProfiles)
+      .where(
+        and(
+          eq(tenantTaxProfiles.id, input.id),
+          eq(tenantTaxProfiles.organizationId, input.organizationId),
+          eq(tenantTaxProfiles.branchId, input.branchId),
+        ),
+      )
+      .limit(1);
+
+    if (!profile) return null;
+
+    const components = await this.database.client
+      .select()
+      .from(tenantTaxComponents)
+      .where(eq(tenantTaxComponents.taxProfileId, profile.id))
+      .orderBy(asc(tenantTaxComponents.name));
+
+    return { ...profile, components };
+  }
+
+  async createTenantProfile(
+    input: CreateTenantTaxProfileRepoInput,
+  ): Promise<TenantTaxProfileWithComponents> {
+    const { data } = input;
+
+    return this.database.client.transaction(async (tx) => {
+      const [profile] = await tx
+        .insert(tenantTaxProfiles)
+        .values({
+          organizationId: data.organizationId,
+          branchId: data.branchId,
+          name: data.name,
+          isTaxInclusive: data.isTaxInclusive,
+          createdBy: data.createdBy,
+        })
+        .returning();
+
+      if (!profile) {
+        throw new Error("Failed to create tenant tax profile");
+      }
+
+      const components = await this.insertComponents(
+        tx,
+        profile.id,
+        data.components,
+        data.createdBy,
+      );
+
+      return { ...profile, components };
+    });
+  }
+
+  async updateTenantProfile(
+    input: UpdateTenantTaxProfileRepoInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
+    const { data } = input;
+
+    return this.database.client.transaction(async (tx) => {
+      const [profile] = await tx
+        .update(tenantTaxProfiles)
+        .set({
+          name: data.name,
+          isTaxInclusive: data.isTaxInclusive,
+          updatedAt: new Date(),
+          updatedBy: data.updatedBy,
+        })
+        .where(
+          and(
+            eq(tenantTaxProfiles.id, data.id),
+            eq(tenantTaxProfiles.organizationId, data.organizationId),
+            eq(tenantTaxProfiles.branchId, data.branchId),
+          ),
+        )
+        .returning();
+
+      if (!profile) return null;
+
+      // The payload is the whole component list: anything it leaves out is gone.
+      const keptIds = data.components
+        .map((component) => component.id)
+        .filter((id): id is string => Boolean(id));
+
+      const existing = await tx
+        .select({ id: tenantTaxComponents.id })
+        .from(tenantTaxComponents)
+        .where(eq(tenantTaxComponents.taxProfileId, profile.id));
+
+      const removedIds = existing
+        .map((component) => component.id)
+        .filter((id) => !keptIds.includes(id));
+
+      if (removedIds.length > 0) {
+        await tx
+          .delete(tenantTaxComponents)
+          .where(inArray(tenantTaxComponents.id, removedIds));
+      }
+
+      for (const component of data.components) {
+        if (component.id) {
+          await tx
+            .update(tenantTaxComponents)
+            .set({
+              name: component.name,
+              conditionType: component.conditionType,
+              rate: String(component.rate),
+              isActive: component.isActive ?? true,
+              updatedAt: new Date(),
+              updatedBy: data.updatedBy,
+            })
+            .where(eq(tenantTaxComponents.id, component.id));
+          continue;
+        }
+
+        await this.insertComponents(
+          tx,
+          profile.id,
+          [component],
+          data.updatedBy,
+        );
+      }
+
+      const components = await tx
+        .select()
+        .from(tenantTaxComponents)
+        .where(eq(tenantTaxComponents.taxProfileId, profile.id))
+        .orderBy(asc(tenantTaxComponents.name));
+
+      return { ...profile, components };
+    });
+  }
+
+  async updateTenantProfileStatus(
+    input: UpdateTenantTaxProfileStatusRepoInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
+    const { data } = input;
+
+    const [profile] = await this.database.client
+      .update(tenantTaxProfiles)
+      .set({
+        isActive: data.isActive,
+        updatedAt: new Date(),
+        updatedBy: data.updatedBy,
+      })
+      .where(
+        and(
+          eq(tenantTaxProfiles.id, data.id),
+          eq(tenantTaxProfiles.organizationId, data.organizationId),
+          eq(tenantTaxProfiles.branchId, data.branchId),
+        ),
+      )
+      .returning();
+
+    if (!profile) return null;
+
+    const components = await this.database.client
+      .select()
+      .from(tenantTaxComponents)
+      .where(eq(tenantTaxComponents.taxProfileId, profile.id))
+      .orderBy(asc(tenantTaxComponents.name));
+
+    return { ...profile, components };
+  }
+
+  private async insertComponents(
+    tx: Transaction,
+    taxProfileId: string,
+    components: TenantTaxComponentRepoInput[],
+    createdBy: string,
+  ) {
+    return tx
+      .insert(tenantTaxComponents)
+      .values(
+        components.map((component) => ({
+          taxProfileId,
+          name: component.name,
+          conditionType: component.conditionType,
+          rate: String(component.rate),
+          isActive: component.isActive ?? true,
+          createdBy,
+        })),
+      )
+      .returning();
   }
 }

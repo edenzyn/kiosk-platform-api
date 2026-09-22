@@ -1,5 +1,5 @@
 import { env } from "../../../config/env";
-import { AppTaxComponentConditionTypeEnum } from "../../enums/finance/app-tax-component-condition-type.enum";
+import { TaxComponentConditionTypeEnum } from "../../enums/finance/tax-component-condition-type.enum";
 import type { TaxProfileWithComponents } from "../../../modules/finance/finance.types";
 
 export interface TaxComponentBreakdown {
@@ -35,14 +35,14 @@ export function calculateTaxBreakdown(
 
   const applicableComponents = taxProfile.components.filter((component) => {
     if (!component.isActive) return false;
-    if (component.conditionType === AppTaxComponentConditionTypeEnum.ALWAYS) {
+    if (component.conditionType === TaxComponentConditionTypeEnum.ALWAYS) {
       return true;
     }
     if (!billingCountry || !billingState) return false;
-    if (component.conditionType === AppTaxComponentConditionTypeEnum.INTRA_STATE) {
+    if (component.conditionType === TaxComponentConditionTypeEnum.INTRA_STATE) {
       return isIntraState;
     }
-    if (component.conditionType === AppTaxComponentConditionTypeEnum.INTER_STATE) {
+    if (component.conditionType === TaxComponentConditionTypeEnum.INTER_STATE) {
       return !isIntraState;
     }
     return false;

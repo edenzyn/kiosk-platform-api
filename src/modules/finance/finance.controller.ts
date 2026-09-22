@@ -3,10 +3,8 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { RazorpayProvider } from "../../shared/providers/finance/razorpay.provider";
-import type {
-  CreateTenantTaxProfileBodyDto,
-  UpdateTenantTaxProfileBodyDto,
-} from "./dtos/tenant-tax-profile.dtos";
+import type { CreateTenantTaxProfileBodyDto } from "./dtos/create-tenant-tax-profile.dtos";
+import type { UpdateTenantTaxProfileBodyDto } from "./dtos/update-tenant-tax-profile.dtos";
 import type { RazorpayWebhookPayload } from "./finance.types";
 import type { FinanceService } from "./finance.service";
 import { FinanceValidator } from "./finance.validator";

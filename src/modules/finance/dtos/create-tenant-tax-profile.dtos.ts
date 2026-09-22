@@ -15,20 +15,6 @@ export interface CreateTenantTaxProfileBodyDto {
   components: TenantTaxComponentBodyDto[];
 }
 
-export interface UpdateTenantTaxProfileBodyDto
-  extends CreateTenantTaxProfileBodyDto {
-  id: string;
-}
-
-export interface UpdateTenantTaxProfileStatusBodyDto {
-  id: string;
-  isActive: boolean;
-}
-
-export interface TenantTaxProfileResponseDto {
+export interface CreateTenantTaxProfileResponseDto {
   profile: TenantTaxProfileWithComponents;
-}
-
-export interface TenantTaxProfilesResponseDto {
-  profiles: TenantTaxProfileWithComponents[];
 }

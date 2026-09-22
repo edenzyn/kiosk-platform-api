@@ -3,9 +3,9 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type {
   CreateTenantTaxProfileBodyDto,
   TenantTaxComponentBodyDto,
-  UpdateTenantTaxProfileBodyDto,
-  UpdateTenantTaxProfileStatusBodyDto,
-} from "./dtos/tenant-tax-profile.dtos";
+} from "./dtos/create-tenant-tax-profile.dtos";
+import type { UpdateTenantTaxProfileBodyDto } from "./dtos/update-tenant-tax-profile.dtos";
+import type { UpdateTenantTaxProfileStatusBodyDto } from "./dtos/update-tenant-tax-profile-status.dtos";
 import type { AppTaxComponentEntity } from "./schemas/app-tax-component.schema";
 import type { AppTaxProfileEntity } from "./schemas/app-tax-profile.schema";
 import type { TenantTaxComponentEntity } from "./schemas/tenant-tax-component.schema";

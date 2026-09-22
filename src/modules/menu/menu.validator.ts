@@ -394,6 +394,7 @@ export const MenuValidator = {
     .shape({
       categoryId: recordIdSchema.required("Category is required"),
       isListed: yup.boolean().optional(),
+      includeModifierCounts: yup.boolean().optional(),
       dietaryType: yup
         .number()
         .typeError("Dietary type must be a number")

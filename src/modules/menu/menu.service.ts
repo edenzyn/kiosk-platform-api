@@ -298,6 +298,7 @@ export class MenuService {
         search: filters.search,
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
+        includeModifierCounts: filters.includeModifierCounts,
       }),
       this.marketRepository.findMarketByBranch({
         branchId: effectiveTenant.branchId,

@@ -47,8 +47,15 @@ export type MenuCategoryRowWithItemCount = MenuCategoryEntity & {
   itemCount: number;
 };
 
+/** `modifierCount` is present only when `includeModifierCounts` was asked for. */
+export type MenuItemWithModifierCounts = MenuItemEntity & {
+  /** Active modifier groups on the item, e.g. "Size", "Add-ons". */
+  modifierCount?: number;
+};
+
 export interface MenuItemWithImageUrl extends MenuItemEntity {
   imageUrl: string | null;
+  modifierCount?: number;
 }
 
 export interface ItemModifierWithOptions extends ItemModifierEntity {
@@ -197,6 +204,7 @@ export interface GetMenuItemsServiceInput {
     search?: string;
     sortBy?: MenuItemSortByEnum;
     sortOrder?: SortingOrderEnum;
+    includeModifierCounts?: boolean;
   };
 }
 
@@ -267,9 +275,10 @@ export interface FindMenuItemsRepoInput {
   search?: string;
   sortBy?: MenuItemSortByEnum;
   sortOrder?: SortingOrderEnum;
+  includeModifierCounts?: boolean;
 }
 export interface FindMenuItemsRepoResult {
-  items: MenuItemEntity[];
+  items: MenuItemWithModifierCounts[];
   total: number;
 }
 

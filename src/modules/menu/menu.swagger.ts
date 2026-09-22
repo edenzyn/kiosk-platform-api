@@ -63,6 +63,11 @@ const menuItemSchema = {
     takeawayChargeAmount: { type: "string", nullable: true },
     isFeatured: { type: "boolean" },
     isListed: { type: "boolean" },
+    modifierCount: {
+      type: "integer",
+      description:
+        "Active modifier groups on the item. Only present when includeModifierCounts=true; always returned on the device endpoint.",
+    },
     calories: { type: "string", nullable: true },
     dietaryType: {
       type: "integer",
@@ -337,7 +342,7 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       tags: ["Menu"],
       summary: "List the device branch's menu items for a category",
       description:
-        "Device-client endpoint (kiosk and counter devices). Returns the active, listed items of one category in the calling device's branch, paginated for infinite scrolling. The branch is taken from the device session, never from the request.",
+        "Device-client endpoint (kiosk and counter devices). Returns the active, listed items of one category in the calling device's branch, paginated for infinite scrolling. The branch is taken from the device session, never from the request. Every item carries modifierCount so the kiosk knows which items open a customisation step.",
       security: [{ deviceCookieAuth: [] }],
       parameters: [
         { $ref: "#/components/parameters/PageParam" },
@@ -401,6 +406,13 @@ export const menuSwaggerPaths: Record<string, unknown> = {
           schema: { type: "string", format: "uuid" },
         },
         { name: "isListed", in: "query", schema: { type: "boolean" } },
+        {
+          name: "includeModifierCounts",
+          in: "query",
+          description:
+            "Adds modifierCount to every item, counted in the same query via a scalar subquery.",
+          schema: { type: "boolean" },
+        },
         {
           name: "dietaryType",
           in: "query",

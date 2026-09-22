@@ -148,7 +148,7 @@ export class MenuController {
         organizationId: device.organizationId,
         branchId: device.branchId,
       },
-      filters: { ...queryDto, isListed: true },
+      filters: { ...queryDto, isListed: true, includeModifierCounts: true },
     });
     res.status(HttpStatusCodes.OK).json(result);
   };

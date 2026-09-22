@@ -1,5 +1,7 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { TaxComponentConditionTypeEnum } from "../../shared/enums/finance/tax-component-condition-type.enum";
+import type { GetTenantTaxProfileQueryDto } from "./dtos/get-tenant-tax-profile.dtos";
 import type {
   UpdateTenantTaxProfileBodyDto,
   TenantTaxComponentBodyDto,
@@ -23,6 +25,7 @@ export interface TenantTaxComponentRepoInput extends TenantTaxComponentBodyDto {
 export interface FindTenantTaxProfileRepoInput {
   organizationId: string;
   branchId: string;
+  conditionTypes?: TaxComponentConditionTypeEnum[];
 }
 
 export interface CreateTenantTaxProfileRepoInput {
@@ -50,6 +53,7 @@ export interface UpdateTenantTaxProfileRepoInput {
 
 export interface GetTenantTaxProfileServiceInput {
   effectiveTenant: EffectiveTenant;
+  filters?: GetTenantTaxProfileQueryDto;
 }
 
 export interface UpdateTenantTaxProfileServiceInput {

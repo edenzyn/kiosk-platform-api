@@ -112,6 +112,7 @@ export class FinanceService {
     return this.taxRepository.findTenantProfile({
       organizationId: input.effectiveTenant.organizationId,
       branchId,
+      conditionTypes: input.filters?.conditionTypes,
     });
   }
 

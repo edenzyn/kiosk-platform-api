@@ -221,6 +221,9 @@ export class TaxRepository {
         and(
           eq(tenantTaxComponents.taxProfileId, profile.id),
           eq(tenantTaxComponents.isActive, true),
+          input.conditionTypes && input.conditionTypes.length > 0
+            ? inArray(tenantTaxComponents.conditionType, input.conditionTypes)
+            : undefined,
         ),
       )
       .orderBy(asc(tenantTaxComponents.name));

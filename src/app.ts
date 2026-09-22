@@ -22,6 +22,7 @@ import { platformMarketRouter } from "./modules/market/routes/platform-market.ro
 import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
+import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
 import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
@@ -177,6 +178,7 @@ export class App {
       deviceLicenseRouter,
     );
     this.instance.use(`${this.deviceApiV1Prefix}/menu`, deviceMenuRouter);
+    this.instance.use(`${this.deviceApiV1Prefix}/taxes`, deviceTaxRouter);
   }
 
   private configureErrorHandling(): void {

@@ -11,12 +11,10 @@ import type {
 import { logger } from "../../shared/utils/core/logger";
 import type { LicenseTransactionRepository } from "../license/repositories/license-transaction.repository";
 import type {
-  CreateTenantTaxProfileServiceInput,
-  GetTenantTaxProfilesServiceInput,
+  GetTenantTaxProfileServiceInput,
   HandleRazorpayWebhookServiceInput,
   TenantTaxProfileWithComponents,
   UpdateTenantTaxProfileServiceInput,
-  UpdateTenantTaxProfileStatusServiceInput,
   VerifyRazorpayPaymentServiceInput,
 } from "./finance.types";
 import type { TaxRepository } from "./repositories/tax.repository";
@@ -106,32 +104,14 @@ export class FinanceService {
   // ========================================
   // ? TENANT TAX PROFILES
   // ========================================
-  async getTenantTaxProfiles(
-    input: GetTenantTaxProfilesServiceInput,
-  ): Promise<TenantTaxProfileWithComponents[]> {
+  async getTenantTaxProfile(
+    input: GetTenantTaxProfileServiceInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
     const branchId = this.requireTaxBranch(input.effectiveTenant);
 
-    return this.taxRepository.findTenantProfiles({
+    return this.taxRepository.findTenantProfile({
       organizationId: input.effectiveTenant.organizationId,
       branchId,
-    });
-  }
-
-  async createTenantTaxProfile(
-    input: CreateTenantTaxProfileServiceInput,
-  ): Promise<TenantTaxProfileWithComponents> {
-    const { data, user, effectiveTenant } = input;
-    const branchId = this.requireTaxBranch(effectiveTenant);
-
-    return this.taxRepository.createTenantProfile({
-      data: {
-        organizationId: effectiveTenant.organizationId,
-        branchId,
-        name: data.name,
-        isTaxInclusive: data.isTaxInclusive ?? false,
-        components: data.components,
-        createdBy: user.id,
-      },
     });
   }
 
@@ -140,41 +120,34 @@ export class FinanceService {
   ): Promise<TenantTaxProfileWithComponents> {
     const { data, user, effectiveTenant } = input;
     const branchId = this.requireTaxBranch(effectiveTenant);
+    const organizationId = effectiveTenant.organizationId;
+
+    const existing = await this.taxRepository.findTenantProfile({
+      organizationId,
+      branchId,
+    });
+
+    if (!existing) {
+      return this.taxRepository.createTenantProfile({
+        data: {
+          organizationId,
+          branchId,
+          name: data.name,
+          isTaxInclusive: data.isTaxInclusive ?? false,
+          components: data.components,
+          createdBy: user.id,
+        },
+      });
+    }
 
     const profile = await this.taxRepository.updateTenantProfile({
       data: {
-        id: data.id,
-        organizationId: effectiveTenant.organizationId,
+        id: existing.id,
+        organizationId,
         branchId,
         name: data.name,
         isTaxInclusive: data.isTaxInclusive ?? false,
         components: data.components,
-        updatedBy: user.id,
-      },
-    });
-
-    if (!profile) {
-      throw new AppError("Tax profile not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
-    }
-
-    return profile;
-  }
-
-  async updateTenantTaxProfileStatus(
-    input: UpdateTenantTaxProfileStatusServiceInput,
-  ): Promise<TenantTaxProfileWithComponents> {
-    const { data, user, effectiveTenant } = input;
-    const branchId = this.requireTaxBranch(effectiveTenant);
-
-    const profile = await this.taxRepository.updateTenantProfileStatus({
-      data: {
-        id: data.id,
-        organizationId: effectiveTenant.organizationId,
-        branchId,
-        isActive: data.isActive,
         updatedBy: user.id,
       },
     });

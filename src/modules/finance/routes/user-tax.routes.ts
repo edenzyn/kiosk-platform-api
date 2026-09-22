@@ -1,10 +1,6 @@
 import { Router } from "express";
 import { container } from "../../../config/container";
 import { accessMiddleware } from "../../../middleware/access.middleware";
-import {
-  BRANCH_TAX_READ_WRITE_PERMS,
-  ORGANIZATION_TAX_READ_WRITE_PERMS,
-} from "../../../shared/constants/user-permission.constants";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
 import type { FinanceController } from "../finance.controller";
 
@@ -13,38 +9,20 @@ const financeController =
   container.resolve<FinanceController>("financeController");
 
 userTaxRouter
-  .route("/profiles")
+  .route("/profile")
   .get(
     accessMiddleware({
-      organization: [...ORGANIZATION_TAX_READ_WRITE_PERMS],
-      branch: [...BRANCH_TAX_READ_WRITE_PERMS],
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    financeController.getTaxProfiles,
+    financeController.getTaxProfile,
   )
-  .post(
+  .put(
     accessMiddleware({
-      organization: [UserPermissions.ORGANIZATION_TAX_WRITE],
-      branch: [UserPermissions.BRANCH_TAX_WRITE],
+      organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+      branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    financeController.createTaxProfile,
+    financeController.updateTaxProfile,
   );
-
-userTaxRouter.put(
-  "/profiles/:id",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_TAX_WRITE],
-    branch: [UserPermissions.BRANCH_TAX_WRITE],
-  }),
-  financeController.updateTaxProfile,
-);
-
-userTaxRouter.patch(
-  "/profiles/:id/status",
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_TAX_WRITE],
-    branch: [UserPermissions.BRANCH_TAX_WRITE],
-  }),
-  financeController.updateTaxProfileStatus,
-);
 
 export { userTaxRouter };

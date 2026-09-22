@@ -1,11 +1,9 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type {
-  CreateTenantTaxProfileBodyDto,
+  UpdateTenantTaxProfileBodyDto,
   TenantTaxComponentBodyDto,
-} from "./dtos/create-tenant-tax-profile.dtos";
-import type { UpdateTenantTaxProfileBodyDto } from "./dtos/update-tenant-tax-profile.dtos";
-import type { UpdateTenantTaxProfileStatusBodyDto } from "./dtos/update-tenant-tax-profile-status.dtos";
+} from "./dtos/update-tenant-tax-profile.dtos";
 import type { AppTaxComponentEntity } from "./schemas/app-tax-component.schema";
 import type { AppTaxProfileEntity } from "./schemas/app-tax-profile.schema";
 import type { TenantTaxComponentEntity } from "./schemas/tenant-tax-component.schema";
@@ -22,13 +20,7 @@ export interface TenantTaxComponentRepoInput extends TenantTaxComponentBodyDto {
   rate: number;
 }
 
-export interface FindTenantTaxProfilesRepoInput {
-  organizationId: string;
-  branchId: string;
-}
-
-export interface FindOneTenantTaxProfileRepoInput {
-  id: string;
+export interface FindTenantTaxProfileRepoInput {
   organizationId: string;
   branchId: string;
 }
@@ -56,34 +48,12 @@ export interface UpdateTenantTaxProfileRepoInput {
   };
 }
 
-export interface UpdateTenantTaxProfileStatusRepoInput {
-  data: {
-    id: string;
-    organizationId: string;
-    branchId: string;
-    isActive: boolean;
-    updatedBy: string;
-  };
-}
-
-export interface GetTenantTaxProfilesServiceInput {
-  effectiveTenant: EffectiveTenant;
-}
-
-export interface CreateTenantTaxProfileServiceInput {
-  data: CreateTenantTaxProfileBodyDto;
-  user: UserTokenDto;
+export interface GetTenantTaxProfileServiceInput {
   effectiveTenant: EffectiveTenant;
 }
 
 export interface UpdateTenantTaxProfileServiceInput {
   data: UpdateTenantTaxProfileBodyDto;
-  user: UserTokenDto;
-  effectiveTenant: EffectiveTenant;
-}
-
-export interface UpdateTenantTaxProfileStatusServiceInput {
-  data: UpdateTenantTaxProfileStatusBodyDto;
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
 }

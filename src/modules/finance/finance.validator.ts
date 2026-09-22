@@ -46,19 +46,5 @@ const tenantTaxProfileSchema = {
 };
 
 export class FinanceValidator {
-  static createTaxProfile = yup.object(tenantTaxProfileSchema);
-
-  static updateTaxProfile = yup.object({
-    ...tenantTaxProfileSchema,
-    id: recordIdSchema.required("Id is required"),
-  });
-
-  static updateTaxProfileStatus = yup.object({
-    id: recordIdSchema.required("Id is required"),
-    isActive: yup.boolean().required("Status is required"),
-  });
-
-  static taxProfileIdParams = yup.object({
-    id: recordIdSchema.required("Id is required"),
-  });
+  static updateTaxProfile = yup.object(tenantTaxProfileSchema);
 }

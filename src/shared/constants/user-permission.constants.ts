@@ -96,19 +96,6 @@ export const BRANCH_MENU_READ_WRITE_PERMS = [
 ];
 
 //----------------------
-// Tax Module Constants
-//----------------------
-export const ORGANIZATION_TAX_READ_WRITE_PERMS = [
-  UserPermissions.ORGANIZATION_TAX_READ,
-  UserPermissions.ORGANIZATION_TAX_WRITE,
-];
-
-export const BRANCH_TAX_READ_WRITE_PERMS = [
-  UserPermissions.BRANCH_TAX_READ,
-  UserPermissions.BRANCH_TAX_WRITE,
-];
-
-//----------------------
 // License Module Constants
 //----------------------
 export const ORGANIZATION_LICENSE_READ_WRITE_PERMS = [

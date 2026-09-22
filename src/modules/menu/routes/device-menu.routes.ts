@@ -23,4 +23,12 @@ deviceMenuRouter.get(
   menuController.getDeviceItems,
 );
 
+deviceMenuRouter.get(
+  "/items/:id",
+  accessMiddleware({
+    deviceType: [DeviceTypeEnum.KIOSK, DeviceTypeEnum.COUNTER],
+  }),
+  menuController.getDeviceItemDetails,
+);
+
 export { deviceMenuRouter };

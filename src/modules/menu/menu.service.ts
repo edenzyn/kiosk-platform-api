@@ -337,6 +337,21 @@ export class MenuService {
     };
   }
 
+  async getDeviceItemDetails(
+    input: GetMenuItemServiceInput,
+  ): Promise<GetMenuItemServiceResult> {
+    const item = await this.getItem(input);
+
+    if (!item.isListed) {
+      throw new AppError("Item not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return item;
+  }
+
   async updateItem(
     input: UpdateMenuItemServiceInput,
   ): Promise<UpdateMenuItemServiceResult> {

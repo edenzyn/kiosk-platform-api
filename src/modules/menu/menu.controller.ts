@@ -153,6 +153,23 @@ export class MenuController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getDeviceItemDetails = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.itemIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const device = req.device as DeviceTokenDto;
+    const item = await this.menuService.getDeviceItemDetails({
+      id: params.id,
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+    });
+    res.status(HttpStatusCodes.OK).json({ item });
+  };
+
   getItem = async (req: Request, res: Response): Promise<void> => {
     const params = await MenuValidator.itemIdParams.validate(req.params, {
       abortEarly: false,

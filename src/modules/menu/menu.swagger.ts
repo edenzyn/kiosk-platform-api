@@ -84,6 +84,55 @@ const menuItemSchema = {
   },
 };
 
+const menuItemWithModifiersSchema = {
+  allOf: [
+    menuItemSchema,
+    {
+      type: "object",
+      properties: {
+        modifiers: {
+          type: "array",
+          description:
+            "Active modifier groups in display order, each with its active options.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              menuItemId: { type: "string", format: "uuid" },
+              name: { type: "string" },
+              selectionType: {
+                type: "integer",
+                enum: [1, 2, 3],
+                description: "1=SINGLE_REQUIRED, 2=SINGLE, 3=MULTIPLE",
+              },
+              minSelection: { type: "integer" },
+              maxSelection: { type: "integer" },
+              displayOrder: { type: "integer" },
+              options: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string", format: "uuid" },
+                    itemModifierId: { type: "string", format: "uuid" },
+                    name: { type: "string" },
+                    price: {
+                      type: "string",
+                      description: "Extra charge on top of the item price.",
+                    },
+                    displayOrder: { type: "integer" },
+                    isDefault: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  ],
+};
+
 const menuIdParam = {
   name: "id",
   in: "path",
@@ -387,6 +436,39 @@ export const menuSwaggerPaths: Record<string, unknown> = {
         "400": { $ref: "#/components/responses/ValidationError" },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/d/menu/items/{id}": {
+    get: {
+      tags: ["Menu"],
+      summary: "Get one menu item with its modifiers",
+      description:
+        "Device-client endpoint. Returns a single active, listed item of the calling device's branch together with its active modifier groups and the options inside each, in display order. This is what the kiosk opens when a customer taps an item that has modifiers.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "The item with its modifiers",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { item: menuItemWithModifiersSchema },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
       },
     },
   },

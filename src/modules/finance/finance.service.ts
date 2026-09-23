@@ -9,8 +9,10 @@ import type {
   RazorpayProvider,
 } from "../../shared/providers/finance/razorpay.provider";
 import { logger } from "../../shared/utils/core/logger";
+import type { BranchRepository } from "../branch/branch.repository";
 import type { LicenseTransactionRepository } from "../license/repositories/license-transaction.repository";
 import type {
+  GetBranchTaxProfileForCloneServiceInput,
   GetTenantTaxProfileServiceInput,
   HandleRazorpayWebhookServiceInput,
   TenantTaxProfileWithComponents,
@@ -24,6 +26,7 @@ export class FinanceService {
     private readonly razorpayProvider: RazorpayProvider,
     private readonly licenseTransactionRepository: LicenseTransactionRepository,
     private readonly taxRepository: TaxRepository,
+    private readonly branchRepository: BranchRepository,
   ) {}
 
   // ========================================
@@ -161,6 +164,50 @@ export class FinanceService {
     }
 
     return profile;
+  }
+
+  async getBranchTaxProfileForClone(
+    input: GetBranchTaxProfileForCloneServiceInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
+    const targetBranchId = this.requireTaxBranch(input.effectiveTenant);
+    const sourceBranch = await this.findCloneSourceOrThrow(
+      input.branchId,
+      input.effectiveTenant,
+      targetBranchId,
+    );
+
+    return this.taxRepository.findTenantProfile({
+      organizationId: input.effectiveTenant.organizationId,
+      branchId: sourceBranch.id,
+      conditionTypes: input.filters?.conditionTypes,
+    });
+  }
+
+  private async findCloneSourceOrThrow(
+    sourceBranchId: string,
+    effectiveTenant: EffectiveTenant,
+    targetBranchId: string,
+  ) {
+    if (sourceBranchId === targetBranchId) {
+      throw new AppError("Pick a different branch to clone from", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const branch = await this.branchRepository.findOne({
+      id: sourceBranchId,
+      organizationId: effectiveTenant.organizationId,
+    });
+
+    if (!branch) {
+      throw new AppError("Branch not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return branch;
   }
 
   private requireTaxBranch(effectiveTenant: EffectiveTenant): string {

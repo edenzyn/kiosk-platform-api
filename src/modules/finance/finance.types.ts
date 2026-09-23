@@ -56,6 +56,12 @@ export interface GetTenantTaxProfileServiceInput {
   filters?: GetTenantTaxProfileQueryDto;
 }
 
+export interface GetBranchTaxProfileForCloneServiceInput {
+  branchId: string;
+  effectiveTenant: EffectiveTenant;
+  filters?: GetTenantTaxProfileQueryDto;
+}
+
 export interface UpdateTenantTaxProfileServiceInput {
   data: UpdateTenantTaxProfileBodyDto;
   user: UserTokenDto;

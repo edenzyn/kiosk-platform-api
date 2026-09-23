@@ -25,4 +25,12 @@ userTaxRouter
     financeController.updateTaxProfile,
   );
 
+userTaxRouter.get(
+  "/profile/branches/:branchId",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+  }),
+  financeController.getBranchTaxProfile,
+);
+
 export { userTaxRouter };

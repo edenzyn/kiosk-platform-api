@@ -142,7 +142,7 @@ export class BranchRepository {
   async findBranchesForFilters(
     input: FindBranchesForFiltersRepoInput,
   ): Promise<FindBranchesForFiltersRepoResult> {
-    const { organizationId, branchIds, excludeBranchId } = input;
+    const { organizationId, branchIds, excludeBranchId, marketId } = input;
     const conditions = [];
 
     if (organizationId) {
@@ -155,6 +155,10 @@ export class BranchRepository {
 
     if (excludeBranchId) {
       conditions.push(ne(branches.id, excludeBranchId));
+    }
+
+    if (marketId) {
+      conditions.push(eq(branches.marketId, marketId));
     }
 
     const condition = conditions.length > 0 ? and(...conditions) : undefined;

@@ -167,16 +167,28 @@ export class BranchService {
   async getBranchesForFilters(
     effectiveTenant: EffectiveTenant,
     user: UserTokenDto,
-    filters: { ex?: boolean } = {},
+    filters: { ex?: boolean; isSameMarket?: boolean } = {},
   ) {
     const orgIdFilter = effectiveTenant.organizationId;
 
     if (filters.ex) {
       if (getUserScope(user) === UserScopeTypeEnums.BRANCH) return [];
 
+      let marketId;
+      if (filters.isSameMarket) {
+        if (!effectiveTenant.branchId) return undefined;
+
+        const currentBranch = await this.branchRepository.findOne({
+          id: effectiveTenant.branchId,
+          organizationId: effectiveTenant.organizationId,
+        });
+
+        marketId = currentBranch?.marketId;
+      }
       return this.branchRepository.findBranchesForFilters({
         organizationId: orgIdFilter,
         excludeBranchId: effectiveTenant.branchId ?? undefined,
+        marketId,
       });
     }
 

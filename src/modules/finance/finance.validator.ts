@@ -21,6 +21,15 @@ export class FinanceValidator {
     })
     .noUnknown();
 
+  static getBranchTaxProfileParams = yup
+    .object({
+      branchId: yup
+        .string()
+        .uuid("Invalid branch id")
+        .required("Branch is required"),
+    })
+    .noUnknown();
+
   static updateTaxProfile = yup.object({
     name: yup
       .string()

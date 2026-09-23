@@ -77,6 +77,24 @@ export class FinanceController {
     res.status(HttpStatusCodes.OK).json({ profile });
   };
 
+  getBranchTaxProfile = async (req: Request, res: Response): Promise<void> => {
+    const params = await FinanceValidator.getBranchTaxProfileParams.validate(
+      req.params,
+      { abortEarly: false, stripUnknown: true },
+    );
+    const queryDto = await FinanceValidator.getTaxProfileQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const profile = await this.financeService.getBranchTaxProfileForClone({
+      branchId: params.branchId,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      filters: queryDto,
+    });
+    res.status(HttpStatusCodes.OK).json({ profile });
+  };
+
   updateTaxProfile = async (req: Request, res: Response): Promise<void> => {
     const data = await FinanceValidator.updateTaxProfile.validate(req.body, {
       abortEarly: false,

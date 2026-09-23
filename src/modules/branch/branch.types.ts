@@ -173,6 +173,7 @@ export interface FindBranchesForFiltersRepoInput {
   branchIds?: string[];
   /** Leaves this branch out of the result, e.g. when picking a *other* branch. */
   excludeBranchId?: string;
+  marketId?: string;
 }
 export type FindBranchesForFiltersRepoResult = Array<{
   id: string;

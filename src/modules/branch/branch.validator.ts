@@ -70,6 +70,8 @@ export const BranchValidator = {
     .object({
       /** `ex=true` drops the branch in scope and lists the org's others. */
       ex: yup.boolean().default(false),
+      /** Restricts the result to branches in the caller's own market. */
+      isSameMarket: yup.boolean().default(false),
     })
     .noUnknown(),
   updateDetails: yup

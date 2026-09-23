@@ -37,6 +37,7 @@ import { pluralizeByCount } from "../../../shared/utils/core/string.helper";
 import { getForgotPasswordTemplate } from "../../../shared/utils/emailTemplates/forgot-password.template";
 import { getUserScope } from "../../../shared/utils/user/user-scope.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
+import type { BranchService } from "../../branch/branch.service";
 import { DeviceMapper } from "../../device/device.mapper";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseService } from "../../license/services/license.service";
@@ -98,6 +99,7 @@ export class AuthService {
     private readonly oneTimeTokenService: OneTimeTokenService,
     private readonly notificationService: NotificationService,
     private readonly marketRepository: MarketRepository,
+    private readonly branchService: BranchService,
   ) {}
 
   private _generateTokens(
@@ -1073,6 +1075,8 @@ export class AuthService {
       deviceId: device.id,
     });
 
+    const branding = await this.branchService.getBranding(device.branchId);
+
     return {
       clientType: ClientTypeEnum.DEVICE_CLIENT,
       device: DeviceMapper.toDeviceAuthResponse(device),
@@ -1081,6 +1085,7 @@ export class AuthService {
         refreshToken: generatedTokens.refreshToken,
       },
       license: licenseInfo.license,
+      branding,
     };
   }
 

@@ -5,6 +5,7 @@ import { RbacService } from "../modules/rbac/rbac.service";
 import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
+import { DeviceTypeEnum } from "../shared/enums/device/device-type.enum";
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../shared/enums/rbac/user-permission.enum";
@@ -17,6 +18,7 @@ const isReadAction = (permission: string): boolean =>
   permission.endsWith(":read");
 
 export interface AccessPermissions {
+  deviceType?: DeviceTypeEnum | DeviceTypeEnum[];
   userType?: UserTypeEnums | UserTypeEnums[];
   platform?: UserPermissions[];
   reseller?: UserPermissions[];
@@ -44,7 +46,20 @@ export const accessMiddleware = (
             code: ErrorCodes.UNAUTHORIZED,
           });
         }
-        // TODO: Device permission validation should check from here in future if needed
+
+        if (permissions.deviceType !== undefined) {
+          const allowedDeviceTypes = Array.isArray(permissions.deviceType)
+            ? permissions.deviceType
+            : [permissions.deviceType];
+
+          if (!allowedDeviceTypes.includes(req.device.type)) {
+            throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+              code: ErrorCodes.FORBIDDEN,
+            });
+          }
+        }
+
         return next();
       }
 

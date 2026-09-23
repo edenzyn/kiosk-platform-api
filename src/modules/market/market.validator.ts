@@ -1,6 +1,6 @@
 import * as Yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
-import { AppTaxComponentConditionTypeEnum } from "../../shared/enums/finance/app-tax-component-condition-type.enum";
+import { TaxComponentConditionTypeEnum } from "../../shared/enums/finance/tax-component-condition-type.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 
 const taxComponentSchema = Yup.object({
@@ -13,7 +13,7 @@ const taxComponentSchema = Yup.object({
   conditionType: Yup.number()
     .typeError("Condition type must be a number")
     .oneOf(
-      Object.values(AppTaxComponentConditionTypeEnum) as number[],
+      Object.values(TaxComponentConditionTypeEnum) as number[],
       "Invalid condition type",
     )
     .required("Condition type is required"),

@@ -4,6 +4,7 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
   ilike,
   inArray,
   or,
@@ -105,6 +106,7 @@ export class MenuRepository {
       isActive,
       isListed,
       search,
+      onlyListedItems,
     } = input;
     const conditions = [
       eq(menuCategories.organizationId, organizationId),
@@ -157,6 +159,7 @@ export class MenuRepository {
         and(
           eq(menuItems.categoryId, menuCategories.id),
           eq(menuItems.isActive, true),
+          onlyListedItems ? eq(menuItems.isListed, true) : undefined,
         ),
       )
       .where(condition)
@@ -559,6 +562,7 @@ export class MenuRepository {
       search,
       sortBy,
       sortOrder,
+      includeModifierCounts,
     } = input;
     const conditions = [
       eq(menuItems.organizationId, organizationId),
@@ -592,8 +596,29 @@ export class MenuRepository {
       .where(condition);
     const total = Number(countResult?.count || 0);
 
+    const modifierCountQuery = this.database.client
+      .select({ value: count() })
+      .from(itemModifiers)
+      .where(
+        and(
+          eq(itemModifiers.menuItemId, menuItems.id),
+          eq(itemModifiers.isActive, true),
+        ),
+      );
+
+    const selection = {
+      ...getTableColumns(menuItems),
+      ...(includeModifierCounts
+        ? {
+            modifierCount: sql<number>`(${modifierCountQuery})::int`.as(
+              "modifier_count",
+            ),
+          }
+        : {}),
+    };
+
     const rows = await this.database.client
-      .select()
+      .select(selection)
       .from(menuItems)
       .where(condition)
       .orderBy(...this.itemOrderBy(sortBy, sortOrder))

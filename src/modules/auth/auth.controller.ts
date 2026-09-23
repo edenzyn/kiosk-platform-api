@@ -6,7 +6,11 @@ import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
-import { clearCookie, setCookie } from "../../shared/utils/core/cookie.helper";
+import {
+  clearCookie,
+  DEVICE_COOKIE_OPTIONS,
+  setCookie,
+} from "../../shared/utils/core/cookie.helper";
 import { parseDeviceName } from "../../shared/utils/core/user-agent.helper";
 import type { SessionMeta } from "./auth.types";
 import { AuthValidator } from "./auth.validator";
@@ -280,7 +284,7 @@ export class AuthController {
       SecurityTokenEnums.DEVICE_ACCESS_TOKEN,
       result.tokens.accessToken,
       ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
+      { ...DEVICE_COOKIE_OPTIONS, httpOnly: false },
     );
 
     setCookie(
@@ -288,11 +292,13 @@ export class AuthController {
       SecurityTokenEnums.DEVICE_REFRESH_TOKEN,
       result.tokens.refreshToken,
       ms(env.JWT_DEVICE_REFRESH_EXPIRES_IN as ms.StringValue),
+      DEVICE_COOKIE_OPTIONS,
     );
 
     res.status(HttpStatusCodes.OK).json({
       device: result.device,
       license: result.license,
+      branding: result.branding,
     });
   };
 
@@ -320,13 +326,14 @@ export class AuthController {
       SecurityTokenEnums.DEVICE_ACCESS_TOKEN,
       result.tokens.accessToken,
       ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
-      { httpOnly: false },
+      { ...DEVICE_COOKIE_OPTIONS, httpOnly: false },
     );
     setCookie(
       res,
       SecurityTokenEnums.DEVICE_REFRESH_TOKEN,
       result.tokens.refreshToken,
       ms(env.JWT_DEVICE_REFRESH_EXPIRES_IN as ms.StringValue),
+      DEVICE_COOKIE_OPTIONS,
     );
 
     res.json({
@@ -339,8 +346,16 @@ export class AuthController {
     const refreshToken = req.cookies[SecurityTokenEnums.DEVICE_REFRESH_TOKEN];
     if (refreshToken) await this.authService.logout(refreshToken);
 
-    clearCookie(res, SecurityTokenEnums.DEVICE_ACCESS_TOKEN);
-    clearCookie(res, SecurityTokenEnums.DEVICE_REFRESH_TOKEN);
+    clearCookie(
+      res,
+      SecurityTokenEnums.DEVICE_ACCESS_TOKEN,
+      DEVICE_COOKIE_OPTIONS,
+    );
+    clearCookie(
+      res,
+      SecurityTokenEnums.DEVICE_REFRESH_TOKEN,
+      DEVICE_COOKIE_OPTIONS,
+    );
     res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 }

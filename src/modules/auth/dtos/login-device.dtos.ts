@@ -1,3 +1,4 @@
+import type { BranchBrandingDto } from "../../branch/dtos/get-branch-branding.dtos";
 import type { DeviceAuthResponseDto } from "../../device/dtos/device-auth.dtos";
 import type { LicenseAuthResponseDto } from "../../license/dtos/device-auth.dtos";
 
@@ -9,4 +10,5 @@ export interface LoginDeviceRequestDto {
 export interface LoginDeviceResponseDto {
   device: DeviceAuthResponseDto;
   license: LicenseAuthResponseDto | null;
+  branding: BranchBrandingDto;
 }

@@ -5,6 +5,7 @@ import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import type { LicenseAuthResponseDto } from "../license/dtos/device-auth.dtos";
 import type { DeviceEntity, DeviceWithBranchEntity } from "./device.schema";
 import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
+import type { BranchBrandingDto } from "../branch/dtos/get-branch-branding.dtos";
 import type { DeviceAuthResponseDto } from "./dtos/device-auth.dtos";
 
 // ========================================
@@ -73,6 +74,7 @@ export interface DeviceAuthCheckServiceInput {
 export interface DeviceAuthCheckServiceResult {
   device: DeviceAuthResponseDto;
   license: LicenseAuthResponseDto | null;
+  branding: BranchBrandingDto;
 }
 
 // ========================================

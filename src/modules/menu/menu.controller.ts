@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
@@ -90,6 +91,31 @@ export class MenuController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getDeviceCategories = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await MenuValidator.getDeviceCategoriesQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const device = req.device as DeviceTokenDto;
+    const result = await this.menuService.getCategories({
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+      filters: {
+        ...queryDto,
+        isActive: true,
+        isListed: true,
+        onlyListedItems: true,
+      },
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   // ========================================
   // ? MENU ITEM APIS
   // ========================================
@@ -105,6 +131,43 @@ export class MenuController {
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.CREATED).json({ item });
+  };
+
+  getDeviceItems = async (req: Request, res: Response): Promise<void> => {
+    const queryDto = await MenuValidator.getDeviceItemsQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const device = req.device as DeviceTokenDto;
+    const result = await this.menuService.getItems({
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+      filters: { ...queryDto, isListed: true, includeModifierCounts: true },
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getDeviceItemDetails = async (req: Request, res: Response): Promise<void> => {
+    const params = await MenuValidator.itemIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const device = req.device as DeviceTokenDto;
+    const item = await this.menuService.getDeviceItemDetails({
+      id: params.id,
+      effectiveTenant: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+      },
+    });
+    res.status(HttpStatusCodes.OK).json({ item });
   };
 
   getItem = async (req: Request, res: Response): Promise<void> => {

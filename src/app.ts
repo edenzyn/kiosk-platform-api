@@ -21,7 +21,10 @@ import { userLicenseRouter } from "./modules/license/routes/user-license.routes"
 import { platformMarketRouter } from "./modules/market/routes/platform-market.routes";
 import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
-import { menuRouter } from "./modules/menu/menu.routes";
+import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
+import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
+import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
+import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -156,7 +159,8 @@ export class App {
       `${this.normalUserApiV1Prefix}/devices`,
       userDeviceRouter,
     );
-    this.instance.use(`${this.normalUserApiV1Prefix}/menu`, menuRouter);
+    this.instance.use(`${this.normalUserApiV1Prefix}/menu`, userMenuRouter);
+    this.instance.use(`${this.normalUserApiV1Prefix}/taxes`, userTaxRouter);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,
@@ -173,6 +177,8 @@ export class App {
       `${this.deviceApiV1Prefix}/licenses`,
       deviceLicenseRouter,
     );
+    this.instance.use(`${this.deviceApiV1Prefix}/menu`, deviceMenuRouter);
+    this.instance.use(`${this.deviceApiV1Prefix}/taxes`, deviceTaxRouter);
   }
 
   private configureErrorHandling(): void {

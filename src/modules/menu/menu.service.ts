@@ -113,6 +113,7 @@ export class MenuService {
       isActive: filters.isActive,
       isListed: filters.isListed,
       search: filters.search,
+      onlyListedItems: filters.onlyListedItems,
     });
 
     return {
@@ -297,6 +298,7 @@ export class MenuService {
         search: filters.search,
         sortBy: filters.sortBy,
         sortOrder: filters.sortOrder,
+        includeModifierCounts: filters.includeModifierCounts,
       }),
       this.marketRepository.findMarketByBranch({
         branchId: effectiveTenant.branchId,
@@ -333,6 +335,21 @@ export class MenuService {
       ...(await this.withImageUrl(MenuImageTypeEnum.ITEM, item)),
       modifiers,
     };
+  }
+
+  async getDeviceItemDetails(
+    input: GetMenuItemServiceInput,
+  ): Promise<GetMenuItemServiceResult> {
+    const item = await this.getItem(input);
+
+    if (!item.isListed) {
+      throw new AppError("Item not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return item;
   }
 
   async updateItem(

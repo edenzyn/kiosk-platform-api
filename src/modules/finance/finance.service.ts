@@ -1,4 +1,5 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../shared/errors/app-error";
@@ -10,14 +11,19 @@ import type {
 import { logger } from "../../shared/utils/core/logger";
 import type { LicenseTransactionRepository } from "../license/repositories/license-transaction.repository";
 import type {
+  GetTenantTaxProfileServiceInput,
   HandleRazorpayWebhookServiceInput,
+  TenantTaxProfileWithComponents,
+  UpdateTenantTaxProfileServiceInput,
   VerifyRazorpayPaymentServiceInput,
 } from "./finance.types";
+import type { TaxRepository } from "./repositories/tax.repository";
 
 export class FinanceService {
   constructor(
     private readonly razorpayProvider: RazorpayProvider,
     private readonly licenseTransactionRepository: LicenseTransactionRepository,
+    private readonly taxRepository: TaxRepository,
   ) {}
 
   // ========================================
@@ -93,5 +99,78 @@ export class FinanceService {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
+  }
+
+  // ========================================
+  // ? TENANT TAX PROFILES
+  // ========================================
+  async getTenantTaxProfile(
+    input: GetTenantTaxProfileServiceInput,
+  ): Promise<TenantTaxProfileWithComponents | null> {
+    const branchId = this.requireTaxBranch(input.effectiveTenant);
+
+    return this.taxRepository.findTenantProfile({
+      organizationId: input.effectiveTenant.organizationId,
+      branchId,
+      conditionTypes: input.filters?.conditionTypes,
+    });
+  }
+
+  async updateTenantTaxProfile(
+    input: UpdateTenantTaxProfileServiceInput,
+  ): Promise<TenantTaxProfileWithComponents> {
+    const { data, user, effectiveTenant } = input;
+    const branchId = this.requireTaxBranch(effectiveTenant);
+    const organizationId = effectiveTenant.organizationId;
+
+    const existing = await this.taxRepository.findTenantProfile({
+      organizationId,
+      branchId,
+    });
+
+    if (!existing) {
+      return this.taxRepository.createTenantProfile({
+        data: {
+          organizationId,
+          branchId,
+          name: data.name,
+          isTaxInclusive: data.isTaxInclusive ?? false,
+          components: data.components,
+          createdBy: user.id,
+        },
+      });
+    }
+
+    const profile = await this.taxRepository.updateTenantProfile({
+      data: {
+        id: existing.id,
+        organizationId,
+        branchId,
+        name: data.name,
+        isTaxInclusive: data.isTaxInclusive ?? false,
+        components: data.components,
+        updatedBy: user.id,
+      },
+    });
+
+    if (!profile) {
+      throw new AppError("Tax profile not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return profile;
+  }
+
+  private requireTaxBranch(effectiveTenant: EffectiveTenant): string {
+    if (!effectiveTenant.branchId) {
+      throw new AppError("A branch must be selected to manage tax profiles", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    return effectiveTenant.branchId;
   }
 }

@@ -63,6 +63,11 @@ const menuItemSchema = {
     takeawayChargeAmount: { type: "string", nullable: true },
     isFeatured: { type: "boolean" },
     isListed: { type: "boolean" },
+    modifierCount: {
+      type: "integer",
+      description:
+        "Active modifier groups on the item. Only present when includeModifierCounts=true; always returned on the device endpoint.",
+    },
     calories: { type: "string", nullable: true },
     dietaryType: {
       type: "integer",
@@ -77,6 +82,55 @@ const menuItemSchema = {
     createdBy: { type: "string", format: "uuid", nullable: true },
     updatedBy: { type: "string", format: "uuid", nullable: true },
   },
+};
+
+const menuItemWithModifiersSchema = {
+  allOf: [
+    menuItemSchema,
+    {
+      type: "object",
+      properties: {
+        modifiers: {
+          type: "array",
+          description:
+            "Active modifier groups in display order, each with its active options.",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              menuItemId: { type: "string", format: "uuid" },
+              name: { type: "string" },
+              selectionType: {
+                type: "integer",
+                enum: [1, 2, 3],
+                description: "1=SINGLE_REQUIRED, 2=SINGLE, 3=MULTIPLE",
+              },
+              minSelection: { type: "integer" },
+              maxSelection: { type: "integer" },
+              displayOrder: { type: "integer" },
+              options: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string", format: "uuid" },
+                    itemModifierId: { type: "string", format: "uuid" },
+                    name: { type: "string" },
+                    price: {
+                      type: "string",
+                      description: "Extra charge on top of the item price.",
+                    },
+                    displayOrder: { type: "integer" },
+                    isDefault: { type: "boolean" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  ],
 };
 
 const menuIdParam = {
@@ -210,6 +264,44 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/d/menu/categories": {
+    get: {
+      tags: ["Menu"],
+      summary: "List the device branch's menu categories",
+      description:
+        "Device-client endpoint. Returns the active, listed menu categories of the branch the calling device belongs to, paginated for infinite scrolling. The branch is taken from the device session, never from the request.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        { name: "search", in: "query", schema: { type: "string" } },
+      ],
+      responses: {
+        "200": {
+          description: "Page of menu categories",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  categories: {
+                    type: "array",
+                    items: menuCategoryWithItemCountSchema,
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
   "/pvt/u/menu/categories": {
     get: {
       tags: ["Menu"],
@@ -294,6 +386,92 @@ export const menuSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/d/menu/items": {
+    get: {
+      tags: ["Menu"],
+      summary: "List the device branch's menu items for a category",
+      description:
+        "Device-client endpoint (kiosk and counter devices). Returns the active, listed items of one category in the calling device's branch, paginated for infinite scrolling. The branch is taken from the device session, never from the request. Every item carries modifierCount so the kiosk knows which items open a customisation step.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        {
+          name: "categoryId",
+          in: "query",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "dietaryType",
+          in: "query",
+          description: "1=VEGETARIAN, 2=NON_VEGETARIAN",
+          schema: { type: "integer", enum: [1, 2] },
+        },
+        { name: "search", in: "query", schema: { type: "string" } },
+      ],
+      responses: {
+        "200": {
+          description: "Page of menu items",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  items: { type: "array", items: menuItemSchema },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                  currencyCode: {
+                    type: "string",
+                    description:
+                      "ISO currency code of the branch's market - all item prices are denominated in it.",
+                  },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/d/menu/items/{id}": {
+    get: {
+      tags: ["Menu"],
+      summary: "Get one menu item with its modifiers",
+      description:
+        "Device-client endpoint. Returns a single active, listed item of the calling device's branch together with its active modifier groups and the options inside each, in display order. This is what the kiosk opens when a customer taps an item that has modifiers.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "The item with its modifiers",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: { item: menuItemWithModifiersSchema },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/u/menu/items": {
     get: {
       tags: ["Menu"],
@@ -310,6 +488,13 @@ export const menuSwaggerPaths: Record<string, unknown> = {
           schema: { type: "string", format: "uuid" },
         },
         { name: "isListed", in: "query", schema: { type: "boolean" } },
+        {
+          name: "includeModifierCounts",
+          in: "query",
+          description:
+            "Adds modifierCount to every item, counted in the same query via a scalar subquery.",
+          schema: { type: "boolean" },
+        },
         {
           name: "dietaryType",
           in: "query",

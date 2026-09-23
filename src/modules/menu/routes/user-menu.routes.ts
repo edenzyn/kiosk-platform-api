@@ -1,17 +1,17 @@
 import { Router } from "express";
-import { container } from "../../config/container";
-import { accessMiddleware } from "../../middleware/access.middleware";
+import { container } from "../../../config/container";
+import { accessMiddleware } from "../../../middleware/access.middleware";
 import {
   BRANCH_MENU_READ_WRITE_PERMS,
   ORGANIZATION_MENU_READ_WRITE_PERMS,
-} from "../../shared/constants/user-permission.constants";
-import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import type { MenuController } from "./menu.controller";
+} from "../../../shared/constants/user-permission.constants";
+import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
+import type { MenuController } from "../menu.controller";
 
-const menuRouter = Router();
+const userMenuRouter = Router();
 const menuController = container.resolve<MenuController>("menuController");
 
-menuRouter
+userMenuRouter
   .route("/categories")
   .get(
     accessMiddleware({
@@ -28,7 +28,7 @@ menuRouter
     menuController.createCategory,
   );
 
-menuRouter
+userMenuRouter
   .route("/items")
   .get(
     accessMiddleware({
@@ -45,7 +45,7 @@ menuRouter
     menuController.createItem,
   );
 
-menuRouter.put(
+userMenuRouter.put(
   "/categories/image",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -54,7 +54,7 @@ menuRouter.put(
   menuController.requestCategoryImageUpload,
 );
 
-menuRouter.put(
+userMenuRouter.put(
   "/items/image",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -63,7 +63,7 @@ menuRouter.put(
   menuController.requestItemImageUpload,
 );
 
-menuRouter.post(
+userMenuRouter.post(
   "/imports",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -71,7 +71,7 @@ menuRouter.post(
   menuController.importMenuCsv,
 );
 
-menuRouter.get(
+userMenuRouter.get(
   "/branches/:branchId/tree",
   accessMiddleware({
     organization: [...ORGANIZATION_MENU_READ_WRITE_PERMS],
@@ -79,7 +79,7 @@ menuRouter.get(
   menuController.getBranchMenuTree,
 );
 
-menuRouter.post(
+userMenuRouter.post(
   "/clones",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -87,7 +87,7 @@ menuRouter.post(
   menuController.cloneMenu,
 );
 
-menuRouter
+userMenuRouter
   .route("/categories/:id")
   .patch(
     accessMiddleware({
@@ -103,7 +103,7 @@ menuRouter
     }),
     menuController.deleteCategory,
   );
-menuRouter.patch(
+userMenuRouter.patch(
   "/categories/:id/status",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -112,7 +112,7 @@ menuRouter.patch(
   menuController.updateCategoryStatus,
 );
 
-menuRouter
+userMenuRouter
   .route("/items/:id")
   .get(
     accessMiddleware({
@@ -135,7 +135,7 @@ menuRouter
     }),
     menuController.deleteItem,
   );
-menuRouter.patch(
+userMenuRouter.patch(
   "/items/:id/status",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_MENU_WRITE],
@@ -144,4 +144,4 @@ menuRouter.patch(
   menuController.updateItemStatus,
 );
 
-export { menuRouter };
+export { userMenuRouter };

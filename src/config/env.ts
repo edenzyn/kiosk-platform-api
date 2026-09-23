@@ -40,6 +40,7 @@ const EnvSchema = Yup.object({
   API_PREFIX_V1: Yup.string().default("/api/v1"),
   CORS_ORIGIN_1: Yup.string().required().min(1),
   CORS_ORIGIN_2: Yup.string(),
+  CORS_ORIGIN_3: Yup.string(),
   USER_CLIENT_BASE_URL: Yup.string().default("http://localhost:5000"),
 
   // ==============================

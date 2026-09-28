@@ -3,7 +3,7 @@ import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type {
   CreateTaxComponentDto,
   TaxProfileWithComponents,
-} from "../finance/finance.types";
+} from "../finance/types/tax.types";
 import type { MarketEntity } from "./schemas/market.schema";
 
 export interface ActiveMarketEntity {

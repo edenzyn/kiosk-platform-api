@@ -1,14 +1,18 @@
 import { asClass, type AwilixContainer } from "awilix";
-import { FinanceController } from "./finance.controller";
-import { FinanceService } from "./finance.service";
+import { PaymentProviderController } from "./controllers/payment-provider.controller";
+import { TaxController } from "./controllers/tax.controller";
 import { TaxRepository } from "./repositories/tax.repository";
+import { PaymentProviderService } from "./services/payment-provider.service";
+import { TaxService } from "./services/tax.service";
 
 export class FinanceContainer {
   static register(container: AwilixContainer): void {
     container.register({
-      financeService: asClass(FinanceService).singleton(),
       taxRepository: asClass(TaxRepository).singleton(),
-      financeController: asClass(FinanceController).singleton(),
+      taxService: asClass(TaxService).singleton(),
+      taxController: asClass(TaxController).singleton(),
+      paymentProviderService: asClass(PaymentProviderService).singleton(),
+      paymentProviderController: asClass(PaymentProviderController).singleton(),
     });
   }
 }

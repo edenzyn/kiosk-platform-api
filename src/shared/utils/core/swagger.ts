@@ -1,7 +1,7 @@
 import { authSwaggerPaths } from "../../../modules/auth/auth.swagger";
 import { branchSwaggerPaths } from "../../../modules/branch/branch.swagger";
 import { deviceSwaggerPaths } from "../../../modules/device/device.swagger";
-import { financeSwaggerPaths } from "../../../modules/finance/finance.swagger";
+import { financeSwaggerPaths } from "../../../modules/finance/swaggers/finance.swagger";
 import { licenseSwaggerPaths } from "../../../modules/license/license.swagger";
 import { marketSwaggerPaths } from "../../../modules/market/market.swagger";
 import { menuSwaggerPaths } from "../../../modules/menu/menu.swagger";

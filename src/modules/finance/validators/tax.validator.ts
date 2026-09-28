@@ -1,8 +1,8 @@
 import * as yup from "yup";
-import { TaxComponentConditionTypeEnum } from "../../shared/enums/finance/tax-component-condition-type.enum";
-import { stringToArray } from "../../shared/validators/yup.transformer";
+import { TaxComponentConditionTypeEnum } from "../../../shared/enums/finance/tax-component-condition-type.enum";
+import { stringToArray } from "../../../shared/validators/yup.transformer";
 
-export class FinanceValidator {
+export class TaxValidator {
   static getTaxProfileQuery = yup
     .object({
       conditionTypes: stringToArray()

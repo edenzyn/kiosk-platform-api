@@ -1,5 +1,5 @@
 import type { TaxComponentConditionTypeEnum } from "../../../shared/enums/finance/tax-component-condition-type.enum";
-import type { TenantTaxProfileWithComponents } from "../finance.types";
+import type { TenantTaxProfileWithComponents } from "../types/tax.types";
 
 export interface GetTenantTaxProfileQueryDto {
   conditionTypes?: TaxComponentConditionTypeEnum[];

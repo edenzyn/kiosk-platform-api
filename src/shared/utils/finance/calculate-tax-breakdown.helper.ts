@@ -1,6 +1,6 @@
 import { env } from "../../../config/env";
 import { TaxComponentConditionTypeEnum } from "../../enums/finance/tax-component-condition-type.enum";
-import type { TaxProfileWithComponents } from "../../../modules/finance/finance.types";
+import type { TaxProfileWithComponents } from "../../../modules/finance/types/tax.types";
 
 export interface TaxComponentBreakdown {
   name: string;

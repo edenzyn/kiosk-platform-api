@@ -2,7 +2,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { BranchRepository } from "../branch/branch.repository";
-import type { TaxProfileWithComponents } from "../finance/finance.types";
+import type { TaxProfileWithComponents } from "../finance/types/tax.types";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { MarketRepository } from "./market.repository";
 import type {

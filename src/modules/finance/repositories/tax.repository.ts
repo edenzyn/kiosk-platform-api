@@ -16,7 +16,7 @@ import type {
   UpdateTaxProfileRepoInput,
   UpdateTaxProfileRepoResult,
   UpdateTenantTaxProfileRepoInput,
-} from "../finance.types";
+} from "../types/tax.types";
 import { appTaxComponents } from "../schemas/app-tax-component.schema";
 import { appTaxProfiles } from "../schemas/app-tax-profile.schema";
 import { tenantTaxComponents } from "../schemas/tenant-tax-component.schema";

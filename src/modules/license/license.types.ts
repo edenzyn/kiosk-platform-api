@@ -7,7 +7,7 @@ import { LicenseHistoryTargetEntityTypeEnum } from "../../shared/enums/license/l
 import { LicenseRedemptionStatusEnum } from "../../shared/enums/license/license-redemption-status.enum";
 import { LicenseStatusEnum } from "../../shared/enums/license/license-status.enum";
 import type { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import type { TaxProfileWithComponents } from "../finance/finance.types";
+import type { TaxProfileWithComponents } from "../finance/types/tax.types";
 import type { LicenseWithDetails } from "./dtos/get-licenses.dtos";
 import type { BillingInfoDto } from "./dtos/purchase-license.dtos";
 import type { LicensePlanDiscountRuleEntity } from "./schemas/license-plan-discount-rule.schema";

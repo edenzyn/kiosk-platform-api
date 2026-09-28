@@ -143,45 +143,11 @@ export const paymentProviderSwaggerPaths: Record<string, unknown> = {
         "403": { $ref: "#/components/responses/Forbidden" },
       },
     },
-    post: {
-      tags: ["Payment Providers"],
-      summary: "Create a payment provider",
-      requestBody: {
-        required: true,
-        content: {
-          "application/json": {
-            schema: {
-              type: "object",
-              required: ["name", "slug"],
-              properties: {
-                name: { type: "string", minLength: 2, maxLength: 100 },
-                slug: {
-                  type: "string",
-                  minLength: 2,
-                  maxLength: 50,
-                  pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-                  description:
-                    "Unique identifier for the provider. Cannot be changed after creation.",
-                },
-                mappings: { type: "array", items: createMappingSchema },
-              },
-            },
-          },
-        },
-      },
-      responses: {
-        "201": providerResponse("Payment provider created"),
-        ...writeErrorResponses,
-        "409": {
-          description: "A payment provider with this slug already exists",
-        },
-      },
-    },
   },
   "/pvt/p/payment-providers/{id}": {
     patch: {
       tags: ["Payment Providers"],
-      summary: "Update a payment provider's name and market mappings",
+      summary: "Update a payment provider's market mappings",
       description:
         "Mappings are never deleted: send an existing mapping (with its id) to activate or deactivate it, or a new one (without an id) to add it. Mappings left out of the payload are unchanged.",
       parameters: [providerIdParameter],
@@ -191,9 +157,7 @@ export const paymentProviderSwaggerPaths: Record<string, unknown> = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["name"],
               properties: {
-                name: { type: "string", minLength: 2, maxLength: 100 },
                 mappings: { type: "array", items: updateMappingSchema },
               },
             },

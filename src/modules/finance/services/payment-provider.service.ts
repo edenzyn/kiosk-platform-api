@@ -11,7 +11,6 @@ import { logger } from "../../../shared/utils/core/logger";
 import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
 import type { PaymentProviderRepository } from "../repositories/payment-provider.repository";
 import type {
-  CreatePaymentProviderServiceInput,
   GetPaymentProvidersServiceInput,
   GetPaymentProvidersServiceResult,
   HandleRazorpayWebhookServiceInput,
@@ -132,31 +131,6 @@ export class PaymentProviderService {
     };
   }
 
-  async createPaymentProvider(
-    input: CreatePaymentProviderServiceInput,
-  ): Promise<PaymentProviderServiceResult> {
-    const { dto, currentUser } = input;
-
-    const existing = await this.paymentProviderRepository.findOneBySlug({
-      slug: dto.slug,
-    });
-    if (existing) {
-      throw new AppError("A payment provider with this slug already exists", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
-    }
-
-    const provider = await this.paymentProviderRepository.createWithMappings({
-      name: dto.name,
-      slug: dto.slug,
-      mappings: dto.mappings,
-      createdBy: currentUser.id,
-    });
-
-    return { provider: await this.getProviderWithMappingsOrThrow(provider.id) };
-  }
-
   async updatePaymentProvider(
     input: UpdatePaymentProviderServiceInput,
   ): Promise<PaymentProviderServiceResult> {
@@ -212,7 +186,6 @@ export class PaymentProviderService {
 
     await this.paymentProviderRepository.updateWithMappings({
       providerId,
-      name: dto.name,
       mappingsToUpdate,
       mappingsToCreate,
       updatedBy: currentUser.id,

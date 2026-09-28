@@ -15,10 +15,6 @@ import { markets } from "../../market/schemas/market.schema";
 import { paymentProviderMarketMappers } from "../schemas/payment-provider-market-mapper.schema";
 import { paymentProviders } from "../schemas/payment-provider.schema";
 import type {
-  CreatePaymentProviderWithMappingsRepoInput,
-  CreatePaymentProviderWithMappingsRepoResult,
-  FindOnePaymentProviderBySlugRepoInput,
-  FindOnePaymentProviderBySlugRepoResult,
   FindOnePaymentProviderRepoInput,
   FindOnePaymentProviderRepoResult,
   FindOnePaymentProviderWithMappingsRepoInput,
@@ -120,50 +116,6 @@ export class PaymentProviderRepository {
     return provider ?? null;
   }
 
-  async findOneBySlug(
-    input: FindOnePaymentProviderBySlugRepoInput,
-  ): Promise<FindOnePaymentProviderBySlugRepoResult> {
-    const [provider] = await this.database.client
-      .select()
-      .from(paymentProviders)
-      .where(eq(paymentProviders.slug, input.slug))
-      .limit(1);
-
-    return provider ?? null;
-  }
-
-  async createWithMappings(
-    input: CreatePaymentProviderWithMappingsRepoInput,
-  ): Promise<CreatePaymentProviderWithMappingsRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [provider] = await tx
-        .insert(paymentProviders)
-        .values({
-          name: input.name,
-          slug: input.slug,
-          createdBy: input.createdBy,
-          updatedBy: input.createdBy,
-        })
-        .returning();
-
-      if (!provider) throw new Error("Failed to create payment provider");
-
-      if (input.mappings.length > 0) {
-        await tx.insert(paymentProviderMarketMappers).values(
-          input.mappings.map((mapping) => ({
-            providerId: provider.id,
-            marketId: mapping.marketId,
-            paymentMethod: mapping.paymentMethod,
-            createdBy: input.createdBy,
-            updatedBy: input.createdBy,
-          })),
-        );
-      }
-
-      return provider;
-    });
-  }
-
   async updateWithMappings(
     input: UpdatePaymentProviderWithMappingsRepoInput,
   ): Promise<UpdatePaymentProviderWithMappingsRepoResult> {
@@ -171,7 +123,6 @@ export class PaymentProviderRepository {
       const [provider] = await tx
         .update(paymentProviders)
         .set({
-          name: input.name,
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })

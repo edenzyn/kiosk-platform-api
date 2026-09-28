@@ -1,15 +1,7 @@
 import * as yup from "yup";
-import { VALIDATION_CONSTANTS } from "../../../shared/constants/validation.constants";
 import { SortingOrderEnum } from "../../../shared/enums/core/sorting-order.enum";
 import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { paginationQuerySchema } from "../../../shared/validators/pagination.validator";
-
-const nameSchema = yup
-  .string()
-  .trim()
-  .min(2, "Name must be at least 2 characters")
-  .max(100, "Name cannot exceed 100 characters")
-  .required("Name is required");
 
 const mappingBaseShape = {
   marketId: yup
@@ -62,41 +54,8 @@ export class PaymentProviderValidator {
     })
     .noUnknown();
 
-  static createPaymentProvider = yup
-    .object({
-      name: nameSchema,
-      slug: yup
-        .string()
-        .trim()
-        .lowercase()
-        .min(
-          VALIDATION_CONSTANTS.SLUG_MIN_LENGTH,
-          `Slug must be at least ${VALIDATION_CONSTANTS.SLUG_MIN_LENGTH} characters`,
-        )
-        .max(
-          VALIDATION_CONSTANTS.SLUG_MAX_LENGTH,
-          `Slug cannot exceed ${VALIDATION_CONSTANTS.SLUG_MAX_LENGTH} characters`,
-        )
-        .matches(
-          VALIDATION_CONSTANTS.SLUG_PATTERN,
-          "Slug can only contain lowercase letters, numbers and hyphens",
-        )
-        .required("Slug is required"),
-      mappings: yup
-        .array()
-        .of(yup.object(mappingBaseShape).noUnknown())
-        .test(
-          "unique-mappings",
-          "Each market and payment method can only be mapped once",
-          hasUniqueMappings,
-        )
-        .default([]),
-    })
-    .noUnknown();
-
   static updatePaymentProvider = yup
     .object({
-      name: nameSchema,
       mappings: yup
         .array()
         .of(

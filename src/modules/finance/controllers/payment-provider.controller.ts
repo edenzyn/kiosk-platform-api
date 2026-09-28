@@ -56,19 +56,6 @@ export class PaymentProviderController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
-  createPaymentProvider = async (req: Request, res: Response): Promise<void> => {
-    const dto = await PaymentProviderValidator.createPaymentProvider.validate(
-      req.body,
-      { abortEarly: false, stripUnknown: true },
-    );
-
-    const result = await this.paymentProviderService.createPaymentProvider({
-      dto,
-      currentUser: req.user as UserTokenDto,
-    });
-    res.status(HttpStatusCodes.CREATED).json(result);
-  };
-
   updatePaymentProvider = async (req: Request, res: Response): Promise<void> => {
     const params = await PaymentProviderValidator.providerIdParam.validate(
       req.params,

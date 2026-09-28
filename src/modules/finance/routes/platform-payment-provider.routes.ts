@@ -20,13 +20,6 @@ platformPaymentProviderRouter
       UserTypeEnums.PLATFORM,
     ),
     asyncHandler(paymentProviderController.getPaymentProviders),
-  )
-  .post(
-    accessMiddleware(
-      { platform: [UserPermissions.PLATFORM_PAYMENT_PROVIDER_WRITE] },
-      UserTypeEnums.PLATFORM,
-    ),
-    asyncHandler(paymentProviderController.createPaymentProvider),
   );
 
 platformPaymentProviderRouter

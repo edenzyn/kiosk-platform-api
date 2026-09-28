@@ -12,6 +12,7 @@ import type { LicenseTransactionRepository } from "../../license/repositories/li
 import type { PaymentProviderRepository } from "../repositories/payment-provider.repository";
 import type {
   CreatePaymentProviderServiceInput,
+  GetPaymentProvidersServiceInput,
   GetPaymentProvidersServiceResult,
   HandleRazorpayWebhookServiceInput,
   PaymentProviderServiceResult,
@@ -107,10 +108,28 @@ export class PaymentProviderService {
   // ========================================
   // ? PLATFORM PAYMENT PROVIDERS
   // ========================================
-  async getPaymentProviders(): Promise<GetPaymentProvidersServiceResult> {
-    const providers =
-      await this.paymentProviderRepository.findAllWithMappings();
-    return { providers };
+  async getPaymentProviders(
+    input: GetPaymentProvidersServiceInput,
+  ): Promise<GetPaymentProvidersServiceResult> {
+    const { page, limit, search, isActive, sortBy, sortOrder } = input.query;
+
+    const { providers, total } =
+      await this.paymentProviderRepository.findPaginatedWithMappings({
+        page,
+        limit,
+        search,
+        isActive,
+        sortBy,
+        sortOrder,
+      });
+
+    return {
+      providers,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async createPaymentProvider(

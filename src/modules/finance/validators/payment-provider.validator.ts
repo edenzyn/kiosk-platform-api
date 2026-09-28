@@ -1,6 +1,8 @@
 import * as yup from "yup";
 import { VALIDATION_CONSTANTS } from "../../../shared/constants/validation.constants";
+import { SortingOrderEnum } from "../../../shared/enums/core/sorting-order.enum";
 import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
+import { paginationQuerySchema } from "../../../shared/validators/pagination.validator";
 
 const nameSchema = yup
   .string()
@@ -36,6 +38,21 @@ const hasUniqueMappings = (
 };
 
 export class PaymentProviderValidator {
+  static getPaymentProvidersQuery = paginationQuerySchema
+    .shape({
+      search: yup.string().optional().trim(),
+      isActive: yup.boolean().optional(),
+      sortBy: yup
+        .string()
+        .oneOf(["name", "slug", "createdAt"])
+        .optional(),
+      sortOrder: yup
+        .mixed<SortingOrderEnum>()
+        .oneOf(Object.values(SortingOrderEnum))
+        .optional(),
+    })
+    .noUnknown();
+
   static providerIdParam = yup
     .object({
       id: yup

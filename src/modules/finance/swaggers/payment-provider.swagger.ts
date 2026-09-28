@@ -101,16 +101,39 @@ export const paymentProviderSwaggerPaths: Record<string, unknown> = {
       tags: ["Payment Providers"],
       summary: "List payment providers",
       description:
-        "Returns every payment provider with its market and payment-method mappings.",
+        "Returns a page of payment providers with their market and payment-method mappings. Search matches the name or slug.",
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        { name: "search", in: "query", schema: { type: "string" } },
+        { name: "isActive", in: "query", schema: { type: "boolean" } },
+        {
+          name: "sortBy",
+          in: "query",
+          schema: {
+            type: "string",
+            enum: ["name", "slug", "createdAt"],
+          },
+        },
+        {
+          name: "sortOrder",
+          in: "query",
+          schema: { type: "string", enum: ["asc", "desc"] },
+        },
+      ],
       responses: {
         "200": {
-          description: "Payment providers with mappings",
+          description: "Paginated list of payment providers with mappings",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
                   providers: { type: "array", items: providerSchema },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
                 },
               },
             },

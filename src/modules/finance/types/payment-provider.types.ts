@@ -60,8 +60,23 @@ export interface TogglePaymentProviderStatusServiceInput {
   currentUser: UserTokenDto;
 }
 
+export interface GetPaymentProvidersServiceInput {
+  query: {
+    page: number;
+    limit: number;
+    search?: string;
+    isActive?: boolean;
+    sortBy?: string;
+    sortOrder?: "asc" | "desc";
+  };
+}
+
 export interface GetPaymentProvidersServiceResult {
   providers: PaymentProviderWithMappings[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 export interface PaymentProviderServiceResult {
@@ -88,8 +103,18 @@ export interface FindOnePaymentProviderWithMappingsRepoInput {
 export type FindOnePaymentProviderWithMappingsRepoResult =
   PaymentProviderWithMappings | null;
 
-export type FindAllPaymentProvidersWithMappingsRepoResult =
-  PaymentProviderWithMappings[];
+export interface FindPaginatedPaymentProvidersRepoInput {
+  page: number;
+  limit: number;
+  search?: string;
+  isActive?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+export interface FindPaginatedPaymentProvidersRepoResult {
+  providers: PaymentProviderWithMappings[];
+  total: number;
+}
 
 export interface CreatePaymentProviderWithMappingsRepoInput {
   name: string;

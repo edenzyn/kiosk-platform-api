@@ -44,8 +44,15 @@ export class PaymentProviderController {
   // ========================================
   // ? PLATFORM PAYMENT PROVIDER APIS
   // ========================================
-  getPaymentProviders = async (_req: Request, res: Response): Promise<void> => {
-    const result = await this.paymentProviderService.getPaymentProviders();
+  getPaymentProviders = async (req: Request, res: Response): Promise<void> => {
+    const query = await PaymentProviderValidator.getPaymentProvidersQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.paymentProviderService.getPaymentProviders({
+      query,
+    });
     res.status(HttpStatusCodes.OK).json(result);
   };
 

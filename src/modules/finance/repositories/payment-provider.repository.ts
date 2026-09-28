@@ -1,4 +1,15 @@
-import { asc, eq, inArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  or,
+  type SQL,
+} from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import type { Database } from "../../../config/db";
 import { markets } from "../../market/schemas/market.schema";
 import { paymentProviderMarketMappers } from "../schemas/payment-provider-market-mapper.schema";
@@ -6,13 +17,14 @@ import { paymentProviders } from "../schemas/payment-provider.schema";
 import type {
   CreatePaymentProviderWithMappingsRepoInput,
   CreatePaymentProviderWithMappingsRepoResult,
-  FindAllPaymentProvidersWithMappingsRepoResult,
   FindOnePaymentProviderBySlugRepoInput,
   FindOnePaymentProviderBySlugRepoResult,
   FindOnePaymentProviderRepoInput,
   FindOnePaymentProviderRepoResult,
   FindOnePaymentProviderWithMappingsRepoInput,
   FindOnePaymentProviderWithMappingsRepoResult,
+  FindPaginatedPaymentProvidersRepoInput,
+  FindPaginatedPaymentProvidersRepoResult,
   PaymentProviderMappingWithMarket,
   UpdatePaymentProviderRepoInput,
   UpdatePaymentProviderRepoResult,
@@ -20,23 +32,64 @@ import type {
   UpdatePaymentProviderWithMappingsRepoResult,
 } from "../types/payment-provider.types";
 
+const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
+  name: paymentProviders.name,
+  slug: paymentProviders.slug,
+  createdAt: paymentProviders.createdAt,
+};
+
 export class PaymentProviderRepository {
   constructor(private readonly database: Database) {}
 
-  async findAllWithMappings(): Promise<FindAllPaymentProvidersWithMappingsRepoResult> {
+  async findPaginatedWithMappings(
+    input: FindPaginatedPaymentProvidersRepoInput,
+  ): Promise<FindPaginatedPaymentProvidersRepoResult> {
+    const { search, isActive, page, limit, sortBy, sortOrder } = input;
+
+    const conditions: SQL[] = [];
+    if (isActive !== undefined) {
+      conditions.push(eq(paymentProviders.isActive, isActive));
+    }
+    if (search) {
+      const searchCondition = or(
+        ilike(paymentProviders.name, `%${search}%`),
+        ilike(paymentProviders.slug, `%${search}%`),
+      );
+      if (searchCondition) conditions.push(searchCondition);
+    }
+    const condition = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await this.database.client
+      .select({ count: count() })
+      .from(paymentProviders)
+      .where(condition);
+    const total = Number(countResult?.count || 0);
+
+    const sortColumn = sortBy ? SORTABLE_COLUMNS[sortBy] : undefined;
+    const orderBy =
+      sortColumn && sortOrder
+        ? (sortOrder === "asc" ? asc : desc)(sortColumn)
+        : desc(paymentProviders.createdAt);
+
     const providers = await this.database.client
       .select()
       .from(paymentProviders)
-      .orderBy(asc(paymentProviders.createdAt));
+      .where(condition)
+      .orderBy(orderBy, asc(paymentProviders.id))
+      .limit(limit)
+      .offset((page - 1) * limit);
 
     const mappingsByProviderId = await this.findMappingsByProviderIds(
       providers.map((provider) => provider.id),
     );
 
-    return providers.map((provider) => ({
-      ...provider,
-      mappings: mappingsByProviderId.get(provider.id) ?? [],
-    }));
+    return {
+      providers: providers.map((provider) => ({
+        ...provider,
+        mappings: mappingsByProviderId.get(provider.id) ?? [],
+      })),
+      total,
+    };
   }
 
   async findOneWithMappings(

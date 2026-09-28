@@ -13,6 +13,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
+import { platformPaymentProviderRouter } from "./modules/finance/routes/platform-payment-provider.routes";
 import { financeWebhookRouter } from "./modules/finance/routes/finance-webhook.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
@@ -132,6 +133,10 @@ export class App {
     this.instance.use(
       `${this.platformUserApiV1Prefix}/markets`,
       platformMarketRouter,
+    );
+    this.instance.use(
+      `${this.platformUserApiV1Prefix}/payment-providers`,
+      platformPaymentProviderRouter,
     );
   }
 

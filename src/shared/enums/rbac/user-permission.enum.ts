@@ -29,6 +29,9 @@ export enum UserPermissions {
   PLATFORM_MARKET_READ = "platform:market:read",
   PLATFORM_MARKET_WRITE = "platform:market:write",
 
+  PLATFORM_PAYMENT_PROVIDER_READ = "platform:payment-provider:read",
+  PLATFORM_PAYMENT_PROVIDER_WRITE = "platform:payment-provider:write",
+
   // ======================================================
   // Organization
   // ======================================================

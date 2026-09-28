@@ -49,7 +49,7 @@ export const licenseTransactions = pgTable("license_transactions", {
   isTaxInclusive: boolean("is_tax_inclusive").notNull().default(false), // snapshot of the market's tax profile setting at transaction time
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(), // grand total actually charged: amountBeforeTax + taxAmount
   // Payment
-  paymentMethod: smallint("payment_method"), // PaymentMethodEnum: 1 = UPI
+  paymentMethod: smallint("payment_method"), // AppPaymentMethodEnum: 1 = UPI
   paymentProvider: smallint("payment_provider"), // PaymentProviderEnum: 1 = RAZORPAY
   paymentStatus: smallint("payment_status"), // PaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
   paymentReference: varchar("payment_reference", { length: 255 }),

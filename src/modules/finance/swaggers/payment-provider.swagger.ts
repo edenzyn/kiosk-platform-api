@@ -1,0 +1,204 @@
+const marketSummarySchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    name: { type: "string" },
+    countryCode: { type: "string" },
+    currencyCode: { type: "string" },
+  },
+};
+
+const mappingSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    providerId: { type: "string", format: "uuid" },
+    marketId: { type: "string", format: "uuid" },
+    paymentMethod: {
+      type: "integer",
+      enum: [1, 2],
+      description: "TenantPaymentMethodEnum: 1 = QR, 2 = CARD",
+    },
+    isActive: { type: "boolean" },
+    market: marketSummarySchema,
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
+const providerSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string", format: "uuid" },
+    name: { type: "string" },
+    slug: { type: "string", example: "razorpay" },
+    isActive: { type: "boolean" },
+    mappings: { type: "array", items: mappingSchema },
+    createdAt: { type: "string", format: "date-time" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+
+const createMappingSchema = {
+  type: "object",
+  required: ["marketId", "paymentMethod"],
+  properties: {
+    marketId: { type: "string", format: "uuid" },
+    paymentMethod: {
+      type: "integer",
+      enum: [1, 2],
+      description: "TenantPaymentMethodEnum: 1 = QR, 2 = CARD",
+    },
+  },
+};
+
+const updateMappingSchema = {
+  type: "object",
+  required: ["marketId", "paymentMethod"],
+  properties: {
+    ...createMappingSchema.properties,
+    id: {
+      type: "string",
+      format: "uuid",
+      description:
+        "Set for an existing mapping (only its isActive flag is applied); omit to create a new one.",
+    },
+    isActive: { type: "boolean", default: true },
+  },
+};
+
+const providerResponse = (description: string) => ({
+  description,
+  content: {
+    "application/json": {
+      schema: {
+        type: "object",
+        properties: { provider: providerSchema },
+      },
+    },
+  },
+});
+
+const providerIdParameter = {
+  name: "id",
+  in: "path",
+  required: true,
+  schema: { type: "string", format: "uuid" },
+};
+
+const writeErrorResponses = {
+  "400": { $ref: "#/components/responses/ValidationError" },
+  "401": { $ref: "#/components/responses/Unauthorized" },
+  "403": { $ref: "#/components/responses/Forbidden" },
+};
+
+export const paymentProviderSwaggerPaths: Record<string, unknown> = {
+  // ========================================
+  // ? PLATFORM-SIDE PAYMENT PROVIDER MANAGEMENT (mounted /pvt/p/payment-providers)
+  // ========================================
+  "/pvt/p/payment-providers/": {
+    get: {
+      tags: ["Payment Providers"],
+      summary: "List payment providers",
+      description:
+        "Returns every payment provider with its market and payment-method mappings.",
+      responses: {
+        "200": {
+          description: "Payment providers with mappings",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  providers: { type: "array", items: providerSchema },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+    post: {
+      tags: ["Payment Providers"],
+      summary: "Create a payment provider",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["name", "slug"],
+              properties: {
+                name: { type: "string", minLength: 2, maxLength: 100 },
+                slug: {
+                  type: "string",
+                  minLength: 2,
+                  maxLength: 50,
+                  pattern: "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+                  description:
+                    "Unique identifier for the provider. Cannot be changed after creation.",
+                },
+                mappings: { type: "array", items: createMappingSchema },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "201": providerResponse("Payment provider created"),
+        ...writeErrorResponses,
+        "409": {
+          description: "A payment provider with this slug already exists",
+        },
+      },
+    },
+  },
+  "/pvt/p/payment-providers/{id}": {
+    patch: {
+      tags: ["Payment Providers"],
+      summary: "Update a payment provider's name and market mappings",
+      description:
+        "Mappings are never deleted: send an existing mapping (with its id) to activate or deactivate it, or a new one (without an id) to add it. Mappings left out of the payload are unchanged.",
+      parameters: [providerIdParameter],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["name"],
+              properties: {
+                name: { type: "string", minLength: 2, maxLength: 100 },
+                mappings: { type: "array", items: updateMappingSchema },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": providerResponse("Payment provider updated"),
+        ...writeErrorResponses,
+        "404": { $ref: "#/components/responses/NotFound" },
+        "409": {
+          description:
+            "This payment method is already mapped to the market for this provider",
+        },
+      },
+    },
+  },
+  "/pvt/p/payment-providers/{id}/status": {
+    patch: {
+      tags: ["Payment Providers"],
+      summary: "Toggle a payment provider's active status",
+      parameters: [providerIdParameter],
+      responses: {
+        "200": providerResponse("Payment provider status toggled"),
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+};

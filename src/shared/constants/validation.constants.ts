@@ -5,4 +5,7 @@ export const VALIDATION_CONSTANTS = {
   USERS_NAME_MAX_LENGTH: 100,
   MOBILE_MIN_LENGTH: 10,
   MOBILE_MAX_LENGTH: 20,
+  SLUG_MIN_LENGTH: 2,
+  SLUG_MAX_LENGTH: 50,
+  SLUG_PATTERN: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
 } as const;

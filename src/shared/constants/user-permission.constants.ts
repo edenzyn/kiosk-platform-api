@@ -136,3 +136,11 @@ export const PLATFORM_MARKET_READ_WRITE_PERMS = [
   UserPermissions.PLATFORM_MARKET_READ,
   UserPermissions.PLATFORM_MARKET_WRITE,
 ];
+
+//----------------------
+// Payment Provider Module Constants (Platform)
+//----------------------
+export const PLATFORM_PAYMENT_PROVIDER_READ_WRITE_PERMS = [
+  UserPermissions.PLATFORM_PAYMENT_PROVIDER_READ,
+  UserPermissions.PLATFORM_PAYMENT_PROVIDER_WRITE,
+];

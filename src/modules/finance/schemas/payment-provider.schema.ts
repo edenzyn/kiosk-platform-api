@@ -1,7 +1,6 @@
 import {
   boolean,
   pgTable,
-  smallint,
   timestamp,
   uniqueIndex,
   uuid,
@@ -15,7 +14,7 @@ export const paymentProviders = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     name: varchar("name", { length: 100 }).notNull(),
-    type: smallint("type").notNull(), // PaymentProviderTypeEnum
+    slug: varchar("slug", { length: 50 }).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -26,7 +25,7 @@ export const paymentProviders = pgTable(
     createdBy: uuid("created_by").references((): AnyPgColumn => users.id),
     updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
   },
-  (table) => [uniqueIndex("payment_providers_type_idx").on(table.type)],
+  (table) => [uniqueIndex("payment_providers_slug_idx").on(table.slug)],
 );
 
 export type PaymentProviderEntity = typeof paymentProviders.$inferSelect;

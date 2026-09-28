@@ -41,6 +41,7 @@ export const swaggerDocument = {
     { name: "Platform", description: "Platform super-admin self-service account" },
     { name: "Markets", description: "Platform-managed markets (country/currency) used for market-scoped license pricing" },
     { name: "Notifications", description: "Outbound email/WhatsApp sending and inbound WhatsApp webhook" },
+    { name: "Payment Providers", description: "Platform-managed payment providers and their market / payment-method mappings" },
     { name: "Finance", description: "Display-only currency exchange rates for the frontend to convert prices with" },
   ],
   // Cookie-based auth is the primary mechanism (see auth.middleware.ts); a

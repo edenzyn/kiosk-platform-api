@@ -21,7 +21,7 @@ export const paymentProviderMarketMappers = pgTable(
     marketId: uuid("market_id")
       .notNull()
       .references((): AnyPgColumn => markets.id),
-    paymentMethod: smallint("payment_method").notNull(), // PaymentMethodEnum: 1 = QR, 2 = CARD
+    paymentMethod: smallint("payment_method").notNull(), // TenantPaymentMethodEnum: 1 = QR, 2 = CARD
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

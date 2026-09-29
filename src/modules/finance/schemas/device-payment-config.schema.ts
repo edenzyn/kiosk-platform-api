@@ -3,18 +3,20 @@ import {
   index,
   jsonb,
   pgTable,
+  smallint,
   timestamp,
   uniqueIndex,
   uuid,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/schemas/branch.schema";
+import { devices } from "../../device/device.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
 import { paymentProviderMarketMappers } from "./payment-provider-market-mapper.schema";
 
-export const tenantPaymentConfigs = pgTable(
-  "tenant_payment_configs",
+export const devicePaymentConfigs = pgTable(
+  "device_payment_configs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     organizationId: uuid("organization_id")
@@ -23,10 +25,14 @@ export const tenantPaymentConfigs = pgTable(
     branchId: uuid("branch_id")
       .notNull()
       .references((): AnyPgColumn => branches.id),
-    paymentProviderMarketMapperId: uuid("payment_provider_market_mapper_id")
+    deviceId: uuid("device_id")
       .notNull()
-      .references((): AnyPgColumn => paymentProviderMarketMappers.id),
-    config: jsonb("config").notNull(),
+      .references((): AnyPgColumn => devices.id),
+    paymentProviderMarketMapperId: uuid(
+      "payment_provider_market_mapper_id",
+    ).references((): AnyPgColumn => paymentProviderMarketMappers.id), // Null for providerless methods such as CASH.
+    paymentMethod: smallint("payment_method").notNull(), // TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH
+    config: jsonb("config"), // Provider-specific configuration; null for providerless methods such as CASH.
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -38,15 +44,19 @@ export const tenantPaymentConfigs = pgTable(
     updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
   },
   (table) => [
-    uniqueIndex("tenant_payment_configs_branch_provider_method_idx").on(
-      table.branchId,
+    uniqueIndex("device_payment_configs_device_method_idx").on(
+      table.deviceId,
+      table.paymentMethod,
+    ),
+    index("device_payment_configs_organization_idx").on(table.organizationId),
+    index("device_payment_configs_branch_idx").on(table.branchId),
+    index("device_payment_configs_mapper_idx").on(
       table.paymentProviderMarketMapperId,
     ),
-    index("tenant_payment_configs_organization_idx").on(table.organizationId),
-    index("tenant_payment_configs_branch_idx").on(table.branchId),
   ],
 );
 
-export type TenantPaymentConfigEntity = typeof tenantPaymentConfigs.$inferSelect;
-export type CreateTenantPaymentConfigEntity =
-  typeof tenantPaymentConfigs.$inferInsert;
+export type DevicePaymentConfigEntity =
+  typeof devicePaymentConfigs.$inferSelect;
+export type CreateDevicePaymentConfigEntity =
+  typeof devicePaymentConfigs.$inferInsert;

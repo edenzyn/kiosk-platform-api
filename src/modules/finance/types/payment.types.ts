@@ -38,7 +38,7 @@ export interface UpdatePaymentProviderMappingDto extends CreatePaymentProviderMa
 // ========================================
 // ? PLATFORM PAYMENT PROVIDER — SERVICE INPUTS & RESULTS
 // ========================================
-export interface UpdatePaymentProviderServiceInput {
+export interface UpdatePaymentServiceInput {
   providerId: string;
   dto: {
     mappings: UpdatePaymentProviderMappingDto[];
@@ -70,7 +70,7 @@ export interface GetPaymentProvidersServiceResult {
   totalPages: number;
 }
 
-export interface PaymentProviderServiceResult {
+export interface PaymentServiceResult {
   provider: PaymentProviderWithMappings;
 }
 

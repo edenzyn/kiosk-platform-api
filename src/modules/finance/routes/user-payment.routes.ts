@@ -3,37 +3,37 @@ import asyncHandler from "express-async-handler";
 import { container } from "../../../config/container";
 import { accessMiddleware } from "../../../middleware/access.middleware";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
-import type { PaymentProviderController } from "../controllers/payment-provider.controller";
+import type { PaymentController } from "../controllers/payment.controller";
 
-const userPaymentProviderRouter = Router();
-const paymentProviderController = container.resolve<PaymentProviderController>(
-  "paymentProviderController",
+const userPaymentRouter = Router();
+const paymentController = container.resolve<PaymentController>(
+  "paymentController",
 );
 
-userPaymentProviderRouter
+userPaymentRouter
   .route("/")
   .get(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    asyncHandler(paymentProviderController.getTenantPaymentConfigs),
+    asyncHandler(paymentController.getTenantPaymentConfigs),
   )
   .put(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    asyncHandler(paymentProviderController.saveTenantPaymentConfig),
+    asyncHandler(paymentController.saveTenantPaymentConfig),
   );
 
-userPaymentProviderRouter.put(
+userPaymentRouter.put(
   "/cash",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
     branch: [UserPermissions.BRANCH_UPDATE],
   }),
-  asyncHandler(paymentProviderController.saveCashPaymentConfig),
+  asyncHandler(paymentController.saveCashPaymentConfig),
 );
 
-export { userPaymentProviderRouter };
+export { userPaymentRouter };

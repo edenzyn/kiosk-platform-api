@@ -21,7 +21,7 @@ import { calculateTaxBreakdown } from "../../../shared/utils/finance/calculate-t
 import { calculateLicensePurchasePricing } from "../../../shared/utils/license/calculate-license-purchase-pricing.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
-import type { PaymentProviderService } from "../../finance/services/payment-provider.service";
+import type { PaymentService } from "../../finance/services/payment.service";
 import type { MarketRepository } from "../../market/market.repository";
 import type { MarketService } from "../../market/market.service";
 import type { BillingInfoDto } from "../dtos/purchase-license.dtos";
@@ -66,7 +66,7 @@ export class LicenseTransactionService {
     private readonly licensePlanRepository: LicensePlanRepository,
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
-    private readonly paymentProviderService: PaymentProviderService,
+    private readonly paymentService: PaymentService,
     private readonly branchRepository: BranchRepository,
     private readonly marketRepository: MarketRepository,
     private readonly marketService: MarketService,
@@ -397,7 +397,7 @@ export class LicenseTransactionService {
       billingState: params.billingInfo?.state,
     });
 
-    const order = await this.paymentProviderService.createRazorpayOrder({
+    const order = await this.paymentService.createRazorpayOrder({
       amount: Number(pricing.chargeAmount),
       currency: pricing.currencyCode,
       receipt: generatePrefixedId("rec_lic_"),
@@ -589,7 +589,7 @@ export class LicenseTransactionService {
       billingState: params.billingInfo?.state,
     });
 
-    await this.paymentProviderService.verifyRazorpayPayment({
+    await this.paymentService.verifyRazorpayPayment({
       razorpayOrderId: params.razorpayOrderId,
       razorpayPaymentId: params.razorpayPaymentId,
       razorpaySignature: params.razorpaySignature,
@@ -858,7 +858,7 @@ export class LicenseTransactionService {
       totalAmount: amountBeforeTax,
     } = calculateLicensePurchasePricing(price, 1, 0);
 
-    const order = await this.paymentProviderService.createRazorpayOrder({
+    const order = await this.paymentService.createRazorpayOrder({
       amount: Number(chargeAmount),
       currency: currencyCode,
       receipt: generatePrefixedId("rec_lic_"),
@@ -953,7 +953,7 @@ export class LicenseTransactionService {
     const { discountAmount, unitPrice, baseUnitPrice } =
       calculateLicensePurchasePricing(price, 1, 0);
 
-    await this.paymentProviderService.verifyRazorpayPayment({
+    await this.paymentService.verifyRazorpayPayment({
       razorpayOrderId: input.dto.razorpayOrderId,
       razorpayPaymentId: input.dto.razorpayPaymentId,
       razorpaySignature: input.dto.razorpaySignature,

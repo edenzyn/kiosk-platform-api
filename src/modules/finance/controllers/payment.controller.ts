@@ -3,13 +3,13 @@ import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.con
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
-import type { PaymentProviderService } from "../services/payment-provider.service";
-import type { RazorpayWebhookPayload } from "../types/payment-provider.types";
-import { PaymentProviderValidator } from "../validators/payment-provider.validator";
+import type { PaymentService } from "../services/payment.service";
+import type { RazorpayWebhookPayload } from "../types/payment.types";
+import { PaymentValidator } from "../validators/payment.validator";
 
-export class PaymentProviderController {
+export class PaymentController {
   constructor(
-    private readonly paymentProviderService: PaymentProviderService,
+    private readonly paymentService: PaymentService,
     private readonly razorpayProvider: RazorpayProvider,
   ) {}
 
@@ -35,7 +35,7 @@ export class PaymentProviderController {
       return;
     }
 
-    await this.paymentProviderService.handleRazorpayWebhook({
+    await this.paymentService.handleRazorpayWebhook({
       headers: req.headers,
       body: req.body as RazorpayWebhookPayload,
     });
@@ -46,28 +46,28 @@ export class PaymentProviderController {
   // ? PLATFORM PAYMENT PROVIDER APIS
   // ========================================
   getPaymentProviders = async (req: Request, res: Response): Promise<void> => {
-    const query = await PaymentProviderValidator.getPaymentProvidersQuery.validate(
+    const query = await PaymentValidator.getPaymentProvidersQuery.validate(
       req.query,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.paymentProviderService.getPaymentProviders({
+    const result = await this.paymentService.getPaymentProviders({
       query,
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
 
   updatePaymentProvider = async (req: Request, res: Response): Promise<void> => {
-    const params = await PaymentProviderValidator.providerIdParam.validate(
+    const params = await PaymentValidator.providerIdParam.validate(
       req.params,
       { abortEarly: false, stripUnknown: true },
     );
-    const dto = await PaymentProviderValidator.updatePaymentProvider.validate(
+    const dto = await PaymentValidator.updatePaymentProvider.validate(
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.paymentProviderService.updatePaymentProvider({
+    const result = await this.paymentService.updatePaymentProvider({
       providerId: params.id,
       dto,
       currentUser: req.user as UserTokenDto,
@@ -79,12 +79,12 @@ export class PaymentProviderController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const params = await PaymentProviderValidator.providerIdParam.validate(
+    const params = await PaymentValidator.providerIdParam.validate(
       req.params,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.paymentProviderService.togglePaymentProviderStatus(
+    const result = await this.paymentService.togglePaymentProviderStatus(
       { providerId: params.id, currentUser: req.user as UserTokenDto },
     );
     res.status(HttpStatusCodes.OK).json(result);
@@ -97,7 +97,7 @@ export class PaymentProviderController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const result = await this.paymentProviderService.getTenantPaymentConfigs({
+    const result = await this.paymentService.getTenantPaymentConfigs({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json(result);
@@ -107,12 +107,12 @@ export class PaymentProviderController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const dto = await PaymentProviderValidator.saveTenantPaymentConfig.validate(
+    const dto = await PaymentValidator.saveTenantPaymentConfig.validate(
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.paymentProviderService.saveTenantPaymentConfig({
+    const result = await this.paymentService.saveTenantPaymentConfig({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       user: req.user as UserTokenDto,
       dto,
@@ -124,12 +124,12 @@ export class PaymentProviderController {
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const dto = await PaymentProviderValidator.saveCashPaymentConfig.validate(
+    const dto = await PaymentValidator.saveCashPaymentConfig.validate(
       req.body,
       { abortEarly: false, stripUnknown: true },
     );
 
-    const result = await this.paymentProviderService.saveCashPaymentConfig({
+    const result = await this.paymentService.saveCashPaymentConfig({
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
       dto,
     });

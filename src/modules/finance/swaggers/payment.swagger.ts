@@ -92,7 +92,7 @@ const writeErrorResponses = {
   "403": { $ref: "#/components/responses/Forbidden" },
 };
 
-export const paymentProviderSwaggerPaths: Record<string, unknown> = {
+export const paymentSwaggerPaths: Record<string, unknown> = {
   // ========================================
   // ? PLATFORM-SIDE PAYMENT PROVIDER MANAGEMENT (mounted /pvt/p/payment-providers)
   // ========================================

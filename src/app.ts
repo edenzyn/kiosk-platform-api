@@ -13,7 +13,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
-import { platformPaymentProviderRouter } from "./modules/finance/routes/platform-payment-provider.routes";
+import { platformPaymentRouter } from "./modules/finance/routes/platform-payment.routes";
 import { financeWebhookRouter } from "./modules/finance/routes/finance-webhook.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
@@ -24,7 +24,7 @@ import { resellerMarketRouter } from "./modules/market/routes/reseller-market.ro
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
 import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
-import { userPaymentProviderRouter } from "./modules/finance/routes/user-payment-provider.routes";
+import { userPaymentRouter } from "./modules/finance/routes/user-payment.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
 import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
@@ -137,7 +137,7 @@ export class App {
     );
     this.instance.use(
       `${this.platformUserApiV1Prefix}/payment-providers`,
-      platformPaymentProviderRouter,
+      platformPaymentRouter,
     );
   }
 
@@ -169,7 +169,7 @@ export class App {
     this.instance.use(`${this.normalUserApiV1Prefix}/taxes`, userTaxRouter);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/payment-configs`,
-      userPaymentProviderRouter,
+      userPaymentRouter,
     );
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,

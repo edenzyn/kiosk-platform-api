@@ -35,7 +35,7 @@ import type {
   UpdatePaymentProviderRepoResult,
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentProviderWithMappingsRepoResult,
-} from "../types/payment-provider.types";
+} from "../types/payment.types";
 
 const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
   name: paymentProviders.name,
@@ -43,7 +43,7 @@ const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
   createdAt: paymentProviders.createdAt,
 };
 
-export class PaymentProviderRepository {
+export class PaymentRepository {
   constructor(private readonly database: Database) {}
 
   async findPaginatedWithMappings(

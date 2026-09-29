@@ -1,9 +1,9 @@
 import { asClass, type AwilixContainer } from "awilix";
-import { PaymentProviderController } from "./controllers/payment-provider.controller";
+import { PaymentController } from "./controllers/payment.controller";
 import { TaxController } from "./controllers/tax.controller";
-import { PaymentProviderRepository } from "./repositories/payment-provider.repository";
+import { PaymentRepository } from "./repositories/payment.repository";
 import { TaxRepository } from "./repositories/tax.repository";
-import { PaymentProviderService } from "./services/payment-provider.service";
+import { PaymentService } from "./services/payment.service";
 import { TaxService } from "./services/tax.service";
 
 export class FinanceContainer {
@@ -12,9 +12,9 @@ export class FinanceContainer {
       taxRepository: asClass(TaxRepository).singleton(),
       taxService: asClass(TaxService).singleton(),
       taxController: asClass(TaxController).singleton(),
-      paymentProviderRepository: asClass(PaymentProviderRepository).singleton(),
-      paymentProviderService: asClass(PaymentProviderService).singleton(),
-      paymentProviderController: asClass(PaymentProviderController).singleton(),
+      paymentRepository: asClass(PaymentRepository).singleton(),
+      paymentService: asClass(PaymentService).singleton(),
+      paymentController: asClass(PaymentController).singleton(),
     });
   }
 }

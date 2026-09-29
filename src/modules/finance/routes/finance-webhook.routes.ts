@@ -1,15 +1,15 @@
 import { Router } from "express";
 import asyncHandler from "express-async-handler";
 import { container } from "../../../config/container";
-import type { PaymentProviderController } from "../controllers/payment-provider.controller";
+import type { PaymentController } from "../controllers/payment.controller";
 
 const financeWebhookRouter = Router();
-const paymentProviderController =
-  container.resolve<PaymentProviderController>("paymentProviderController");
+const paymentController =
+  container.resolve<PaymentController>("paymentController");
 
 financeWebhookRouter.post(
   "/webhooks/rzrpay",
-  asyncHandler(paymentProviderController.razorpayWebhook),
+  asyncHandler(paymentController.razorpayWebhook),
 );
 
 export { financeWebhookRouter };

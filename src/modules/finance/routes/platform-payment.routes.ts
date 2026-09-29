@@ -5,41 +5,41 @@ import { accessMiddleware } from "../../../middleware/access.middleware";
 import { PLATFORM_PAYMENT_PROVIDER_READ_WRITE_PERMS } from "../../../shared/constants/user-permission.constants";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
-import type { PaymentProviderController } from "../controllers/payment-provider.controller";
+import type { PaymentController } from "../controllers/payment.controller";
 
-const platformPaymentProviderRouter = Router();
-const paymentProviderController = container.resolve<PaymentProviderController>(
-  "paymentProviderController",
+const platformPaymentRouter = Router();
+const paymentController = container.resolve<PaymentController>(
+  "paymentController",
 );
 
-platformPaymentProviderRouter
+platformPaymentRouter
   .route("/")
   .get(
     accessMiddleware(
       { platform: PLATFORM_PAYMENT_PROVIDER_READ_WRITE_PERMS },
       UserTypeEnums.PLATFORM,
     ),
-    asyncHandler(paymentProviderController.getPaymentProviders),
+    asyncHandler(paymentController.getPaymentProviders),
   );
 
-platformPaymentProviderRouter
+platformPaymentRouter
   .route("/:id")
   .patch(
     accessMiddleware(
       { platform: [UserPermissions.PLATFORM_PAYMENT_PROVIDER_WRITE] },
       UserTypeEnums.PLATFORM,
     ),
-    asyncHandler(paymentProviderController.updatePaymentProvider),
+    asyncHandler(paymentController.updatePaymentProvider),
   );
 
-platformPaymentProviderRouter
+platformPaymentRouter
   .route("/:id/status")
   .patch(
     accessMiddleware(
       { platform: [UserPermissions.PLATFORM_PAYMENT_PROVIDER_WRITE] },
       UserTypeEnums.PLATFORM,
     ),
-    asyncHandler(paymentProviderController.togglePaymentProviderStatus),
+    asyncHandler(paymentController.togglePaymentProviderStatus),
   );
 
-export { platformPaymentProviderRouter };
+export { platformPaymentRouter };

@@ -48,7 +48,7 @@ const textField = (label: string) =>
     .max(255, `${label} cannot exceed 255 characters`)
     .required(`${label} is required`);
 
-export class PaymentProviderValidator {
+export class PaymentValidator {
   static getPaymentProvidersQuery = paginationQuerySchema
     .shape({
       search: yup.string().optional().trim(),

@@ -31,7 +31,7 @@ export const licenses = pgTable("licenses", {
     .notNull()
     .references((): AnyPgColumn => licensePlans.id),
   isRedeemed: boolean("is_redeemed").default(false).notNull(),
-  deviceType: smallint("device_type").default(DeviceTypeEnum.KIOSK).notNull(), // DeviceTypeEnum: 1 = KIOSK, 2 = COUNTER, 3 = KDS, 4 = DIGITAL_DISPLAY
+  deviceType: smallint("device_type").default(DeviceTypeEnum.KIOSK).notNull(), // DeviceTypeEnum: 1 = KIOSK, 2 = COUNTER, 3 = KDS, 4 = CDS
   status: smallint("status").notNull(), // LicenseStatusEnum: 1 = AVAILABLE, 2 = ACTIVE, 3 = GRACE_PERIOD, 4 = EXPIRED, 5 = REVOKED
   activatedAt: timestamp("activated_at", { withTimezone: true }),
   expiresAt: timestamp("expires_at", { withTimezone: true }),

@@ -2,17 +2,26 @@ import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { PAYMENT_CONFIG_SECRET_KEYS } from "../../../shared/constants/payment-config.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { PaymentProviderSlugEnum } from "../../../shared/enums/finance/payment-provider-slug.enum";
+import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import type {
+  PhonePeProvider,
+  PhonePeQrPaymentConfig,
+} from "../../../shared/providers/finance/phonepe.provider";
 import type {
   CreateRazorpayOrderInput,
   CreateRazorpayOrderResult,
   RazorpayProvider,
 } from "../../../shared/providers/finance/razorpay.provider";
-import { encryptData } from "../../../shared/utils/core/crypto.helper";
+import {
+  decryptData,
+  encryptData,
+} from "../../../shared/utils/core/crypto.helper";
 import { logger } from "../../../shared/utils/core/logger";
-import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
 import type { BranchRepository } from "../../branch/branch.repository";
+import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
 import type { MarketRepository } from "../../market/market.repository";
 import type { PaymentRepository } from "../repositories/payment.repository";
 import type {
@@ -21,16 +30,18 @@ import type {
   GetTenantPaymentConfigsServiceInput,
   GetTenantPaymentConfigsServiceResult,
   HandleRazorpayWebhookServiceInput,
-  PaymentServiceResult,
   PaymentProviderWithMappings,
+  PaymentServiceResult,
   SaveCashPaymentConfigServiceInput,
   SaveCashPaymentConfigServiceResult,
   SaveTenantPaymentConfigServiceInput,
   SaveTenantPaymentConfigServiceResult,
   TenantPaymentConfigValues,
+  TestTenantPaymentConfigServiceInput,
+  TestTenantPaymentConfigServiceResult,
   TogglePaymentProviderStatusServiceInput,
-  UpdatePaymentServiceInput,
   UpdatePaymentProviderWithMappingsRepoInput,
+  UpdatePaymentServiceInput,
   VerifyRazorpayPaymentServiceInput,
 } from "../types/payment.types";
 import { PaymentValidator } from "../validators/payment.validator";
@@ -42,6 +53,7 @@ export class PaymentService {
     private readonly paymentRepository: PaymentRepository,
     private readonly marketRepository: MarketRepository,
     private readonly branchRepository: BranchRepository,
+    private readonly phonePeProvider: PhonePeProvider,
   ) {}
 
   // ========================================
@@ -342,6 +354,56 @@ export class PaymentService {
       isActive: dto.isActive,
       config: config as unknown as TenantPaymentConfigValues,
       userId: user.id,
+    });
+
+    return this.getTenantPaymentConfigs({ effectiveTenant });
+  }
+
+  async testTenantPaymentConfig(
+    input: TestTenantPaymentConfigServiceInput,
+  ): Promise<TestTenantPaymentConfigServiceResult> {
+    const { effectiveTenant, dto } = input;
+
+    const { configs, options } = await this.getTenantPaymentConfigs({
+      effectiveTenant,
+    });
+
+    const option = options.find((item) => item.mapperId === dto.mapperId);
+    const saved = configs.find((config) => config.mapperId === dto.mapperId);
+    if (!option || !saved) {
+      throw new AppError("Save this provider's config before testing it", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    if (
+      option.provider.slug === PaymentProviderSlugEnum.PHONEPE &&
+      option.paymentMethod === TenantPaymentMethodEnum.QR
+    ) {
+      const config = saved.config as PhonePeQrPaymentConfig;
+      await this.phonePeProvider.getAccessToken({
+        clientId: config.clientId,
+        clientSecret: decryptData(
+          config.clientSecret,
+          env.LICENSE_ENCRYPTION_KEY,
+        ),
+        clientVersion: config.clientVersion,
+      });
+    } else {
+      throw new AppError(
+        "Testing the connection isn't available for this provider yet",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    await this.paymentRepository.updateTenantPaymentConnectionTest({
+      branchId: effectiveTenant.branchId as string,
+      mapperId: dto.mapperId,
+      testedAt: new Date(),
     });
 
     return this.getTenantPaymentConfigs({ effectiveTenant });

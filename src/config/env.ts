@@ -128,6 +128,16 @@ const EnvSchema = Yup.object({
   RAZORPAY_WEBHOOK_SECRET: Yup.string().required().min(1),
 
   // ==============================
+  // Payment (PhonePe QR)
+  // ==============================
+  PHONEPE_QR_BASE_URL: Yup.string()
+    .url()
+    .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
+  PHONEPE_QR_AUTH_BASE_URL: Yup.string()
+    .url()
+    .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
+
+  // ==============================
   // Storage (S3)
   // ==============================
   S3_REGION: Yup.string().required().min(1),

@@ -13,7 +13,7 @@ const deviceSchema = {
     deviceType: {
       type: "integer",
       enum: [1, 2, 3, 4],
-      description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+      description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
     },
     isActive: { type: "boolean", nullable: true },
     createdAt: { type: "string", format: "date-time" },
@@ -73,7 +73,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
         {
           name: "type",
           in: "query",
-          description: "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY)",
+          description: "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS)",
           schema: { type: "integer", enum: [1, 2, 3, 4] },
         },
         {
@@ -137,7 +137,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                 deviceType: {
                   type: "integer",
                   enum: [1, 2, 3, 4],
-                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
                 },
               },
             },
@@ -192,7 +192,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                   type: "integer",
                   nullable: true,
                   enum: [1, 2, 3, 4],
-                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
                 },
               },
             },

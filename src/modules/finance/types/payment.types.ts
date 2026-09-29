@@ -1,5 +1,6 @@
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
+import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe.provider";
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import type { PaymentProviderMarketMapperEntity } from "../schemas/payment-provider-market-mapper.schema";
 import type { PaymentProviderEntity } from "../schemas/payment-provider.schema";
@@ -164,13 +165,6 @@ export interface VerifyRazorpayPaymentServiceInput {
 // ========================================
 // ? TENANT PAYMENT CONFIG MODELS
 // ========================================
-export interface PhonePeQrPaymentConfig {
-  clientId: string;
-  // Stored encrypted.
-  clientSecret: string;
-  clientVersion: string;
-}
-
 // The terminal id is per device, so it lives on the device, not here.
 export interface PineLabsCardPaymentConfig {
   merchantId: string;
@@ -202,6 +196,21 @@ export interface TenantPaymentConfigSummary {
   // Stored as-is; secret keys hold their encrypted value.
   config: TenantPaymentConfigValues;
   lastConnectionTest: Date | null;
+}
+
+export interface TestTenantPaymentConfigServiceInput {
+  effectiveTenant: EffectiveTenant;
+  dto: {
+    mapperId: string;
+  };
+}
+export type TestTenantPaymentConfigServiceResult =
+  GetTenantPaymentConfigsServiceResult;
+
+export interface UpdateTenantPaymentConnectionTestRepoInput {
+  branchId: string;
+  mapperId: string;
+  testedAt: Date;
 }
 
 export interface GetTenantPaymentConfigsServiceInput {

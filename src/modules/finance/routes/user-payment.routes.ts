@@ -36,4 +36,13 @@ userPaymentRouter.put(
   asyncHandler(paymentController.saveCashPaymentConfig),
 );
 
+userPaymentRouter.post(
+  "/test",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+    branch: [UserPermissions.BRANCH_UPDATE],
+  }),
+  asyncHandler(paymentController.testTenantPaymentConfig),
+);
+
 export { userPaymentRouter };

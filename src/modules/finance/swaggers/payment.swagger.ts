@@ -260,4 +260,35 @@ export const paymentSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/payment-configs/test": {
+    post: {
+      tags: ["Payment Providers"],
+      summary: "Test the branch's saved provider credentials",
+      description:
+        "Calls the provider with the branch's saved credentials (PhonePe QR: requests an OAuth token). On success, last_connection_test is set to now. Other providers aren't testable yet.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["mapperId"],
+              properties: { mapperId: { type: "string", format: "uuid" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Configs and provider options" },
+        "400": {
+          description:
+            "The provider rejected the credentials, or testing isn't available for it",
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+        "503": { description: "The provider couldn't be reached" },
+      },
+    },
+  },
 };

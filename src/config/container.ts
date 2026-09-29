@@ -20,6 +20,7 @@ import { RbacContainer } from "../modules/rbac/rbac.container";
 import { ResellerContainer } from "../modules/reseller/reseller.container";
 import { UserContainer } from "../modules/user/user.container";
 import { EmailProvider } from "../shared/providers/email/email.provider";
+import { PhonePeProvider } from "../shared/providers/finance/phonepe.provider";
 import { RazorpayProvider } from "../shared/providers/finance/razorpay.provider";
 import { RedisProvider } from "../shared/providers/redis/redis.provider";
 import { S3Provider } from "../shared/providers/s3/s3.provider";
@@ -45,6 +46,7 @@ container.register({
   redisProvider: asClass(RedisProvider).singleton(),
   razorpayClient: asFunction(createRazorpayClient).singleton(),
   razorpayProvider: asClass(RazorpayProvider).singleton(),
+  phonePeProvider: asClass(PhonePeProvider).singleton(),
   queueConnection: asFunction(createQueueConnection).singleton(),
   emailQueue: asFunction(createEmailQueue).singleton(),
   whatsappQueue: asFunction(createWhatsAppQueue).singleton(),

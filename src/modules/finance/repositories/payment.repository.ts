@@ -31,6 +31,7 @@ import type {
   FindTenantPaymentOptionsRepoResult,
   PaymentProviderMappingWithMarket,
   SaveTenantPaymentConfigRepoInput,
+  UpdateTenantPaymentConnectionTestRepoInput,
   UpdatePaymentProviderRepoInput,
   UpdatePaymentProviderRepoResult,
   UpdatePaymentProviderWithMappingsRepoInput,
@@ -270,6 +271,20 @@ export class PaymentRepository {
         and(
           eq(tenantPaymentConfigs.organizationId, input.organizationId),
           eq(tenantPaymentConfigs.branchId, input.branchId),
+        ),
+      );
+  }
+
+  async updateTenantPaymentConnectionTest(
+    input: UpdateTenantPaymentConnectionTestRepoInput,
+  ): Promise<void> {
+    await this.database.client
+      .update(tenantPaymentConfigs)
+      .set({ lastConnectionTest: input.testedAt })
+      .where(
+        and(
+          eq(tenantPaymentConfigs.branchId, input.branchId),
+          eq(tenantPaymentConfigs.paymentProviderMarketMapperId, input.mapperId),
         ),
       );
   }

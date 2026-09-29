@@ -135,4 +135,20 @@ export class PaymentController {
     });
     res.status(HttpStatusCodes.OK).json(result);
   };
+
+  testTenantPaymentConfig = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const dto = await PaymentValidator.testTenantPaymentConfig.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.paymentService.testTenantPaymentConfig({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      dto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
 }

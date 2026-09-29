@@ -122,6 +122,15 @@ export class PaymentValidator {
     })
     .noUnknown();
 
+  static testTenantPaymentConfig = yup
+    .object({
+      mapperId: yup
+        .string()
+        .uuid("Invalid payment provider")
+        .required("Payment provider is required"),
+    })
+    .noUnknown();
+
   // Config models by provider slug and payment method.
   static paymentConfigs: Record<
     string,

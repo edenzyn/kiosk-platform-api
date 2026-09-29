@@ -1,3 +1,4 @@
+import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import type { PaymentProviderMarketMapperEntity } from "../schemas/payment-provider-market-mapper.schema";
@@ -158,4 +159,105 @@ export interface VerifyRazorpayPaymentServiceInput {
   razorpaySignature: string;
   expectedAmount: string;
   expectedCurrency: string;
+}
+
+// ========================================
+// ? TENANT PAYMENT CONFIG MODELS
+// ========================================
+export interface PhonePeQrPaymentConfig {
+  clientId: string;
+  // Stored encrypted.
+  clientSecret: string;
+  clientVersion: string;
+}
+
+// The terminal id is per device, so it lives on the device, not here.
+export interface PineLabsCardPaymentConfig {
+  merchantId: string;
+  // Stored encrypted.
+  securityToken: string;
+}
+
+export type TenantPaymentConfigValues =
+  | PhonePeQrPaymentConfig
+  | PineLabsCardPaymentConfig;
+
+// ========================================
+// ? TENANT PAYMENT CONFIGS
+// ========================================
+export interface TenantPaymentProviderOption {
+  mapperId: string;
+  paymentMethod: TenantPaymentMethodEnum;
+  provider: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
+export interface TenantPaymentConfigSummary {
+  mapperId: string;
+  paymentMethod: TenantPaymentMethodEnum;
+  isActive: boolean;
+  // Stored as-is; secret keys hold their encrypted value.
+  config: TenantPaymentConfigValues;
+  lastConnectionTest: Date | null;
+}
+
+export interface GetTenantPaymentConfigsServiceInput {
+  effectiveTenant: EffectiveTenant;
+}
+export interface GetTenantPaymentConfigsServiceResult {
+  isCashPaymentEnabled: boolean;
+  configs: TenantPaymentConfigSummary[];
+  options: TenantPaymentProviderOption[];
+}
+
+export interface SaveCashPaymentConfigServiceInput {
+  effectiveTenant: EffectiveTenant;
+  dto: {
+    isEnabled: boolean;
+  };
+}
+export type SaveCashPaymentConfigServiceResult =
+  GetTenantPaymentConfigsServiceResult;
+
+export interface SaveTenantPaymentConfigServiceInput {
+  effectiveTenant: EffectiveTenant;
+  user: UserTokenDto;
+  dto: {
+    mapperId: string;
+    isActive: boolean;
+    config: Record<string, unknown>;
+  };
+}
+export type SaveTenantPaymentConfigServiceResult =
+  GetTenantPaymentConfigsServiceResult;
+
+export interface FindTenantPaymentOptionsRepoInput {
+  marketId: string;
+}
+export type FindTenantPaymentOptionsRepoResult = TenantPaymentProviderOption[];
+
+export interface FindTenantPaymentOptionRepoInput {
+  marketId: string;
+  mapperId: string;
+}
+export type FindTenantPaymentOptionRepoResult =
+  TenantPaymentProviderOption | null;
+
+export interface FindTenantPaymentConfigsRepoInput {
+  organizationId: string;
+  branchId: string;
+}
+export type FindTenantPaymentConfigsRepoResult = TenantPaymentConfigSummary[];
+
+export interface SaveTenantPaymentConfigRepoInput {
+  organizationId: string;
+  branchId: string;
+  mapperId: string;
+  paymentMethod: TenantPaymentMethodEnum;
+  isActive: boolean;
+  config: TenantPaymentConfigValues;
+  userId: string;
 }

@@ -1,4 +1,5 @@
 import {
+  boolean,
   pgTable,
   timestamp,
   uuid,
@@ -24,6 +25,9 @@ export const branchSettings = pgTable("branch_settings", {
   timezone: varchar("timezone", { length: 100 })
     .notNull()
     .default("Asia/Kolkata"),
+  isCashPaymentEnabled: boolean("is_cash_payment_enabled")
+    .default(true)
+    .notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
     .notNull(),

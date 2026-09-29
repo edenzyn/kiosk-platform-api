@@ -1,8 +1,8 @@
 import * as yup from "yup";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { pinValidator } from "../../shared/validators/pin.validator";
-import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 
 export const DeviceValidator = {
   create: yup.object({
@@ -46,6 +46,18 @@ export const DeviceValidator = {
   toggleStatus: yup
     .object({
       id: yup.string().uuid().required("Device ID is required"),
+    })
+    .noUnknown(),
+  mapTerminal: yup
+    .object({
+      id: yup.string().uuid().required("Device ID is required"),
+      terminalId: yup
+        .string()
+        .trim()
+        .max(100, "Terminal ID cannot exceed 100 characters")
+        .nullable()
+        .transform((value) => (value ? value : null))
+        .defined(),
     })
     .noUnknown(),
   getDevicesQuery: paginationQuerySchema

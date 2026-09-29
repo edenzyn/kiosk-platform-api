@@ -24,6 +24,7 @@ import { resellerMarketRouter } from "./modules/market/routes/reseller-market.ro
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
 import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
+import { userPaymentProviderRouter } from "./modules/finance/routes/user-payment-provider.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
 import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
@@ -166,6 +167,10 @@ export class App {
     );
     this.instance.use(`${this.normalUserApiV1Prefix}/menu`, userMenuRouter);
     this.instance.use(`${this.normalUserApiV1Prefix}/taxes`, userTaxRouter);
+    this.instance.use(
+      `${this.normalUserApiV1Prefix}/payment-configs`,
+      userPaymentProviderRouter,
+    );
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
       userLicenseRouter,

@@ -6,6 +6,7 @@ import {
   eq,
   ilike,
   inArray,
+  ne,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -14,6 +15,7 @@ import type { Database } from "../../../config/db";
 import { markets } from "../../market/schemas/market.schema";
 import { paymentProviderMarketMappers } from "../schemas/payment-provider-market-mapper.schema";
 import { paymentProviders } from "../schemas/payment-provider.schema";
+import { tenantPaymentConfigs } from "../schemas/tenant-payment-config.schema";
 import type {
   FindOnePaymentProviderRepoInput,
   FindOnePaymentProviderRepoResult,
@@ -21,7 +23,14 @@ import type {
   FindOnePaymentProviderWithMappingsRepoResult,
   FindPaginatedPaymentProvidersRepoInput,
   FindPaginatedPaymentProvidersRepoResult,
+  FindTenantPaymentConfigsRepoInput,
+  FindTenantPaymentConfigsRepoResult,
+  FindTenantPaymentOptionRepoInput,
+  FindTenantPaymentOptionRepoResult,
+  FindTenantPaymentOptionsRepoInput,
+  FindTenantPaymentOptionsRepoResult,
   PaymentProviderMappingWithMarket,
+  SaveTenantPaymentConfigRepoInput,
   UpdatePaymentProviderRepoInput,
   UpdatePaymentProviderRepoResult,
   UpdatePaymentProviderWithMappingsRepoInput,
@@ -174,6 +183,156 @@ export class PaymentProviderRepository {
 
     if (!provider) throw new Error("Failed to update payment provider");
     return provider;
+  }
+
+  // ========================================
+  // ? TENANT PAYMENT CONFIGS
+  // ========================================
+  async findTenantPaymentOptions(
+    input: FindTenantPaymentOptionsRepoInput,
+  ): Promise<FindTenantPaymentOptionsRepoResult> {
+    return this.database.client
+      .select({
+        mapperId: paymentProviderMarketMappers.id,
+        paymentMethod: paymentProviderMarketMappers.paymentMethod,
+        provider: {
+          id: paymentProviders.id,
+          name: paymentProviders.name,
+          slug: paymentProviders.slug,
+        },
+      })
+      .from(paymentProviderMarketMappers)
+      .innerJoin(
+        paymentProviders,
+        eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
+      )
+      .where(
+        and(
+          eq(paymentProviderMarketMappers.marketId, input.marketId),
+          eq(paymentProviderMarketMappers.isActive, true),
+          eq(paymentProviders.isActive, true),
+        ),
+      )
+      .orderBy(asc(paymentProviders.name));
+  }
+
+  async findTenantPaymentOption(
+    input: FindTenantPaymentOptionRepoInput,
+  ): Promise<FindTenantPaymentOptionRepoResult> {
+    const [option] = await this.database.client
+      .select({
+        mapperId: paymentProviderMarketMappers.id,
+        paymentMethod: paymentProviderMarketMappers.paymentMethod,
+        provider: {
+          id: paymentProviders.id,
+          name: paymentProviders.name,
+          slug: paymentProviders.slug,
+        },
+      })
+      .from(paymentProviderMarketMappers)
+      .innerJoin(
+        paymentProviders,
+        eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
+      )
+      .where(
+        and(
+          eq(paymentProviderMarketMappers.id, input.mapperId),
+          eq(paymentProviderMarketMappers.marketId, input.marketId),
+          eq(paymentProviderMarketMappers.isActive, true),
+          eq(paymentProviders.isActive, true),
+        ),
+      )
+      .limit(1);
+
+    return option ?? null;
+  }
+
+  async findTenantPaymentConfigs(
+    input: FindTenantPaymentConfigsRepoInput,
+  ): Promise<FindTenantPaymentConfigsRepoResult> {
+    return this.database.client
+      .select({
+        mapperId: tenantPaymentConfigs.paymentProviderMarketMapperId,
+        paymentMethod: paymentProviderMarketMappers.paymentMethod,
+        isActive: tenantPaymentConfigs.isActive,
+        config: tenantPaymentConfigs.config,
+        lastConnectionTest: tenantPaymentConfigs.lastConnectionTest,
+      })
+      .from(tenantPaymentConfigs)
+      .innerJoin(
+        paymentProviderMarketMappers,
+        eq(
+          tenantPaymentConfigs.paymentProviderMarketMapperId,
+          paymentProviderMarketMappers.id,
+        ),
+      )
+      .where(
+        and(
+          eq(tenantPaymentConfigs.organizationId, input.organizationId),
+          eq(tenantPaymentConfigs.branchId, input.branchId),
+        ),
+      );
+  }
+
+  async saveTenantPaymentConfig(
+    input: SaveTenantPaymentConfigRepoInput,
+  ): Promise<void> {
+    await this.database.client.transaction(async (tx) => {
+      await tx
+        .insert(tenantPaymentConfigs)
+        .values({
+          organizationId: input.organizationId,
+          branchId: input.branchId,
+          paymentProviderMarketMapperId: input.mapperId,
+          config: input.config,
+          isActive: input.isActive,
+          createdBy: input.userId,
+          updatedBy: input.userId,
+        })
+        .onConflictDoUpdate({
+          target: [
+            tenantPaymentConfigs.branchId,
+            tenantPaymentConfigs.paymentProviderMarketMapperId,
+          ],
+          set: {
+            config: input.config,
+            isActive: input.isActive,
+            updatedBy: input.userId,
+            updatedAt: new Date(),
+          },
+        });
+
+      if (!input.isActive) return;
+
+      const sameMethodMappers = tx
+        .select({ id: paymentProviderMarketMappers.id })
+        .from(paymentProviderMarketMappers)
+        .where(
+          eq(paymentProviderMarketMappers.paymentMethod, input.paymentMethod),
+        );
+
+      await tx
+        .update(tenantPaymentConfigs)
+        .set({
+          isActive: false,
+          updatedBy: input.userId,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(tenantPaymentConfigs.branchId, input.branchId),
+            eq(tenantPaymentConfigs.isActive, true),
+            ne(
+              tenantPaymentConfigs.paymentProviderMarketMapperId,
+              input.mapperId,
+            ),
+            inArray(
+              tenantPaymentConfigs.paymentProviderMarketMapperId,
+              sameMethodMappers,
+            ),
+          ),
+        );
+    });
   }
 
   private async findMappingsByProviderIds(

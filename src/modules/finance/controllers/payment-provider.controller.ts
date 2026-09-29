@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
 import type { PaymentProviderService } from "../services/payment-provider.service";
@@ -86,6 +87,52 @@ export class PaymentProviderController {
     const result = await this.paymentProviderService.togglePaymentProviderStatus(
       { providerId: params.id, currentUser: req.user as UserTokenDto },
     );
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  // ========================================
+  // ? TENANT PAYMENT CONFIG APIS
+  // ========================================
+  getTenantPaymentConfigs = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.paymentProviderService.getTenantPaymentConfigs({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  saveTenantPaymentConfig = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const dto = await PaymentProviderValidator.saveTenantPaymentConfig.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.paymentProviderService.saveTenantPaymentConfig({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      user: req.user as UserTokenDto,
+      dto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  saveCashPaymentConfig = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const dto = await PaymentProviderValidator.saveCashPaymentConfig.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.paymentProviderService.saveCashPaymentConfig({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      dto,
+    });
     res.status(HttpStatusCodes.OK).json(result);
   };
 }

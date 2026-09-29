@@ -67,6 +67,14 @@ export interface ToggleDeviceStatusServiceInput {
 
 export type ToggleDeviceStatusServiceResult = Omit<DeviceEntity, "pin">;
 
+export interface MapDeviceTerminalServiceInput {
+  id: string;
+  terminalId: string | null;
+  user: UserTokenDto;
+}
+
+export type MapDeviceTerminalServiceResult = Omit<DeviceEntity, "pin">;
+
 export interface DeviceAuthCheckServiceInput {
   id: string;
 }

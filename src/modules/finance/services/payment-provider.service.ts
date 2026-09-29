@@ -1,4 +1,6 @@
+import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { PAYMENT_CONFIG_SECRET_KEYS } from "../../../shared/constants/payment-config.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../../shared/errors/app-error";
@@ -7,26 +9,39 @@ import type {
   CreateRazorpayOrderResult,
   RazorpayProvider,
 } from "../../../shared/providers/finance/razorpay.provider";
+import { encryptData } from "../../../shared/utils/core/crypto.helper";
 import { logger } from "../../../shared/utils/core/logger";
 import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
+import type { BranchRepository } from "../../branch/branch.repository";
+import type { MarketRepository } from "../../market/market.repository";
 import type { PaymentProviderRepository } from "../repositories/payment-provider.repository";
 import type {
   GetPaymentProvidersServiceInput,
   GetPaymentProvidersServiceResult,
+  GetTenantPaymentConfigsServiceInput,
+  GetTenantPaymentConfigsServiceResult,
   HandleRazorpayWebhookServiceInput,
   PaymentProviderServiceResult,
   PaymentProviderWithMappings,
+  SaveCashPaymentConfigServiceInput,
+  SaveCashPaymentConfigServiceResult,
+  SaveTenantPaymentConfigServiceInput,
+  SaveTenantPaymentConfigServiceResult,
+  TenantPaymentConfigValues,
   TogglePaymentProviderStatusServiceInput,
   UpdatePaymentProviderServiceInput,
   UpdatePaymentProviderWithMappingsRepoInput,
   VerifyRazorpayPaymentServiceInput,
 } from "../types/payment-provider.types";
+import { PaymentProviderValidator } from "../validators/payment-provider.validator";
 
 export class PaymentProviderService {
   constructor(
     private readonly razorpayProvider: RazorpayProvider,
     private readonly licenseTransactionRepository: LicenseTransactionRepository,
     private readonly paymentProviderRepository: PaymentProviderRepository,
+    private readonly marketRepository: MarketRepository,
+    private readonly branchRepository: BranchRepository,
   ) {}
 
   // ========================================
@@ -208,6 +223,159 @@ export class PaymentProviderService {
     return {
       provider: await this.getProviderWithMappingsOrThrow(input.providerId),
     };
+  }
+
+  // ========================================
+  // ? TENANT PAYMENT CONFIGS
+  // ========================================
+  async getTenantPaymentConfigs(
+    input: GetTenantPaymentConfigsServiceInput,
+  ): Promise<GetTenantPaymentConfigsServiceResult> {
+    const { effectiveTenant } = input;
+    if (!effectiveTenant.branchId) {
+      throw new AppError(
+        "A branch must be selected to manage payment configs",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const market = await this.marketRepository.findMarketByBranch({
+      branchId: effectiveTenant.branchId,
+    });
+    if (!market) {
+      throw new AppError("This branch has no market", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const [settings, configs, options] = await Promise.all([
+      this.branchRepository.getOrCreateSettings(effectiveTenant.branchId),
+      this.paymentProviderRepository.findTenantPaymentConfigs({
+        organizationId: effectiveTenant.organizationId,
+        branchId: effectiveTenant.branchId,
+      }),
+      this.paymentProviderRepository.findTenantPaymentOptions({
+        marketId: market.id,
+      }),
+    ]);
+
+    return {
+      isCashPaymentEnabled: settings.isCashPaymentEnabled,
+      configs,
+      options,
+    };
+  }
+
+  async saveTenantPaymentConfig(
+    input: SaveTenantPaymentConfigServiceInput,
+  ): Promise<SaveTenantPaymentConfigServiceResult> {
+    const { effectiveTenant, user, dto } = input;
+
+    const { isCashPaymentEnabled, configs, options } =
+      await this.getTenantPaymentConfigs({ effectiveTenant });
+
+    const option = options.find((item) => item.mapperId === dto.mapperId);
+    const configSchema = option
+      ? PaymentProviderValidator.paymentConfigs[option.provider.slug]?.[
+          option.paymentMethod
+        ]
+      : undefined;
+    if (!option || !configSchema) {
+      throw new AppError("This payment provider is not available", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    // A branch must always be able to take payment. Only configs whose
+    // provider is still offered count.
+    const hasOtherEnabledMethod =
+      isCashPaymentEnabled ||
+      configs.some(
+        (config) =>
+          config.isActive &&
+          config.mapperId !== dto.mapperId &&
+          options.some((item) => item.mapperId === config.mapperId),
+      );
+    if (!dto.isActive && !hasOtherEnabledMethod) {
+      throw new AppError("At least one payment method must be enabled", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const storedConfig = (configs.find(
+      (config) => config.mapperId === dto.mapperId,
+    )?.config ?? {}) as Record<string, string>;
+    const secretKeys = PAYMENT_CONFIG_SECRET_KEYS[option.provider.slug] ?? [];
+    const storedSecretKeys = secretKeys.filter((key) => storedConfig[key]);
+
+    const validated = (await configSchema.validate(dto.config, {
+      abortEarly: false,
+      stripUnknown: true,
+      context: { storedSecretKeys },
+    })) as Record<string, string | undefined>;
+
+    // Secrets are encrypted; a blank one keeps the stored value.
+    const config: Record<string, string> = {};
+    for (const [key, value] of Object.entries(validated)) {
+      if (!secretKeys.includes(key)) {
+        if (value) config[key] = value;
+        continue;
+      }
+      if (value) {
+        config[key] = encryptData(value, env.LICENSE_ENCRYPTION_KEY);
+      } else if (storedConfig[key]) {
+        config[key] = storedConfig[key];
+      }
+    }
+
+    await this.paymentProviderRepository.saveTenantPaymentConfig({
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId as string,
+      mapperId: dto.mapperId,
+      paymentMethod: option.paymentMethod,
+      isActive: dto.isActive,
+      config: config as unknown as TenantPaymentConfigValues,
+      userId: user.id,
+    });
+
+    return this.getTenantPaymentConfigs({ effectiveTenant });
+  }
+
+  async saveCashPaymentConfig(
+    input: SaveCashPaymentConfigServiceInput,
+  ): Promise<SaveCashPaymentConfigServiceResult> {
+    const { effectiveTenant, dto } = input;
+
+    const { configs, options } = await this.getTenantPaymentConfigs({
+      effectiveTenant,
+    });
+
+    // A branch must always be able to take payment, so cash can only be
+    // switched off while QR or card is on.
+    const hasProviderMethodEnabled = configs.some(
+      (config) =>
+        config.isActive &&
+        options.some((item) => item.mapperId === config.mapperId),
+    );
+    if (!dto.isEnabled && !hasProviderMethodEnabled) {
+      throw new AppError("At least one payment method must be enabled", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    await this.branchRepository.updateSettings({
+      branchId: effectiveTenant.branchId as string,
+      data: { isCashPaymentEnabled: dto.isEnabled },
+    });
+
+    return this.getTenantPaymentConfigs({ effectiveTenant });
   }
 
   private async getProviderOrThrow(providerId: string) {

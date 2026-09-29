@@ -1,0 +1,1 @@
+ALTER TABLE "tenant_payment_configs" ALTER COLUMN "last_connection_test" SET DATA TYPE timestamp with time zone;

@@ -218,6 +218,37 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/devices/{id}/terminal": {
+    patch: {
+      tags: ["Devices"],
+      summary: "Map a card terminal to a device",
+      description:
+        "Sets the card terminal (Pine Labs) the device is paired with. Send an empty terminalId to unmap it. Only kiosk and counter devices take card payments.",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                terminalId: { type: "string", maxLength: 100, nullable: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Device with its mapped terminal" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/u/devices/{id}/status": {
     patch: {
       tags: ["Devices"],

@@ -11,6 +11,7 @@ import {
 import { branches } from "../../branch/schemas/branch.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
+import type { TenantPaymentConfigValues } from "../types/payment-provider.types";
 import { paymentProviderMarketMappers } from "./payment-provider-market-mapper.schema";
 
 export const tenantPaymentConfigs = pgTable(
@@ -26,7 +27,10 @@ export const tenantPaymentConfigs = pgTable(
     paymentProviderMarketMapperId: uuid("payment_provider_market_mapper_id")
       .notNull()
       .references((): AnyPgColumn => paymentProviderMarketMappers.id),
-    config: jsonb("config").notNull(),
+    config: jsonb("config").$type<TenantPaymentConfigValues>().notNull(), // PhonePeQrPaymentConfig | PineLabsCardPaymentConfig
+    lastConnectionTest: timestamp("last_connection_test", {
+      withTimezone: true,
+    }),
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -47,6 +51,7 @@ export const tenantPaymentConfigs = pgTable(
   ],
 );
 
-export type TenantPaymentConfigEntity = typeof tenantPaymentConfigs.$inferSelect;
+export type TenantPaymentConfigEntity =
+  typeof tenantPaymentConfigs.$inferSelect;
 export type CreateTenantPaymentConfigEntity =
   typeof tenantPaymentConfigs.$inferInsert;

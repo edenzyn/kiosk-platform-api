@@ -188,4 +188,76 @@ export const paymentProviderSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  // ========================================
+  // ? BRANCH PAYMENT CONFIGS (mounted /pvt/u/payment-configs)
+  // ========================================
+  "/pvt/u/payment-configs/": {
+    get: {
+      tags: ["Payment Providers"],
+      summary: "Get the branch's payment configs",
+      description:
+        "Returns the branch's saved configs and the providers available in its market. Configs are returned as stored; secret keys (clientSecret, securityToken) hold their encrypted value.",
+      responses: {
+        "200": { description: "Configs and provider options" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+    put: {
+      tags: ["Payment Providers"],
+      summary: "Save the branch's config for a provider",
+      description:
+        "PhonePe QR takes clientId, clientSecret and clientVersion. Pine Labs card takes merchantId and securityToken (the terminal id is set per device). Secrets are encrypted; leave one blank to keep the stored value. Enabling a provider disables the branch's other provider for the same method.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["mapperId", "isActive", "config"],
+              properties: {
+                mapperId: { type: "string", format: "uuid" },
+                isActive: { type: "boolean" },
+                config: { type: "object", additionalProperties: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Configs and provider options" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/u/payment-configs/cash": {
+    put: {
+      tags: ["Payment Providers"],
+      summary: "Switch cash payments on or off for the branch",
+      description:
+        "Cash needs no provider; it is on by default. It can only be switched off while QR or card is enabled, since a branch needs at least one payment method.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["isEnabled"],
+              properties: { isEnabled: { type: "boolean" } },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Configs and provider options" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
 };

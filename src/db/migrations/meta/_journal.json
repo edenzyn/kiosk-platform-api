@@ -442,6 +442,41 @@
       "when": 1790581274555,
       "tag": "0062_payment-provider-updates",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790672904240,
+      "tag": "0063_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790673575447,
+      "tag": "0064_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790673668213,
+      "tag": "0065_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790677970285,
+      "tag": "0066_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790678177626,
+      "tag": "0067_payment-provider-updates",
+      "breakpoints": true
     }
   ]
 }

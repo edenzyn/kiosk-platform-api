@@ -1,5 +1,8 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { DEVICE_TYPE_SHORT_LABELS } from "../../shared/enums/device/device-type.enum";
+import {
+  DEVICE_TYPE_SHORT_LABELS,
+  DeviceTypeEnum,
+} from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
@@ -8,8 +11,8 @@ import type { BranchRepository } from "../branch/branch.repository";
 import type { BranchService } from "../branch/branch.service";
 import type { LicenseService } from "../license/services/license.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
-import type { DeviceRepository } from "./device.repository";
 import { DeviceMapper } from "./device.mapper";
+import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
 import type {
   CreateDeviceServiceInput,
@@ -18,6 +21,8 @@ import type {
   DeviceAuthCheckServiceResult,
   GetDevicesServiceInput,
   GetDevicesServiceResult,
+  MapDeviceTerminalServiceInput,
+  MapDeviceTerminalServiceResult,
   ToggleDeviceStatusServiceInput,
   ToggleDeviceStatusServiceResult,
   UpdateDeviceServiceInput,
@@ -142,6 +147,34 @@ export class DeviceService {
     });
 
     return updated;
+  }
+
+  async mapDeviceTerminal(
+    input: MapDeviceTerminalServiceInput,
+  ): Promise<MapDeviceTerminalServiceResult> {
+    const existing = await this.deviceRepository.findOne({ id: input.id });
+    if (!existing) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+      });
+    }
+
+    if (
+      existing.deviceType !== DeviceTypeEnum.KIOSK &&
+      existing.deviceType !== DeviceTypeEnum.COUNTER
+    ) {
+      throw new AppError("Only kiosk and counter devices can map a terminal", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    return this.deviceRepository.update({
+      id: input.id,
+      data: {
+        terminalId: input.terminalId,
+        updatedBy: input.user.id,
+      },
+    });
   }
 
   // ========================================

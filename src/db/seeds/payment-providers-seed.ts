@@ -1,13 +1,15 @@
 import { sql } from "drizzle-orm";
 import { initDatabase } from "../../config/db";
 import { paymentProviders } from "../../modules/finance/schemas/payment-provider.schema";
+import { PaymentProviderSlugEnum } from "../../shared/enums/finance/payment-provider-slug.enum";
 
 // Payment providers are managed here, not from the app: add an entry and
 // re-run the seed to make a provider available for market mapping.
-const PAYMENT_PROVIDERS = [
-  { name: "PhonePe", slug: "phonepe" },
-  { name: "Pine Labs", slug: "pine-labs" },
-] as const;
+const PAYMENT_PROVIDERS: Array<{ name: string; slug: PaymentProviderSlugEnum }> =
+  [
+    { name: "PhonePe", slug: PaymentProviderSlugEnum.PHONEPE },
+    { name: "Pine Labs", slug: PaymentProviderSlugEnum.PINE_LABS },
+  ];
 
 export async function runPaymentProvidersSeed() {
   const dbConfig = initDatabase();

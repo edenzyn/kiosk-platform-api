@@ -1,0 +1,1 @@
+ALTER TABLE "branch_settings" ADD COLUMN "is_cash_enabled" boolean DEFAULT true NOT NULL;

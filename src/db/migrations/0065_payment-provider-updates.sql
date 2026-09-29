@@ -1,0 +1,1 @@
+ALTER TABLE "branch_settings" RENAME COLUMN "is_cash_enabled" TO "is_cash_payment_enabled";

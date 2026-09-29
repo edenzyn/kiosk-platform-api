@@ -58,8 +58,7 @@ export class PhonePeProvider {
     }
 
     const body = (await response.json().catch(() => ({}))) as
-      | PhonePeTokenResponse
-      | PhonePeErrorResponse;
+      PhonePeTokenResponse | PhonePeErrorResponse;
 
     if (!response.ok || !("access_token" in body)) {
       const message =

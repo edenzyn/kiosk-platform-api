@@ -31,11 +31,11 @@ import type {
   FindTenantPaymentOptionsRepoResult,
   PaymentProviderMappingWithMarket,
   SaveTenantPaymentConfigRepoInput,
-  UpdateTenantPaymentConnectionTestRepoInput,
   UpdatePaymentProviderRepoInput,
   UpdatePaymentProviderRepoResult,
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentProviderWithMappingsRepoResult,
+  UpdateTenantPaymentConnectionTestRepoInput,
 } from "../types/payment.types";
 
 const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
@@ -284,7 +284,10 @@ export class PaymentRepository {
       .where(
         and(
           eq(tenantPaymentConfigs.branchId, input.branchId),
-          eq(tenantPaymentConfigs.paymentProviderMarketMapperId, input.mapperId),
+          eq(
+            tenantPaymentConfigs.paymentProviderMarketMapperId,
+            input.mapperId,
+          ),
         ),
       );
   }

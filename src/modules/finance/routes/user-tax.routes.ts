@@ -5,8 +5,7 @@ import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum
 import type { TaxController } from "../controllers/tax.controller";
 
 const userTaxRouter = Router();
-const taxController =
-  container.resolve<TaxController>("taxController");
+const taxController = container.resolve<TaxController>("taxController");
 
 userTaxRouter
   .route("/profile")

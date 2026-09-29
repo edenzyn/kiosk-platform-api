@@ -8,9 +8,8 @@ import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import type { PaymentController } from "../controllers/payment.controller";
 
 const platformPaymentRouter = Router();
-const paymentController = container.resolve<PaymentController>(
-  "paymentController",
-);
+const paymentController =
+  container.resolve<PaymentController>("paymentController");
 
 platformPaymentRouter
   .route("/")

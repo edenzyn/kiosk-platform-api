@@ -5,8 +5,7 @@ import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 import type { TaxController } from "../controllers/tax.controller";
 
 const deviceTaxRouter = Router();
-const taxController =
-  container.resolve<TaxController>("taxController");
+const taxController = container.resolve<TaxController>("taxController");
 
 deviceTaxRouter.get(
   "/profile",

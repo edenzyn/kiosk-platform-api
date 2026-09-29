@@ -119,8 +119,7 @@ export interface UpdatePaymentProviderWithMappingsRepoInput {
   >;
   updatedBy: string;
 }
-export type UpdatePaymentProviderWithMappingsRepoResult =
-  PaymentProviderEntity;
+export type UpdatePaymentProviderWithMappingsRepoResult = PaymentProviderEntity;
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -173,8 +172,7 @@ export interface PineLabsCardPaymentConfig {
 }
 
 export type TenantPaymentConfigValues =
-  | PhonePeQrPaymentConfig
-  | PineLabsCardPaymentConfig;
+  PhonePeQrPaymentConfig | PineLabsCardPaymentConfig;
 
 // ========================================
 // ? TENANT PAYMENT CONFIGS

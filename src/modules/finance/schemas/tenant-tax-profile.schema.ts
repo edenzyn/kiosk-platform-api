@@ -42,4 +42,5 @@ export const tenantTaxProfiles = pgTable(
 );
 
 export type TenantTaxProfileEntity = typeof tenantTaxProfiles.$inferSelect;
-export type CreateTenantTaxProfileEntity = typeof tenantTaxProfiles.$inferInsert;
+export type CreateTenantTaxProfileEntity =
+  typeof tenantTaxProfiles.$inferInsert;

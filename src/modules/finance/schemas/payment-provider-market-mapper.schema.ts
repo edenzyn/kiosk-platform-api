@@ -33,11 +33,9 @@ export const paymentProviderMarketMappers = pgTable(
     updatedBy: uuid("updated_by").references((): AnyPgColumn => users.id),
   },
   (table) => [
-    uniqueIndex("payment_provider_market_mappers_provider_market_method_idx").on(
-      table.providerId,
-      table.marketId,
-      table.paymentMethod,
-    ),
+    uniqueIndex(
+      "payment_provider_market_mappers_provider_market_method_idx",
+    ).on(table.providerId, table.marketId, table.paymentMethod),
   ],
 );
 

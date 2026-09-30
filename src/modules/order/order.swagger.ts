@@ -95,6 +95,8 @@ export const orderSwaggerPaths = {
                         format: "date-time",
                         nullable: true,
                       },
+                      expiresInSeconds: { type: "integer", example: 297 },
+                      validForSeconds: { type: "integer", example: 300 },
                     },
                   },
                 },

@@ -11,6 +11,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import { resolveBusinessDayStart } from "../../shared/utils/order/business-day.helper";
 import { formatTokenNumber } from "../../shared/utils/order/order-number.helper";
+import { getPaymentWindow } from "../../shared/utils/order/payment-window.helper";
 import { calculateOrderPricing } from "../../shared/utils/order/calculate-order-pricing.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
@@ -88,6 +89,10 @@ export class OrderService {
             amount: latestPayment.amount,
             qrData: latestPayment.qrPayload,
             expiresAt: latestPayment.expiresAt,
+            ...getPaymentWindow(
+              latestPayment.initiatedAt,
+              latestPayment.expiresAt,
+            ),
           },
         };
       }
@@ -304,6 +309,7 @@ export class OrderService {
           amount: payment.amount,
           qrData: payment.qrPayload,
           expiresAt: payment.expiresAt,
+          ...getPaymentWindow(payment.initiatedAt, payment.expiresAt),
         },
       };
     } catch (error) {

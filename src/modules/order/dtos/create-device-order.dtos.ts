@@ -33,6 +33,8 @@ export interface DeviceOrderPaymentDto {
   amount: string;
   qrData: string | null;
   expiresAt: Date | null;
+  expiresInSeconds: number;
+  validForSeconds: number;
 }
 
 export interface CreateDeviceOrderResponseDto {

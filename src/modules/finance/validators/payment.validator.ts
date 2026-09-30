@@ -1,7 +1,10 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../../shared/enums/core/sorting-order.enum";
 import { PaymentProviderSlugEnum } from "../../../shared/enums/finance/payment-provider-slug.enum";
-import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
+import {
+  PROVIDERLESS_PAYMENT_METHODS,
+  TenantPaymentMethodEnum,
+} from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { paginationQuerySchema } from "../../../shared/validators/pagination.validator";
 
 const mappingBaseShape = {
@@ -14,7 +17,8 @@ const mappingBaseShape = {
     .typeError("Payment method must be a number")
     .oneOf(
       Object.values(TenantPaymentMethodEnum).filter(
-        (v): v is number => typeof v === "number",
+        (v): v is number =>
+          typeof v === "number" && !PROVIDERLESS_PAYMENT_METHODS.includes(v),
       ),
       "Invalid payment method",
     )

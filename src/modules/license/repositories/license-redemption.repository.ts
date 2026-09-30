@@ -53,6 +53,10 @@ import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schem
 import { licenseTerms } from "../schemas/license-terms.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses, type LicenseEntity } from "../schemas/license.schema";
+import { AppError } from "../../../shared/errors/app-error";
+import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { logger } from "../../../shared/utils/core/logger";
 
 type DbTransaction = Parameters<
   Parameters<Database["client"]["transaction"]>[0]
@@ -62,11 +66,22 @@ export class LicenseRedemptionRepository {
   constructor(private readonly database: Database) {}
 
   private _noActiveRedemptionCondition(): SQL {
-    return sql`NOT EXISTS (
+    try {
+      return sql`NOT EXISTS (
       SELECT 1 FROM license_redemption_codes lrc
       WHERE licenses.id = ANY(lrc.license_ids)
         AND lrc.status NOT IN (${LicenseRedemptionStatusEnum.REVOKED}, ${LicenseRedemptionStatusEnum.EXPIRED})
     )`;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION__NO_ACTIVE_REDEMPTION_CONDITION_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   private async _updateRedemptionCodeIfMatching(
@@ -74,189 +89,249 @@ export class LicenseRedemptionRepository {
     where: SQL,
     set: Partial<typeof licenseRedemptionCodes.$inferInsert>,
   ) {
-    const [updated] = await tx
-      .update(licenseRedemptionCodes)
-      .set({ ...set, updatedAt: new Date() })
-      .where(where)
-      .returning();
+    try {
+      const [updated] = await tx
+        .update(licenseRedemptionCodes)
+        .set({ ...set, updatedAt: new Date() })
+        .where(where)
+        .returning();
 
-    return updated;
+      return await updated;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION__UPDATE_REDEMPTION_CODE_IF_MATCHING_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findLicenseIdsWithActiveRedemption(
     input: FindLicenseIdsWithActiveRedemptionRepoInput,
   ): Promise<FindLicenseIdsWithActiveRedemptionRepoResult> {
-    if (input.licenseIds.length === 0) return [];
+    try {
+      if (input.licenseIds.length === 0) return await [];
 
-    const licenseIdsArrayLiteral = sql`ARRAY[${sql.join(
-      input.licenseIds.map((id) => sql`${id}::uuid`),
-      sql`, `,
-    )}]`;
+      const licenseIdsArrayLiteral = sql`ARRAY[${sql.join(
+        input.licenseIds.map((id) => sql`${id}::uuid`),
+        sql`, `,
+      )}]`;
 
-    const rows = await this.database.client
-      .select({ licenseIds: licenseRedemptionCodes.licenseIds })
-      .from(licenseRedemptionCodes)
-      .where(
-        and(
-          sql`${licenseRedemptionCodes.licenseIds} && ${licenseIdsArrayLiteral}`,
-          sql`${licenseRedemptionCodes.status} NOT IN (${LicenseRedemptionStatusEnum.REVOKED}, ${LicenseRedemptionStatusEnum.EXPIRED})`,
-        ),
-      );
+      const rows = await this.database.client
+        .select({ licenseIds: licenseRedemptionCodes.licenseIds })
+        .from(licenseRedemptionCodes)
+        .where(
+          and(
+            sql`${licenseRedemptionCodes.licenseIds} && ${licenseIdsArrayLiteral}`,
+            sql`${licenseRedemptionCodes.status} NOT IN (${LicenseRedemptionStatusEnum.REVOKED}, ${LicenseRedemptionStatusEnum.EXPIRED})`,
+          ),
+        );
 
-    const matched = new Set<string>();
-    const requested = new Set(input.licenseIds);
-    for (const row of rows) {
-      for (const id of row.licenseIds) {
-        if (requested.has(id)) matched.add(id);
+      const matched = new Set<string>();
+      const requested = new Set(input.licenseIds);
+      for (const row of rows) {
+        for (const id of row.licenseIds) {
+          if (requested.has(id)) matched.add(id);
+        }
       }
-    }
 
-    return Array.from(matched);
+      return await Array.from(matched);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_LICENSE_IDS_WITH_ACTIVE_REDEMPTION_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findRedemptionPricingForLicense(
     licenseId: string,
   ): Promise<FindRedemptionPricingForLicenseRepoResult | null> {
-    const [row] = await this.database.client
-      .select({
-        planId: licenseTerms.planId,
-        lockedPlanName: licenseTerms.lockedPlanName,
-        basePrice: licenseTerms.basePrice,
-        lockedPrice: licenseTerms.lockedPrice,
-        durationDays: licenseTerms.durationDays,
-        marketId: licenseTerms.marketId,
-      })
-      .from(licenseTerms)
-      .where(
-        and(
-          eq(licenseTerms.licenseId, licenseId),
-          eq(licenseTerms.isActive, true),
-        ),
-      )
-      .orderBy(desc(licenseTerms.createdAt))
-      .limit(1);
+    try {
+      const [row] = await this.database.client
+        .select({
+          planId: licenseTerms.planId,
+          lockedPlanName: licenseTerms.lockedPlanName,
+          basePrice: licenseTerms.basePrice,
+          lockedPrice: licenseTerms.lockedPrice,
+          durationDays: licenseTerms.durationDays,
+          marketId: licenseTerms.marketId,
+        })
+        .from(licenseTerms)
+        .where(
+          and(
+            eq(licenseTerms.licenseId, licenseId),
+            eq(licenseTerms.isActive, true),
+          ),
+        )
+        .orderBy(desc(licenseTerms.createdAt))
+        .limit(1);
 
-    return row ?? null;
+      return (await row) ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_REDEMPTION_PRICING_FOR_LICENSE_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findAvailableLicensesForRedemption(
     input: FindAvailableLicensesForRedemptionRepoInput,
   ): Promise<FindAvailableLicensesForRedemptionRepoResult> {
-    const { resellerId, marketId, page = 1, limit = 10 } = input;
+    try {
+      const { resellerId, marketId, page = 1, limit = 10 } = input;
 
-    const condition = and(
-      eq(licenseResellerMapper.resellerId, resellerId),
-      eq(licenseResellerMapper.isActive, true),
-      eq(licenses.status, LicenseStatusEnum.AVAILABLE),
-      eq(licenses.marketId, marketId),
-      this._noActiveRedemptionCondition(),
-    );
+      const condition = and(
+        eq(licenseResellerMapper.resellerId, resellerId),
+        eq(licenseResellerMapper.isActive, true),
+        eq(licenses.status, LicenseStatusEnum.AVAILABLE),
+        eq(licenses.marketId, marketId),
+        this._noActiveRedemptionCondition(),
+      );
 
-    const [countResult] = await this.database.client
-      .select({ count: count() })
-      .from(licenseResellerMapper)
-      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
-      .where(condition);
-    const total = Number(countResult?.count || 0);
+      const [countResult] = await this.database.client
+        .select({ count: count() })
+        .from(licenseResellerMapper)
+        .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+        .where(condition);
+      const total = Number(countResult?.count || 0);
 
-    const rows = await this.database.client
-      .select({
-        id: licenses.id,
-        licenseKey: licenses.licenseKey,
-        organizationId: licenses.organizationId,
-        organizationName: organizations.name,
-        branchId: licenses.branchId,
-        branchName: branches.name,
-        deviceId: licenses.deviceId,
-        deviceName: devices.name,
-        deviceType: licenses.deviceType,
-        status: licenses.status,
-        activatedAt: licenses.activatedAt,
-        expiresAt: licenses.expiresAt,
-        createdAt: licenses.createdAt,
-        updatedAt: licenses.updatedAt,
-        durationDays: licenseTransactionItems.durationDays,
-        marketId: licenses.marketId,
-      })
-      .from(licenseResellerMapper)
-      .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
-      .leftJoin(organizations, eq(licenses.organizationId, organizations.id))
-      .leftJoin(branches, eq(licenses.branchId, branches.id))
-      .leftJoin(devices, eq(licenses.deviceId, devices.id))
-      .leftJoin(
-        licenseTransactionItems,
-        and(
-          eq(licenseTransactionItems.licenseId, licenses.id),
-          eq(
-            licenseTransactionItems.transactionType,
-            LicenseTransactionTypeEnum.RESELLER_PURCHASE,
+      const rows = await this.database.client
+        .select({
+          id: licenses.id,
+          licenseKey: licenses.licenseKey,
+          organizationId: licenses.organizationId,
+          organizationName: organizations.name,
+          branchId: licenses.branchId,
+          branchName: branches.name,
+          deviceId: licenses.deviceId,
+          deviceName: devices.name,
+          deviceType: licenses.deviceType,
+          status: licenses.status,
+          activatedAt: licenses.activatedAt,
+          expiresAt: licenses.expiresAt,
+          createdAt: licenses.createdAt,
+          updatedAt: licenses.updatedAt,
+          durationDays: licenseTransactionItems.durationDays,
+          marketId: licenses.marketId,
+        })
+        .from(licenseResellerMapper)
+        .innerJoin(licenses, eq(licenseResellerMapper.licenseId, licenses.id))
+        .leftJoin(organizations, eq(licenses.organizationId, organizations.id))
+        .leftJoin(branches, eq(licenses.branchId, branches.id))
+        .leftJoin(devices, eq(licenses.deviceId, devices.id))
+        .leftJoin(
+          licenseTransactionItems,
+          and(
+            eq(licenseTransactionItems.licenseId, licenses.id),
+            eq(
+              licenseTransactionItems.transactionType,
+              LicenseTransactionTypeEnum.RESELLER_PURCHASE,
+            ),
           ),
-        ),
-      )
-      .where(condition)
-      .orderBy(desc(licenses.createdAt))
-      .limit(limit)
-      .offset((page - 1) * limit);
+        )
+        .where(condition)
+        .orderBy(desc(licenses.createdAt))
+        .limit(limit)
+        .offset((page - 1) * limit);
 
-    return { licenses: rows as LicenseWithDetails[], total };
+      return await { licenses: rows as LicenseWithDetails[], total };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_AVAILABLE_LICENSES_FOR_REDEMPTION_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   private async _createLicenseTermsForLicenses(
     tx: DbTransaction,
     params: { licenseIds: string[]; marketId: string; createdBy: string },
   ): Promise<void> {
-    const licenseRows = await tx
-      .select({ id: licenses.id, currentPlanId: licenses.currentPlanId })
-      .from(licenses)
-      .where(inArray(licenses.id, params.licenseIds));
+    try {
+      const licenseRows = await tx
+        .select({ id: licenses.id, currentPlanId: licenses.currentPlanId })
+        .from(licenses)
+        .where(inArray(licenses.id, params.licenseIds));
 
-    const planIds = Array.from(
-      new Set(licenseRows.map((row) => row.currentPlanId)),
-    );
+      const planIds = Array.from(
+        new Set(licenseRows.map((row) => row.currentPlanId)),
+      );
 
-    const planRows = await tx
-      .select({
-        planId: licensePlans.id,
-        planName: licensePlans.name,
-        durationDays: licensePlans.durationDays,
-      })
-      .from(licensePlans)
-      .where(inArray(licensePlans.id, planIds));
+      const planRows = await tx
+        .select({
+          planId: licensePlans.id,
+          planName: licensePlans.name,
+          durationDays: licensePlans.durationDays,
+        })
+        .from(licensePlans)
+        .where(inArray(licensePlans.id, planIds));
 
-    const planById = new Map(planRows.map((row) => [row.planId, row]));
+      const planById = new Map(planRows.map((row) => [row.planId, row]));
 
-    const purchasePriceRows = await tx
-      .select({
-        licenseId: licenseTransactionItems.licenseId,
-        finalUnitPrice: licenseTransactionItems.finalUnitPrice,
-      })
-      .from(licenseTransactionItems)
-      .where(inArray(licenseTransactionItems.licenseId, params.licenseIds));
-    const purchasePriceByLicenseId = new Map(
-      purchasePriceRows.map((row) => [row.licenseId, row.finalUnitPrice]),
-    );
+      const purchasePriceRows = await tx
+        .select({
+          licenseId: licenseTransactionItems.licenseId,
+          finalUnitPrice: licenseTransactionItems.finalUnitPrice,
+        })
+        .from(licenseTransactionItems)
+        .where(inArray(licenseTransactionItems.licenseId, params.licenseIds));
+      const purchasePriceByLicenseId = new Map(
+        purchasePriceRows.map((row) => [row.licenseId, row.finalUnitPrice]),
+      );
 
-    for (const licenseRow of licenseRows) {
-      const plan = planById.get(licenseRow.currentPlanId);
-      if (!plan) {
-        throw new Error(`Plan ${licenseRow.currentPlanId} was not found`);
+      for (const licenseRow of licenseRows) {
+        const plan = planById.get(licenseRow.currentPlanId);
+        if (!plan) {
+          throw new Error(`Plan ${licenseRow.currentPlanId} was not found`);
+        }
+
+        const basePrice = purchasePriceByLicenseId.get(licenseRow.id);
+        if (!basePrice) {
+          throw new Error(
+            `No purchase price found for license ${licenseRow.id}`,
+          );
+        }
+
+        await tx.insert(licenseTerms).values({
+          licenseId: licenseRow.id,
+          planId: licenseRow.currentPlanId,
+          lockedPlanName: plan.planName,
+          marketId: params.marketId,
+          basePrice,
+          durationDays: plan.durationDays,
+          createdBy: params.createdBy,
+        });
       }
-
-      const basePrice = purchasePriceByLicenseId.get(licenseRow.id);
-      if (!basePrice) {
-        throw new Error(
-          `No purchase price found for license ${licenseRow.id}`,
-        );
-      }
-
-      await tx.insert(licenseTerms).values({
-        licenseId: licenseRow.id,
-        planId: licenseRow.currentPlanId,
-        lockedPlanName: plan.planName,
-        marketId: params.marketId,
-        basePrice,
-        durationDays: plan.durationDays,
-        createdBy: params.createdBy,
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION__CREATE_LICENSE_TERMS_FOR_LICENSES_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
       });
     }
   }
@@ -264,85 +339,203 @@ export class LicenseRedemptionRepository {
   async createRedemptionCode(
     input: CreateRedemptionCodeRepoInput,
   ): Promise<CreateRedemptionCodeRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [insertedCode] = await tx
-        .insert(licenseRedemptionCodes)
-        .values({
-          resellerId: input.resellerId,
-          redeemCode: input.redeemCode,
-          redeemCodeHash: input.redeemCodeHash,
-          marketId: input.marketId,
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [insertedCode] = await tx
+          .insert(licenseRedemptionCodes)
+          .values({
+            resellerId: input.resellerId,
+            redeemCode: input.redeemCode,
+            redeemCodeHash: input.redeemCodeHash,
+            marketId: input.marketId,
+            licenseIds: input.licenseIds,
+            status: input.status,
+            redeemExpiresAt: input.redeemExpiresAt,
+            remarks: input.remarks,
+            createdBy: input.createdBy,
+            updatedBy: input.updatedBy,
+          })
+          .returning();
+
+        if (!insertedCode) {
+          throw new Error("Failed to create redemption code");
+        }
+
+        await this._createLicenseTermsForLicenses(tx, {
           licenseIds: input.licenseIds,
-          status: input.status,
-          redeemExpiresAt: input.redeemExpiresAt,
-          remarks: input.remarks,
+          marketId: input.marketId,
           createdBy: input.createdBy,
-          updatedBy: input.updatedBy,
-        })
-        .returning();
-
-      if (!insertedCode) {
-        throw new Error("Failed to create redemption code");
-      }
-
-      await this._createLicenseTermsForLicenses(tx, {
-        licenseIds: input.licenseIds,
-        marketId: input.marketId,
-        createdBy: input.createdBy,
-      });
-
-      for (const licenseId of input.licenseIds) {
-        await tx.insert(licenseHistory).values({
-          licenseId,
-          eventType: LicenseHistoryEventTypeEnum.REDEMPTION_CODE_GENERATED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
-          performedBy: input.createdBy,
-          remarks: "Redemption code generated",
         });
-      }
 
-      const { redeemCodeHash: _redeemCodeHash, ...codeWithoutHash } =
-        insertedCode;
-      return codeWithoutHash;
-    });
+        for (const licenseId of input.licenseIds) {
+          await tx.insert(licenseHistory).values({
+            licenseId,
+            eventType: LicenseHistoryEventTypeEnum.REDEMPTION_CODE_GENERATED,
+            targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
+            performedBy: input.createdBy,
+            remarks: "Redemption code generated",
+          });
+        }
+
+        const { redeemCodeHash: _redeemCodeHash, ...codeWithoutHash } =
+          insertedCode;
+        return codeWithoutHash;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_CREATE_REDEMPTION_CODE_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findRedemptionCodesByReseller(
     input: FindRedemptionCodesByResellerRepoInput,
   ): Promise<FindRedemptionCodesByResellerRepoResult> {
-    const {
-      resellerId,
-      page = 1,
-      limit = 10,
-      status,
-      sortBy,
-      sortOrder,
-    } = input;
+    try {
+      const {
+        resellerId,
+        page = 1,
+        limit = 10,
+        status,
+        sortBy,
+        sortOrder,
+      } = input;
 
-    const conditions = [eq(licenseRedemptionCodes.resellerId, resellerId)];
-    if (status !== undefined && status !== null) {
-      conditions.push(eq(licenseRedemptionCodes.status, status));
-    }
-    if (input.search) {
-      conditions.push(
-        ilike(licenseRedemptionCodes.remarks, `%${input.search}%`),
+      const conditions = [eq(licenseRedemptionCodes.resellerId, resellerId)];
+      if (status !== undefined && status !== null) {
+        conditions.push(eq(licenseRedemptionCodes.status, status));
+      }
+      if (input.search) {
+        conditions.push(
+          ilike(licenseRedemptionCodes.remarks, `%${input.search}%`),
+        );
+      }
+      const condition = and(...conditions);
+
+      const [countResult] = await this.database.client
+        .select({ count: count() })
+        .from(licenseRedemptionCodes)
+        .where(condition);
+      const total = Number(countResult?.count || 0);
+
+      let query = this.database.client
+        .select({
+          code: {
+            id: licenseRedemptionCodes.id,
+            resellerId: licenseRedemptionCodes.resellerId,
+            redeemCode: licenseRedemptionCodes.redeemCode,
+            marketId: licenseRedemptionCodes.marketId,
+            licenseIds: licenseRedemptionCodes.licenseIds,
+            status: licenseRedemptionCodes.status,
+            soldPrice: licenseRedemptionCodes.soldPrice,
+            generatedAt: licenseRedemptionCodes.generatedAt,
+            redeemExpiresAt: licenseRedemptionCodes.redeemExpiresAt,
+            claimedAt: licenseRedemptionCodes.claimedAt,
+            claimedByOrganizationId:
+              licenseRedemptionCodes.claimedByOrganizationId,
+            claimedByUserId: licenseRedemptionCodes.claimedByUserId,
+            remarks: licenseRedemptionCodes.remarks,
+            createdAt: licenseRedemptionCodes.createdAt,
+            updatedAt: licenseRedemptionCodes.updatedAt,
+            createdBy: licenseRedemptionCodes.createdBy,
+            updatedBy: licenseRedemptionCodes.updatedBy,
+          },
+          marketCurrencyCode: markets.currencyCode,
+          itemCount: sql<number>`COALESCE(array_length(${licenseRedemptionCodes.licenseIds}, 1), 0)`,
+        })
+        .from(licenseRedemptionCodes)
+        .innerJoin(markets, eq(licenseRedemptionCodes.marketId, markets.id))
+        .where(condition)
+        .$dynamic();
+
+      if (sortBy && sortOrder) {
+        const orderFn = sortOrder === "asc" ? asc : desc;
+        if (sortBy === "status") {
+          query = query.orderBy(orderFn(licenseRedemptionCodes.status));
+        } else if (sortBy === "redeemExpiresAt") {
+          query = query.orderBy(
+            orderFn(licenseRedemptionCodes.redeemExpiresAt),
+          );
+        } else if (sortBy === "generatedAt") {
+          query = query.orderBy(orderFn(licenseRedemptionCodes.generatedAt));
+        }
+      } else {
+        query = query.orderBy(desc(licenseRedemptionCodes.generatedAt));
+      }
+
+      if (page && limit) {
+        query = query.limit(limit).offset((page - 1) * limit);
+      }
+
+      const rows = await query;
+
+      return await {
+        redemptionCodes: rows.map((row) => ({
+          ...row.code,
+          marketCurrencyCode: row.marketCurrencyCode,
+          itemCount: Number(row.itemCount),
+        })),
+        total,
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODES_BY_RESELLER_ERROR] " + error,
       );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-    const condition = and(...conditions);
+  }
 
-    const [countResult] = await this.database.client
-      .select({ count: count() })
-      .from(licenseRedemptionCodes)
-      .where(condition);
-    const total = Number(countResult?.count || 0);
+  async findRedemptionCodeById(
+    input: FindRedemptionCodeByIdRepoInput,
+  ): Promise<FindRedemptionCodeByIdRepoResult> {
+    try {
+      const [code] = await this.database.client
+        .select()
+        .from(licenseRedemptionCodes)
+        .where(
+          and(
+            eq(licenseRedemptionCodes.id, input.id),
+            eq(licenseRedemptionCodes.resellerId, input.resellerId),
+          ),
+        )
+        .limit(1);
 
-    let query = this.database.client
-      .select({
-        code: {
+      if (!code) return await null;
+
+      const { redeemCodeHash: _redeemCodeHash, ...codeWithoutHash } = code;
+      return await codeWithoutHash;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_BY_ID_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findRedemptionCodeDetailsById(
+    input: FindRedemptionCodeDetailsByIdRepoInput,
+  ): Promise<FindRedemptionCodeDetailsByIdRepoResult | null> {
+    try {
+      const [row] = await this.database.client
+        .select({
           id: licenseRedemptionCodes.id,
           resellerId: licenseRedemptionCodes.resellerId,
           redeemCode: licenseRedemptionCodes.redeemCode,
           marketId: licenseRedemptionCodes.marketId,
+          marketCurrencyCode: markets.currencyCode,
           licenseIds: licenseRedemptionCodes.licenseIds,
           status: licenseRedemptionCodes.status,
           soldPrice: licenseRedemptionCodes.soldPrice,
@@ -357,306 +550,278 @@ export class LicenseRedemptionRepository {
           updatedAt: licenseRedemptionCodes.updatedAt,
           createdBy: licenseRedemptionCodes.createdBy,
           updatedBy: licenseRedemptionCodes.updatedBy,
-        },
-        marketCurrencyCode: markets.currencyCode,
-        itemCount: sql<number>`COALESCE(array_length(${licenseRedemptionCodes.licenseIds}, 1), 0)`,
-      })
-      .from(licenseRedemptionCodes)
-      .innerJoin(markets, eq(licenseRedemptionCodes.marketId, markets.id))
-      .where(condition)
-      .$dynamic();
+        })
+        .from(licenseRedemptionCodes)
+        .innerJoin(markets, eq(licenseRedemptionCodes.marketId, markets.id))
+        .where(
+          and(
+            eq(licenseRedemptionCodes.id, input.id),
+            eq(licenseRedemptionCodes.resellerId, input.resellerId),
+          ),
+        )
+        .limit(1);
 
-    if (sortBy && sortOrder) {
-      const orderFn = sortOrder === "asc" ? asc : desc;
-      if (sortBy === "status") {
-        query = query.orderBy(orderFn(licenseRedemptionCodes.status));
-      } else if (sortBy === "redeemExpiresAt") {
-        query = query.orderBy(orderFn(licenseRedemptionCodes.redeemExpiresAt));
-      } else if (sortBy === "generatedAt") {
-        query = query.orderBy(orderFn(licenseRedemptionCodes.generatedAt));
+      if (!row) return await null;
+
+      const { marketCurrencyCode, ...code } = row;
+
+      if (code.licenseIds.length === 0) {
+        return await { code, marketCurrencyCode, licenses: [] };
       }
-    } else {
-      query = query.orderBy(desc(licenseRedemptionCodes.generatedAt));
+
+      const licenseRows = await this.database.client
+        .select({
+          licenseId: licenses.id,
+          licenseKey: licenses.licenseKey,
+          lockedPlanName: licenseTerms.lockedPlanName,
+          basePrice: licenseTerms.basePrice,
+          lockedPrice: licenseTerms.lockedPrice,
+        })
+        .from(licenses)
+        .leftJoin(
+          licenseTerms,
+          and(
+            eq(licenseTerms.licenseId, licenses.id),
+            eq(licenseTerms.isActive, true),
+          ),
+        )
+        .where(inArray(licenses.id, code.licenseIds));
+
+      return await {
+        code,
+        marketCurrencyCode,
+        licenses: licenseRows.map((row) => ({
+          licenseId: row.licenseId,
+          licenseKey: row.licenseKey,
+          basePrice: row.basePrice,
+          lockedPrice: row.lockedPrice,
+          planName: row.lockedPlanName,
+        })),
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_DETAILS_BY_ID_ERROR] " +
+          error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-
-    if (page && limit) {
-      query = query.limit(limit).offset((page - 1) * limit);
-    }
-
-    const rows = await query;
-
-    return {
-      redemptionCodes: rows.map((row) => ({
-        ...row.code,
-        marketCurrencyCode: row.marketCurrencyCode,
-        itemCount: Number(row.itemCount),
-      })),
-      total,
-    };
-  }
-
-  async findRedemptionCodeById(
-    input: FindRedemptionCodeByIdRepoInput,
-  ): Promise<FindRedemptionCodeByIdRepoResult> {
-    const [code] = await this.database.client
-      .select()
-      .from(licenseRedemptionCodes)
-      .where(
-        and(
-          eq(licenseRedemptionCodes.id, input.id),
-          eq(licenseRedemptionCodes.resellerId, input.resellerId),
-        ),
-      )
-      .limit(1);
-
-    if (!code) return null;
-
-    const { redeemCodeHash: _redeemCodeHash, ...codeWithoutHash } = code;
-    return codeWithoutHash;
-  }
-
-  async findRedemptionCodeDetailsById(
-    input: FindRedemptionCodeDetailsByIdRepoInput,
-  ): Promise<FindRedemptionCodeDetailsByIdRepoResult | null> {
-    const [row] = await this.database.client
-      .select({
-        id: licenseRedemptionCodes.id,
-        resellerId: licenseRedemptionCodes.resellerId,
-        redeemCode: licenseRedemptionCodes.redeemCode,
-        marketId: licenseRedemptionCodes.marketId,
-        marketCurrencyCode: markets.currencyCode,
-        licenseIds: licenseRedemptionCodes.licenseIds,
-        status: licenseRedemptionCodes.status,
-        soldPrice: licenseRedemptionCodes.soldPrice,
-        generatedAt: licenseRedemptionCodes.generatedAt,
-        redeemExpiresAt: licenseRedemptionCodes.redeemExpiresAt,
-        claimedAt: licenseRedemptionCodes.claimedAt,
-        claimedByOrganizationId: licenseRedemptionCodes.claimedByOrganizationId,
-        claimedByUserId: licenseRedemptionCodes.claimedByUserId,
-        remarks: licenseRedemptionCodes.remarks,
-        createdAt: licenseRedemptionCodes.createdAt,
-        updatedAt: licenseRedemptionCodes.updatedAt,
-        createdBy: licenseRedemptionCodes.createdBy,
-        updatedBy: licenseRedemptionCodes.updatedBy,
-      })
-      .from(licenseRedemptionCodes)
-      .innerJoin(markets, eq(licenseRedemptionCodes.marketId, markets.id))
-      .where(
-        and(
-          eq(licenseRedemptionCodes.id, input.id),
-          eq(licenseRedemptionCodes.resellerId, input.resellerId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) return null;
-
-    const { marketCurrencyCode, ...code } = row;
-
-    if (code.licenseIds.length === 0) {
-      return { code, marketCurrencyCode, licenses: [] };
-    }
-
-    const licenseRows = await this.database.client
-      .select({
-        licenseId: licenses.id,
-        licenseKey: licenses.licenseKey,
-        lockedPlanName: licenseTerms.lockedPlanName,
-        basePrice: licenseTerms.basePrice,
-        lockedPrice: licenseTerms.lockedPrice,
-      })
-      .from(licenses)
-      .leftJoin(
-        licenseTerms,
-        and(
-          eq(licenseTerms.licenseId, licenses.id),
-          eq(licenseTerms.isActive, true),
-        ),
-      )
-      .where(inArray(licenses.id, code.licenseIds));
-
-    return {
-      code,
-      marketCurrencyCode,
-      licenses: licenseRows.map((row) => ({
-        licenseId: row.licenseId,
-        licenseKey: row.licenseKey,
-        basePrice: row.basePrice,
-        lockedPrice: row.lockedPrice,
-        planName: row.lockedPlanName,
-      })),
-    };
   }
 
   async verifyRedemptionCode(
     input: VerifyRedemptionCodeRepoInput,
   ): Promise<VerifyRedemptionCodeRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const verified = await this._updateRedemptionCodeIfMatching(
-        tx,
-        and(
-          eq(licenseRedemptionCodes.id, input.id),
-          eq(licenseRedemptionCodes.resellerId, input.resellerId),
-          eq(
-            licenseRedemptionCodes.status,
-            LicenseRedemptionStatusEnum.CLAIMED,
-          ),
-        ) as SQL,
-        {
-          status: LicenseRedemptionStatusEnum.VERIFIED,
-          soldPrice: input.totalSoldPrice,
-        },
-      );
-
-      if (!verified) return false;
-
-      for (const item of input.items) {
-        await tx
-          .update(licenseTerms)
-          .set({ lockedPrice: item.lockedPrice })
-          .where(
-            and(
-              eq(licenseTerms.licenseId, item.licenseId),
-              eq(licenseTerms.isActive, true),
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const verified = await this._updateRedemptionCodeIfMatching(
+          tx,
+          and(
+            eq(licenseRedemptionCodes.id, input.id),
+            eq(licenseRedemptionCodes.resellerId, input.resellerId),
+            eq(
+              licenseRedemptionCodes.status,
+              LicenseRedemptionStatusEnum.CLAIMED,
             ),
-          );
+          ) as SQL,
+          {
+            status: LicenseRedemptionStatusEnum.VERIFIED,
+            soldPrice: input.totalSoldPrice,
+          },
+        );
 
-        await tx.insert(licenseHistory).values({
-          licenseId: item.licenseId,
-          eventType: LicenseHistoryEventTypeEnum.REDEMPTION_VERIFIED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
-          remarks: "Redemption sold price verified",
-        });
-      }
+        if (!verified) return false;
 
-      return true;
-    });
+        for (const item of input.items) {
+          await tx
+            .update(licenseTerms)
+            .set({ lockedPrice: item.lockedPrice })
+            .where(
+              and(
+                eq(licenseTerms.licenseId, item.licenseId),
+                eq(licenseTerms.isActive, true),
+              ),
+            );
+
+          await tx.insert(licenseHistory).values({
+            licenseId: item.licenseId,
+            eventType: LicenseHistoryEventTypeEnum.REDEMPTION_VERIFIED,
+            targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
+            remarks: "Redemption sold price verified",
+          });
+        }
+
+        return true;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_VERIFY_REDEMPTION_CODE_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async revokeRedemptionCode(
     input: RevokeRedemptionCodeRepoInput,
   ): Promise<RevokeRedemptionCodeRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const revoked = await this._updateRedemptionCodeIfMatching(
-        tx,
-        and(
-          eq(licenseRedemptionCodes.id, input.id),
-          eq(licenseRedemptionCodes.resellerId, input.resellerId),
-          eq(
-            licenseRedemptionCodes.status,
-            LicenseRedemptionStatusEnum.GENERATED,
-          ),
-        ) as SQL,
-        { status: LicenseRedemptionStatusEnum.REVOKED },
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const revoked = await this._updateRedemptionCodeIfMatching(
+          tx,
+          and(
+            eq(licenseRedemptionCodes.id, input.id),
+            eq(licenseRedemptionCodes.resellerId, input.resellerId),
+            eq(
+              licenseRedemptionCodes.status,
+              LicenseRedemptionStatusEnum.GENERATED,
+            ),
+          ) as SQL,
+          { status: LicenseRedemptionStatusEnum.REVOKED },
+        );
+
+        if (!revoked) return undefined;
+
+        for (const licenseId of revoked.licenseIds) {
+          await tx.insert(licenseHistory).values({
+            licenseId,
+            eventType: LicenseHistoryEventTypeEnum.REDEEM_CODE_REVOKED,
+            targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
+            remarks: "Redemption code revoked",
+          });
+        }
+
+        return revoked;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_REVOKE_REDEMPTION_CODE_ERROR] " + error,
       );
-
-      if (!revoked) return undefined;
-
-      for (const licenseId of revoked.licenseIds) {
-        await tx.insert(licenseHistory).values({
-          licenseId,
-          eventType: LicenseHistoryEventTypeEnum.REDEEM_CODE_REVOKED,
-          targetEntityType: LicenseHistoryTargetEntityTypeEnum.RESELLER,
-          remarks: "Redemption code revoked",
-        });
-      }
-
-      return revoked;
-    });
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findRedemptionCodeByHash(
     input: FindRedemptionCodeByHashRepoInput,
   ): Promise<FindRedemptionCodeByHashRepoResult> {
-    const [code] = await this.database.client
-      .select()
-      .from(licenseRedemptionCodes)
-      .where(eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash))
-      .limit(1);
+    try {
+      const [code] = await this.database.client
+        .select()
+        .from(licenseRedemptionCodes)
+        .where(eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash))
+        .limit(1);
 
-    return code || null;
+      return (await code) || null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_BY_HASH_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async claimRedemptionCode(
     input: ClaimRedemptionCodeRepoInput,
   ): Promise<ClaimRedemptionCodeRepoResult> {
-    return this.database.client
-      .transaction(async (tx): Promise<ClaimRedemptionCodeRepoResult> => {
-        const claimed = await this._updateRedemptionCodeIfMatching(
-          tx,
-          and(
-            eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash),
-            eq(
-              licenseRedemptionCodes.status,
-              LicenseRedemptionStatusEnum.GENERATED,
-            ),
-            or(
-              isNull(licenseRedemptionCodes.redeemExpiresAt),
-              gt(licenseRedemptionCodes.redeemExpiresAt, new Date()),
-            ),
-          ) as SQL,
-          {
-            status: LicenseRedemptionStatusEnum.CLAIMED,
-            claimedAt: new Date(),
-            claimedByOrganizationId: input.organizationId,
-            claimedByUserId: input.claimedByUserId,
-          },
-        );
-
-        if (!claimed) return { ok: false, reason: "not_claimable" };
-
-        const licenseIds = claimed.licenseIds;
-
-        const claimedLicenses: LicenseEntity[] = [];
-        for (const licenseId of licenseIds) {
-          const [updatedLicense] = await tx
-            .update(licenses)
-            .set({
-              organizationId: input.organizationId,
-              branchId: input.branchId,
-              updatedAt: new Date(),
-            })
-            .where(
-              and(
-                eq(licenses.id, licenseId),
-                eq(licenses.status, LicenseStatusEnum.AVAILABLE),
+    try {
+      return await this.database.client
+        .transaction(async (tx): Promise<ClaimRedemptionCodeRepoResult> => {
+          const claimed = await this._updateRedemptionCodeIfMatching(
+            tx,
+            and(
+              eq(licenseRedemptionCodes.redeemCodeHash, input.redeemCodeHash),
+              eq(
+                licenseRedemptionCodes.status,
+                LicenseRedemptionStatusEnum.GENERATED,
               ),
-            )
-            .returning();
+              or(
+                isNull(licenseRedemptionCodes.redeemExpiresAt),
+                gt(licenseRedemptionCodes.redeemExpiresAt, new Date()),
+              ),
+            ) as SQL,
+            {
+              status: LicenseRedemptionStatusEnum.CLAIMED,
+              claimedAt: new Date(),
+              claimedByOrganizationId: input.organizationId,
+              claimedByUserId: input.claimedByUserId,
+            },
+          );
 
-          if (!updatedLicense) {
-            throw new Error("LICENSES_UNAVAILABLE");
+          if (!claimed) return { ok: false, reason: "not_claimable" };
+
+          const licenseIds = claimed.licenseIds;
+
+          const claimedLicenses: LicenseEntity[] = [];
+          for (const licenseId of licenseIds) {
+            const [updatedLicense] = await tx
+              .update(licenses)
+              .set({
+                organizationId: input.organizationId,
+                branchId: input.branchId,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(licenses.id, licenseId),
+                  eq(licenses.status, LicenseStatusEnum.AVAILABLE),
+                ),
+              )
+              .returning();
+
+            if (!updatedLicense) {
+              throw new Error("LICENSES_UNAVAILABLE");
+            }
+            claimedLicenses.push(updatedLicense);
           }
-          claimedLicenses.push(updatedLicense);
-        }
 
-        await tx
-          .update(licenseResellerMapper)
-          .set({ isActive: false, updatedAt: new Date() })
-          .where(inArray(licenseResellerMapper.licenseId, licenseIds));
+          await tx
+            .update(licenseResellerMapper)
+            .set({ isActive: false, updatedAt: new Date() })
+            .where(inArray(licenseResellerMapper.licenseId, licenseIds));
 
-        for (const license of claimedLicenses) {
-          await tx.insert(licenseHistory).values({
-            licenseId: license.id,
-            eventType: LicenseHistoryEventTypeEnum.REDEEMED,
-            targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
-            previousStatus: LicenseStatusEnum.AVAILABLE,
-            newStatus: LicenseStatusEnum.AVAILABLE,
-            performedBy: input.claimedByUserId,
-            remarks: "License redeemed via redemption code",
-          });
-        }
+          for (const license of claimedLicenses) {
+            await tx.insert(licenseHistory).values({
+              licenseId: license.id,
+              eventType: LicenseHistoryEventTypeEnum.REDEEMED,
+              targetEntityType: LicenseHistoryTargetEntityTypeEnum.COMMON,
+              previousStatus: LicenseStatusEnum.AVAILABLE,
+              newStatus: LicenseStatusEnum.AVAILABLE,
+              performedBy: input.claimedByUserId,
+              remarks: "License redeemed via redemption code",
+            });
+          }
 
-        return { ok: true, licenses: claimedLicenses };
-      })
-      .catch((error) => {
-        if (
-          error instanceof Error &&
-          error.message === "LICENSES_UNAVAILABLE"
-        ) {
-          return { ok: false, reason: "licenses_unavailable" };
-        }
-        throw error;
+          return { ok: true, licenses: claimedLicenses };
+        })
+        .catch((error) => {
+          if (
+            error instanceof Error &&
+            error.message === "LICENSES_UNAVAILABLE"
+          ) {
+            return { ok: false, reason: "licenses_unavailable" };
+          }
+          throw error;
+        });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[LICENSE_REDEMPTION_CLAIM_REDEMPTION_CODE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
       });
+    }
   }
 }

@@ -36,6 +36,10 @@ import type {
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentProviderWithMappingsRepoResult,
 } from "../types/payment.types";
+import { AppError } from "../../../shared/errors/app-error";
+import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { logger } from "../../../shared/utils/core/logger";
 
 const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
   name: paymentProviders.name,
@@ -49,89 +53,169 @@ export class PaymentRepository {
   async findPaginatedWithMappings(
     input: FindPaginatedPaymentProvidersRepoInput,
   ): Promise<FindPaginatedPaymentProvidersRepoResult> {
-    const { search, isActive, page, limit, sortBy, sortOrder } = input;
+    try {
+      const { search, isActive, page, limit, sortBy, sortOrder } = input;
 
-    const conditions: SQL[] = [];
-    if (isActive !== undefined) {
-      conditions.push(eq(paymentProviders.isActive, isActive));
-    }
-    if (search) {
-      const searchCondition = or(
-        ilike(paymentProviders.name, `%${search}%`),
-        ilike(paymentProviders.slug, `%${search}%`),
+      const conditions: SQL[] = [];
+      if (isActive !== undefined) {
+        conditions.push(eq(paymentProviders.isActive, isActive));
+      }
+      if (search) {
+        const searchCondition = or(
+          ilike(paymentProviders.name, `%${search}%`),
+          ilike(paymentProviders.slug, `%${search}%`),
+        );
+        if (searchCondition) conditions.push(searchCondition);
+      }
+      const condition = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [countResult] = await this.database.client
+        .select({ count: count() })
+        .from(paymentProviders)
+        .where(condition);
+      const total = Number(countResult?.count || 0);
+
+      const sortColumn = sortBy ? SORTABLE_COLUMNS[sortBy] : undefined;
+      const orderBy =
+        sortColumn && sortOrder
+          ? (sortOrder === "asc" ? asc : desc)(sortColumn)
+          : desc(paymentProviders.createdAt);
+
+      const providers = await this.database.client
+        .select()
+        .from(paymentProviders)
+        .where(condition)
+        .orderBy(orderBy, asc(paymentProviders.id))
+        .limit(limit)
+        .offset((page - 1) * limit);
+
+      const mappingsByProviderId = await this.findMappingsByProviderIds(
+        providers.map((provider) => provider.id),
       );
-      if (searchCondition) conditions.push(searchCondition);
+
+      return await {
+        providers: providers.map((provider) => ({
+          ...provider,
+          mappings: mappingsByProviderId.get(provider.id) ?? [],
+        })),
+        total,
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_PAGINATED_WITH_MAPPINGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-    const condition = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const [countResult] = await this.database.client
-      .select({ count: count() })
-      .from(paymentProviders)
-      .where(condition);
-    const total = Number(countResult?.count || 0);
-
-    const sortColumn = sortBy ? SORTABLE_COLUMNS[sortBy] : undefined;
-    const orderBy =
-      sortColumn && sortOrder
-        ? (sortOrder === "asc" ? asc : desc)(sortColumn)
-        : desc(paymentProviders.createdAt);
-
-    const providers = await this.database.client
-      .select()
-      .from(paymentProviders)
-      .where(condition)
-      .orderBy(orderBy, asc(paymentProviders.id))
-      .limit(limit)
-      .offset((page - 1) * limit);
-
-    const mappingsByProviderId = await this.findMappingsByProviderIds(
-      providers.map((provider) => provider.id),
-    );
-
-    return {
-      providers: providers.map((provider) => ({
-        ...provider,
-        mappings: mappingsByProviderId.get(provider.id) ?? [],
-      })),
-      total,
-    };
   }
 
   async findOneWithMappings(
     input: FindOnePaymentProviderWithMappingsRepoInput,
   ): Promise<FindOnePaymentProviderWithMappingsRepoResult> {
-    const provider = await this.findOne({ id: input.id });
-    if (!provider) return null;
+    try {
+      const provider = await this.findOne({ id: input.id });
+      if (!provider) return await null;
 
-    const mappingsByProviderId = await this.findMappingsByProviderIds([
-      provider.id,
-    ]);
+      const mappingsByProviderId = await this.findMappingsByProviderIds([
+        provider.id,
+      ]);
 
-    return {
-      ...provider,
-      mappings: mappingsByProviderId.get(provider.id) ?? [],
-    };
+      return await {
+        ...provider,
+        mappings: mappingsByProviderId.get(provider.id) ?? [],
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_ONE_WITH_MAPPINGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findOne(
     input: FindOnePaymentProviderRepoInput,
   ): Promise<FindOnePaymentProviderRepoResult> {
-    const [provider] = await this.database.client
-      .select()
-      .from(paymentProviders)
-      .where(eq(paymentProviders.id, input.id))
-      .limit(1);
+    try {
+      const [provider] = await this.database.client
+        .select()
+        .from(paymentProviders)
+        .where(eq(paymentProviders.id, input.id))
+        .limit(1);
 
-    return provider ?? null;
+      return (await provider) ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_ONE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async updateWithMappings(
     input: UpdatePaymentProviderWithMappingsRepoInput,
   ): Promise<UpdatePaymentProviderWithMappingsRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [provider] = await tx
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [provider] = await tx
+          .update(paymentProviders)
+          .set({
+            updatedBy: input.updatedBy,
+            updatedAt: new Date(),
+          })
+          .where(eq(paymentProviders.id, input.providerId))
+          .returning();
+
+        if (!provider) throw new Error("Failed to update payment provider");
+
+        for (const mapping of input.mappingsToUpdate) {
+          await tx
+            .update(paymentProviderMarketMappers)
+            .set({
+              isActive: mapping.isActive,
+              updatedBy: input.updatedBy,
+              updatedAt: new Date(),
+            })
+            .where(eq(paymentProviderMarketMappers.id, mapping.id));
+        }
+
+        if (input.mappingsToCreate.length > 0) {
+          await tx.insert(paymentProviderMarketMappers).values(
+            input.mappingsToCreate.map((mapping) => ({
+              providerId: provider.id,
+              marketId: mapping.marketId,
+              paymentMethod: mapping.paymentMethod,
+              isActive: mapping.isActive,
+              createdBy: input.updatedBy,
+              updatedBy: input.updatedBy,
+            })),
+          );
+        }
+
+        return provider;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_UPDATE_WITH_MAPPINGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async update(
+    input: UpdatePaymentProviderRepoInput,
+  ): Promise<UpdatePaymentProviderRepoResult> {
+    try {
+      const [provider] = await this.database.client
         .update(paymentProviders)
         .set({
+          ...input.data,
           updatedBy: input.updatedBy,
           updatedAt: new Date(),
         })
@@ -139,50 +223,15 @@ export class PaymentRepository {
         .returning();
 
       if (!provider) throw new Error("Failed to update payment provider");
-
-      for (const mapping of input.mappingsToUpdate) {
-        await tx
-          .update(paymentProviderMarketMappers)
-          .set({
-            isActive: mapping.isActive,
-            updatedBy: input.updatedBy,
-            updatedAt: new Date(),
-          })
-          .where(eq(paymentProviderMarketMappers.id, mapping.id));
-      }
-
-      if (input.mappingsToCreate.length > 0) {
-        await tx.insert(paymentProviderMarketMappers).values(
-          input.mappingsToCreate.map((mapping) => ({
-            providerId: provider.id,
-            marketId: mapping.marketId,
-            paymentMethod: mapping.paymentMethod,
-            isActive: mapping.isActive,
-            createdBy: input.updatedBy,
-            updatedBy: input.updatedBy,
-          })),
-        );
-      }
-
-      return provider;
-    });
-  }
-
-  async update(
-    input: UpdatePaymentProviderRepoInput,
-  ): Promise<UpdatePaymentProviderRepoResult> {
-    const [provider] = await this.database.client
-      .update(paymentProviders)
-      .set({
-        ...input.data,
-        updatedBy: input.updatedBy,
-        updatedAt: new Date(),
-      })
-      .where(eq(paymentProviders.id, input.providerId))
-      .returning();
-
-    if (!provider) throw new Error("Failed to update payment provider");
-    return provider;
+      return await provider;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_UPDATE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   // ========================================
@@ -191,187 +240,235 @@ export class PaymentRepository {
   async findTenantPaymentOptions(
     input: FindTenantPaymentOptionsRepoInput,
   ): Promise<FindTenantPaymentOptionsRepoResult> {
-    return this.database.client
-      .select({
-        mapperId: paymentProviderMarketMappers.id,
-        paymentMethod: paymentProviderMarketMappers.paymentMethod,
-        provider: {
-          id: paymentProviders.id,
-          name: paymentProviders.name,
-          slug: paymentProviders.slug,
-        },
-      })
-      .from(paymentProviderMarketMappers)
-      .innerJoin(
-        paymentProviders,
-        eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
-      )
-      .where(
-        and(
-          eq(paymentProviderMarketMappers.marketId, input.marketId),
-          eq(paymentProviderMarketMappers.isActive, true),
-          eq(paymentProviders.isActive, true),
-        ),
-      )
-      .orderBy(asc(paymentProviders.name));
+    try {
+      return await this.database.client
+        .select({
+          mapperId: paymentProviderMarketMappers.id,
+          paymentMethod: paymentProviderMarketMappers.paymentMethod,
+          provider: {
+            id: paymentProviders.id,
+            name: paymentProviders.name,
+            slug: paymentProviders.slug,
+          },
+        })
+        .from(paymentProviderMarketMappers)
+        .innerJoin(
+          paymentProviders,
+          eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
+        )
+        .where(
+          and(
+            eq(paymentProviderMarketMappers.marketId, input.marketId),
+            eq(paymentProviderMarketMappers.isActive, true),
+            eq(paymentProviders.isActive, true),
+          ),
+        )
+        .orderBy(asc(paymentProviders.name));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_TENANT_PAYMENT_OPTIONS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findTenantPaymentOption(
     input: FindTenantPaymentOptionRepoInput,
   ): Promise<FindTenantPaymentOptionRepoResult> {
-    const [option] = await this.database.client
-      .select({
-        mapperId: paymentProviderMarketMappers.id,
-        paymentMethod: paymentProviderMarketMappers.paymentMethod,
-        provider: {
-          id: paymentProviders.id,
-          name: paymentProviders.name,
-          slug: paymentProviders.slug,
-        },
-      })
-      .from(paymentProviderMarketMappers)
-      .innerJoin(
-        paymentProviders,
-        eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
-      )
-      .where(
-        and(
-          eq(paymentProviderMarketMappers.id, input.mapperId),
-          eq(paymentProviderMarketMappers.marketId, input.marketId),
-          eq(paymentProviderMarketMappers.isActive, true),
-          eq(paymentProviders.isActive, true),
-        ),
-      )
-      .limit(1);
+    try {
+      const [option] = await this.database.client
+        .select({
+          mapperId: paymentProviderMarketMappers.id,
+          paymentMethod: paymentProviderMarketMappers.paymentMethod,
+          provider: {
+            id: paymentProviders.id,
+            name: paymentProviders.name,
+            slug: paymentProviders.slug,
+          },
+        })
+        .from(paymentProviderMarketMappers)
+        .innerJoin(
+          paymentProviders,
+          eq(paymentProviderMarketMappers.providerId, paymentProviders.id),
+        )
+        .where(
+          and(
+            eq(paymentProviderMarketMappers.id, input.mapperId),
+            eq(paymentProviderMarketMappers.marketId, input.marketId),
+            eq(paymentProviderMarketMappers.isActive, true),
+            eq(paymentProviders.isActive, true),
+          ),
+        )
+        .limit(1);
 
-    return option ?? null;
+      return (await option) ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_TENANT_PAYMENT_OPTION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findTenantPaymentConfigs(
     input: FindTenantPaymentConfigsRepoInput,
   ): Promise<FindTenantPaymentConfigsRepoResult> {
-    return this.database.client
-      .select({
-        mapperId: tenantPaymentConfigs.paymentProviderMarketMapperId,
-        paymentMethod: paymentProviderMarketMappers.paymentMethod,
-        isActive: tenantPaymentConfigs.isActive,
-        config: tenantPaymentConfigs.config,
-        lastConnectionTest: tenantPaymentConfigs.lastConnectionTest,
-      })
-      .from(tenantPaymentConfigs)
-      .innerJoin(
-        paymentProviderMarketMappers,
-        eq(
-          tenantPaymentConfigs.paymentProviderMarketMapperId,
-          paymentProviderMarketMappers.id,
-        ),
-      )
-      .where(
-        and(
-          eq(tenantPaymentConfigs.organizationId, input.organizationId),
-          eq(tenantPaymentConfigs.branchId, input.branchId),
-        ),
-      );
+    try {
+      return await this.database.client
+        .select({
+          mapperId: tenantPaymentConfigs.paymentProviderMarketMapperId,
+          paymentMethod: paymentProviderMarketMappers.paymentMethod,
+          isActive: tenantPaymentConfigs.isActive,
+          config: tenantPaymentConfigs.config,
+          lastConnectionTest: tenantPaymentConfigs.lastConnectionTest,
+        })
+        .from(tenantPaymentConfigs)
+        .innerJoin(
+          paymentProviderMarketMappers,
+          eq(
+            tenantPaymentConfigs.paymentProviderMarketMapperId,
+            paymentProviderMarketMappers.id,
+          ),
+        )
+        .where(
+          and(
+            eq(tenantPaymentConfigs.organizationId, input.organizationId),
+            eq(tenantPaymentConfigs.branchId, input.branchId),
+          ),
+        );
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_TENANT_PAYMENT_CONFIGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async saveTenantPaymentConfig(
     input: SaveTenantPaymentConfigRepoInput,
   ): Promise<void> {
-    await this.database.client.transaction(async (tx) => {
-      await tx
-        .insert(tenantPaymentConfigs)
-        .values({
-          organizationId: input.organizationId,
-          branchId: input.branchId,
-          paymentProviderMarketMapperId: input.mapperId,
-          config: input.config,
-          isActive: input.isActive,
-          lastConnectionTest: input.lastConnectionTest,
-          createdBy: input.userId,
-          updatedBy: input.userId,
-        })
-        .onConflictDoUpdate({
-          target: [
-            tenantPaymentConfigs.branchId,
-            tenantPaymentConfigs.paymentProviderMarketMapperId,
-          ],
-          set: {
+    try {
+      await this.database.client.transaction(async (tx) => {
+        await tx
+          .insert(tenantPaymentConfigs)
+          .values({
+            organizationId: input.organizationId,
+            branchId: input.branchId,
+            paymentProviderMarketMapperId: input.mapperId,
             config: input.config,
             isActive: input.isActive,
-            ...(input.lastConnectionTest && {
-              lastConnectionTest: input.lastConnectionTest,
-            }),
+            lastConnectionTest: input.lastConnectionTest,
+            createdBy: input.userId,
+            updatedBy: input.userId,
+          })
+          .onConflictDoUpdate({
+            target: [
+              tenantPaymentConfigs.branchId,
+              tenantPaymentConfigs.paymentProviderMarketMapperId,
+            ],
+            set: {
+              config: input.config,
+              isActive: input.isActive,
+              ...(input.lastConnectionTest && {
+                lastConnectionTest: input.lastConnectionTest,
+              }),
+              updatedBy: input.userId,
+              updatedAt: new Date(),
+            },
+          });
+
+        if (!input.isActive) return;
+
+        const sameMethodMappers = tx
+          .select({ id: paymentProviderMarketMappers.id })
+          .from(paymentProviderMarketMappers)
+          .where(
+            eq(paymentProviderMarketMappers.paymentMethod, input.paymentMethod),
+          );
+
+        await tx
+          .update(tenantPaymentConfigs)
+          .set({
+            isActive: false,
             updatedBy: input.userId,
             updatedAt: new Date(),
-          },
-        });
-
-      if (!input.isActive) return;
-
-      const sameMethodMappers = tx
-        .select({ id: paymentProviderMarketMappers.id })
-        .from(paymentProviderMarketMappers)
-        .where(
-          eq(paymentProviderMarketMappers.paymentMethod, input.paymentMethod),
-        );
-
-      await tx
-        .update(tenantPaymentConfigs)
-        .set({
-          isActive: false,
-          updatedBy: input.userId,
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(tenantPaymentConfigs.branchId, input.branchId),
-            eq(tenantPaymentConfigs.isActive, true),
-            ne(
-              tenantPaymentConfigs.paymentProviderMarketMapperId,
-              input.mapperId,
+          })
+          .where(
+            and(
+              eq(tenantPaymentConfigs.branchId, input.branchId),
+              eq(tenantPaymentConfigs.isActive, true),
+              ne(
+                tenantPaymentConfigs.paymentProviderMarketMapperId,
+                input.mapperId,
+              ),
+              inArray(
+                tenantPaymentConfigs.paymentProviderMarketMapperId,
+                sameMethodMappers,
+              ),
             ),
-            inArray(
-              tenantPaymentConfigs.paymentProviderMarketMapperId,
-              sameMethodMappers,
-            ),
-          ),
-        );
-    });
+          );
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_SAVE_TENANT_PAYMENT_CONFIG_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   private async findMappingsByProviderIds(
     providerIds: string[],
   ): Promise<Map<string, PaymentProviderMappingWithMarket[]>> {
-    const mappingsByProviderId = new Map<
-      string,
-      PaymentProviderMappingWithMarket[]
-    >();
-    if (providerIds.length === 0) return mappingsByProviderId;
+    try {
+      const mappingsByProviderId = new Map<
+        string,
+        PaymentProviderMappingWithMarket[]
+      >();
+      if (providerIds.length === 0) return await mappingsByProviderId;
 
-    const rows = await this.database.client
-      .select({
-        mapping: paymentProviderMarketMappers,
-        market: {
-          id: markets.id,
-          name: markets.name,
-          countryCode: markets.countryCode,
-          currencyCode: markets.currencyCode,
-        },
-      })
-      .from(paymentProviderMarketMappers)
-      .innerJoin(markets, eq(paymentProviderMarketMappers.marketId, markets.id))
-      .where(inArray(paymentProviderMarketMappers.providerId, providerIds))
-      .orderBy(
-        asc(markets.name),
-        asc(paymentProviderMarketMappers.paymentMethod),
-      );
+      const rows = await this.database.client
+        .select({
+          mapping: paymentProviderMarketMappers,
+          market: {
+            id: markets.id,
+            name: markets.name,
+            countryCode: markets.countryCode,
+            currencyCode: markets.currencyCode,
+          },
+        })
+        .from(paymentProviderMarketMappers)
+        .innerJoin(
+          markets,
+          eq(paymentProviderMarketMappers.marketId, markets.id),
+        )
+        .where(inArray(paymentProviderMarketMappers.providerId, providerIds))
+        .orderBy(
+          asc(markets.name),
+          asc(paymentProviderMarketMappers.paymentMethod),
+        );
 
-    for (const row of rows) {
-      const mappings = mappingsByProviderId.get(row.mapping.providerId) ?? [];
-      mappings.push({ ...row.mapping, market: row.market });
-      mappingsByProviderId.set(row.mapping.providerId, mappings);
+      for (const row of rows) {
+        const mappings = mappingsByProviderId.get(row.mapping.providerId) ?? [];
+        mappings.push({ ...row.mapping, market: row.market });
+        mappingsByProviderId.set(row.mapping.providerId, mappings);
+      }
+
+      return await mappingsByProviderId;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[PAYMENT_FIND_MAPPINGS_BY_PROVIDER_IDS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-
-    return mappingsByProviderId;
   }
 }

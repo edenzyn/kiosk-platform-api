@@ -21,6 +21,10 @@ import { appTaxComponents } from "../schemas/app-tax-component.schema";
 import { appTaxProfiles } from "../schemas/app-tax-profile.schema";
 import { tenantTaxComponents } from "../schemas/tenant-tax-component.schema";
 import { tenantTaxProfiles } from "../schemas/tenant-tax-profile.schema";
+import { AppError } from "../../../shared/errors/app-error";
+import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { logger } from "../../../shared/utils/core/logger";
 
 type Transaction = Parameters<
   Parameters<Database["client"]["transaction"]>[0]
@@ -32,165 +36,210 @@ export class TaxRepository {
   async findOne(
     input: FindOneTaxProfileRepoInput,
   ): Promise<FindOneTaxProfileRepoResult> {
-    const [taxProfile] = await this.database.client
-      .select()
-      .from(appTaxProfiles)
-      .where(eq(appTaxProfiles.id, input.id))
-      .limit(1);
+    try {
+      const [taxProfile] = await this.database.client
+        .select()
+        .from(appTaxProfiles)
+        .where(eq(appTaxProfiles.id, input.id))
+        .limit(1);
 
-    return taxProfile ?? null;
+      return (await taxProfile) ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_FIND_ONE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findComponentsByProfileId(
     input: FindComponentsByProfileIdRepoInput,
   ): Promise<FindComponentsByProfileIdRepoResult> {
-    return this.database.client
-      .select()
-      .from(appTaxComponents)
-      .where(
-        and(
-          eq(appTaxComponents.taxProfileId, input.taxProfileId),
-          eq(appTaxComponents.isActive, true),
-        ),
-      )
-      .orderBy(asc(appTaxComponents.createdAt));
+    try {
+      return await this.database.client
+        .select()
+        .from(appTaxComponents)
+        .where(
+          and(
+            eq(appTaxComponents.taxProfileId, input.taxProfileId),
+            eq(appTaxComponents.isActive, true),
+          ),
+        )
+        .orderBy(asc(appTaxComponents.createdAt));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_FIND_COMPONENTS_BY_PROFILE_ID_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async findTaxProfileSummariesByIds(
     input: FindTaxProfileSummariesByIdsRepoInput,
   ): Promise<FindTaxProfileSummariesByIdsRepoResult> {
-    if (input.taxProfileIds.length === 0) return [];
+    try {
+      if (input.taxProfileIds.length === 0) return await [];
 
-    return this.database.client
-      .select({ id: appTaxProfiles.id, name: appTaxProfiles.name })
-      .from(appTaxProfiles)
-      .where(inArray(appTaxProfiles.id, input.taxProfileIds));
+      return await this.database.client
+        .select({ id: appTaxProfiles.id, name: appTaxProfiles.name })
+        .from(appTaxProfiles)
+        .where(inArray(appTaxProfiles.id, input.taxProfileIds));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_FIND_TAX_PROFILE_SUMMARIES_BY_IDS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async createTaxProfileWithComponents(
     input: CreateTaxProfileRepoInput,
   ): Promise<CreateTaxProfileRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [taxProfile] = await tx
-        .insert(appTaxProfiles)
-        .values({
-          name: input.name,
-          isTaxInclusive: input.isTaxInclusive,
-          createdBy: input.createdBy,
-          updatedBy: input.createdBy,
-        })
-        .returning();
-
-      if (!taxProfile) throw new Error("Failed to create tax profile");
-
-      if (input.components.length > 0) {
-        await tx.insert(appTaxComponents).values(
-          input.components.map((component) => ({
-            taxProfileId: taxProfile.id,
-            name: component.name,
-            conditionType: component.conditionType,
-            rate: String(component.rate),
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [taxProfile] = await tx
+          .insert(appTaxProfiles)
+          .values({
+            name: input.name,
+            isTaxInclusive: input.isTaxInclusive,
             createdBy: input.createdBy,
             updatedBy: input.createdBy,
-          })),
-        );
-      }
+          })
+          .returning();
 
-      return taxProfile;
-    });
+        if (!taxProfile) throw new Error("Failed to create tax profile");
+
+        if (input.components.length > 0) {
+          await tx.insert(appTaxComponents).values(
+            input.components.map((component) => ({
+              taxProfileId: taxProfile.id,
+              name: component.name,
+              conditionType: component.conditionType,
+              rate: String(component.rate),
+              createdBy: input.createdBy,
+              updatedBy: input.createdBy,
+            })),
+          );
+        }
+
+        return taxProfile;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_CREATE_TAX_PROFILE_WITH_COMPONENTS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async updateTaxProfileWithComponents(
     input: UpdateTaxProfileRepoInput,
   ): Promise<UpdateTaxProfileRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [taxProfile] = await tx
-        .update(appTaxProfiles)
-        .set({
-          name: input.name,
-          isTaxInclusive: input.isTaxInclusive,
-          updatedBy: input.updatedBy,
-          updatedAt: new Date(),
-        })
-        .where(eq(appTaxProfiles.id, input.taxProfileId))
-        .returning();
-
-      if (!taxProfile) throw new Error("Tax profile not found");
-
-      if (input.deletedComponentIds.length > 0) {
-        await tx
-          .update(appTaxComponents)
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [taxProfile] = await tx
+          .update(appTaxProfiles)
           .set({
-            isActive: false,
+            name: input.name,
+            isTaxInclusive: input.isTaxInclusive,
             updatedBy: input.updatedBy,
             updatedAt: new Date(),
           })
-          .where(
-            and(
-              inArray(appTaxComponents.id, input.deletedComponentIds),
-              eq(appTaxComponents.taxProfileId, taxProfile.id),
-            ),
-          );
-      }
+          .where(eq(appTaxProfiles.id, input.taxProfileId))
+          .returning();
 
-      for (const component of input.components) {
-        if (component.id) {
+        if (!taxProfile) throw new Error("Tax profile not found");
+
+        if (input.deletedComponentIds.length > 0) {
           await tx
             .update(appTaxComponents)
             .set({
-              name: component.name,
-              conditionType: component.conditionType,
-              rate: String(component.rate),
-              isActive: true,
+              isActive: false,
               updatedBy: input.updatedBy,
               updatedAt: new Date(),
             })
             .where(
               and(
-                eq(appTaxComponents.id, component.id),
+                inArray(appTaxComponents.id, input.deletedComponentIds),
                 eq(appTaxComponents.taxProfileId, taxProfile.id),
               ),
             );
-          continue;
         }
 
-        const [inactiveMatch] = await tx
-          .select({ id: appTaxComponents.id })
-          .from(appTaxComponents)
-          .where(
-            and(
-              eq(appTaxComponents.taxProfileId, taxProfile.id),
-              eq(appTaxComponents.name, component.name),
-              eq(appTaxComponents.conditionType, component.conditionType),
-              eq(appTaxComponents.isActive, false),
-            ),
-          )
-          .limit(1);
+        for (const component of input.components) {
+          if (component.id) {
+            await tx
+              .update(appTaxComponents)
+              .set({
+                name: component.name,
+                conditionType: component.conditionType,
+                rate: String(component.rate),
+                isActive: true,
+                updatedBy: input.updatedBy,
+                updatedAt: new Date(),
+              })
+              .where(
+                and(
+                  eq(appTaxComponents.id, component.id),
+                  eq(appTaxComponents.taxProfileId, taxProfile.id),
+                ),
+              );
+            continue;
+          }
 
-        if (inactiveMatch) {
-          await tx
-            .update(appTaxComponents)
-            .set({
+          const [inactiveMatch] = await tx
+            .select({ id: appTaxComponents.id })
+            .from(appTaxComponents)
+            .where(
+              and(
+                eq(appTaxComponents.taxProfileId, taxProfile.id),
+                eq(appTaxComponents.name, component.name),
+                eq(appTaxComponents.conditionType, component.conditionType),
+                eq(appTaxComponents.isActive, false),
+              ),
+            )
+            .limit(1);
+
+          if (inactiveMatch) {
+            await tx
+              .update(appTaxComponents)
+              .set({
+                rate: String(component.rate),
+                isActive: true,
+                updatedBy: input.updatedBy,
+                updatedAt: new Date(),
+              })
+              .where(eq(appTaxComponents.id, inactiveMatch.id));
+          } else {
+            await tx.insert(appTaxComponents).values({
+              taxProfileId: taxProfile.id,
+              name: component.name,
+              conditionType: component.conditionType,
               rate: String(component.rate),
-              isActive: true,
+              createdBy: input.updatedBy,
               updatedBy: input.updatedBy,
-              updatedAt: new Date(),
-            })
-            .where(eq(appTaxComponents.id, inactiveMatch.id));
-        } else {
-          await tx.insert(appTaxComponents).values({
-            taxProfileId: taxProfile.id,
-            name: component.name,
-            conditionType: component.conditionType,
-            rate: String(component.rate),
-            createdBy: input.updatedBy,
-            updatedBy: input.updatedBy,
-          });
+            });
+          }
         }
-      }
 
-      return taxProfile;
-    });
+        return taxProfile;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_UPDATE_TAX_PROFILE_WITH_COMPONENTS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   // ========================================
@@ -199,147 +248,174 @@ export class TaxRepository {
   async findTenantProfile(
     input: FindTenantTaxProfileRepoInput,
   ): Promise<TenantTaxProfileWithComponents | null> {
-    const [profile] = await this.database.client
-      .select()
-      .from(tenantTaxProfiles)
-      .where(
-        and(
-          eq(tenantTaxProfiles.organizationId, input.organizationId),
-          eq(tenantTaxProfiles.branchId, input.branchId),
-          eq(tenantTaxProfiles.isActive, true),
-        ),
-      )
-      .orderBy(asc(tenantTaxProfiles.createdAt))
-      .limit(1);
+    try {
+      const [profile] = await this.database.client
+        .select()
+        .from(tenantTaxProfiles)
+        .where(
+          and(
+            eq(tenantTaxProfiles.organizationId, input.organizationId),
+            eq(tenantTaxProfiles.branchId, input.branchId),
+            eq(tenantTaxProfiles.isActive, true),
+          ),
+        )
+        .orderBy(asc(tenantTaxProfiles.createdAt))
+        .limit(1);
 
-    if (!profile) return null;
+      if (!profile) return await null;
 
-    const components = await this.database.client
-      .select()
-      .from(tenantTaxComponents)
-      .where(
-        and(
-          eq(tenantTaxComponents.taxProfileId, profile.id),
-          eq(tenantTaxComponents.isActive, true),
-          input.conditionTypes && input.conditionTypes.length > 0
-            ? inArray(tenantTaxComponents.conditionType, input.conditionTypes)
-            : undefined,
-        ),
-      )
-      .orderBy(asc(tenantTaxComponents.name));
+      const components = await this.database.client
+        .select()
+        .from(tenantTaxComponents)
+        .where(
+          and(
+            eq(tenantTaxComponents.taxProfileId, profile.id),
+            eq(tenantTaxComponents.isActive, true),
+            input.conditionTypes && input.conditionTypes.length > 0
+              ? inArray(tenantTaxComponents.conditionType, input.conditionTypes)
+              : undefined,
+          ),
+        )
+        .orderBy(asc(tenantTaxComponents.name));
 
-    return { ...profile, components };
+      return await { ...profile, components };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_FIND_TENANT_PROFILE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async createTenantProfile(
     input: CreateTenantTaxProfileRepoInput,
   ): Promise<TenantTaxProfileWithComponents> {
-    const { data } = input;
+    try {
+      const { data } = input;
 
-    return this.database.client.transaction(async (tx) => {
-      const [profile] = await tx
-        .insert(tenantTaxProfiles)
-        .values({
-          organizationId: data.organizationId,
-          branchId: data.branchId,
-          name: data.name,
-          isTaxInclusive: data.isTaxInclusive,
-          createdBy: data.createdBy,
-        })
-        .returning();
+      return await this.database.client.transaction(async (tx) => {
+        const [profile] = await tx
+          .insert(tenantTaxProfiles)
+          .values({
+            organizationId: data.organizationId,
+            branchId: data.branchId,
+            name: data.name,
+            isTaxInclusive: data.isTaxInclusive,
+            createdBy: data.createdBy,
+          })
+          .returning();
 
-      if (!profile) {
-        throw new Error("Failed to create tenant tax profile");
-      }
+        if (!profile) {
+          throw new Error("Failed to create tenant tax profile");
+        }
 
-      const components = await this.insertComponents(
-        tx,
-        profile.id,
-        data.components,
-        data.createdBy,
-      );
+        const components = await this.insertComponents(
+          tx,
+          profile.id,
+          data.components,
+          data.createdBy,
+        );
 
-      return { ...profile, components };
-    });
+        return { ...profile, components };
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_CREATE_TENANT_PROFILE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async updateTenantProfile(
     input: UpdateTenantTaxProfileRepoInput,
   ): Promise<TenantTaxProfileWithComponents | null> {
-    const { data } = input;
+    try {
+      const { data } = input;
 
-    return this.database.client.transaction(async (tx) => {
-      const [profile] = await tx
-        .update(tenantTaxProfiles)
-        .set({
-          name: data.name,
-          isTaxInclusive: data.isTaxInclusive,
-          updatedAt: new Date(),
-          updatedBy: data.updatedBy,
-        })
-        .where(
-          and(
-            eq(tenantTaxProfiles.id, data.id),
-            eq(tenantTaxProfiles.organizationId, data.organizationId),
-            eq(tenantTaxProfiles.branchId, data.branchId),
-          ),
-        )
-        .returning();
+      return await this.database.client.transaction(async (tx) => {
+        const [profile] = await tx
+          .update(tenantTaxProfiles)
+          .set({
+            name: data.name,
+            isTaxInclusive: data.isTaxInclusive,
+            updatedAt: new Date(),
+            updatedBy: data.updatedBy,
+          })
+          .where(
+            and(
+              eq(tenantTaxProfiles.id, data.id),
+              eq(tenantTaxProfiles.organizationId, data.organizationId),
+              eq(tenantTaxProfiles.branchId, data.branchId),
+            ),
+          )
+          .returning();
 
-      if (!profile) return null;
+        if (!profile) return null;
 
-      // The payload is the whole component list: anything it leaves out is gone.
-      const keptIds = data.components
-        .map((component) => component.id)
-        .filter((id): id is string => Boolean(id));
+        // The payload is the whole component list: anything it leaves out is gone.
+        const keptIds = data.components
+          .map((component) => component.id)
+          .filter((id): id is string => Boolean(id));
 
-      const existing = await tx
-        .select({ id: tenantTaxComponents.id })
-        .from(tenantTaxComponents)
-        .where(eq(tenantTaxComponents.taxProfileId, profile.id));
+        const existing = await tx
+          .select({ id: tenantTaxComponents.id })
+          .from(tenantTaxComponents)
+          .where(eq(tenantTaxComponents.taxProfileId, profile.id));
 
-      const removedIds = existing
-        .map((component) => component.id)
-        .filter((id) => !keptIds.includes(id));
+        const removedIds = existing
+          .map((component) => component.id)
+          .filter((id) => !keptIds.includes(id));
 
-      if (removedIds.length > 0) {
-        await tx
-          .delete(tenantTaxComponents)
-          .where(inArray(tenantTaxComponents.id, removedIds));
-      }
-
-      for (const component of data.components) {
-        if (component.id) {
+        if (removedIds.length > 0) {
           await tx
-            .update(tenantTaxComponents)
-            .set({
-              name: component.name,
-              conditionType: component.conditionType,
-              rate: String(component.rate),
-              isActive: true,
-              updatedAt: new Date(),
-              updatedBy: data.updatedBy,
-            })
-            .where(eq(tenantTaxComponents.id, component.id));
-          continue;
+            .delete(tenantTaxComponents)
+            .where(inArray(tenantTaxComponents.id, removedIds));
         }
 
-        await this.insertComponents(
-          tx,
-          profile.id,
-          [component],
-          data.updatedBy,
-        );
-      }
+        for (const component of data.components) {
+          if (component.id) {
+            await tx
+              .update(tenantTaxComponents)
+              .set({
+                name: component.name,
+                conditionType: component.conditionType,
+                rate: String(component.rate),
+                isActive: true,
+                updatedAt: new Date(),
+                updatedBy: data.updatedBy,
+              })
+              .where(eq(tenantTaxComponents.id, component.id));
+            continue;
+          }
 
-      const components = await tx
-        .select()
-        .from(tenantTaxComponents)
-        .where(eq(tenantTaxComponents.taxProfileId, profile.id))
-        .orderBy(asc(tenantTaxComponents.name));
+          await this.insertComponents(
+            tx,
+            profile.id,
+            [component],
+            data.updatedBy,
+          );
+        }
 
-      return { ...profile, components };
-    });
+        const components = await tx
+          .select()
+          .from(tenantTaxComponents)
+          .where(eq(tenantTaxComponents.taxProfileId, profile.id))
+          .orderBy(asc(tenantTaxComponents.name));
+
+        return { ...profile, components };
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_UPDATE_TENANT_PROFILE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   private async insertComponents(
@@ -348,18 +424,27 @@ export class TaxRepository {
     components: TenantTaxComponentRepoInput[],
     createdBy: string,
   ) {
-    return tx
-      .insert(tenantTaxComponents)
-      .values(
-        components.map((component) => ({
-          taxProfileId,
-          name: component.name,
-          conditionType: component.conditionType,
-          rate: String(component.rate),
-          isActive: true,
-          createdBy,
-        })),
-      )
-      .returning();
+    try {
+      return await tx
+        .insert(tenantTaxComponents)
+        .values(
+          components.map((component) => ({
+            taxProfileId,
+            name: component.name,
+            conditionType: component.conditionType,
+            rate: String(component.rate),
+            isActive: true,
+            createdBy,
+          })),
+        )
+        .returning();
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[TAX_INSERT_COMPONENTS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 }

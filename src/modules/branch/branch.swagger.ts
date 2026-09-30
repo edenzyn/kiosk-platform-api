@@ -235,4 +235,37 @@ export const branchSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/branches/settings/business-day-cutoff": {
+    patch: {
+      tags: ["Branches"],
+      summary: "Set the branch's business day cutoff",
+      description:
+        "The time the business day rolls over, as HH:mm in the branch's time zone. Each change closes the cutoff in effect and logs the new one in business_day_cutoff_logs; an unchanged value isn't logged.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["businessDayCutoffTime"],
+              properties: {
+                businessDayCutoffTime: {
+                  type: "string",
+                  pattern: "^([01]\\d|2[0-3]):[0-5]\\d$",
+                  example: "20:30",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Updated branch settings" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
 };

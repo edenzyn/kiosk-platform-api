@@ -115,6 +115,25 @@ export class BranchController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  updateBusinessDayCutoff = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const effectiveTenant = req.effectiveTenant as EffectiveTenant;
+    const data = await BranchValidator.updateBusinessDayCutoff.validate(
+      req.body,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.branchService.updateBusinessDayCutoff({
+      branchId: effectiveTenant.branchId as string,
+      businessDayCutoffTime: data.businessDayCutoffTime,
+      user: req.user as UserTokenDto,
+      effectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   requestBrandLogoUpload = async (
     req: Request,
     res: Response,

@@ -6,18 +6,13 @@ import {
   eq,
   ilike,
   inArray,
+  isNull,
   ne,
   or,
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
-import { branches } from "./schemas/branch.schema";
-import {
-  branchSettings,
-  type BranchSettingsEntity,
-  type CreateBranchSettingsEntity,
-} from "./schemas/branch-settings.schema";
 import type {
   CreateBranchRepoInput,
   CreateBranchRepoResult,
@@ -30,7 +25,15 @@ import type {
   UpdateBranchRepoInput,
   UpdateBranchRepoResult,
   UpdateBranchSettingsRepoInput,
+  UpdateBusinessDayCutoffRepoInput,
 } from "./branch.types";
+import {
+  branchSettings,
+  type BranchSettingsEntity,
+  type CreateBranchSettingsEntity,
+} from "./schemas/branch-settings.schema";
+import { branches } from "./schemas/branch.schema";
+import { businessDayCutoffLogs } from "./schemas/business-day-cutoff-log.schema";
 
 export class BranchRepository {
   constructor(private readonly database: Database) {}
@@ -297,5 +300,44 @@ export class BranchRepository {
 
     if (!updated) throw new Error("Failed to update branch settings");
     return updated;
+  }
+
+  async updateBusinessDayCutoff(
+    input: UpdateBusinessDayCutoffRepoInput,
+  ): Promise<BranchSettingsEntity> {
+    return this.database.client.transaction(async (tx) => {
+      const now = new Date();
+
+      const [settings] = await tx
+        .update(branchSettings)
+        .set({
+          businessDayCutoffTime: input.businessDayCutoffTime,
+          updatedAt: now,
+        })
+        .where(eq(branchSettings.branchId, input.branchId))
+        .returning();
+
+      if (!settings) throw new Error("Failed to update business day cutoff");
+
+      await tx
+        .update(businessDayCutoffLogs)
+        .set({ effectiveUntil: now })
+        .where(
+          and(
+            eq(businessDayCutoffLogs.branchId, input.branchId),
+            isNull(businessDayCutoffLogs.effectiveUntil),
+          ),
+        );
+
+      await tx.insert(businessDayCutoffLogs).values({
+        organizationId: input.organizationId,
+        branchId: input.branchId,
+        cutoffTime: input.businessDayCutoffTime,
+        effectiveFrom: now,
+        createdBy: input.userId,
+      });
+
+      return settings;
+    });
   }
 }

@@ -35,7 +35,6 @@ import type {
   UpdatePaymentProviderRepoResult,
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentProviderWithMappingsRepoResult,
-  UpdateTenantPaymentConnectionTestRepoInput,
 } from "../types/payment.types";
 
 const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
@@ -275,23 +274,6 @@ export class PaymentRepository {
       );
   }
 
-  async updateTenantPaymentConnectionTest(
-    input: UpdateTenantPaymentConnectionTestRepoInput,
-  ): Promise<void> {
-    await this.database.client
-      .update(tenantPaymentConfigs)
-      .set({ lastConnectionTest: input.testedAt })
-      .where(
-        and(
-          eq(tenantPaymentConfigs.branchId, input.branchId),
-          eq(
-            tenantPaymentConfigs.paymentProviderMarketMapperId,
-            input.mapperId,
-          ),
-        ),
-      );
-  }
-
   async saveTenantPaymentConfig(
     input: SaveTenantPaymentConfigRepoInput,
   ): Promise<void> {
@@ -304,6 +286,7 @@ export class PaymentRepository {
           paymentProviderMarketMapperId: input.mapperId,
           config: input.config,
           isActive: input.isActive,
+          lastConnectionTest: input.lastConnectionTest,
           createdBy: input.userId,
           updatedBy: input.userId,
         })
@@ -315,6 +298,9 @@ export class PaymentRepository {
           set: {
             config: input.config,
             isActive: input.isActive,
+            ...(input.lastConnectionTest && {
+              lastConnectionTest: input.lastConnectionTest,
+            }),
             updatedBy: input.userId,
             updatedAt: new Date(),
           },

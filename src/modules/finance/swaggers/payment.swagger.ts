@@ -263,23 +263,26 @@ export const paymentSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/payment-configs/test": {
     post: {
       tags: ["Payment Providers"],
-      summary: "Test the branch's saved provider credentials",
+      summary: "Test provider credentials before saving them",
       description:
-        "Calls the provider with the branch's saved credentials (PhonePe QR: requests an OAuth token). On success, last_connection_test is set to now. Other providers aren't testable yet.",
+        "Tests the credentials as entered, without saving them (PhonePe QR: requests an OAuth token). A blank secret is tested with the saved one. Saving a testable provider re-runs this test and records last_connection_test. Other providers aren't testable yet.",
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["mapperId"],
-              properties: { mapperId: { type: "string", format: "uuid" } },
+              required: ["mapperId", "config"],
+              properties: {
+                mapperId: { type: "string", format: "uuid" },
+                config: { type: "object", additionalProperties: true },
+              },
             },
           },
         },
       },
       responses: {
-        "200": { description: "Configs and provider options" },
+        "200": { description: "The credentials work: { isSuccessful: true }" },
         "400": {
           description:
             "The provider rejected the credentials, or testing isn't available for it",

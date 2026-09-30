@@ -48,6 +48,14 @@ const textField = (label: string) =>
     .max(255, `${label} cannot exceed 255 characters`)
     .required(`${label} is required`);
 
+const numericField = (label: string) =>
+  yup
+    .string()
+    .trim()
+    .matches(/^\d+$/, `${label} must be a number`)
+    .max(20, `${label} cannot exceed 20 digits`)
+    .required(`${label} is required`);
+
 export class PaymentValidator {
   static getPaymentProvidersQuery = paginationQuerySchema
     .shape({
@@ -128,6 +136,17 @@ export class PaymentValidator {
         .string()
         .uuid("Invalid payment provider")
         .required("Payment provider is required"),
+      config: yup
+        .mixed<Record<string, unknown>>()
+        .test(
+          "is-object",
+          "Config must be an object",
+          (value) =>
+            typeof value === "object" &&
+            value !== null &&
+            !Array.isArray(value),
+        )
+        .required("Config is required"),
     })
     .noUnknown();
 
@@ -141,7 +160,7 @@ export class PaymentValidator {
         .object({
           clientId: textField("Client ID"),
           clientSecret: secretField("clientSecret", "Client secret"),
-          clientVersion: textField("Client version"),
+          clientVersion: numericField("Client version"),
         })
         .noUnknown(),
     },

@@ -1,7 +1,7 @@
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
-import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe.provider";
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
+import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe.provider";
 import type { PaymentProviderMarketMapperEntity } from "../schemas/payment-provider-market-mapper.schema";
 import type { PaymentProviderEntity } from "../schemas/payment-provider.schema";
 
@@ -172,7 +172,8 @@ export interface PineLabsCardPaymentConfig {
 }
 
 export type TenantPaymentConfigValues =
-  PhonePeQrPaymentConfig | PineLabsCardPaymentConfig;
+  | PhonePeQrPaymentConfig
+  | PineLabsCardPaymentConfig;
 
 // ========================================
 // ? TENANT PAYMENT CONFIGS
@@ -200,15 +201,11 @@ export interface TestTenantPaymentConfigServiceInput {
   effectiveTenant: EffectiveTenant;
   dto: {
     mapperId: string;
+    config: Record<string, unknown>;
   };
 }
-export type TestTenantPaymentConfigServiceResult =
-  GetTenantPaymentConfigsServiceResult;
-
-export interface UpdateTenantPaymentConnectionTestRepoInput {
-  branchId: string;
-  mapperId: string;
-  testedAt: Date;
+export interface TestTenantPaymentConfigServiceResult {
+  isSuccessful: boolean;
 }
 
 export interface GetTenantPaymentConfigsServiceInput {
@@ -266,5 +263,7 @@ export interface SaveTenantPaymentConfigRepoInput {
   paymentMethod: TenantPaymentMethodEnum;
   isActive: boolean;
   config: TenantPaymentConfigValues;
+  // Set when the credentials passed a connection test just before saving.
+  lastConnectionTest?: Date;
   userId: string;
 }

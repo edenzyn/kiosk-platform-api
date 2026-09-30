@@ -1,6 +1,9 @@
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { PAYMENT_CONFIG_SECRET_KEYS } from "../../../shared/constants/payment-config.constants";
+import {
+  PAYMENT_CONFIG_SECRET_KEYS,
+  PAYMENT_CONNECTION_TEST_SUPPORT,
+} from "../../../shared/constants/payment-config.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { PaymentProviderSlugEnum } from "../../../shared/enums/finance/payment-provider-slug.enum";
 import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
@@ -302,9 +305,6 @@ export class PaymentService {
         code: ErrorCodes.RESOURCE_NOT_FOUND,
       });
     }
-
-    // A branch must always be able to take payment. Only configs whose
-    // provider is still offered count.
     const hasOtherEnabledMethod =
       isCashPaymentEnabled ||
       configs.some(
@@ -317,6 +317,18 @@ export class PaymentService {
       throw new AppError("At least one payment method must be enabled", {
         statusCode: HttpStatusCodes.BAD_REQUEST,
         code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const isTestable = Boolean(
+      PAYMENT_CONNECTION_TEST_SUPPORT[option.provider.slug]?.includes(
+        option.paymentMethod,
+      ),
+    );
+    if (isTestable) {
+      await this.testTenantPaymentConfig({
+        effectiveTenant,
+        dto: { mapperId: dto.mapperId, config: dto.config },
       });
     }
 
@@ -353,6 +365,7 @@ export class PaymentService {
       paymentMethod: option.paymentMethod,
       isActive: dto.isActive,
       config: config as unknown as TenantPaymentConfigValues,
+      lastConnectionTest: isTestable ? new Date() : undefined,
       userId: user.id,
     });
 
@@ -369,44 +382,63 @@ export class PaymentService {
     });
 
     const option = options.find((item) => item.mapperId === dto.mapperId);
-    const saved = configs.find((config) => config.mapperId === dto.mapperId);
-    if (!option || !saved) {
-      throw new AppError("Save this provider's config before testing it", {
+    const configSchema = option
+      ? PaymentValidator.paymentConfigs[option.provider.slug]?.[
+          option.paymentMethod
+        ]
+      : undefined;
+    if (!option || !configSchema) {
+      throw new AppError("This payment provider is not available", {
         statusCode: HttpStatusCodes.NOT_FOUND,
         code: ErrorCodes.RESOURCE_NOT_FOUND,
       });
+    }
+
+    const storedConfig = (configs.find(
+      (config) => config.mapperId === dto.mapperId,
+    )?.config ?? {}) as Record<string, string>;
+    const secretKeys = PAYMENT_CONFIG_SECRET_KEYS[option.provider.slug] ?? [];
+    const storedSecretKeys = secretKeys.filter((key) => storedConfig[key]);
+
+    const validated = (await configSchema.validate(dto.config, {
+      abortEarly: false,
+      stripUnknown: true,
+      context: { storedSecretKeys },
+    })) as Record<string, string | undefined>;
+
+    const credentials: Record<string, string> = {};
+    for (const [key, value] of Object.entries(validated)) {
+      if (value) {
+        credentials[key] = value;
+      } else if (secretKeys.includes(key) && storedConfig[key]) {
+        credentials[key] = decryptData(
+          storedConfig[key],
+          env.LICENSE_ENCRYPTION_KEY,
+        );
+      }
     }
 
     if (
       option.provider.slug === PaymentProviderSlugEnum.PHONEPE &&
       option.paymentMethod === TenantPaymentMethodEnum.QR
     ) {
-      const config = saved.config as PhonePeQrPaymentConfig;
+      const phonePeConfig = credentials as unknown as PhonePeQrPaymentConfig;
       await this.phonePeProvider.getAccessToken({
-        clientId: config.clientId,
-        clientSecret: decryptData(
-          config.clientSecret,
-          env.LICENSE_ENCRYPTION_KEY,
-        ),
-        clientVersion: config.clientVersion,
+        clientId: phonePeConfig.clientId,
+        clientSecret: phonePeConfig.clientSecret,
+        clientVersion: phonePeConfig.clientVersion,
       });
-    } else {
-      throw new AppError(
-        "Testing the connection isn't available for this provider yet",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
-      );
+
+      return { isSuccessful: true };
     }
 
-    await this.paymentRepository.updateTenantPaymentConnectionTest({
-      branchId: effectiveTenant.branchId as string,
-      mapperId: dto.mapperId,
-      testedAt: new Date(),
-    });
-
-    return this.getTenantPaymentConfigs({ effectiveTenant });
+    throw new AppError(
+      "Testing the connection isn't available for this provider yet",
+      {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      },
+    );
   }
 
   async saveCashPaymentConfig(
@@ -418,8 +450,6 @@ export class PaymentService {
       effectiveTenant,
     });
 
-    // A branch must always be able to take payment, so cash can only be
-    // switched off while QR or card is on.
     const hasProviderMethodEnabled = configs.some(
       (config) =>
         config.isActive &&

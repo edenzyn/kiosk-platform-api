@@ -24,10 +24,13 @@ import {
 } from "../../../shared/utils/core/crypto.helper";
 import { logger } from "../../../shared/utils/core/logger";
 import type { BranchRepository } from "../../branch/branch.repository";
+import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
 import type { MarketRepository } from "../../market/market.repository";
 import type { PaymentRepository } from "../repositories/payment.repository";
 import type {
+  GetDevicePaymentMethodsServiceInput,
+  GetDevicePaymentMethodsServiceResult,
   GetPaymentProvidersServiceInput,
   GetPaymentProvidersServiceResult,
   GetTenantPaymentConfigsServiceInput,
@@ -57,6 +60,7 @@ export class PaymentService {
     private readonly marketRepository: MarketRepository,
     private readonly branchRepository: BranchRepository,
     private readonly phonePeProvider: PhonePeProvider,
+    private readonly deviceRepository: DeviceRepository,
   ) {}
 
   // ========================================
@@ -282,6 +286,39 @@ export class PaymentService {
       isCashPaymentEnabled: settings.isCashPaymentEnabled,
       configs,
       options,
+    };
+  }
+
+  async getDevicePaymentMethods(
+    input: GetDevicePaymentMethodsServiceInput,
+  ): Promise<GetDevicePaymentMethodsServiceResult> {
+    const { device } = input;
+
+    const [{ isCashPaymentEnabled, configs, options }, deviceRecord] =
+      await Promise.all([
+        this.getTenantPaymentConfigs({
+          effectiveTenant: {
+            organizationId: device.organizationId,
+            branchId: device.branchId,
+          },
+        }),
+        this.deviceRepository.findOne({ id: device.id }),
+      ]);
+
+    const enabledMethods = configs
+      .filter(
+        (config) =>
+          config.isActive &&
+          options.some((option) => option.mapperId === config.mapperId),
+      )
+      .map((config) => config.paymentMethod);
+
+    return {
+      isCashPaymentEnabled,
+      isQrPaymentEnabled: enabledMethods.includes(TenantPaymentMethodEnum.QR),
+      isCardPaymentEnabled:
+        enabledMethods.includes(TenantPaymentMethodEnum.CARD) &&
+        Boolean(deviceRecord?.terminalId),
     };
   }
 

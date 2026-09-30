@@ -1,3 +1,4 @@
+import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
@@ -206,6 +207,15 @@ export interface TestTenantPaymentConfigServiceInput {
 }
 export interface TestTenantPaymentConfigServiceResult {
   isSuccessful: boolean;
+}
+
+export interface GetDevicePaymentMethodsServiceInput {
+  device: DeviceTokenDto;
+}
+export interface GetDevicePaymentMethodsServiceResult {
+  isCashPaymentEnabled: boolean;
+  isQrPaymentEnabled: boolean;
+  isCardPaymentEnabled: boolean;
 }
 
 export interface GetTenantPaymentConfigsServiceInput {

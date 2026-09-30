@@ -23,6 +23,7 @@ import { platformMarketRouter } from "./modules/market/routes/platform-market.ro
 import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
+import { devicePaymentRouter } from "./modules/finance/routes/device-payment.routes";
 import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
 import { userPaymentRouter } from "./modules/finance/routes/user-payment.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
@@ -189,6 +190,10 @@ export class App {
     );
     this.instance.use(`${this.deviceApiV1Prefix}/menu`, deviceMenuRouter);
     this.instance.use(`${this.deviceApiV1Prefix}/taxes`, deviceTaxRouter);
+    this.instance.use(
+      `${this.deviceApiV1Prefix}/payments`,
+      devicePaymentRouter,
+    );
   }
 
   private configureErrorHandling(): void {

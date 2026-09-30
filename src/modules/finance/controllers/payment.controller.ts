@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
@@ -95,6 +96,16 @@ export class PaymentController {
   // ========================================
   // ? TENANT PAYMENT CONFIG APIS
   // ========================================
+  getDevicePaymentMethods = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const result = await this.paymentService.getDevicePaymentMethods({
+      device: req.device as DeviceTokenDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getTenantPaymentConfigs = async (
     req: Request,
     res: Response,

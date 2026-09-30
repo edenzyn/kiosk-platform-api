@@ -294,4 +294,34 @@ export const paymentSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  // ========================================
+  // ? DEVICE PAYMENT METHODS (mounted /pvt/d/payments)
+  // ========================================
+  "/pvt/d/payments/methods": {
+    get: {
+      tags: ["Payment Providers"],
+      summary: "Payment methods this device can offer at checkout",
+      description:
+        "From the device's branch payment config. QR needs an enabled QR config; card also needs a terminal mapped to the device; cash follows the branch's cash switch.",
+      responses: {
+        "200": {
+          description: "Enabled payment methods",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  isCashPaymentEnabled: { type: "boolean" },
+                  isQrPaymentEnabled: { type: "boolean" },
+                  isCardPaymentEnabled: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
 };

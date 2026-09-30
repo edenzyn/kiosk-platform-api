@@ -56,3 +56,45 @@ export interface PhonePeErrorResponse {
   code?: string;
   message?: string;
 }
+
+// ========================================
+// ? WEBHOOKS
+// ========================================
+export interface PhonePeWebhookSplitInstrument {
+  amount: number;
+  rail?: {
+    type: string;
+    upiTransactionId?: string;
+    vpa?: string;
+  };
+  instrument?: {
+    type: string;
+    accountType?: string;
+    accountNumber?: string;
+  };
+}
+
+export interface PhonePeWebhookPaymentDetail {
+  paymentMode: string;
+  transactionId: string;
+  timestamp: number;
+  amount: number;
+  state: string;
+  errorCode?: string;
+  detailedErrorCode?: string;
+  splitInstruments?: PhonePeWebhookSplitInstrument[];
+}
+
+export interface PhonePeWebhookPayload {
+  event: string;
+  payload: {
+    orderId: string;
+    merchantId: string;
+    merchantOrderId: string;
+    state: string;
+    amount: number;
+    expireAt: number;
+    metaInfo?: Record<string, string>;
+    paymentDetails?: PhonePeWebhookPaymentDetail[];
+  };
+}

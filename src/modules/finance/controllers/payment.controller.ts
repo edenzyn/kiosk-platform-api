@@ -3,7 +3,10 @@ import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.con
 import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
+import type { PhonePeProvider } from "../../../shared/providers/finance/phonepe/phonepe.provider";
+import type { PhonePeWebhookPayload } from "../../../shared/providers/finance/phonepe/phonepe.types";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay/razorpay.provider";
+import type { OrderService } from "../../order/order.service";
 import type { PaymentService } from "../services/payment.service";
 import type { RazorpayWebhookPayload } from "../types/payment.types";
 import { PaymentValidator } from "../validators/payment.validator";
@@ -12,6 +15,8 @@ export class PaymentController {
   constructor(
     private readonly paymentService: PaymentService,
     private readonly razorpayProvider: RazorpayProvider,
+    private readonly phonePeProvider: PhonePeProvider,
+    private readonly orderService: OrderService,
   ) {}
 
   // ========================================
@@ -37,6 +42,21 @@ export class PaymentController {
     await this.paymentService.handleRazorpayWebhook({
       headers: req.headers,
       body: req.body as RazorpayWebhookPayload,
+    });
+    res.sendStatus(HttpStatusCodes.OK);
+  };
+
+  phonePeWebhook = async (req: Request, res: Response): Promise<void> => {
+    const isValid = this.phonePeProvider.verifyWebhookAuthorization(
+      req.headers.authorization,
+    );
+    if (!isValid) {
+      res.sendStatus(HttpStatusCodes.UNAUTHORIZED);
+      return;
+    }
+
+    await this.orderService.handlePhonePeWebhook({
+      body: req.body as PhonePeWebhookPayload,
     });
     res.sendStatus(HttpStatusCodes.OK);
   };

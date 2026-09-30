@@ -1,7 +1,9 @@
+import { timingSafeEqual } from "node:crypto";
 import { env } from "../../../../config/env";
 import { HttpStatusCodes } from "../../../constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../enums/core/error-codes.enum";
 import { AppError } from "../../../errors/app-error";
+import { hashSha256 } from "../../../utils/core/crypto.helper";
 import { toMinorUnits } from "../../../utils/finance/currency.helper";
 import { PHONEPE_SUPPORTED_CURRENCY_CODES } from "./phonepe.constants";
 import type {
@@ -38,7 +40,8 @@ export class PhonePeProvider {
     }
 
     const body = (await response.json().catch(() => ({}))) as
-      PhonePeTokenResponse | PhonePeErrorResponse;
+      | PhonePeTokenResponse
+      | PhonePeErrorResponse;
 
     if (!response.ok || !("access_token" in body)) {
       const message =
@@ -103,7 +106,8 @@ export class PhonePeProvider {
     }
 
     const body = (await response.json().catch(() => ({}))) as
-      PhonePeCreatePaymentResponse | PhonePeErrorResponse;
+      | PhonePeCreatePaymentResponse
+      | PhonePeErrorResponse;
 
     if (!response.ok || !("qrData" in body) || !body.qrData) {
       const message =
@@ -124,5 +128,20 @@ export class PhonePeProvider {
       requestPayload,
       responsePayload: body as unknown as Record<string, unknown>,
     };
+  }
+
+  verifyWebhookAuthorization(authorization: string | undefined): boolean {
+    if (!authorization) return false;
+
+    const expected = Buffer.from(
+      hashSha256(
+        `${env.PHONEPE_WEBHOOK_USERNAME}:${env.PHONEPE_WEBHOOK_PASSWORD}`,
+      ),
+    );
+    const received = Buffer.from(authorization.trim().toLowerCase());
+
+    return (
+      expected.length === received.length && timingSafeEqual(expected, received)
+    );
   }
 }

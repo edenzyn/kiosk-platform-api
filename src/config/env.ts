@@ -136,6 +136,8 @@ const EnvSchema = Yup.object({
   PHONEPE_QR_AUTH_BASE_URL: Yup.string()
     .url()
     .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
+  PHONEPE_WEBHOOK_USERNAME: Yup.string().required().min(1),
+  PHONEPE_WEBHOOK_PASSWORD: Yup.string().required().min(1),
 
   // ==============================
   // Checkout

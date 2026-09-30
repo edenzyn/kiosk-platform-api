@@ -2,13 +2,19 @@ import { and, desc, eq, gte, max, sql } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
 import type {
+  CompletePendingPaymentRepoInput,
+  CompletePendingPaymentRepoResult,
   CreateOrderPaymentRepoInput,
   CreateOrderPaymentRepoResult,
   CreateOrderRepoInput,
   CreateOrderRepoResult,
+  FailPendingPaymentRepoInput,
+  FailPendingPaymentRepoResult,
   FindLatestOrderPaymentRepoInput,
   FindLatestOrderPaymentRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
+  FindOneOrderPaymentRepoInput,
+  FindOneOrderPaymentRepoResult,
   FindOrderByIdempotencyKeyRepoResult,
   UpdateOrderPaymentRepoInput,
   UpdateOrderPaymentRepoResult,
@@ -18,12 +24,15 @@ import type {
 import { orderItemModifiers } from "./schemas/order-item-modifier.schema";
 import { orderItems } from "./schemas/order-item.schema";
 import { orderPayments } from "./schemas/order-payment.schema";
+import { orderStatusLogs } from "./schemas/order-status-log.schema";
 import { orderTaxes } from "./schemas/order-tax.schema";
 import { orderNumberSequence, orders } from "./schemas/order.schema";
 import { AppError } from "../../shared/errors/app-error";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { logger } from "../../shared/utils/core/logger";
+import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
+import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 
 export class OrderRepository {
   constructor(private readonly database: Database) {}
@@ -234,6 +243,122 @@ export class OrderRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[ORDER_UPDATE_PAYMENT_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findOnePayment(
+    input: FindOneOrderPaymentRepoInput,
+  ): Promise<FindOneOrderPaymentRepoResult> {
+    try {
+      const [payment] = await this.database.client
+        .select()
+        .from(orderPayments)
+        .where(eq(orderPayments.id, input.id))
+        .limit(1);
+
+      return payment ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_FIND_ONE_PAYMENT_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async completePendingPayment(
+    input: CompletePendingPaymentRepoInput,
+  ): Promise<CompletePendingPaymentRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [payment] = await tx
+          .update(orderPayments)
+          .set({
+            paymentStatus: PaymentStatusEnum.COMPLETED,
+            providerStatus: input.providerStatus,
+            responsePayload: input.responsePayload,
+            completedAt: input.completedAt,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(orderPayments.id, input.paymentId),
+              eq(orderPayments.paymentStatus, PaymentStatusEnum.PENDING),
+            ),
+          )
+          .returning();
+
+        if (!payment) return { payment: null, order: null };
+
+        const [order] = await tx
+          .update(orders)
+          .set({
+            paymentStatus: PaymentStatusEnum.COMPLETED,
+            orderStatus: OrderStatusEnum.PLACED,
+            paymentMethod: payment.paymentMethod,
+            placedAt: input.completedAt,
+            expiresAt: null,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(orders.id, payment.orderId),
+              eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+            ),
+          )
+          .returning();
+
+        if (order) {
+          await tx.insert(orderStatusLogs).values({
+            orderId: order.id,
+            fromStatus: OrderStatusEnum.PENDING_PAYMENT,
+            toStatus: OrderStatusEnum.PLACED,
+            note: "Payment completed",
+          });
+        }
+
+        return { payment, order: order ?? null };
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_COMPLETE_PENDING_PAYMENT_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async failPendingPayment(
+    input: FailPendingPaymentRepoInput,
+  ): Promise<FailPendingPaymentRepoResult> {
+    try {
+      const [payment] = await this.database.client
+        .update(orderPayments)
+        .set({
+          paymentStatus: PaymentStatusEnum.FAILED,
+          providerStatus: input.providerStatus,
+          failureReason: input.failureReason,
+          responsePayload: input.responsePayload,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(orderPayments.id, input.paymentId),
+            eq(orderPayments.paymentStatus, PaymentStatusEnum.PENDING),
+          ),
+        )
+        .returning();
+
+      return payment ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_FAIL_PENDING_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

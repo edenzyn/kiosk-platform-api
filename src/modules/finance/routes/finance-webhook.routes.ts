@@ -12,4 +12,9 @@ financeWebhookRouter.post(
   asyncHandler(paymentController.razorpayWebhook),
 );
 
+financeWebhookRouter.post(
+  "/webhooks/phnpe",
+  asyncHandler(paymentController.phonePeWebhook),
+);
+
 export { financeWebhookRouter };

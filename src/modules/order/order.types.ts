@@ -1,4 +1,5 @@
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
+import type { PhonePeWebhookPayload } from "../../shared/providers/finance/phonepe/phonepe.types";
 import type {
   CreateDeviceOrderBodyDto,
   CreateDeviceOrderResponseDto,
@@ -20,6 +21,10 @@ export interface CreateDeviceOrderServiceInput {
   dto: CreateDeviceOrderBodyDto;
 }
 export type CreateDeviceOrderServiceResult = CreateDeviceOrderResponseDto;
+
+export interface HandlePhonePeWebhookServiceInput {
+  body: PhonePeWebhookPayload;
+}
 
 // ========================================
 // ? REPOSITORY INPUTS & RESULTS
@@ -67,3 +72,29 @@ export interface UpdateOrderPaymentRepoInput {
   data: Partial<Omit<CreateOrderPaymentEntity, "id">>;
 }
 export type UpdateOrderPaymentRepoResult = OrderPaymentEntity;
+
+export interface FindOneOrderPaymentRepoInput {
+  id: string;
+}
+export type FindOneOrderPaymentRepoResult = OrderPaymentEntity | null;
+
+export interface CompletePendingPaymentRepoInput {
+  paymentId: string;
+  providerStatus: string;
+  responsePayload: unknown;
+  completedAt: Date;
+}
+export interface CompletePendingPaymentRepoResult {
+  /** Null when the payment was no longer pending (already handled). */
+  payment: OrderPaymentEntity | null;
+  /** Null when the order was already settled by another payment attempt. */
+  order: OrderEntity | null;
+}
+
+export interface FailPendingPaymentRepoInput {
+  paymentId: string;
+  providerStatus: string;
+  failureReason: string;
+  responsePayload: unknown;
+}
+export type FailPendingPaymentRepoResult = OrderPaymentEntity | null;

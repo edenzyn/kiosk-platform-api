@@ -1,3 +1,4 @@
+import { validate as isUuid } from "uuid";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
@@ -8,11 +9,17 @@ import { OrderSourceEnum } from "../../shared/enums/order/order-source.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import {
+  PHONEPE_ORDER_STATES,
+  PHONEPE_WEBHOOK_EVENTS,
+} from "../../shared/providers/finance/phonepe/phonepe.constants";
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
+import { logger } from "../../shared/utils/core/logger";
+import { toMinorUnits } from "../../shared/utils/finance/currency.helper";
 import { resolveBusinessDayStart } from "../../shared/utils/order/business-day.helper";
+import { calculateOrderPricing } from "../../shared/utils/order/calculate-order-pricing.helper";
 import { formatTokenNumber } from "../../shared/utils/order/order-number.helper";
 import { getPaymentWindow } from "../../shared/utils/order/payment-window.helper";
-import { calculateOrderPricing } from "../../shared/utils/order/calculate-order-pricing.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { PaymentService } from "../finance/services/payment.service";
@@ -22,6 +29,7 @@ import type { OrderRepository } from "./order.repository";
 import type {
   CreateDeviceOrderServiceInput,
   CreateDeviceOrderServiceResult,
+  HandlePhonePeWebhookServiceInput,
 } from "./order.types";
 
 export class OrderService {
@@ -322,6 +330,70 @@ export class OrderService {
         },
       });
       throw error;
+    }
+  }
+
+  // ========================================
+  // ? PAYMENT WEBHOOKS
+  // ========================================
+  async handlePhonePeWebhook(
+    input: HandlePhonePeWebhookServiceInput,
+  ): Promise<void> {
+    const { event, payload } = input.body;
+    logger.log(
+      `[OrderService] PhonePe webhook received: ${event} for ${payload?.merchantOrderId}`,
+    );
+
+    // merchantOrderId is our order_payments.id
+    if (!payload?.merchantOrderId || !isUuid(payload.merchantOrderId)) return;
+
+    const payment = await this.orderRepository.findOnePayment({
+      id: payload.merchantOrderId,
+    });
+    if (!payment) {
+      logger.warn(
+        `[OrderService] PhonePe webhook for unknown payment ${payload.merchantOrderId}`,
+      );
+      return;
+    }
+
+    if (payment.paymentStatus !== PaymentStatusEnum.PENDING) return;
+
+    if (
+      event === PHONEPE_WEBHOOK_EVENTS.ORDER_COMPLETED &&
+      payload.state === PHONEPE_ORDER_STATES.COMPLETED
+    ) {
+      if (
+        payload.amount !== toMinorUnits(payment.amount, payment.currencyCode)
+      ) {
+        logger.error(
+          `[OrderService] PhonePe amount mismatch for payment ${payment.id}: expected ${payment.amount} ${payment.currencyCode}, got ${payload.amount}`,
+        );
+        return;
+      }
+
+      const { order } = await this.orderRepository.completePendingPayment({
+        paymentId: payment.id,
+        providerStatus: payload.state,
+        responsePayload: input.body,
+        completedAt: new Date(),
+      });
+      if (!order) {
+        logger.warn(
+          `[OrderService] Order ${payment.orderId} was already settled; payment ${payment.id} needs a refund`,
+        );
+      }
+      return;
+    }
+
+    if (event === PHONEPE_WEBHOOK_EVENTS.ORDER_FAILED) {
+      await this.orderRepository.failPendingPayment({
+        paymentId: payment.id,
+        providerStatus: payload.state,
+        failureReason:
+          payload.paymentDetails?.[0]?.errorCode ?? "Payment failed",
+        responsePayload: input.body,
+      });
     }
   }
 }

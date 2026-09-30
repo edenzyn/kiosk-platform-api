@@ -35,6 +35,8 @@ import type {
   FindMenuCategoriesRepoResult,
   FindMenuItemsRepoInput,
   FindMenuItemsRepoResult,
+  FindOrderableItemsRepoInput,
+  FindOrderableItemsRepoResult,
   FindOneMenuCategoryRepoInput,
   FindOneMenuCategoryRepoResult,
   FindOneMenuItemRepoInput,
@@ -705,6 +707,73 @@ export class MenuRepository {
     return modifiers.map((modifier) => ({
       ...modifier,
       options: options.filter((o) => o.itemModifierId === modifier.id),
+    }));
+  }
+
+  async findOrderableItems(
+    input: FindOrderableItemsRepoInput,
+  ): Promise<FindOrderableItemsRepoResult> {
+    if (input.itemIds.length === 0) return [];
+
+    const items = await this.database.client
+      .select({
+        ...getTableColumns(menuItems),
+        categoryName: menuCategories.name,
+      })
+      .from(menuItems)
+      .innerJoin(menuCategories, eq(menuItems.categoryId, menuCategories.id))
+      .where(
+        and(
+          inArray(menuItems.id, input.itemIds),
+          eq(menuItems.organizationId, input.organizationId),
+          eq(menuItems.branchId, input.branchId),
+          eq(menuItems.isActive, true),
+          eq(menuItems.isListed, true),
+          eq(menuCategories.isActive, true),
+        ),
+      );
+
+    if (items.length === 0) return [];
+
+    const modifiers = await this.database.client
+      .select()
+      .from(itemModifiers)
+      .where(
+        and(
+          inArray(
+            itemModifiers.menuItemId,
+            items.map((item) => item.id),
+          ),
+          eq(itemModifiers.isActive, true),
+        ),
+      );
+
+    const options =
+      modifiers.length > 0
+        ? await this.database.client
+            .select()
+            .from(itemModifierOptions)
+            .where(
+              and(
+                inArray(
+                  itemModifierOptions.itemModifierId,
+                  modifiers.map((modifier) => modifier.id),
+                ),
+                eq(itemModifierOptions.isActive, true),
+              ),
+            )
+        : [];
+
+    return items.map((item) => ({
+      ...item,
+      modifiers: modifiers
+        .filter((modifier) => modifier.menuItemId === item.id)
+        .map((modifier) => ({
+          ...modifier,
+          options: options.filter(
+            (option) => option.itemModifierId === modifier.id,
+          ),
+        })),
     }));
   }
 

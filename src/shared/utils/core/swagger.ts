@@ -6,6 +6,7 @@ import { licenseSwaggerPaths } from "../../../modules/license/license.swagger";
 import { marketSwaggerPaths } from "../../../modules/market/market.swagger";
 import { menuSwaggerPaths } from "../../../modules/menu/menu.swagger";
 import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
+import { orderSwaggerPaths } from "../../../modules/order/order.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
 import { rbacSwaggerPaths } from "../../../modules/rbac/rbac.swagger";
@@ -43,6 +44,7 @@ export const swaggerDocument = {
     { name: "Notifications", description: "Outbound email/WhatsApp sending and inbound WhatsApp webhook" },
     { name: "Payment Providers", description: "Platform-managed payment providers and their market / payment-method mappings" },
     { name: "Finance", description: "Display-only currency exchange rates for the frontend to convert prices with" },
+    { name: "Orders", description: "Kiosk / counter orders and their checkout payments" },
   ],
   // Cookie-based auth is the primary mechanism (see auth.middleware.ts); a
   // Bearer header is accepted as a fallback. Individual operations override
@@ -136,5 +138,6 @@ export const swaggerDocument = {
     ...platformSwaggerPaths,
     ...notificationSwaggerPaths,
     ...financeSwaggerPaths,
+    ...orderSwaggerPaths,
   },
 };

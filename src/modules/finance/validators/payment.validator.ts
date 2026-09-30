@@ -6,23 +6,18 @@ import {
   TenantPaymentMethodEnum,
 } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { paginationQuerySchema } from "../../../shared/validators/pagination.validator";
+import { numericEnumValidator } from "../../../shared/validators/numeric-enum.validator";
 
 const mappingBaseShape = {
   marketId: yup
     .string()
     .uuid("Invalid market ID")
     .required("Market is required"),
-  paymentMethod: yup
-    .number()
-    .typeError("Payment method must be a number")
-    .oneOf(
-      Object.values(TenantPaymentMethodEnum).filter(
-        (v): v is number =>
-          typeof v === "number" && !PROVIDERLESS_PAYMENT_METHODS.includes(v),
-      ),
-      "Invalid payment method",
-    )
-    .required("Payment method is required"),
+  paymentMethod: numericEnumValidator(
+    TenantPaymentMethodEnum,
+    "Payment method",
+    { exclude: PROVIDERLESS_PAYMENT_METHODS },
+  ).required("Payment method is required"),
 };
 
 const hasUniqueMappings = (

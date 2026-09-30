@@ -28,6 +28,7 @@ import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
 import { userPaymentRouter } from "./modules/finance/routes/user-payment.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
 import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
+import { deviceOrderRouter } from "./modules/order/routes/device-order.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -194,6 +195,7 @@ export class App {
       `${this.deviceApiV1Prefix}/payments`,
       devicePaymentRouter,
     );
+    this.instance.use(`${this.deviceApiV1Prefix}/orders`, deviceOrderRouter);
   }
 
   private configureErrorHandling(): void {

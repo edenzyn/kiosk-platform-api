@@ -3,7 +3,7 @@ import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.con
 import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
-import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay.provider";
+import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay/razorpay.provider";
 import type { PaymentService } from "../services/payment.service";
 import type { RazorpayWebhookPayload } from "../types/payment.types";
 import { PaymentValidator } from "../validators/payment.validator";

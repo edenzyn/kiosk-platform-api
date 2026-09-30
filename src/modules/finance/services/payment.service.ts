@@ -9,15 +9,13 @@ import { PaymentProviderSlugEnum } from "../../../shared/enums/finance/payment-p
 import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
 import { AppError } from "../../../shared/errors/app-error";
-import type {
-  PhonePeProvider,
-  PhonePeQrPaymentConfig,
-} from "../../../shared/providers/finance/phonepe.provider";
+import type { PhonePeProvider } from "../../../shared/providers/finance/phonepe/phonepe.provider";
+import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe/phonepe.types";
+import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay/razorpay.provider";
 import type {
   CreateRazorpayOrderInput,
   CreateRazorpayOrderResult,
-  RazorpayProvider,
-} from "../../../shared/providers/finance/razorpay.provider";
+} from "../../../shared/providers/finance/razorpay/razorpay.types";
 import {
   decryptData,
   encryptData,
@@ -29,6 +27,8 @@ import type { LicenseTransactionRepository } from "../../license/repositories/li
 import type { MarketRepository } from "../../market/market.repository";
 import type { PaymentRepository } from "../repositories/payment.repository";
 import type {
+  CreateQrPaymentServiceInput,
+  CreateQrPaymentServiceResult,
   GetDevicePaymentMethodsServiceInput,
   GetDevicePaymentMethodsServiceResult,
   GetPaymentProvidersServiceInput,
@@ -476,6 +476,73 @@ export class PaymentService {
         code: ErrorCodes.BAD_REQUEST,
       },
     );
+  }
+
+  // ========================================
+  // ? DEVICE CHECKOUT PAYMENTS
+  // ========================================
+  async createQrPayment(
+    input: CreateQrPaymentServiceInput,
+  ): Promise<CreateQrPaymentServiceResult> {
+    const { organizationId, branchId, merchantOrderId, amount, currencyCode } =
+      input;
+
+    const { configs, options } = await this.getTenantPaymentConfigs({
+      effectiveTenant: { organizationId, branchId },
+    });
+
+    const config = configs.find(
+      (item) =>
+        item.isActive &&
+        item.paymentMethod === TenantPaymentMethodEnum.QR &&
+        options.some((option) => option.mapperId === item.mapperId),
+    );
+    const option = options.find((item) => item.mapperId === config?.mapperId);
+    if (!config || !option) {
+      throw new AppError("QR payment isn't available at this branch", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    if (option.provider.slug !== PaymentProviderSlugEnum.PHONEPE) {
+      throw new AppError("This QR payment provider isn't supported yet", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const storedConfig = config.config as PhonePeQrPaymentConfig;
+    const payment = await this.phonePeProvider.createQrPayment({
+      credentials: {
+        clientId: storedConfig.clientId,
+        clientVersion: storedConfig.clientVersion,
+        clientSecret: decryptData(
+          storedConfig.clientSecret,
+          env.LICENSE_ENCRYPTION_KEY,
+        ),
+      },
+      merchantOrderId,
+      amount,
+      currencyCode,
+      expireAfterSeconds: env.TENANT_QR_PAYMENT_EXPIRY_SECONDS,
+    });
+
+    const qrWindowEndsAt = new Date(
+      Date.now() + env.TENANT_QR_PAYMENT_EXPIRY_SECONDS * 1000,
+    );
+
+    return {
+      paymentProviderId: option.provider.id,
+      providerSlug: option.provider.slug,
+      providerOrderId: payment.providerOrderId,
+      providerStatus: payment.state,
+      qrData: payment.qrData,
+      expiresAt:
+        payment.expiresAt < qrWindowEndsAt ? payment.expiresAt : qrWindowEndsAt,
+      requestPayload: payment.requestPayload,
+      responsePayload: payment.responsePayload,
+    };
   }
 
   async saveCashPaymentConfig(

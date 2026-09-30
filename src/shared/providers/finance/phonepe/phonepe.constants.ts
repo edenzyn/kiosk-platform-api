@@ -1,0 +1,1 @@
+export const PHONEPE_SUPPORTED_CURRENCY_CODES = ["INR"];

@@ -138,6 +138,15 @@ const EnvSchema = Yup.object({
     .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
 
   // ==============================
+  // Checkout
+  // ==============================
+  // How long a kiosk QR stays payable; PhonePe accepts 300 seconds at minimum.
+  TENANT_QR_PAYMENT_EXPIRY_SECONDS: Yup.number()
+    .integer()
+    .min(300)
+    .default(300),
+
+  // ==============================
   // Storage (S3)
   // ==============================
   S3_REGION: Yup.string().required().min(1),

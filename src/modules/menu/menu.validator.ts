@@ -4,6 +4,7 @@ import { DietaryTypeEnum } from "../../shared/enums/menu/dietary-type.enum";
 import { ItemModifierSelectionTypeEnum } from "../../shared/enums/menu/item-modifier-selection-type.enum";
 import { MenuItemSortByEnum } from "../../shared/enums/menu/menu-item-sort-by.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
+import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
 
 const MENU_IMAGE_KEY_REGEX = /^[0-9a-f-]{36}\.(png|jpeg|webp)$/;
 const menuImageKeySchema = yup
@@ -16,10 +17,6 @@ const requiredImageSchema = menuImageKeySchema.required("Image is required");
 const replaceableImageSchema = menuImageKeySchema
   .nonNullable("Image is required")
   .optional();
-
-const DIETARY_TYPE_VALUES = Object.values(DietaryTypeEnum).filter(
-  (value): value is number => typeof value === "number",
-);
 
 const recordIdSchema = yup.string().uuid("Invalid id");
 
@@ -69,16 +66,10 @@ const itemModifierSchema = yup
       .min(2, "Modifier name must be at least 2 characters")
       .max(100, "Modifier name must be at most 100 characters")
       .required("Modifier name is required"),
-    selectionType: yup
-      .number()
-      .typeError("Selection type must be a number")
-      .oneOf(
-        Object.values(ItemModifierSelectionTypeEnum).filter(
-          (value): value is number => typeof value === "number",
-        ),
-        "Invalid selection type",
-      )
-      .required("Selection type is required"),
+    selectionType: numericEnumValidator(
+      ItemModifierSelectionTypeEnum,
+      "Selection type",
+    ).required("Selection type is required"),
     minSelection: yup
       .number()
       .typeError("Minimum selection must be a number")
@@ -188,11 +179,7 @@ const itemFields = {
     .min(0, "Calories cannot be negative")
     .nullable()
     .optional(),
-  dietaryType: yup
-    .number()
-    .typeError("Dietary type must be a number")
-    .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
-    .optional(),
+  dietaryType: numericEnumValidator(DietaryTypeEnum, "Dietary type").optional(),
   hasAlcohol: yup.boolean().optional(),
   isSpicy: yup.boolean().optional(),
   displayOrder: displayOrderSchema.optional(),
@@ -276,11 +263,9 @@ const importMenuCsvRowSchema = yup
       .typeError("Price must be a number")
       .min(0, "Price cannot be negative")
       .required("Price is required"),
-    dietaryType: yup
-      .number()
-      .typeError("Dietary type must be a number")
-      .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
-      .required("Dietary type is required"),
+    dietaryType: numericEnumValidator(DietaryTypeEnum, "Dietary type").required(
+      "Dietary type is required",
+    ),
     calories: yup
       .number()
       .typeError("Calories must be a number")
@@ -382,11 +367,10 @@ export const MenuValidator = {
   getDeviceItemsQuery: paginationQuerySchema
     .shape({
       categoryId: recordIdSchema.required("Category is required"),
-      dietaryType: yup
-        .number()
-        .typeError("Dietary type must be a number")
-        .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
-        .optional(),
+      dietaryType: numericEnumValidator(
+        DietaryTypeEnum,
+        "Dietary type",
+      ).optional(),
       search: yup.string().trim().optional(),
     })
     .noUnknown(),
@@ -395,11 +379,10 @@ export const MenuValidator = {
       categoryId: recordIdSchema.required("Category is required"),
       isListed: yup.boolean().optional(),
       includeModifierCounts: yup.boolean().optional(),
-      dietaryType: yup
-        .number()
-        .typeError("Dietary type must be a number")
-        .oneOf(DIETARY_TYPE_VALUES, "Invalid dietary type")
-        .optional(),
+      dietaryType: numericEnumValidator(
+        DietaryTypeEnum,
+        "Dietary type",
+      ).optional(),
       search: yup.string().trim().optional(),
       sortBy: yup
         .string()

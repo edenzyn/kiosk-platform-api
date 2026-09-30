@@ -2,7 +2,7 @@ import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
-import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe.provider";
+import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe/phonepe.types";
 import type { PaymentProviderMarketMapperEntity } from "../schemas/payment-provider-market-mapper.schema";
 import type { PaymentProviderEntity } from "../schemas/payment-provider.schema";
 
@@ -196,6 +196,24 @@ export interface TenantPaymentConfigSummary {
   // Stored as-is; secret keys hold their encrypted value.
   config: TenantPaymentConfigValues;
   lastConnectionTest: Date | null;
+}
+
+export interface CreateQrPaymentServiceInput {
+  organizationId: string;
+  branchId: string;
+  merchantOrderId: string;
+  amount: string;
+  currencyCode: string;
+}
+export interface CreateQrPaymentServiceResult {
+  paymentProviderId: string;
+  providerSlug: string;
+  providerOrderId: string;
+  providerStatus: string;
+  qrData: string;
+  expiresAt: Date;
+  requestPayload: Record<string, unknown>;
+  responsePayload: Record<string, unknown>;
 }
 
 export interface TestTenantPaymentConfigServiceInput {

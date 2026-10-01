@@ -44,7 +44,7 @@ export const orderPayments = pgTable(
     terminalId: varchar("terminal_id", { length: 100 }), // snapshot of devices.terminal_id
     amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
     currencyCode: varchar("currency_code", { length: 3 }).notNull(),
-    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = PROCESSING, 3 = COMPLETED, 4 = FAILED, 5 = REFUNDED, 6 = CANCELLED
+    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
     providerTransactionId: varchar("provider_transaction_id", { length: 255 }),
     providerStatus: varchar("provider_status", { length: 50 }),
     qrPayload: text("qr_payload"),

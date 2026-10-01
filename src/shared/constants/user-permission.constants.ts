@@ -144,3 +144,15 @@ export const PLATFORM_PAYMENT_PROVIDER_READ_WRITE_PERMS = [
   UserPermissions.PLATFORM_PAYMENT_PROVIDER_READ,
   UserPermissions.PLATFORM_PAYMENT_PROVIDER_WRITE,
 ];
+
+//----------------------
+// Order Module Constants
+//----------------------
+export const ORGANIZATION_ORDER_READ_PERMS = [
+  UserPermissions.ORGANIZATION_ORDER_READ,
+];
+
+export const BRANCH_ORDER_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_ORDER_READ,
+  UserPermissions.BRANCH_ORDER_WRITE,
+];

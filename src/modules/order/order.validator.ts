@@ -1,4 +1,9 @@
 import * as yup from "yup";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
+import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
+import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
+import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
 import { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
@@ -42,6 +47,45 @@ export class OrderValidator {
         .min(1, "Add at least one item")
         .max(50, "An order cannot have more than 50 lines")
         .required("Items are required"),
+    })
+    .noUnknown();
+
+  static getOrdersQuery = paginationQuerySchema
+    .shape({
+      search: yup.string().trim().max(100).optional(),
+      branchId: yup.string().uuid("Invalid branch id").optional(),
+      createdFrom: yup.date().typeError("Invalid start date").optional(),
+      createdTo: dateIsAfterRef("createdFrom").optional(),
+      orderStatus: numericEnumValidator(
+        OrderStatusEnum,
+        "Order status",
+      ).optional(),
+      paymentStatus: numericEnumValidator(
+        OrderPaymentStatusEnum,
+        "Payment status",
+      ).optional(),
+      paymentMethod: numericEnumValidator(
+        TenantPaymentMethodEnum,
+        "Payment method",
+      ).optional(),
+      orderType: numericEnumValidator(OrderTypeEnum, "Order type").optional(),
+      sortBy: yup
+        .string()
+        .oneOf(
+          ["createdAt", "orderNumber", "totalAmount"],
+          "Invalid sort field",
+        )
+        .optional(),
+      sortOrder: yup
+        .string()
+        .oneOf(Object.values(SortingOrderEnum), "Invalid sort order")
+        .optional(),
+    })
+    .noUnknown();
+
+  static getLiveOrderCountsQuery = yup
+    .object({
+      orderType: numericEnumValidator(OrderTypeEnum, "Order type").optional(),
     })
     .noUnknown();
 }

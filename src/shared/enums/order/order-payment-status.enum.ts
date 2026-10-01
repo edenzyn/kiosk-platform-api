@@ -1,8 +1,7 @@
 export enum OrderPaymentStatusEnum {
   PENDING = 1,
-  PROCESSING = 2,
-  COMPLETED = 3,
-  FAILED = 4,
-  REFUNDED = 5,
-  CANCELLED = 6,
+  COMPLETED = 2,
+  FAILED = 3,
+  REFUNDED = 4,
+  CANCELLED = 5,
 }

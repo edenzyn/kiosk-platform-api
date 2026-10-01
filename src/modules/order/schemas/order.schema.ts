@@ -41,7 +41,7 @@ export const orders = pgTable(
     orderSource: smallint("order_source").notNull(), // OrderSourceEnum: 1 = KIOSK, 2 = COUNTER
     orderType: smallint("order_type").notNull(), // OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY
     orderStatus: smallint("order_status").default(1).notNull(), // OrderStatusEnum: 1 = PENDING_PAYMENT, 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED, 6 = CANCELLED
-    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = PROCESSING, 3 = COMPLETED, 4 = FAILED, 5 = REFUNDED, 6 = CANCELLED
+    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
     paymentMethod: smallint("payment_method"), // TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH
     currencyCode: varchar("currency_code", { length: 3 }).notNull(), // snapshot of the branch market currency
     // Pricing snapshot

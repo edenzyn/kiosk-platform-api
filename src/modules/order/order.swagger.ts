@@ -119,4 +119,161 @@ export const orderSwaggerPaths = {
       },
     },
   },
+
+  // ========================================
+  // ? USER ORDERS (mounted /pvt/u/orders)
+  // ========================================
+  "/pvt/u/orders": {
+    get: {
+      tags: ["Orders"],
+      summary: "List orders (order history)",
+      description:
+        "Scoped by the effective tenant: an organization-scoped user sees every branch (optionally filtered by branchId), a branch-scoped user only their branch. Unpaid (PENDING_PAYMENT) orders are left out unless orderStatus asks for them.",
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        {
+          name: "search",
+          in: "query",
+          schema: { type: "string" },
+          description: "Order number, or a token number (e.g. 42 or #042)",
+        },
+        {
+          name: "branchId",
+          in: "query",
+          schema: { type: "string", format: "uuid" },
+          description: "Organization scope only",
+        },
+        {
+          name: "createdFrom",
+          in: "query",
+          schema: { type: "string", format: "date-time" },
+        },
+        {
+          name: "createdTo",
+          in: "query",
+          schema: { type: "string", format: "date-time" },
+        },
+        {
+          name: "orderStatus",
+          in: "query",
+          schema: { type: "integer", enum: [1, 2, 3, 4, 5, 6] },
+          description:
+            "OrderStatusEnum: 1 = PENDING_PAYMENT, 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED, 6 = CANCELLED",
+        },
+        {
+          name: "paymentStatus",
+          in: "query",
+          schema: { type: "integer", enum: [1, 2, 3, 4, 5] },
+          description:
+            "OrderPaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED",
+        },
+        {
+          name: "paymentMethod",
+          in: "query",
+          schema: { type: "integer", enum: [1, 2, 3] },
+          description: "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH",
+        },
+        {
+          name: "orderType",
+          in: "query",
+          schema: { type: "integer", enum: [1, 2] },
+          description: "OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY",
+        },
+        {
+          name: "sortBy",
+          in: "query",
+          schema: {
+            type: "string",
+            enum: ["createdAt", "orderNumber", "totalAmount"],
+          },
+        },
+        {
+          name: "sortOrder",
+          in: "query",
+          schema: { type: "string", enum: ["asc", "desc"] },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Paginated orders",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  orders: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        orderNumber: { type: "string" },
+                        tokenNumber: { type: "string", example: "042" },
+                        branchId: { type: "string", format: "uuid" },
+                        branchName: { type: "string" },
+                        branchTimezone: { type: "string", nullable: true },
+                        orderType: { type: "integer" },
+                        orderSource: { type: "integer" },
+                        orderStatus: { type: "integer" },
+                        paymentStatus: { type: "integer" },
+                        paymentMethod: { type: "integer", nullable: true },
+                        currencyCode: { type: "string" },
+                        totalAmount: { type: "string" },
+                        itemCount: { type: "integer" },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/u/orders/live-counts": {
+    get: {
+      tags: ["Orders"],
+      summary: "Order counts per status for the current business day",
+      description:
+        "Branch scope only: the request must carry a branch (an organization user has to switch into one). Counts that branch's PLACED, PREPARING, READY and COMPLETED orders of its current business day (from its cutoff).",
+      parameters: [
+        {
+          name: "orderType",
+          in: "query",
+          schema: { type: "integer", enum: [1, 2] },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Order counts per status",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  placed: { type: "integer" },
+                  preparing: { type: "integer" },
+                  ready: { type: "integer" },
+                  completed: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
 };

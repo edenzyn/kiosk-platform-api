@@ -31,6 +31,10 @@ import type { OrderRepository } from "./order.repository";
 import type {
   CreateDeviceOrderServiceInput,
   CreateDeviceOrderServiceResult,
+  GetLiveOrderCountsServiceInput,
+  GetLiveOrderCountsServiceResult,
+  GetOrdersServiceInput,
+  GetOrdersServiceResult,
   HandlePhonePeWebhookServiceInput,
 } from "./order.types";
 
@@ -337,6 +341,81 @@ export class OrderService {
   }
 
   // ========================================
+  // ? USER ORDER LISTS
+  // ========================================
+  async getOrders(
+    input: GetOrdersServiceInput,
+  ): Promise<GetOrdersServiceResult> {
+    const { effectiveTenant, filters } = input;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const { orders, total } = await this.orderRepository.findOrders({
+      ...filters,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || filters.branchId || undefined,
+      page,
+      limit,
+    });
+
+    return {
+      orders: orders.map((order) => ({
+        ...order,
+        tokenNumber: formatTokenNumber(order.tokenNumber),
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLiveOrderCounts(
+    input: GetLiveOrderCountsServiceInput,
+  ): Promise<GetLiveOrderCountsServiceResult> {
+    const { effectiveTenant, filters } = input;
+    const { organizationId, branchId } = effectiveTenant;
+
+    if (!branchId) {
+      throw new AppError("A branch must be selected to view live orders", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const settings = await this.branchRepository.getOrCreateSettings(branchId);
+    const businessDayStartsAt = resolveBusinessDayStart(
+      new Date(),
+      settings.timezone,
+      settings.businessDayCutoffTime,
+    );
+
+    const statusCounts =
+      await this.orderRepository.countBusinessDayOrdersByStatus({
+        organizationId,
+        branchId,
+        businessDayStartsAt,
+        orderStatuses: [
+          OrderStatusEnum.PLACED,
+          OrderStatusEnum.PREPARING,
+          OrderStatusEnum.READY,
+          OrderStatusEnum.COMPLETED,
+        ],
+        orderType: filters.orderType,
+      });
+    const countByStatus = new Map(
+      statusCounts.map(({ orderStatus, count }) => [orderStatus, count]),
+    );
+
+    return {
+      placed: countByStatus.get(OrderStatusEnum.PLACED) ?? 0,
+      preparing: countByStatus.get(OrderStatusEnum.PREPARING) ?? 0,
+      ready: countByStatus.get(OrderStatusEnum.READY) ?? 0,
+      completed: countByStatus.get(OrderStatusEnum.COMPLETED) ?? 0,
+    };
+  }
+
+  // ========================================
   // ? PAYMENT WEBHOOKS
   // ========================================
   async handlePhonePeWebhook(
@@ -369,7 +448,7 @@ export class OrderService {
       SocketEventEnum.ORDER_PAYMENT_PROCESSING,
       {
         ...paymentEvent,
-        paymentStatus: OrderPaymentStatusEnum.PROCESSING,
+        paymentStatus: OrderPaymentStatusEnum.PENDING,
       },
     );
 

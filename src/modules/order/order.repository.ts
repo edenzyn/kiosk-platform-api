@@ -1,9 +1,35 @@
-import { and, desc, eq, gte, max, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lte,
+  max,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
+import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
+import { AppError } from "../../shared/errors/app-error";
+import { logger } from "../../shared/utils/core/logger";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
+import { branchSettings } from "../branch/schemas/branch-settings.schema";
+import { branches } from "../branch/schemas/branch.schema";
 import type {
   CompletePendingPaymentRepoInput,
   CompletePendingPaymentRepoResult,
+  CountBusinessDayOrdersByStatusRepoInput,
+  CountBusinessDayOrdersByStatusRepoResult,
   CreateOrderPaymentRepoInput,
   CreateOrderPaymentRepoResult,
   CreateOrderRepoInput,
@@ -12,10 +38,12 @@ import type {
   FailPendingPaymentRepoResult,
   FindLatestOrderPaymentRepoInput,
   FindLatestOrderPaymentRepoResult,
-  FindOrderByIdempotencyKeyRepoInput,
   FindOneOrderPaymentRepoInput,
   FindOneOrderPaymentRepoResult,
+  FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
+  FindOrdersRepoInput,
+  FindOrdersRepoResult,
   UpdateOrderPaymentRepoInput,
   UpdateOrderPaymentRepoResult,
   UpdateOrderRepoInput,
@@ -27,12 +55,6 @@ import { orderPayments } from "./schemas/order-payment.schema";
 import { orderStatusLogs } from "./schemas/order-status-log.schema";
 import { orderTaxes } from "./schemas/order-tax.schema";
 import { orderNumberSequence, orders } from "./schemas/order.schema";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { logger } from "../../shared/utils/core/logger";
-import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
-import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 
 export class OrderRepository {
   constructor(private readonly database: Database) {}
@@ -359,6 +381,147 @@ export class OrderRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[ORDER_FAIL_PENDING_PAYMENT_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  // ========================================
+  // ? ORDER LISTING METHODS
+  // ========================================
+  async findOrders(input: FindOrdersRepoInput): Promise<FindOrdersRepoResult> {
+    try {
+      const conditions: (SQL | undefined)[] = [
+        eq(orders.organizationId, input.organizationId),
+      ];
+
+      if (input.branchId) {
+        conditions.push(eq(orders.branchId, input.branchId));
+      }
+      if (input.orderStatus !== undefined) {
+        conditions.push(eq(orders.orderStatus, input.orderStatus));
+      } else {
+        conditions.push(
+          ne(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+        );
+      }
+      if (input.paymentStatus !== undefined) {
+        conditions.push(eq(orders.paymentStatus, input.paymentStatus));
+      }
+      if (input.paymentMethod !== undefined) {
+        conditions.push(eq(orders.paymentMethod, input.paymentMethod));
+      }
+      if (input.orderType !== undefined) {
+        conditions.push(eq(orders.orderType, input.orderType));
+      }
+      if (input.createdFrom) {
+        conditions.push(gte(orders.createdAt, input.createdFrom));
+      }
+      if (input.createdTo) {
+        conditions.push(lte(orders.createdAt, input.createdTo));
+      }
+      if (input.search) {
+        const tokenMatch = /^#?(\d+)$/.exec(input.search);
+        conditions.push(
+          or(
+            ilike(orders.orderNumber, `%${input.search}%`),
+            tokenMatch
+              ? eq(orders.tokenNumber, Number(tokenMatch[1]))
+              : undefined,
+          ),
+        );
+      }
+
+      const condition = and(...conditions);
+      const orderFn = input.sortOrder === SortingOrderEnum.ASC ? asc : desc;
+      const sortColumn =
+        input.sortBy === "orderNumber"
+          ? orders.orderNumber
+          : input.sortBy === "totalAmount"
+            ? orders.totalAmount
+            : orders.createdAt;
+
+      const [rows, [totalRow]] = await Promise.all([
+        this.database.client
+          .select({
+            id: orders.id,
+            orderNumber: orders.orderNumber,
+            tokenNumber: orders.tokenNumber,
+            branchId: orders.branchId,
+            branchName: branches.name,
+            branchTimezone: branchSettings.timezone,
+            orderType: orders.orderType,
+            orderSource: orders.orderSource,
+            orderStatus: orders.orderStatus,
+            paymentStatus: orders.paymentStatus,
+            paymentMethod: orders.paymentMethod,
+            currencyCode: orders.currencyCode,
+            totalAmount: orders.totalAmount,
+            itemCount: sql<number>`(
+              select coalesce(sum(${orderItems.quantity}), 0)::int
+              from ${orderItems}
+              where ${orderItems.orderId} = ${orders.id}
+            )`,
+            createdAt: orders.createdAt,
+          })
+          .from(orders)
+          .innerJoin(branches, eq(branches.id, orders.branchId))
+          .leftJoin(
+            branchSettings,
+            eq(branchSettings.branchId, orders.branchId),
+          )
+          .where(condition)
+          .orderBy(orderFn(sortColumn), desc(orders.id))
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit),
+        this.database.client
+          .select({ count: count() })
+          .from(orders)
+          .where(condition),
+      ]);
+
+      return { orders: rows, total: Number(totalRow?.count ?? 0) };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async countBusinessDayOrdersByStatus(
+    input: CountBusinessDayOrdersByStatusRepoInput,
+  ): Promise<CountBusinessDayOrdersByStatusRepoResult> {
+    try {
+      const rows = await this.database.client
+        .select({ orderStatus: orders.orderStatus, count: count() })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.organizationId, input.organizationId),
+            eq(orders.branchId, input.branchId),
+            gte(orders.createdAt, input.businessDayStartsAt),
+            inArray(orders.orderStatus, input.orderStatuses),
+            input.orderType !== undefined
+              ? eq(orders.orderType, input.orderType)
+              : undefined,
+          ),
+        )
+        .groupBy(orders.orderStatus);
+
+      return rows.map((row) => ({
+        orderStatus: row.orderStatus,
+        count: Number(row.count),
+      }));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[ORDER_COUNT_BUSINESS_DAY_ORDERS_BY_STATUS_ERROR] " + error,
+      );
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

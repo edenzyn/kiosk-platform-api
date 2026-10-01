@@ -31,5 +31,4 @@ export const appTaxComponents = pgTable("app_tax_components", {
 });
 
 export type AppTaxComponentEntity = typeof appTaxComponents.$inferSelect;
-export type CreateAppTaxComponentEntity =
-  typeof appTaxComponents.$inferInsert;
+export type CreateAppTaxComponentEntity = typeof appTaxComponents.$inferInsert;

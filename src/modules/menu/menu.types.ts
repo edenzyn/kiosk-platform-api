@@ -287,6 +287,17 @@ export interface CreateMenuItemRepoInput {
 }
 export type CreateMenuItemRepoResult = MenuItemEntity;
 
+export interface FindOrderableItemsRepoInput {
+  organizationId: string;
+  branchId: string;
+  itemIds: string[];
+}
+export interface OrderableMenuItem extends MenuItemEntity {
+  categoryName: string;
+  modifiers: ItemModifierWithOptions[];
+}
+export type FindOrderableItemsRepoResult = OrderableMenuItem[];
+
 export interface FindItemModifiersRepoInput {
   menuItemId: string;
 }

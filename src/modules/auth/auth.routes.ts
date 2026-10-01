@@ -15,7 +15,7 @@ router.post(
 );
 router.post("/forgot-password", asyncHandler(authController.forgotPassword));
 router.post("/reset-password", asyncHandler(authController.resetPassword));
-router.post("/refresh", asyncHandler(authController.refreshUserToken));
+router.post("/r", asyncHandler(authController.refreshUserToken));
 router.post("/logout", asyncHandler(authController.logoutUser));
 
 // Platform routes
@@ -30,7 +30,7 @@ router.post(
 
 // Device routes
 router.post("/d/login", asyncHandler(authController.loginDevice));
-router.post("/d/refresh", asyncHandler(authController.refreshDeviceToken));
+router.post("/d/r", asyncHandler(authController.refreshDeviceToken));
 router.post("/d/logout", asyncHandler(authController.logoutDevice));
 
 export default router;

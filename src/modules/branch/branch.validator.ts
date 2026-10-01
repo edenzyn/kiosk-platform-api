@@ -70,6 +70,8 @@ export const BranchValidator = {
     .object({
       /** `ex=true` drops the branch in scope and lists the org's others. */
       ex: yup.boolean().default(false),
+      /** Restricts the result to branches in the caller's own market. */
+      isSameMarket: yup.boolean().default(false),
     })
     .noUnknown(),
   updateDetails: yup
@@ -100,6 +102,15 @@ export const BranchValidator = {
       languageCode: yup.string().trim().max(10).optional(),
       timezone: yup.string().trim().max(100).optional(),
       logo: yup.string().trim().max(255).nullable().optional(),
+    })
+    .noUnknown(),
+  updateBusinessDayCutoff: yup
+    .object({
+      businessDayCutoffTime: yup
+        .string()
+        .trim()
+        .matches(/^([01]\d|2[0-3]):[0-5]\d$/, "Cutoff time must be HH:mm")
+        .required("Cutoff time is required"),
     })
     .noUnknown(),
   requestBrandLogoUpload: yup

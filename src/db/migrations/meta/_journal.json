@@ -435,6 +435,76 @@
       "when": 1790071702418,
       "tag": "0061_add-tenant-tax-tables",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790581274555,
+      "tag": "0062_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1790672904240,
+      "tag": "0063_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1790673575447,
+      "tag": "0064_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1790673668213,
+      "tag": "0065_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1790677970285,
+      "tag": "0066_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1790678177626,
+      "tag": "0067_payment-provider-updates",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1790763420474,
+      "tag": "0068_violet_the_captain",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1790778147043,
+      "tag": "0069_order-schemas",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1790790294499,
+      "tag": "0070_order-schemas",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1790791537258,
+      "tag": "0071_order-schemas",
+      "breakpoints": true
     }
   ]
 }

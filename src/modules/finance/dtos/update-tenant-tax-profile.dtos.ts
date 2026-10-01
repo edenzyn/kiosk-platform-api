@@ -1,4 +1,4 @@
-import type { TenantTaxProfileWithComponents } from "../finance.types";
+import type { TenantTaxProfileWithComponents } from "../types/tax.types";
 
 export interface TenantTaxComponentBodyDto {
   id?: string;

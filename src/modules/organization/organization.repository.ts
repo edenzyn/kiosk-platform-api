@@ -26,6 +26,10 @@ import type {
   UpdateOrganizationRepoResult,
   UpdateOrganizationSettingsRepoInput,
 } from "./organization.types";
+import { AppError } from "../../shared/errors/app-error";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { logger } from "../../shared/utils/core/logger";
 
 export class OrganizationRepository {
   constructor(private readonly database: Database) {}
@@ -36,91 +40,118 @@ export class OrganizationRepository {
   async findOne(
     input: FindOneOrganizationRepoInput,
   ): Promise<FindOneOrganizationRepoResult> {
-    const conditions: (SQL | undefined)[] = [];
+    try {
+      const conditions: (SQL | undefined)[] = [];
 
-    if (input.id !== undefined) {
-      conditions.push(eq(organizations.id, input.id));
+      if (input.id !== undefined) {
+        conditions.push(eq(organizations.id, input.id));
+      }
+      if (input.name !== undefined) {
+        conditions.push(eq(organizations.name, input.name));
+      }
+
+      if (conditions.length === 0) {
+        return await undefined;
+      }
+
+      const [organization] = await this.database.client
+        .select()
+        .from(organizations)
+        .where(and(...conditions))
+        .limit(1);
+
+      return await organization;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORGANIZATION_FIND_ONE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-    if (input.name !== undefined) {
-      conditions.push(eq(organizations.name, input.name));
-    }
-
-    if (conditions.length === 0) {
-      return undefined;
-    }
-
-    const [organization] = await this.database.client
-      .select()
-      .from(organizations)
-      .where(and(...conditions))
-      .limit(1);
-
-    return organization;
   }
 
   async update(
     input: UpdateOrganizationRepoInput,
   ): Promise<UpdateOrganizationRepoResult> {
-    const [updated] = await this.database.client
-      .update(organizations)
-      .set({
-        ...input.data,
-        updatedAt: new Date(),
-      })
-      .where(eq(organizations.id, input.id))
-      .returning();
+    try {
+      const [updated] = await this.database.client
+        .update(organizations)
+        .set({
+          ...input.data,
+          updatedAt: new Date(),
+        })
+        .where(eq(organizations.id, input.id))
+        .returning();
 
-    if (!updated) {
-      throw new Error("Organization not found");
+      if (!updated) {
+        throw new Error("Organization not found");
+      }
+      return await updated;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORGANIZATION_UPDATE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-    return updated;
   }
 
   async findPaginated(
     input: FindPaginatedOrganizationsRepoInput,
   ): Promise<FindPaginatedOrganizationsRepoResult> {
-    const { search, isActive, page, limit, sortBy, sortOrder } = input;
+    try {
+      const { search, isActive, page, limit, sortBy, sortOrder } = input;
 
-    const conditions: (SQL | undefined)[] = [];
+      const conditions: (SQL | undefined)[] = [];
 
-    if (isActive !== undefined) {
-      conditions.push(eq(organizations.isActive, isActive));
-    }
-    if (search) {
-      conditions.push(ilike(organizations.name, `%${search}%`));
-    }
-
-    const condition = conditions.length > 0 ? and(...conditions) : undefined;
-
-    const [countResult] = await this.database.client
-      .select({ count: count() })
-      .from(organizations)
-      .where(condition);
-    const total = Number(countResult?.count || 0);
-
-    let query = this.database.client
-      .select()
-      .from(organizations)
-      .where(condition)
-      .$dynamic();
-
-    if (sortBy && sortOrder) {
-      const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
-      if (sortBy === "name") {
-        query = query.orderBy(orderFn(organizations.name));
-      } else if (sortBy === "isActive") {
-        query = query.orderBy(orderFn(organizations.isActive));
-      } else if (sortBy === "createdAt") {
-        query = query.orderBy(orderFn(organizations.createdAt));
+      if (isActive !== undefined) {
+        conditions.push(eq(organizations.isActive, isActive));
       }
-    } else {
-      query = query.orderBy(desc(organizations.createdAt));
+      if (search) {
+        conditions.push(ilike(organizations.name, `%${search}%`));
+      }
+
+      const condition = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [countResult] = await this.database.client
+        .select({ count: count() })
+        .from(organizations)
+        .where(condition);
+      const total = Number(countResult?.count || 0);
+
+      let query = this.database.client
+        .select()
+        .from(organizations)
+        .where(condition)
+        .$dynamic();
+
+      if (sortBy && sortOrder) {
+        const orderFn = sortOrder === SortingOrderEnum.ASC ? asc : desc;
+        if (sortBy === "name") {
+          query = query.orderBy(orderFn(organizations.name));
+        } else if (sortBy === "isActive") {
+          query = query.orderBy(orderFn(organizations.isActive));
+        } else if (sortBy === "createdAt") {
+          query = query.orderBy(orderFn(organizations.createdAt));
+        }
+      } else {
+        query = query.orderBy(desc(organizations.createdAt));
+      }
+
+      query = query.limit(limit).offset((page - 1) * limit);
+
+      const organizationsResult = await query;
+      return await { organizations: organizationsResult, total };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORGANIZATION_FIND_PAGINATED_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
     }
-
-    query = query.limit(limit).offset((page - 1) * limit);
-
-    const organizationsResult = await query;
-    return { organizations: organizationsResult, total };
   }
 
   // ========================================
@@ -129,117 +160,129 @@ export class OrganizationRepository {
   async createOrganizationWithOwner(
     input: CreateOrganizationWithOwnerRepoInput,
   ): Promise<CreateOrganizationWithOwnerRepoResult> {
-    return this.database.client.transaction(async (tx) => {
-      const [organization] = await tx
-        .insert(organizations)
-        .values({
-          name: input.organizationName,
-          registeredName: input.registeredName,
-          registrationNumber: input.registrationNumber,
-        })
-        .returning();
-      if (!organization) throw new Error("Failed to create organization");
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [organization] = await tx
+          .insert(organizations)
+          .values({
+            name: input.organizationName,
+            registeredName: input.registeredName,
+            registrationNumber: input.registrationNumber,
+          })
+          .returning();
+        if (!organization) throw new Error("Failed to create organization");
 
-      const [user] = await tx
-        .insert(users)
-        .values({
-          organizationId: organization.id,
-          branchId: null,
-          name: input.owner.name,
-          email: input.owner.email,
-          password: input.owner.hashedPassword,
-          userType: UserTypeEnums.NORMAL,
-        })
-        .returning();
-      if (!user) throw new Error("Failed to create owner user");
-
-      const [updatedOrganization] = await tx
-        .update(organizations)
-        .set({ createdBy: user.id, updatedBy: user.id })
-        .where(eq(organizations.id, organization.id))
-        .returning();
-
-      await tx.insert(organizationSettings).values({
-        organizationId: organization.id,
-      });
-
-      if (input.marketIds.length > 0) {
-        await tx.insert(organizationMarketMapper).values(
-          input.marketIds.map((marketId) => ({
-            organizationId: organization.id,
-            marketId,
-            createdBy: user.id,
-            updatedBy: user.id,
-          })),
-        );
-      }
-
-      let ownerRoleId: string | undefined;
-
-      for (const defaultRole of input.defaultRoles) {
-        const [role] = await tx
-          .insert(roles)
+        const [user] = await tx
+          .insert(users)
           .values({
             organizationId: organization.id,
             branchId: null,
-            name: defaultRole.name,
-            description: `Default organization ${defaultRole.name.toLowerCase()} role`,
-            rank: defaultRole.rank,
-            isSystem: defaultRole.isSystem ?? false,
-            createdBy: user.id,
+            name: input.owner.name,
+            email: input.owner.email,
+            password: input.owner.hashedPassword,
+            userType: UserTypeEnums.NORMAL,
           })
           .returning();
-        if (!role) throw new Error(`Failed to create ${defaultRole.name} role`);
+        if (!user) throw new Error("Failed to create owner user");
 
-        if (defaultRole.isSystem) {
-          ownerRoleId = role.id;
+        const [updatedOrganization] = await tx
+          .update(organizations)
+          .set({ createdBy: user.id, updatedBy: user.id })
+          .where(eq(organizations.id, organization.id))
+          .returning();
+
+        await tx.insert(organizationSettings).values({
+          organizationId: organization.id,
+        });
+
+        if (input.marketIds.length > 0) {
+          await tx.insert(organizationMarketMapper).values(
+            input.marketIds.map((marketId) => ({
+              organizationId: organization.id,
+              marketId,
+              createdBy: user.id,
+              updatedBy: user.id,
+            })),
+          );
         }
 
-        const permissionMappers = defaultRole.permissions
-          .map((pKey) => {
-            const permissionId = input.keyToIdMap.get(pKey);
-            if (!permissionId) return null;
-            return {
-              entityType: PermissionEntityType.ROLE,
-              entityId: role.id,
-              permissionId,
+        let ownerRoleId: string | undefined;
+
+        for (const defaultRole of input.defaultRoles) {
+          const [role] = await tx
+            .insert(roles)
+            .values({
               organizationId: organization.id,
               branchId: null,
-              isActive: true,
+              name: defaultRole.name,
+              description: `Default organization ${defaultRole.name.toLowerCase()} role`,
+              rank: defaultRole.rank,
+              isSystem: defaultRole.isSystem ?? false,
               createdBy: user.id,
-            };
-          })
-          .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
+            })
+            .returning();
+          if (!role)
+            throw new Error(`Failed to create ${defaultRole.name} role`);
 
-        if (permissionMappers.length > 0) {
-          await tx.insert(permissionMapper).values(permissionMappers);
+          if (defaultRole.isSystem) {
+            ownerRoleId = role.id;
+          }
+
+          const permissionMappers = defaultRole.permissions
+            .map((pKey) => {
+              const permissionId = input.keyToIdMap.get(pKey);
+              if (!permissionId) return null;
+              return {
+                entityType: PermissionEntityType.ROLE,
+                entityId: role.id,
+                permissionId,
+                organizationId: organization.id,
+                branchId: null,
+                isActive: true,
+                createdBy: user.id,
+              };
+            })
+            .filter((pm): pm is NonNullable<typeof pm> => pm !== null);
+
+          if (permissionMappers.length > 0) {
+            await tx.insert(permissionMapper).values(permissionMappers);
+          }
         }
-      }
 
-      if (!ownerRoleId) {
-        throw new Error("Owner role was not created");
-      }
+        if (!ownerRoleId) {
+          throw new Error("Owner role was not created");
+        }
 
-      await tx.insert(userRolesMapper).values({
-        userId: user.id,
-        roleId: ownerRoleId,
-        createdBy: user.id,
+        await tx.insert(userRolesMapper).values({
+          userId: user.id,
+          roleId: ownerRoleId,
+          createdBy: user.id,
+        });
+
+        await tx
+          .update(userInvitations)
+          .set({
+            status: UserInvitationStatusEnum.ACCEPTED,
+            updatedBy: user.id,
+          })
+          .where(eq(userInvitations.id, input.invitationId));
+
+        return {
+          organization: updatedOrganization ?? organization,
+          user,
+          ownerRoleId,
+        };
       });
-
-      await tx
-        .update(userInvitations)
-        .set({
-          status: UserInvitationStatusEnum.ACCEPTED,
-          updatedBy: user.id,
-        })
-        .where(eq(userInvitations.id, input.invitationId));
-
-      return {
-        organization: updatedOrganization ?? organization,
-        user,
-        ownerRoleId,
-      };
-    });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error(
+        "[ORGANIZATION_CREATE_ORGANIZATION_WITH_OWNER_ERROR] " + error,
+      );
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   // ========================================
@@ -248,48 +291,66 @@ export class OrganizationRepository {
   async getOrCreateSettings(
     organizationId: string,
   ): Promise<OrganizationSettingsEntity> {
-    const [existing] = await this.database.client
-      .select()
-      .from(organizationSettings)
-      .where(eq(organizationSettings.organizationId, organizationId))
-      .limit(1);
+    try {
+      const [existing] = await this.database.client
+        .select()
+        .from(organizationSettings)
+        .where(eq(organizationSettings.organizationId, organizationId))
+        .limit(1);
 
-    if (existing) return existing;
+      if (existing) return await existing;
 
-    const [created] = await this.database.client
-      .insert(organizationSettings)
-      .values({ organizationId })
-      .onConflictDoNothing()
-      .returning();
+      const [created] = await this.database.client
+        .insert(organizationSettings)
+        .values({ organizationId })
+        .onConflictDoNothing()
+        .returning();
 
-    if (created) return created;
+      if (created) return await created;
 
-    // Lost the race to a concurrent insert - read back what it created.
-    const [settings] = await this.database.client
-      .select()
-      .from(organizationSettings)
-      .where(eq(organizationSettings.organizationId, organizationId))
-      .limit(1);
+      // Lost the race to a concurrent insert - read back what it created.
+      const [settings] = await this.database.client
+        .select()
+        .from(organizationSettings)
+        .where(eq(organizationSettings.organizationId, organizationId))
+        .limit(1);
 
-    if (!settings)
-      throw new Error("Failed to get or create organization settings");
-    return settings;
+      if (!settings)
+        throw new Error("Failed to get or create organization settings");
+      return await settings;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORGANIZATION_GET_OR_CREATE_SETTINGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 
   async updateSettings(
     input: UpdateOrganizationSettingsRepoInput,
   ): Promise<OrganizationSettingsEntity> {
-    const { organizationId, data } = input;
-    const [updated] = await this.database.client
-      .insert(organizationSettings)
-      .values({ organizationId, ...data })
-      .onConflictDoUpdate({
-        target: organizationSettings.organizationId,
-        set: { ...data, updatedAt: new Date() },
-      })
-      .returning();
+    try {
+      const { organizationId, data } = input;
+      const [updated] = await this.database.client
+        .insert(organizationSettings)
+        .values({ organizationId, ...data })
+        .onConflictDoUpdate({
+          target: organizationSettings.organizationId,
+          set: { ...data, updatedAt: new Date() },
+        })
+        .returning();
 
-    if (!updated) throw new Error("Failed to update organization settings");
-    return updated;
+      if (!updated) throw new Error("Failed to update organization settings");
+      return await updated;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORGANIZATION_UPDATE_SETTINGS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
   }
 }

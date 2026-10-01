@@ -8,7 +8,7 @@ const licenseIdParam = {
 const licenseStatusDescription =
   "1=AVAILABLE, 2=ACTIVE, 3=GRACE_PERIOD, 4=EXPIRED, 5=REVOKED";
 
-const deviceTypeDescription = "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY";
+const deviceTypeDescription = "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS";
 
 const discountRuleRequestSchema = {
   type: "object",

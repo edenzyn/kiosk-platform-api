@@ -42,6 +42,17 @@ export const errorHandler: ErrorRequestHandler = (
     console.warn(normalized.message, context);
   }
 
+  // TODO: report DATABASE_ERROR to Grafana once observability is set up.
+  if (normalized.code === ErrorCodes.DATABASE_ERROR) {
+    response.status(normalized.statusCode).json({
+      error: {
+        code: normalized.code,
+        message: ERROR_MESSAGES.INTERNAL_SERVER,
+      },
+    });
+    return;
+  }
+
   const clientMessage =
     normalized.statusCode >= HttpStatusCodes.INTERNAL_SERVER_ERROR
       ? ERROR_MESSAGES.INTERNAL_SERVER

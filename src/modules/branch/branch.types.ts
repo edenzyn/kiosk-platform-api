@@ -2,8 +2,8 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
-import type { BranchEntity } from "./schemas/branch.schema";
 import type { BranchSettingsEntity } from "./schemas/branch-settings.schema";
+import type { BranchEntity } from "./schemas/branch.schema";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -118,6 +118,23 @@ export interface UpdateBranchSettingsServiceResult {
   settings: BranchSettingsEntity;
 }
 
+export interface UpdateBusinessDayCutoffServiceInput {
+  branchId: string;
+  businessDayCutoffTime: string;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+export interface UpdateBusinessDayCutoffServiceResult {
+  settings: BranchSettingsEntity;
+}
+
+export interface UpdateBusinessDayCutoffRepoInput {
+  organizationId: string;
+  branchId: string;
+  businessDayCutoffTime: string;
+  userId: string;
+}
+
 export interface RequestBranchLogoUploadServiceInput {
   contentType: string;
   fileSize: number;
@@ -173,6 +190,7 @@ export interface FindBranchesForFiltersRepoInput {
   branchIds?: string[];
   /** Leaves this branch out of the result, e.g. when picking a *other* branch. */
   excludeBranchId?: string;
+  marketId?: string;
 }
 export type FindBranchesForFiltersRepoResult = Array<{
   id: string;
@@ -195,7 +213,11 @@ export interface UpdateBranchSettingsRepoInput {
   data: Partial<
     Pick<
       BranchSettingsEntity,
-      "logo" | "primaryColor" | "languageCode" | "timezone"
+      | "logo"
+      | "primaryColor"
+      | "languageCode"
+      | "timezone"
+      | "isCashPaymentEnabled"
     >
   >;
 }

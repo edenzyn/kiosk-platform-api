@@ -28,7 +28,7 @@ declare global {
   }
 }
 
-async function isSessionRevoked(sessionId: string): Promise<boolean> {
+export async function isSessionRevoked(sessionId: string): Promise<boolean> {
   try {
     const redisProvider = container.resolve<RedisProvider>("redisProvider");
     return await redisProvider.exists(RedisKeys.authSessionRevoked(sessionId));

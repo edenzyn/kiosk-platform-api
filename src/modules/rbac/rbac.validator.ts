@@ -2,6 +2,7 @@ import * as yup from "yup";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
+import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
 
 export const RbacValidator = {
   createRole: yup.object({
@@ -15,28 +16,20 @@ export const RbacValidator = {
 
   assignPermission: yup.object({
     permissionId: yup.string().uuid().required("Permission ID is required"),
-    entityType: yup
-      .number()
-      .oneOf(
-        Object.values(PermissionEntityType).filter(
-          (v): v is number => typeof v === "number",
-        ),
-      )
-      .required("Entity type is required"),
+    entityType: numericEnumValidator(
+      PermissionEntityType,
+      "Entity type",
+    ).required("Entity type is required"),
     entityId: yup.string().uuid().required("Entity ID is required"),
     scope: yup.number().optional().nullable(),
   }),
 
   removePermission: yup.object({
     permissionId: yup.string().uuid().required("Permission ID is required"),
-    entityType: yup
-      .number()
-      .oneOf(
-        Object.values(PermissionEntityType).filter(
-          (v): v is number => typeof v === "number",
-        ),
-      )
-      .required("Entity type is required"),
+    entityType: numericEnumValidator(
+      PermissionEntityType,
+      "Entity type",
+    ).required("Entity type is required"),
     entityId: yup.string().uuid().required("Entity ID is required"),
   }),
 
@@ -62,13 +55,7 @@ export const RbacValidator = {
 
   getPermissionsByTenant: yup.object({
     entityId: yup.string().uuid().nullable().optional(),
-    entityType: yup
-      .number()
-      .oneOf(
-        Object.values(PermissionEntityType).filter(
-          (v): v is number => typeof v === "number",
-        ),
-      )
+    entityType: numericEnumValidator(PermissionEntityType, "Entity type")
       .nullable()
       .optional(),
     isPrivilegedPermissionsIncluded: yup.boolean().optional().default(true),

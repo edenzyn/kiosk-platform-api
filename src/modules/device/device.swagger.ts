@@ -13,7 +13,7 @@ const deviceSchema = {
     deviceType: {
       type: "integer",
       enum: [1, 2, 3, 4],
-      description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+      description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
     },
     isActive: { type: "boolean", nullable: true },
     createdAt: { type: "string", format: "date-time" },
@@ -73,7 +73,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
         {
           name: "type",
           in: "query",
-          description: "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY)",
+          description: "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS)",
           schema: { type: "integer", enum: [1, 2, 3, 4] },
         },
         {
@@ -137,7 +137,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                 deviceType: {
                   type: "integer",
                   enum: [1, 2, 3, 4],
-                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
                 },
               },
             },
@@ -192,7 +192,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                   type: "integer",
                   nullable: true,
                   enum: [1, 2, 3, 4],
-                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=DIGITAL_DISPLAY",
+                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
                 },
               },
             },
@@ -211,6 +211,37 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
             },
           },
         },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/u/devices/{id}/terminal": {
+    patch: {
+      tags: ["Devices"],
+      summary: "Map a card terminal to a device",
+      description:
+        "Sets the card terminal (Pine Labs) the device is paired with. Send an empty terminalId to unmap it. Only kiosk and counter devices take card payments.",
+      parameters: [
+        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                terminalId: { type: "string", maxLength: 100, nullable: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Device with its mapped terminal" },
         "400": { $ref: "#/components/responses/ValidationError" },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": { $ref: "#/components/responses/Forbidden" },

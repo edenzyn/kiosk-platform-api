@@ -1,23 +1,28 @@
 import * as yup from "yup";
-import { TaxComponentConditionTypeEnum } from "../../shared/enums/finance/tax-component-condition-type.enum";
-import { stringToArray } from "../../shared/validators/yup.transformer";
+import { TaxComponentConditionTypeEnum } from "../../../shared/enums/finance/tax-component-condition-type.enum";
+import { stringToArray } from "../../../shared/validators/yup.transformer";
+import { numericEnumValidator } from "../../../shared/validators/numeric-enum.validator";
 
-export class FinanceValidator {
+export class TaxValidator {
   static getTaxProfileQuery = yup
     .object({
       conditionTypes: stringToArray()
         .of(
-          yup
-            .number()
-            .oneOf(
-              Object.values(TaxComponentConditionTypeEnum).filter(
-                (value): value is number => typeof value === "number",
-              ),
-              "Invalid condition type",
-            )
-            .required(),
+          numericEnumValidator(
+            TaxComponentConditionTypeEnum,
+            "Condition type",
+          ).required(),
         )
         .optional(),
+    })
+    .noUnknown();
+
+  static getBranchTaxProfileParams = yup
+    .object({
+      branchId: yup
+        .string()
+        .uuid("Invalid branch id")
+        .required("Branch is required"),
     })
     .noUnknown();
 
@@ -40,16 +45,10 @@ export class FinanceValidator {
             .min(1, "Component name is required")
             .max(100, "Component name cannot exceed 100 characters")
             .required("Component name is required"),
-          conditionType: yup
-            .number()
-            .typeError("Condition type must be a number")
-            .oneOf(
-              Object.values(TaxComponentConditionTypeEnum).filter(
-                (value): value is number => typeof value === "number",
-              ),
-              "Invalid condition type",
-            )
-            .required("Condition type is required"),
+          conditionType: numericEnumValidator(
+            TaxComponentConditionTypeEnum,
+            "Condition type",
+          ).required("Condition type is required"),
           rate: yup
             .number()
             .typeError("Rate must be a number")

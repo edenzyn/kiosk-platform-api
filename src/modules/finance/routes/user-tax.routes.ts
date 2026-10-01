@@ -2,11 +2,10 @@ import { Router } from "express";
 import { container } from "../../../config/container";
 import { accessMiddleware } from "../../../middleware/access.middleware";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
-import type { FinanceController } from "../finance.controller";
+import type { TaxController } from "../controllers/tax.controller";
 
 const userTaxRouter = Router();
-const financeController =
-  container.resolve<FinanceController>("financeController");
+const taxController = container.resolve<TaxController>("taxController");
 
 userTaxRouter
   .route("/profile")
@@ -15,14 +14,22 @@ userTaxRouter
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    financeController.getTaxProfile,
+    taxController.getTaxProfile,
   )
   .put(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    financeController.updateTaxProfile,
+    taxController.updateTaxProfile,
   );
+
+userTaxRouter.get(
+  "/profile/branches/:branchId",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
+  }),
+  taxController.getBranchTaxProfile,
+);
 
 export { userTaxRouter };

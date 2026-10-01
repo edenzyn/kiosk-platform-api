@@ -3,38 +3,16 @@ import {
   validatePaymentVerification,
   validateWebhookSignature,
 } from "razorpay/dist/utils/razorpay-utils";
-import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../constants/http-status-codes.constants";
-import { ErrorCodes } from "../../enums/core/error-codes.enum";
-import { AppError } from "../../errors/app-error";
-
-export interface CreateRazorpayOrderInput {
-  amount: number;
-  currency: string;
-  receipt: string;
-  notes?: Record<string, string>;
-}
-
-export interface CreateRazorpayOrderResult {
-  orderId: string;
-  amount: number;
-  currency: string;
-  receipt?: string;
-}
-
-export interface VerifyRazorpayPaymentInput {
-  orderId: string;
-  paymentId: string;
-  signature: string;
-}
-
-export interface FetchRazorpayOrderResult {
-  id: string;
-  amount: number;
-  amountPaid: number;
-  currency: string;
-  status: "created" | "attempted" | "paid";
-}
+import { env } from "../../../../config/env";
+import { HttpStatusCodes } from "../../../constants/http-status-codes.constants";
+import { ErrorCodes } from "../../../enums/core/error-codes.enum";
+import { AppError } from "../../../errors/app-error";
+import type {
+  CreateRazorpayOrderInput,
+  CreateRazorpayOrderResult,
+  FetchRazorpayOrderResult,
+  VerifyRazorpayPaymentInput,
+} from "./razorpay.types";
 
 export class RazorpayProvider {
   constructor(private readonly razorpayClient: Razorpay) {}

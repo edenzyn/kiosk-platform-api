@@ -128,6 +128,33 @@ const EnvSchema = Yup.object({
   RAZORPAY_WEBHOOK_SECRET: Yup.string().required().min(1),
 
   // ==============================
+  // Payment (PhonePe QR)
+  // ==============================
+  PHONEPE_QR_BASE_URL: Yup.string()
+    .url()
+    .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
+  PHONEPE_QR_AUTH_BASE_URL: Yup.string()
+    .url()
+    .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
+  PHONEPE_WEBHOOK_USERNAME: Yup.string().required().min(1),
+  PHONEPE_WEBHOOK_PASSWORD: Yup.string().required().min(1),
+
+  // ==============================
+  // Sockets
+  // ==============================
+  SOCKET_ADMIN_USERNAME: Yup.string().optional(),
+  SOCKET_ADMIN_PASSWORD: Yup.string().optional(),
+
+  // ==============================
+  // Checkout
+  // ==============================
+  // How long a kiosk QR stays payable; PhonePe accepts 300 seconds at minimum.
+  TENANT_QR_PAYMENT_EXPIRY_SECONDS: Yup.number()
+    .integer()
+    .min(300)
+    .default(300),
+
+  // ==============================
   // Storage (S3)
   // ==============================
   S3_REGION: Yup.string().required().min(1),

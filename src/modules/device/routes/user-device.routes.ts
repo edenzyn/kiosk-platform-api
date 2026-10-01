@@ -47,4 +47,13 @@ userDeviceRouter.patch(
   deviceController.toggleDeviceStatus,
 );
 
+userDeviceRouter.patch(
+  "/:id/terminal",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+  }),
+  deviceController.mapDeviceTerminal,
+);
+
 export { userDeviceRouter };

@@ -78,7 +78,7 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
-  "/auth/refresh": {
+  "/auth/r": {
     post: {
       tags: ["Auth"],
       summary: "Rotate the refresh token and issue new user auth tokens",
@@ -245,7 +245,7 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
-  "/auth/d/refresh": {
+  "/auth/d/r": {
     post: {
       tags: ["Auth"],
       summary: "Rotate the refresh token and issue new device auth tokens",

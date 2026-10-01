@@ -1,0 +1,1 @@
+ALTER TABLE "devices" ADD COLUMN "terminal_id" varchar(100);

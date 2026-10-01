@@ -78,6 +78,23 @@ export class DeviceController {
     res.status(HttpStatusCodes.OK).json({ device });
   };
 
+  mapDeviceTerminal = async (req: Request, res: Response): Promise<void> => {
+    const data = await DeviceValidator.mapTerminal.validate(
+      { id: req.params.id, terminalId: req.body?.terminalId },
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
+
+    const device = await this.deviceService.mapDeviceTerminal({
+      id: data.id,
+      terminalId: data.terminalId,
+      user: req.user as UserTokenDto,
+    });
+    res.status(HttpStatusCodes.OK).json({ device });
+  };
+
   // ========================================
   // ? DEVICE CLIENT APIS
   // ========================================

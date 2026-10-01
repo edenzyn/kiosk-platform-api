@@ -10,10 +10,7 @@ import { paginationQuerySchema } from "../../shared/validators/pagination.valida
 import { passwordValidator } from "../../shared/validators/password.validator";
 import validateMobileNumber from "../../shared/validators/phone.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
-
-const TWO_FACTOR_METHOD_VALUES = Object.values(TwoFactorMethodEnums).filter(
-  (value): value is TwoFactorMethodEnums => typeof value === "number",
-);
+import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
 
 export class UserValidator {
   static inviteUser = Yup.object({
@@ -71,9 +68,9 @@ export class UserValidator {
   }).noUnknown();
 
   static setupTwoFactor = Yup.object({
-    method: Yup.mixed<TwoFactorMethodEnums>()
-      .oneOf(TWO_FACTOR_METHOD_VALUES, "Choose a valid method")
-      .required("Method is required"),
+    method: numericEnumValidator(TwoFactorMethodEnums, "Method", {
+      invalidMessage: "Choose a valid method",
+    }).required("Method is required"),
   }).noUnknown();
 
   static enableTwoFactor = Yup.object({

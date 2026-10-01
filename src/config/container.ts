@@ -23,6 +23,7 @@ import { UserContainer } from "../modules/user/user.container";
 import { EmailProvider } from "../shared/providers/email/email.provider";
 import { PhonePeProvider } from "../shared/providers/finance/phonepe/phonepe.provider";
 import { RazorpayProvider } from "../shared/providers/finance/razorpay/razorpay.provider";
+import { RealtimeProvider } from "../shared/providers/realtime/realtime.provider";
 import { RedisProvider } from "../shared/providers/redis/redis.provider";
 import { S3Provider } from "../shared/providers/s3/s3.provider";
 import { WhatsAppProvider } from "../shared/providers/whatsapp/whatsapp.provider";
@@ -34,6 +35,7 @@ import { createQueueConnection } from "./queue-connection";
 import { createRazorpayClient } from "./razorpay";
 import { initRedis } from "./redis";
 import { createS3Client } from "./s3";
+import { initSocket } from "./socket";
 import { whatsappClientConfig } from "./whatsapp";
 
 export const container = createContainer({
@@ -45,6 +47,8 @@ container.register({
   database: asFunction(initDatabase).singleton(),
   redis: asFunction(initRedis).singleton(),
   redisProvider: asClass(RedisProvider).singleton(),
+  socket: asFunction(initSocket).singleton(),
+  realtimeProvider: asClass(RealtimeProvider).singleton(),
   razorpayClient: asFunction(createRazorpayClient).singleton(),
   razorpayProvider: asClass(RazorpayProvider).singleton(),
   phonePeProvider: asClass(PhonePeProvider).singleton(),

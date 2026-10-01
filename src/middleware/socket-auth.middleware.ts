@@ -3,6 +3,7 @@ import type jwt from "jsonwebtoken";
 import type { ExtendedError } from "socket.io";
 import { env } from "../config/env";
 import type { DeviceTokenDto } from "../shared/dtos/device-token.dto";
+import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
 import type { DeviceSocket } from "../shared/providers/realtime/realtime.types";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
@@ -33,6 +34,8 @@ export async function deviceSocketAuthMiddleware(
     socket.data.device = decoded.device;
     next();
   } catch {
-    next(new Error("Invalid Session."));
+    const error: ExtendedError = new Error("Invalid Session.");
+    error.data = { code: ErrorCodes.UNAUTHORIZED };
+    next(error);
   }
 }

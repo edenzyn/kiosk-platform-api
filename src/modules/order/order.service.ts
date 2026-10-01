@@ -4,15 +4,17 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { TaxComponentConditionTypeEnum } from "../../shared/enums/finance/tax-component-condition-type.enum";
 import { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
-import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
+import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderSourceEnum } from "../../shared/enums/order/order-source.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
+import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
 import { AppError } from "../../shared/errors/app-error";
 import {
   PHONEPE_ORDER_STATES,
   PHONEPE_WEBHOOK_EVENTS,
 } from "../../shared/providers/finance/phonepe/phonepe.constants";
+import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import { logger } from "../../shared/utils/core/logger";
 import { toMinorUnits } from "../../shared/utils/finance/currency.helper";
@@ -40,6 +42,7 @@ export class OrderService {
     private readonly branchRepository: BranchRepository,
     private readonly taxRepository: TaxRepository,
     private readonly paymentService: PaymentService,
+    private readonly realtimeProvider: RealtimeProvider,
   ) {}
 
   // ========================================
@@ -76,7 +79,7 @@ export class OrderService {
       });
       if (
         latestPayment &&
-        latestPayment.paymentStatus === PaymentStatusEnum.PENDING &&
+        latestPayment.paymentStatus === OrderPaymentStatusEnum.PENDING &&
         latestPayment.qrPayload &&
         latestPayment.expiresAt &&
         latestPayment.expiresAt > new Date()
@@ -324,7 +327,7 @@ export class OrderService {
       await this.orderRepository.updatePayment({
         id: pendingPayment.id,
         data: {
-          paymentStatus: PaymentStatusEnum.FAILED,
+          paymentStatus: OrderPaymentStatusEnum.FAILED,
           failureReason:
             error instanceof Error ? error.message : "QR payment failed",
         },
@@ -357,7 +360,18 @@ export class OrderService {
       return;
     }
 
-    if (payment.paymentStatus !== PaymentStatusEnum.PENDING) return;
+    if (payment.paymentStatus !== OrderPaymentStatusEnum.PENDING) return;
+
+    const paymentEvent = { orderId: payment.orderId, paymentId: payment.id };
+
+    this.realtimeProvider.emitToDevice(
+      payment.deviceId,
+      SocketEventEnum.ORDER_PAYMENT_PROCESSING,
+      {
+        ...paymentEvent,
+        paymentStatus: OrderPaymentStatusEnum.PROCESSING,
+      },
+    );
 
     if (
       event === PHONEPE_WEBHOOK_EVENTS.ORDER_COMPLETED &&
@@ -368,6 +382,14 @@ export class OrderService {
       ) {
         logger.error(
           `[OrderService] PhonePe amount mismatch for payment ${payment.id}: expected ${payment.amount} ${payment.currencyCode}, got ${payload.amount}`,
+        );
+        this.realtimeProvider.emitToDevice(
+          payment.deviceId,
+          SocketEventEnum.ORDER_PAYMENT_FAILED,
+          {
+            ...paymentEvent,
+            paymentStatus: OrderPaymentStatusEnum.FAILED,
+          },
         );
         return;
       }
@@ -382,7 +404,19 @@ export class OrderService {
         logger.warn(
           `[OrderService] Order ${payment.orderId} was already settled; payment ${payment.id} needs a refund`,
         );
+        return;
       }
+
+      this.realtimeProvider.emitToDevice(
+        payment.deviceId,
+        SocketEventEnum.ORDER_PAYMENT_COMPLETED,
+        {
+          ...paymentEvent,
+          paymentStatus: OrderPaymentStatusEnum.COMPLETED,
+          orderNumber: order.orderNumber,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+        },
+      );
       return;
     }
 
@@ -394,6 +428,14 @@ export class OrderService {
           payload.paymentDetails?.[0]?.errorCode ?? "Payment failed",
         responsePayload: input.body,
       });
+      this.realtimeProvider.emitToDevice(
+        payment.deviceId,
+        SocketEventEnum.ORDER_PAYMENT_FAILED,
+        {
+          ...paymentEvent,
+          paymentStatus: OrderPaymentStatusEnum.FAILED,
+        },
+      );
     }
   }
 }

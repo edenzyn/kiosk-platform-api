@@ -31,7 +31,7 @@ import { AppError } from "../../shared/errors/app-error";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { logger } from "../../shared/utils/core/logger";
-import { PaymentStatusEnum } from "../../shared/enums/license/payment-status.enum";
+import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 
 export class OrderRepository {
@@ -279,7 +279,7 @@ export class OrderRepository {
         const [payment] = await tx
           .update(orderPayments)
           .set({
-            paymentStatus: PaymentStatusEnum.COMPLETED,
+            paymentStatus: OrderPaymentStatusEnum.COMPLETED,
             providerStatus: input.providerStatus,
             responsePayload: input.responsePayload,
             completedAt: input.completedAt,
@@ -288,7 +288,7 @@ export class OrderRepository {
           .where(
             and(
               eq(orderPayments.id, input.paymentId),
-              eq(orderPayments.paymentStatus, PaymentStatusEnum.PENDING),
+              eq(orderPayments.paymentStatus, OrderPaymentStatusEnum.PENDING),
             ),
           )
           .returning();
@@ -298,7 +298,7 @@ export class OrderRepository {
         const [order] = await tx
           .update(orders)
           .set({
-            paymentStatus: PaymentStatusEnum.COMPLETED,
+            paymentStatus: OrderPaymentStatusEnum.COMPLETED,
             orderStatus: OrderStatusEnum.PLACED,
             paymentMethod: payment.paymentMethod,
             placedAt: input.completedAt,
@@ -341,7 +341,7 @@ export class OrderRepository {
       const [payment] = await this.database.client
         .update(orderPayments)
         .set({
-          paymentStatus: PaymentStatusEnum.FAILED,
+          paymentStatus: OrderPaymentStatusEnum.FAILED,
           providerStatus: input.providerStatus,
           failureReason: input.failureReason,
           responsePayload: input.responsePayload,
@@ -350,7 +350,7 @@ export class OrderRepository {
         .where(
           and(
             eq(orderPayments.id, input.paymentId),
-            eq(orderPayments.paymentStatus, PaymentStatusEnum.PENDING),
+            eq(orderPayments.paymentStatus, OrderPaymentStatusEnum.PENDING),
           ),
         )
         .returning();

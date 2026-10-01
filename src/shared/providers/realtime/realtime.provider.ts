@@ -1,11 +1,18 @@
 import type { SocketConnection } from "../../../config/socket";
 import type { DeviceTypeEnum } from "../../enums/device/device-type.enum";
+import type { SocketEventEnum } from "../../enums/socket/socket-event.enum";
 import { DEVICE_SOCKET_NAMESPACE, RealtimeRooms } from "./realtime.constants";
 
 export class RealtimeProvider {
   constructor(private readonly socket: SocketConnection) {}
 
-  emitToDevice(deviceId: string, event: string, payload: unknown): void {
+  emitToDevice(
+    deviceId: string | null,
+    event: SocketEventEnum,
+    payload: unknown,
+  ): void {
+    if (!deviceId) return;
+
     this.socket.server
       .of(DEVICE_SOCKET_NAMESPACE)
       .to(RealtimeRooms.device(deviceId))
@@ -15,7 +22,7 @@ export class RealtimeProvider {
   /** Every device in the branch, or only those of one device type. */
   emitToBranch(
     branchId: string,
-    event: string,
+    event: SocketEventEnum,
     payload: unknown,
     deviceType?: DeviceTypeEnum,
   ): void {

@@ -1,5 +1,5 @@
 import type { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
-import type { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
+import type { OrderPaymentStatusEnum } from "../../../shared/enums/order/order-payment-status.enum";
 import type { OrderStatusEnum } from "../../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../../shared/enums/order/order-type.enum";
 
@@ -29,7 +29,7 @@ export interface DeviceOrderSummaryDto {
 export interface DeviceOrderPaymentDto {
   id: string;
   paymentMethod: TenantPaymentMethodEnum;
-  paymentStatus: PaymentStatusEnum;
+  paymentStatus: OrderPaymentStatusEnum;
   amount: string;
   qrData: string | null;
   expiresAt: Date | null;

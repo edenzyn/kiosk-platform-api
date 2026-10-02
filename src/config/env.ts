@@ -140,12 +140,6 @@ const EnvSchema = Yup.object({
   PHONEPE_WEBHOOK_PASSWORD: Yup.string().required().min(1),
 
   // ==============================
-  // Sockets
-  // ==============================
-  SOCKET_ADMIN_USERNAME: Yup.string().optional(),
-  SOCKET_ADMIN_PASSWORD: Yup.string().optional(),
-
-  // ==============================
   // Checkout
   // ==============================
   // How long a kiosk QR stays payable; PhonePe accepts 300 seconds at minimum.

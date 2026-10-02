@@ -1,6 +1,4 @@
-import { instrument } from "@socket.io/admin-ui";
 import { createAdapter } from "@socket.io/redis-adapter";
-import bcrypt from "bcrypt";
 import Redis from "ioredis";
 import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
@@ -15,28 +13,6 @@ export interface SocketConnection {
   close(): Promise<void>;
 }
 
-const SOCKET_ADMIN_UI_ORIGIN = "https://admin.socket.io";
-
-function attachSocketAdminUi(server: Server): boolean {
-  if (!env.SOCKET_ADMIN_USERNAME || !env.SOCKET_ADMIN_PASSWORD) {
-    return false;
-  }
-
-  instrument(server, {
-    auth: {
-      type: "basic",
-      username: env.SOCKET_ADMIN_USERNAME,
-      password: bcrypt.hashSync(env.SOCKET_ADMIN_PASSWORD, 10),
-    },
-    mode: env.NODE_ENV === "production" ? "production" : "development",
-  });
-  logger.log(
-    `Socket admin UI enabled - connect from ${SOCKET_ADMIN_UI_ORIGIN}`,
-  );
-
-  return true;
-}
-
 export function initSocket(): SocketConnection {
   const pubClient = new Redis(env.REDIS_URL);
   const subClient = pubClient.duplicate();
@@ -47,21 +23,14 @@ export function initSocket(): SocketConnection {
     });
   }
 
-  let isAdminUiEnabled = false;
-
   const server = new Server({
     transports: ["websocket"],
     adapter: createAdapter(pubClient, subClient),
     allowRequest: (request, callback) => {
       const { origin } = request.headers;
-      callback(
-        null,
-        isAllowedOrigin(origin) ||
-          (isAdminUiEnabled && origin === SOCKET_ADMIN_UI_ORIGIN),
-      );
+      callback(null, isAllowedOrigin(origin));
     },
   });
-  isAdminUiEnabled = attachSocketAdminUi(server);
 
   return {
     server,

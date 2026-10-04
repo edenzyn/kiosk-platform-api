@@ -1,5 +1,11 @@
 export enum SocketEventEnum {
   // ========================================
+  // ? DEVICES
+  // ========================================
+  DEVICE_SESSION_REVOKED = "device.session.revoked",
+  DEVICE_DEACTIVATED = "device.deactivated",
+
+  // ========================================
   // ? ORDERS
   // ========================================
   ORDER_PAYMENT_PROCESSING = "order.payment.processing",

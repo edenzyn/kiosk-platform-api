@@ -1,5 +1,6 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
 import {
   DEVICE_TYPE_SHORT_LABELS,
   DeviceTypeEnum,
@@ -193,6 +194,11 @@ export class DeviceService {
       });
     }
 
+    this.realtimeProvider.emitToDevice(
+      device.id,
+      SocketEventEnum.DEVICE_SESSION_REVOKED,
+      { deviceId: device.id },
+    );
     this.realtimeProvider.disconnectDevice(device.id);
   }
 
@@ -243,6 +249,16 @@ export class DeviceService {
         updatedBy: input.user.id,
       },
     });
+
+    if (!updated.isActive) {
+      await this.authRepository.revokeDeviceSessions({ deviceId: updated.id });
+      this.realtimeProvider.emitToDevice(
+        updated.id,
+        SocketEventEnum.DEVICE_DEACTIVATED,
+        { deviceId: updated.id },
+      );
+      this.realtimeProvider.disconnectDevice(updated.id);
+    }
 
     return updated;
   }

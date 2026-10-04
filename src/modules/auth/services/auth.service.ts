@@ -1056,7 +1056,7 @@ export class AuthService {
     });
     if (activeSessions.length >= env.DEVICE_SESSION_LIMIT) {
       throw new AppError(
-        "This device is already signed in on another screen. Ask a manager to revoke its session from the Devices page, then sign in again.",
+        "This device is already signed in on another screen. Ask an administrator to revoke its session from the Devices page, then sign in again.",
         {
           statusCode: HttpStatusCodes.FORBIDDEN,
           code: ErrorCodes.SESSION_LIMIT_REACHED,

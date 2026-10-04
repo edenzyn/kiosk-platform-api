@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ADD COLUMN "is_pay_at_counter" boolean DEFAULT false NOT NULL;

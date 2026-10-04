@@ -59,11 +59,16 @@ export class OrderService {
     const { device, dto } = input;
     const { organizationId, branchId } = device;
 
-    if (dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
-      throw new AppError("Only QR payments are available right now", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+    const { isPayAtCounter } = dto;
+
+    if (!isPayAtCounter && dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
+      throw new AppError(
+        "Only QR payments are available on the device right now",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
     }
 
     let order = await this.orderRepository.findOneByIdempotencyKey({
@@ -77,6 +82,20 @@ export class OrderService {
           statusCode: HttpStatusCodes.CONFLICT,
           code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
         });
+      }
+
+      if (order.isPayAtCounter) {
+        return {
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            tokenNumber: formatTokenNumber(order.tokenNumber),
+            orderStatus: order.orderStatus,
+            currencyCode: order.currencyCode,
+            totalAmount: order.totalAmount,
+          },
+          payment: null,
+        };
       }
 
       const latestPayment = await this.orderRepository.findLatestPayment({
@@ -151,7 +170,15 @@ export class OrderService {
         });
       }
 
+      if (isPayAtCounter && !settings.isCashPaymentEnabled) {
+        throw new AppError("Pay at counter is not available at this branch", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        });
+      }
+
       const isTakeaway = dto.orderType === OrderTypeEnum.TAKEAWAY;
+
       const lines = dto.items.map((dtoItem, index) => {
         const menuItem = menuItems.find(
           (item) => item.id === dtoItem.menuItemId,
@@ -232,6 +259,7 @@ export class OrderService {
           settings.timezone,
           "YYMMDD",
         ),
+        assignToken: isPayAtCounter,
         order: {
           organizationId,
           branchId,
@@ -243,7 +271,8 @@ export class OrderService {
               ? OrderSourceEnum.COUNTER
               : OrderSourceEnum.KIOSK,
           orderType: dto.orderType,
-          paymentMethod: dto.paymentMethod,
+          isPayAtCounter,
+          paymentMethod: isPayAtCounter ? null : dto.paymentMethod,
           currencyCode: market.currencyCode,
           subtotalAmount: pricing.subtotalAmount,
           takeawayChargeAmount: pricing.takeawayChargeAmount,
@@ -278,6 +307,20 @@ export class OrderService {
         })),
         taxes: pricing.taxes,
       });
+    }
+
+    if (isPayAtCounter) {
+      return {
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+          orderStatus: order.orderStatus,
+          currencyCode: order.currencyCode,
+          totalAmount: order.totalAmount,
+        },
+        payment: null,
+      };
     }
 
     const pendingPayment = await this.orderRepository.createPayment({

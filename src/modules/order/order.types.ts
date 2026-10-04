@@ -78,6 +78,8 @@ export interface CreateOrderRepoInput {
   order: Omit<CreateOrderEntity, "orderNumber" | "tokenNumber">;
   /** Calendar date of the order in the branch time zone (YYMMDD), e.g. "260930". */
   orderDateLabel: string;
+  /** Pay-at-counter orders take their token now; the customer needs it to pay. */
+  assignToken: boolean;
   items: CreateOrderItemRepoInput[];
   taxes: Omit<CreateOrderTaxEntity, "orderId">[];
 }
@@ -147,6 +149,13 @@ export interface FindOrdersRepoResult {
   orders: OrderListRow[];
   total: number;
 }
+
+export interface CancelUnpaidCounterOrdersRepoInput {
+  businessDayId: string;
+  reason: string;
+}
+/** How many orders were cancelled. */
+export type CancelUnpaidCounterOrdersRepoResult = number;
 
 export interface CountBusinessDayOrdersByStatusRepoInput {
   businessDayId: string;

@@ -12,14 +12,18 @@ export interface CreateDeviceOrderItemBodyDto {
 export interface CreateDeviceOrderBodyDto {
   idempotencyKey: string;
   orderType: OrderTypeEnum;
-  paymentMethod: TenantPaymentMethodEnum;
+  isPayAtCounter: boolean;
+  paymentMethod?: TenantPaymentMethodEnum;
   items: CreateDeviceOrderItemBodyDto[];
 }
 
 export interface DeviceOrderSummaryDto {
   id: string;
   orderNumber: string;
-  /** Zero-padded to at least 3 digits, e.g. "007". Null until the order is paid. */
+  /**
+   * Zero-padded to at least 3 digits, e.g. "007". A pay-at-counter order has it
+   * straight away; a QR order gets it once the payment completes.
+   */
   tokenNumber: string | null;
   orderStatus: OrderStatusEnum;
   currencyCode: string;
@@ -39,5 +43,6 @@ export interface DeviceOrderPaymentDto {
 
 export interface CreateDeviceOrderResponseDto {
   order: DeviceOrderSummaryDto;
-  payment: DeviceOrderPaymentDto;
+  /** The QR payment to show; null for a pay-at-counter order. */
+  payment: DeviceOrderPaymentDto | null;
 }

@@ -44,6 +44,7 @@ export const orders = pgTable(
     idempotencyKey: varchar("idempotency_key", { length: 100 }).notNull(),
     orderSource: smallint("order_source").notNull(), // OrderSourceEnum: 1 = KIOSK, 2 = COUNTER
     orderType: smallint("order_type").notNull(), // OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY
+    isPayAtCounter: boolean("is_pay_at_counter").default(false).notNull(), // Ordered on a device, paid at the counter; payment_method stays null until the counter takes the money
     orderStatus: smallint("order_status").default(1).notNull(), // OrderStatusEnum: 1 = PENDING_PAYMENT, 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED, 6 = CANCELLED
     paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
     paymentMethod: smallint("payment_method"), // TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH

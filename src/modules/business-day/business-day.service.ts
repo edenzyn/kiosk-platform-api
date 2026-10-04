@@ -5,6 +5,7 @@ import { AppError } from "../../shared/errors/app-error";
 import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import type { BranchRepository } from "../branch/branch.repository";
+import type { OrderRepository } from "../order/order.repository";
 import type { BusinessDayRepository } from "./business-day.repository";
 import type {
   CloseBusinessDayServiceInput,
@@ -30,6 +31,7 @@ export class BusinessDayService {
     private readonly businessDayRepository: BusinessDayRepository,
     private readonly branchRepository: BranchRepository,
     private readonly realtimeProvider: RealtimeProvider,
+    private readonly orderRepository: OrderRepository,
   ) {}
 
   // ========================================
@@ -124,6 +126,14 @@ export class BusinessDayService {
       closeDayId: openDay?.id ?? null,
     });
 
+    if (openDay) {
+      await this.orderRepository.cancelUnpaidCounterOrders({
+        businessDayId: openDay.id,
+        reason:
+          "The business day was closed before the order was paid at the counter",
+      });
+    }
+
     this.realtimeProvider.emitToBranch(
       branchId,
       SocketEventEnum.BUSINESS_DAY_OPENED,
@@ -163,6 +173,12 @@ export class BusinessDayService {
         code: ErrorCodes.BAD_REQUEST,
       });
     }
+
+    await this.orderRepository.cancelUnpaidCounterOrders({
+      businessDayId: closedDay.id,
+      reason:
+        "The business day was closed before the order was paid at the counter",
+    });
 
     this.realtimeProvider.emitToBranch(
       branchId,

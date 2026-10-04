@@ -7,7 +7,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Place a kiosk order and start its payment",
       description:
-        "Prices the cart on the server from the current menu and branch tax profile, saves the order as PENDING_PAYMENT in the open business day (its token number is given once the payment completes), and starts a PhonePe UPI QR payment. Retrying with the same idempotencyKey returns the same order, and its QR while it is still valid. Only QR is supported for now. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
+        "Prices the cart on the server from the current menu and branch tax profile and saves the order as PENDING_PAYMENT in the open business day. With paymentMethod QR (1) it starts a PhonePe UPI QR payment and returns it; the token number is given once that payment completes, and retrying with the same idempotencyKey returns the same order and its QR while still valid. With isPayAtCounter true the order gets its token straight away, has no payment method yet, stays PENDING_PAYMENT until the counter takes the money, and `payment` is null; it is cancelled if the business day closes before it is paid. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -15,12 +15,7 @@ export const orderSwaggerPaths = {
           "application/json": {
             schema: {
               type: "object",
-              required: [
-                "idempotencyKey",
-                "orderType",
-                "paymentMethod",
-                "items",
-              ],
+              required: ["idempotencyKey", "orderType", "items"],
               properties: {
                 idempotencyKey: {
                   type: "string",
@@ -32,11 +27,17 @@ export const orderSwaggerPaths = {
                   enum: [1, 2],
                   description: "OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY",
                 },
+                isPayAtCounter: {
+                  type: "boolean",
+                  default: false,
+                  description:
+                    "The customer pays at the counter instead of on the device",
+                },
                 paymentMethod: {
                   type: "integer",
                   enum: [1, 2, 3],
                   description:
-                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH",
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; only QR is supported on the device for now",
                 },
                 items: {
                   type: "array",

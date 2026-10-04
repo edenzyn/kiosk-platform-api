@@ -176,7 +176,7 @@ export const businessDaySwaggerPaths = {
     post: {
       tags: ["Business Days"],
       summary: "Close the current business day",
-      description: `${branchScopeNote} Closes the open business day, whatever its date. Kiosks in the branch get a business-day.closed event and stop taking orders. 409 when no day is open.`,
+      description: `${branchScopeNote} Closes the open business day, whatever its date. Kiosks in the branch get a business-day.closed event and stop taking orders. Pay-at-counter orders of the day that are still unpaid are cancelled. 409 when no day is open.`,
       responses: {
         "200": currentBusinessDayResponse,
         "401": { $ref: "#/components/responses/Unauthorized" },

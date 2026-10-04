@@ -19,10 +19,18 @@ export class OrderValidator {
       orderType: numericEnumValidator(OrderTypeEnum, "Order type").required(
         "Order type is required",
       ),
+      isPayAtCounter: yup
+        .boolean()
+        .typeError("isPayAtCounter must be true or false")
+        .default(false),
       paymentMethod: numericEnumValidator(
         TenantPaymentMethodEnum,
         "Payment method",
-      ).required("Payment method is required"),
+      ).when("isPayAtCounter", {
+        is: true,
+        then: (schema) => schema.strip(),
+        otherwise: (schema) => schema.required("Payment method is required"),
+      }),
       items: yup
         .array()
         .of(

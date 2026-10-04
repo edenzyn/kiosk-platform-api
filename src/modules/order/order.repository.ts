@@ -29,6 +29,8 @@ import { branches } from "../branch/schemas/branch.schema";
 import type {
   CompletePendingPaymentRepoInput,
   CompletePendingPaymentRepoResult,
+  CancelUnpaidCounterOrdersRepoInput,
+  CancelUnpaidCounterOrdersRepoResult,
   CountBusinessDayOrdersByStatusRepoInput,
   CountBusinessDayOrdersByStatusRepoResult,
   CreateOrderPaymentRepoInput,
@@ -109,7 +111,7 @@ export class OrderRepository {
               eq(businessDays.status, BusinessDayStatusEnum.OPEN),
             ),
           )
-          .for("share");
+          .for(input.assignToken ? "update" : "share");
 
         if (!openDay) {
           throw new AppError("The branch is closed for orders right now", {
@@ -125,6 +127,16 @@ export class OrderRepository {
           });
         }
 
+        const [tokenDay] = input.assignToken
+          ? await tx
+              .update(businessDays)
+              .set({
+                lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1`,
+              })
+              .where(eq(businessDays.id, openDay.id))
+              .returning({ lastTokenNumber: businessDays.lastTokenNumber })
+          : [];
+
         const { rows } = await tx.execute<{ value: string }>(
           sql`select nextval(${orderNumberSequence.seqName}::regclass) as value`,
         );
@@ -137,6 +149,7 @@ export class OrderRepository {
           .insert(orders)
           .values({
             ...order,
+            tokenNumber: tokenDay?.lastTokenNumber ?? null,
             orderNumber: buildOrderNumber(
               BigInt(sequenceValue),
               input.orderDateLabel,
@@ -517,6 +530,54 @@ export class OrderRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async cancelUnpaidCounterOrders(
+    input: CancelUnpaidCounterOrdersRepoInput,
+  ): Promise<CancelUnpaidCounterOrdersRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const now = new Date();
+
+        const cancelledOrders = await tx
+          .update(orders)
+          .set({
+            orderStatus: OrderStatusEnum.CANCELLED,
+            paymentStatus: OrderPaymentStatusEnum.CANCELLED,
+            cancelledAt: now,
+            cancellationReason: input.reason,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(orders.businessDayId, input.businessDayId),
+              eq(orders.isPayAtCounter, true),
+              eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+            ),
+          )
+          .returning({ id: orders.id });
+
+        if (cancelledOrders.length > 0) {
+          await tx.insert(orderStatusLogs).values(
+            cancelledOrders.map((order) => ({
+              orderId: order.id,
+              fromStatus: OrderStatusEnum.PENDING_PAYMENT,
+              toStatus: OrderStatusEnum.CANCELLED,
+              note: input.reason,
+            })),
+          );
+        }
+
+        return cancelledOrders.length;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDERS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

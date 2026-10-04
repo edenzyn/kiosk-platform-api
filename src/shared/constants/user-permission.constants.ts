@@ -156,3 +156,16 @@ export const BRANCH_ORDER_READ_WRITE_PERMS = [
   UserPermissions.BRANCH_ORDER_READ,
   UserPermissions.BRANCH_ORDER_WRITE,
 ];
+
+//----------------------
+// Business Day Module Constants
+//----------------------
+export const ORGANIZATION_BUSINESS_DAY_READ_WRITE_PERMS = [
+  UserPermissions.ORGANIZATION_BUSINESS_DAY_READ,
+  UserPermissions.ORGANIZATION_BUSINESS_DAY_WRITE,
+];
+
+export const BRANCH_BUSINESS_DAY_READ_WRITE_PERMS = [
+  UserPermissions.BRANCH_BUSINESS_DAY_READ,
+  UserPermissions.BRANCH_BUSINESS_DAY_WRITE,
+];

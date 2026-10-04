@@ -8,7 +8,6 @@ import {
   ilike,
   inArray,
   lte,
-  max,
   ne,
   or,
   sql,
@@ -23,6 +22,7 @@ import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { logger } from "../../shared/utils/core/logger";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
+import { businessDays } from "../business-day/schemas/business-day.schema";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
 import { branches } from "../branch/schemas/branch.schema";
 import type {
@@ -95,21 +95,16 @@ export class OrderRepository {
       const { order, items, taxes } = input;
 
       return await this.database.client.transaction(async (tx) => {
-        // Serialises token numbering per branch for the rest of the transaction.
-        await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext(${order.branchId}))`,
-        );
+        // Takes the next token on the day; the row lock serialises token numbering.
+        const [day] = await tx
+          .update(businessDays)
+          .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
+          .where(eq(businessDays.id, order.businessDayId))
+          .returning({ lastTokenNumber: businessDays.lastTokenNumber });
 
-        const [latest] = await tx
-          .select({ tokenNumber: max(orders.tokenNumber) })
-          .from(orders)
-          .where(
-            and(
-              eq(orders.branchId, order.branchId),
-              gte(orders.createdAt, input.businessDayStartsAt),
-            ),
-          );
-        const tokenNumber = (latest?.tokenNumber ?? 0) + 1;
+        if (!day) throw new Error("Business day not found");
+
+        const tokenNumber = day.lastTokenNumber;
 
         const { rows } = await tx.execute<{ value: string }>(
           sql`select nextval(${orderNumberSequence.seqName}::regclass) as value`,
@@ -502,9 +497,7 @@ export class OrderRepository {
         .from(orders)
         .where(
           and(
-            eq(orders.organizationId, input.organizationId),
-            eq(orders.branchId, input.branchId),
-            gte(orders.createdAt, input.businessDayStartsAt),
+            eq(orders.businessDayId, input.businessDayId),
             inArray(orders.orderStatus, input.orderStatuses),
             input.orderType !== undefined
               ? eq(orders.orderType, input.orderType)

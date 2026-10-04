@@ -14,6 +14,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/schemas/branch.schema";
+import { businessDays } from "../../business-day/schemas/business-day.schema";
 import { devices } from "../../device/device.schema";
 import { tenantTaxProfiles } from "../../finance/schemas/tenant-tax-profile.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
@@ -35,8 +36,11 @@ export const orders = pgTable(
       .notNull()
       .references((): AnyPgColumn => branches.id),
     deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
+    businessDayId: uuid("business_day_id")
+      .notNull()
+      .references((): AnyPgColumn => businessDays.id),
     orderNumber: varchar("order_number", { length: 30 }).notNull(),
-    tokenNumber: integer("token_number").notNull(), // Restarts every business day (cutoff from business_day_cutoff_logs)
+    tokenNumber: integer("token_number").notNull(), // Counts up from 1 within a business day; never repeats in that day
     idempotencyKey: varchar("idempotency_key", { length: 100 }).notNull(),
     orderSource: smallint("order_source").notNull(), // OrderSourceEnum: 1 = KIOSK, 2 = COUNTER
     orderType: smallint("order_type").notNull(), // OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY
@@ -100,6 +104,14 @@ export const orders = pgTable(
     ),
     index("orders_branch_created_at_idx").on(table.branchId, table.createdAt),
     index("orders_branch_status_idx").on(table.branchId, table.orderStatus),
+    index("orders_business_day_status_idx").on(
+      table.businessDayId,
+      table.orderStatus,
+    ),
+    uniqueIndex("orders_business_day_token_idx").on(
+      table.businessDayId,
+      table.tokenNumber,
+    ),
     index("orders_organization_created_at_idx").on(
       table.organizationId,
       table.createdAt,

@@ -118,23 +118,6 @@ export interface UpdateBranchSettingsServiceResult {
   settings: BranchSettingsEntity;
 }
 
-export interface UpdateBusinessDayCutoffServiceInput {
-  branchId: string;
-  businessDayCutoffTime: string;
-  user: UserTokenDto;
-  effectiveTenant: EffectiveTenant;
-}
-export interface UpdateBusinessDayCutoffServiceResult {
-  settings: BranchSettingsEntity;
-}
-
-export interface UpdateBusinessDayCutoffRepoInput {
-  organizationId: string;
-  branchId: string;
-  businessDayCutoffTime: string;
-  userId: string;
-}
-
 export interface RequestBranchLogoUploadServiceInput {
   contentType: string;
   fileSize: number;

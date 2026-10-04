@@ -71,14 +71,6 @@ branchRouter
     branchController.updateSettings,
   );
 
-branchRouter.route("/settings/business-day-cutoff").patch(
-  accessMiddleware({
-    organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
-    branch: [UserPermissions.BRANCH_UPDATE],
-  }),
-  branchController.updateBusinessDayCutoff,
-);
-
 branchRouter
   .route("/settings/brand-logo")
   .put(

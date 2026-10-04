@@ -78,8 +78,6 @@ export interface CreateOrderRepoInput {
   order: Omit<CreateOrderEntity, "orderNumber" | "tokenNumber">;
   /** Calendar date of the order in the branch time zone (YYMMDD), e.g. "260930". */
   orderDateLabel: string;
-  /** Tokens restart from 1 for orders created after this instant. */
-  businessDayStartsAt: Date;
   items: CreateOrderItemRepoInput[];
   taxes: Omit<CreateOrderTaxEntity, "orderId">[];
 }
@@ -151,10 +149,7 @@ export interface FindOrdersRepoResult {
 }
 
 export interface CountBusinessDayOrdersByStatusRepoInput {
-  organizationId: string;
-  branchId: string;
-  /** Only orders created at or after the branch's current business day start. */
-  businessDayStartsAt: Date;
+  businessDayId: string;
   orderStatuses: OrderStatusEnum[];
   orderType?: OrderTypeEnum;
 }

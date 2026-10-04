@@ -6,7 +6,6 @@ import {
   eq,
   ilike,
   inArray,
-  isNull,
   ne,
   or,
   type SQL,
@@ -25,7 +24,6 @@ import type {
   UpdateBranchRepoInput,
   UpdateBranchRepoResult,
   UpdateBranchSettingsRepoInput,
-  UpdateBusinessDayCutoffRepoInput,
 } from "./branch.types";
 import {
   branchSettings,
@@ -33,7 +31,6 @@ import {
   type CreateBranchSettingsEntity,
 } from "./schemas/branch-settings.schema";
 import { branches } from "./schemas/branch.schema";
-import { businessDayCutoffLogs } from "./schemas/business-day-cutoff-log.schema";
 import { AppError } from "../../shared/errors/app-error";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -380,54 +377,6 @@ export class BranchRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[BRANCH_UPDATE_SETTINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
-    }
-  }
-
-  async updateBusinessDayCutoff(
-    input: UpdateBusinessDayCutoffRepoInput,
-  ): Promise<BranchSettingsEntity> {
-    try {
-      return await this.database.client.transaction(async (tx) => {
-        const now = new Date();
-
-        const [settings] = await tx
-          .update(branchSettings)
-          .set({
-            businessDayCutoffTime: input.businessDayCutoffTime,
-            updatedAt: now,
-          })
-          .where(eq(branchSettings.branchId, input.branchId))
-          .returning();
-
-        if (!settings) throw new Error("Failed to update business day cutoff");
-
-        await tx
-          .update(businessDayCutoffLogs)
-          .set({ effectiveUntil: now })
-          .where(
-            and(
-              eq(businessDayCutoffLogs.branchId, input.branchId),
-              isNull(businessDayCutoffLogs.effectiveUntil),
-            ),
-          );
-
-        await tx.insert(businessDayCutoffLogs).values({
-          organizationId: input.organizationId,
-          branchId: input.branchId,
-          cutoffTime: input.businessDayCutoffTime,
-          effectiveFrom: now,
-          createdBy: input.userId,
-        });
-
-        return settings;
-      });
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      logger.error("[BRANCH_UPDATE_BUSINESS_DAY_CUTOFF_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

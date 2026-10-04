@@ -66,6 +66,9 @@ export enum UserPermissions {
 
   ORGANIZATION_ORDER_READ = "organization:order:read",
 
+  ORGANIZATION_BUSINESS_DAY_READ = "organization:business-day:read",
+  ORGANIZATION_BUSINESS_DAY_WRITE = "organization:business-day:write",
+
   // ======================================================
   // Branch
   // ======================================================
@@ -97,6 +100,9 @@ export enum UserPermissions {
 
   BRANCH_ORDER_READ = "branch:order:read",
   BRANCH_ORDER_WRITE = "branch:order:write",
+
+  BRANCH_BUSINESS_DAY_READ = "branch:business-day:read",
+  BRANCH_BUSINESS_DAY_WRITE = "branch:business-day:write",
 
   // ======================================================
   // Reseller

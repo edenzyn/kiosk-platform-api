@@ -7,7 +7,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Place a kiosk order and start its payment",
       description:
-        "Prices the cart on the server from the current menu and branch tax profile, saves the order as PENDING_PAYMENT with a daily token number, and starts a PhonePe UPI QR payment. Retrying with the same idempotencyKey returns the same order, and its QR while it is still valid. Only QR is supported for now.",
+        "Prices the cart on the server from the current menu and branch tax profile, saves the order as PENDING_PAYMENT in the open business day with its token number, and starts a PhonePe UPI QR payment. Retrying with the same idempotencyKey returns the same order, and its QR while it is still valid. Only QR is supported for now. 409 BUSINESS_DAY_CLOSED while no business day is open.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -245,7 +245,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Order counts per status for the current business day",
       description:
-        "Branch scope only: the request must carry a branch (an organization user has to switch into one). Counts that branch's PLACED, PREPARING, READY and COMPLETED orders of its current business day (from its cutoff).",
+        "Branch scope only: the request must carry a branch (an organization user has to switch into one). Counts that branch's PLACED, PREPARING, READY and COMPLETED orders of the open business day (or today's, once closed).",
       parameters: [
         {
           name: "orderType",

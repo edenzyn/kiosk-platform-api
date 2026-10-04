@@ -18,11 +18,11 @@ import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import { logger } from "../../shared/utils/core/logger";
 import { toMinorUnits } from "../../shared/utils/finance/currency.helper";
-import { resolveBusinessDayStart } from "../../shared/utils/order/business-day.helper";
 import { calculateOrderPricing } from "../../shared/utils/order/calculate-order-pricing.helper";
 import { formatTokenNumber } from "../../shared/utils/order/order-number.helper";
 import { getPaymentWindow } from "../../shared/utils/order/payment-window.helper";
 import type { BranchRepository } from "../branch/branch.repository";
+import type { BusinessDayService } from "../business-day/business-day.service";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { PaymentService } from "../finance/services/payment.service";
 import type { MarketRepository } from "../market/market.repository";
@@ -47,6 +47,7 @@ export class OrderService {
     private readonly taxRepository: TaxRepository,
     private readonly paymentService: PaymentService,
     private readonly realtimeProvider: RealtimeProvider,
+    private readonly businessDayService: BusinessDayService,
   ) {}
 
   // ========================================
@@ -112,6 +113,10 @@ export class OrderService {
         };
       }
     } else {
+      const businessDayId = await this.businessDayService.getOpenBusinessDayId({
+        branchId,
+      });
+
       const [menuItems, market, settings, taxProfile] = await Promise.all([
         this.menuRepository.findOrderableItems({
           organizationId,
@@ -212,20 +217,17 @@ export class OrderService {
         market.currencyCode,
       );
 
-      const now = new Date();
-      const businessDayStartsAt = resolveBusinessDayStart(
-        now,
-        settings.timezone,
-        settings.businessDayCutoffTime,
-      );
-
       order = await this.orderRepository.createOrder({
-        orderDateLabel: formatDateInTimezone(now, settings.timezone, "YYMMDD"),
-        businessDayStartsAt,
+        orderDateLabel: formatDateInTimezone(
+          new Date(),
+          settings.timezone,
+          "YYMMDD",
+        ),
         order: {
           organizationId,
           branchId,
           deviceId: device.id,
+          businessDayId,
           idempotencyKey: dto.idempotencyKey,
           orderSource:
             device.type === DeviceTypeEnum.COUNTER
@@ -374,7 +376,7 @@ export class OrderService {
     input: GetLiveOrderCountsServiceInput,
   ): Promise<GetLiveOrderCountsServiceResult> {
     const { effectiveTenant, filters } = input;
-    const { organizationId, branchId } = effectiveTenant;
+    const { branchId } = effectiveTenant;
 
     if (!branchId) {
       throw new AppError("A branch must be selected to view live orders", {
@@ -383,26 +385,21 @@ export class OrderService {
       });
     }
 
-    const settings = await this.branchRepository.getOrCreateSettings(branchId);
-    const businessDayStartsAt = resolveBusinessDayStart(
-      new Date(),
-      settings.timezone,
-      settings.businessDayCutoffTime,
-    );
+    const businessDayId =
+      await this.businessDayService.findCurrentBusinessDayId({ branchId });
 
-    const statusCounts =
-      await this.orderRepository.countBusinessDayOrdersByStatus({
-        organizationId,
-        branchId,
-        businessDayStartsAt,
-        orderStatuses: [
-          OrderStatusEnum.PLACED,
-          OrderStatusEnum.PREPARING,
-          OrderStatusEnum.READY,
-          OrderStatusEnum.COMPLETED,
-        ],
-        orderType: filters.orderType,
-      });
+    const statusCounts = businessDayId
+      ? await this.orderRepository.countBusinessDayOrdersByStatus({
+          businessDayId,
+          orderStatuses: [
+            OrderStatusEnum.PLACED,
+            OrderStatusEnum.PREPARING,
+            OrderStatusEnum.READY,
+            OrderStatusEnum.COMPLETED,
+          ],
+          orderType: filters.orderType,
+        })
+      : [];
     const countByStatus = new Map(
       statusCounts.map(({ orderStatus, count }) => [orderStatus, count]),
     );

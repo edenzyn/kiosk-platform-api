@@ -7,6 +7,7 @@ import { marketSwaggerPaths } from "../../../modules/market/market.swagger";
 import { menuSwaggerPaths } from "../../../modules/menu/menu.swagger";
 import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
 import { orderSwaggerPaths } from "../../../modules/order/order.swagger";
+import { businessDaySwaggerPaths } from "../../../modules/business-day/business-day.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
 import { rbacSwaggerPaths } from "../../../modules/rbac/rbac.swagger";
@@ -27,24 +28,89 @@ export const swaggerDocument = {
     },
   ],
   tags: [
-    { name: "Auth", description: "Login, session, and invitation-acceptance flows for every user type" },
-    { name: "Users", description: "Self-service account settings, sessions, 2FA, and org/branch user management" },
-    { name: "Organizations", description: "Platform-side organization onboarding and management" },
-    { name: "Branches", description: "Branch management within an organization" },
-    { name: "Devices", description: "Kiosk device registration, management, and device-client self-check" },
-    { name: "Licenses", description: "License purchasing, assignment, extension, and history (org/branch side)" },
-    { name: "Reseller Licenses", description: "Reseller license inventory, pricing, and purchasing" },
-    { name: "Redemption Codes", description: "Reseller-generated redemption codes bundling licenses for resale" },
-    { name: "Platform Licenses", description: "Platform-managed license plans and discount rules" },
-    { name: "Device Licenses", description: "Device-client license activation" },
-    { name: "RBAC", description: "Role and permission management within an organization or branch" },
-    { name: "Resellers", description: "Reseller account self-service and platform-side reseller management" },
-    { name: "Platform", description: "Platform super-admin self-service account" },
-    { name: "Markets", description: "Platform-managed markets (country/currency) used for market-scoped license pricing" },
-    { name: "Notifications", description: "Outbound email/WhatsApp sending and inbound WhatsApp webhook" },
-    { name: "Payment Providers", description: "Platform-managed payment providers and their market / payment-method mappings" },
-    { name: "Finance", description: "Display-only currency exchange rates for the frontend to convert prices with" },
-    { name: "Orders", description: "Kiosk / counter orders and their checkout payments" },
+    {
+      name: "Auth",
+      description:
+        "Login, session, and invitation-acceptance flows for every user type",
+    },
+    {
+      name: "Users",
+      description:
+        "Self-service account settings, sessions, 2FA, and org/branch user management",
+    },
+    {
+      name: "Organizations",
+      description: "Platform-side organization onboarding and management",
+    },
+    {
+      name: "Branches",
+      description: "Branch management within an organization",
+    },
+    {
+      name: "Devices",
+      description:
+        "Kiosk device registration, management, and device-client self-check",
+    },
+    {
+      name: "Licenses",
+      description:
+        "License purchasing, assignment, extension, and history (org/branch side)",
+    },
+    {
+      name: "Reseller Licenses",
+      description: "Reseller license inventory, pricing, and purchasing",
+    },
+    {
+      name: "Redemption Codes",
+      description:
+        "Reseller-generated redemption codes bundling licenses for resale",
+    },
+    {
+      name: "Platform Licenses",
+      description: "Platform-managed license plans and discount rules",
+    },
+    {
+      name: "Device Licenses",
+      description: "Device-client license activation",
+    },
+    {
+      name: "RBAC",
+      description:
+        "Role and permission management within an organization or branch",
+    },
+    {
+      name: "Resellers",
+      description:
+        "Reseller account self-service and platform-side reseller management",
+    },
+    {
+      name: "Platform",
+      description: "Platform super-admin self-service account",
+    },
+    {
+      name: "Markets",
+      description:
+        "Platform-managed markets (country/currency) used for market-scoped license pricing",
+    },
+    {
+      name: "Notifications",
+      description:
+        "Outbound email/WhatsApp sending and inbound WhatsApp webhook",
+    },
+    {
+      name: "Payment Providers",
+      description:
+        "Platform-managed payment providers and their market / payment-method mappings",
+    },
+    {
+      name: "Finance",
+      description:
+        "Display-only currency exchange rates for the frontend to convert prices with",
+    },
+    {
+      name: "Orders",
+      description: "Kiosk / counter orders and their checkout payments",
+    },
   ],
   // Cookie-based auth is the primary mechanism (see auth.middleware.ts); a
   // Bearer header is accepted as a fallback. Individual operations override
@@ -64,13 +130,15 @@ export const swaggerDocument = {
         type: "apiKey",
         in: "cookie",
         name: "dvc_acs",
-        description: "Device-client access token, set as an httpOnly cookie on device login.",
+        description:
+          "Device-client access token, set as an httpOnly cookie on device login.",
       },
       bearerAuth: {
         type: "http",
         scheme: "bearer",
         bearerFormat: "JWT",
-        description: "Fallback for clients that can't send cookies (e.g. Swagger \"Try it out\").",
+        description:
+          'Fallback for clients that can\'t send cookies (e.g. Swagger "Try it out").',
       },
     },
     schemas: {
@@ -80,11 +148,15 @@ export const swaggerDocument = {
           error: {
             type: "object",
             properties: {
-              code: { type: "string", description: "Machine-readable error code" },
+              code: {
+                type: "string",
+                description: "Machine-readable error code",
+              },
               message: { type: "string" },
               details: {
                 type: "object",
-                description: "Field-level validation errors, present on 400 responses",
+                description:
+                  "Field-level validation errors, present on 400 responses",
                 additionalProperties: { type: "string" },
               },
             },
@@ -96,19 +168,35 @@ export const swaggerDocument = {
     responses: {
       Unauthorized: {
         description: "Missing, invalid, or expired session",
-        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" },
+          },
+        },
       },
       Forbidden: {
         description: "Authenticated but missing the required permission",
-        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" },
+          },
+        },
       },
       NotFound: {
         description: "Resource not found",
-        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" },
+          },
+        },
       },
       ValidationError: {
         description: "Request failed schema validation",
-        content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+        content: {
+          "application/json": {
+            schema: { $ref: "#/components/schemas/ErrorResponse" },
+          },
+        },
       },
     },
     parameters: {
@@ -139,5 +227,6 @@ export const swaggerDocument = {
     ...notificationSwaggerPaths,
     ...financeSwaggerPaths,
     ...orderSwaggerPaths,
+    ...businessDaySwaggerPaths,
   },
 };

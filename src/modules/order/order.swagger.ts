@@ -7,7 +7,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Place a kiosk order and start its payment",
       description:
-        "Prices the cart on the server from the current menu and branch tax profile, saves the order as PENDING_PAYMENT in the open business day with its token number, and starts a PhonePe UPI QR payment. Retrying with the same idempotencyKey returns the same order, and its QR while it is still valid. Only QR is supported for now. 409 BUSINESS_DAY_CLOSED while no business day is open.",
+        "Prices the cart on the server from the current menu and branch tax profile, saves the order as PENDING_PAYMENT in the open business day (its token number is given once the payment completes), and starts a PhonePe UPI QR payment. Retrying with the same idempotencyKey returns the same order, and its QR while it is still valid. Only QR is supported for now. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -76,7 +76,12 @@ export const orderSwaggerPaths = {
                         type: "string",
                         example: "ORD-260930-00A7K2",
                       },
-                      tokenNumber: { type: "string", example: "042" },
+                      tokenNumber: {
+                        type: "string",
+                        example: "042",
+                        nullable: true,
+                        description: "Given when the order is paid",
+                      },
                       orderStatus: { type: "integer", example: 1 },
                       currencyCode: { type: "string", example: "INR" },
                       totalAmount: { type: "string", example: "249.00" },
@@ -209,7 +214,12 @@ export const orderSwaggerPaths = {
                       properties: {
                         id: { type: "string", format: "uuid" },
                         orderNumber: { type: "string" },
-                        tokenNumber: { type: "string", example: "042" },
+                        tokenNumber: {
+                          type: "string",
+                          example: "042",
+                          nullable: true,
+                          description: "Given when the order is paid",
+                        },
                         branchId: { type: "string", format: "uuid" },
                         branchName: { type: "string" },
                         branchTimezone: { type: "string", nullable: true },

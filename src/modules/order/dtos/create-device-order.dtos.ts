@@ -19,8 +19,8 @@ export interface CreateDeviceOrderBodyDto {
 export interface DeviceOrderSummaryDto {
   id: string;
   orderNumber: string;
-  /** Zero-padded to at least 3 digits, e.g. "007". */
-  tokenNumber: string;
+  /** Zero-padded to at least 3 digits, e.g. "007". Null until the order is paid. */
+  tokenNumber: string | null;
   orderStatus: OrderStatusEnum;
   currencyCode: string;
   totalAmount: string;

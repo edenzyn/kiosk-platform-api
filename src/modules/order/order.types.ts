@@ -141,7 +141,7 @@ export interface FindOrdersRepoInput {
   sortOrder?: SortingOrderEnum;
 }
 export type OrderListRow = Omit<OrderListItemDto, "tokenNumber"> & {
-  tokenNumber: number;
+  tokenNumber: number | null;
 };
 export interface FindOrdersRepoResult {
   orders: OrderListRow[];

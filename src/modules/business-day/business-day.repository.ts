@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
@@ -6,12 +6,15 @@ import { BusinessDayActionEnum } from "../../shared/enums/business-day/business-
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { logger } from "../../shared/utils/core/logger";
+import { orders } from "../order/schemas/order.schema";
 import { users } from "../user/schemas/user.schema";
 import type {
   CloseBusinessDayRepoInput,
   CloseBusinessDayRepoResult,
+  CountActiveOrdersRepoInput,
   FindBusinessDayByDateRepoInput,
   FindBusinessDayByDateRepoResult,
   FindBusinessDayLogsRepoInput,
@@ -26,6 +29,8 @@ import type {
   FindOpenBusinessDayRepoResult,
   OpenBusinessDayRepoInput,
   OpenBusinessDayRepoResult,
+  SetOrderingPausedRepoInput,
+  SetOrderingPausedRepoResult,
 } from "./business-day.types";
 import { businessDayLogs } from "./schemas/business-day-log.schema";
 import { businessDays } from "./schemas/business-day.schema";
@@ -37,6 +42,7 @@ const businessDaySummaryFields = {
   id: businessDays.id,
   businessDate: businessDays.businessDate,
   status: businessDays.status,
+  isOrderingPaused: businessDays.isOrderingPaused,
   openedAt: businessDays.openedAt,
   openedBy: { id: openedByUser.id, name: openedByUser.name },
   closedAt: businessDays.closedAt,
@@ -165,6 +171,7 @@ export class BusinessDayRepository {
             .update(businessDays)
             .set({
               status: BusinessDayStatusEnum.CLOSED,
+              isOrderingPaused: false,
               closedAt: now,
               closedBy: input.performedBy,
               updatedAt: now,
@@ -220,6 +227,7 @@ export class BusinessDayRepository {
               .update(businessDays)
               .set({
                 status: BusinessDayStatusEnum.OPEN,
+                isOrderingPaused: false,
                 closedAt: null,
                 closedBy: null,
                 updatedAt: now,
@@ -273,6 +281,7 @@ export class BusinessDayRepository {
           .update(businessDays)
           .set({
             status: BusinessDayStatusEnum.CLOSED,
+            isOrderingPaused: false,
             closedAt: now,
             closedBy: input.performedBy,
             updatedAt: now,
@@ -298,6 +307,72 @@ export class BusinessDayRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_CLOSE_DAY_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async setOrderingPaused(
+    input: SetOrderingPausedRepoInput,
+  ): Promise<SetOrderingPausedRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [day] = await tx
+          .update(businessDays)
+          .set({ isOrderingPaused: input.isPaused, updatedAt: new Date() })
+          .where(
+            and(
+              eq(businessDays.id, input.id),
+              eq(businessDays.status, BusinessDayStatusEnum.OPEN),
+              eq(businessDays.isOrderingPaused, !input.isPaused),
+            ),
+          )
+          .returning();
+
+        if (!day) return null;
+
+        await tx.insert(businessDayLogs).values({
+          businessDayId: day.id,
+          action: input.isPaused
+            ? BusinessDayActionEnum.ORDERS_PAUSED
+            : BusinessDayActionEnum.ORDERS_RESUMED,
+          performedBy: input.performedBy,
+        });
+
+        return day;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[BUSINESS_DAY_SET_ORDERING_PAUSED_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async countActiveOrders(input: CountActiveOrdersRepoInput): Promise<number> {
+    try {
+      const [row] = await this.database.client
+        .select({ total: count() })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.businessDayId, input.businessDayId),
+            inArray(orders.orderStatus, [
+              OrderStatusEnum.PLACED,
+              OrderStatusEnum.PREPARING,
+              OrderStatusEnum.READY,
+            ]),
+          ),
+        );
+
+      return Number(row?.total ?? 0);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[BUSINESS_DAY_COUNT_ACTIVE_ORDERS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

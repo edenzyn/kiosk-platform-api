@@ -1,0 +1,1 @@
+ALTER TABLE "business_days" ADD COLUMN "is_ordering_paused" boolean DEFAULT false NOT NULL;

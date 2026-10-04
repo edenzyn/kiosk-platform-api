@@ -16,7 +16,7 @@ export const businessDayLogs = pgTable(
     businessDayId: uuid("business_day_id")
       .notNull()
       .references((): AnyPgColumn => businessDays.id),
-    action: smallint("action").notNull(), // BusinessDayActionEnum: 1 = OPENED, 2 = CLOSED, 3 = REOPENED
+    action: smallint("action").notNull(), // BusinessDayActionEnum: 1 = OPENED, 2 = CLOSED, 3 = REOPENED, 4 = ORDERS_PAUSED, 5 = ORDERS_RESUMED
     performedBy: uuid("performed_by")
       .notNull()
       .references((): AnyPgColumn => users.id),

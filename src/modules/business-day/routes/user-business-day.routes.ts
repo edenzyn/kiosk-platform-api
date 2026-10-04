@@ -50,6 +50,24 @@ userBusinessDayRouter.post(
   asyncHandler(businessDayController.closeBusinessDay),
 );
 
+userBusinessDayRouter.post(
+  "/pause-orders",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BUSINESS_DAY_WRITE],
+    branch: [UserPermissions.BRANCH_BUSINESS_DAY_WRITE],
+  }),
+  asyncHandler(businessDayController.pauseOrders),
+);
+
+userBusinessDayRouter.post(
+  "/resume-orders",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BUSINESS_DAY_WRITE],
+    branch: [UserPermissions.BRANCH_BUSINESS_DAY_WRITE],
+  }),
+  asyncHandler(businessDayController.resumeOrders),
+);
+
 userBusinessDayRouter.get(
   "/:id/logs",
   accessMiddleware({

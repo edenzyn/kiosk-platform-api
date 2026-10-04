@@ -9,4 +9,6 @@ export interface GetCurrentBusinessDayResponseDto {
    * otherwise today's day once it has been closed; null before today is opened.
    */
   day: BusinessDayDto | null;
+  /** Paid orders of `day` that are not completed or cancelled yet. */
+  activeOrderCount: number;
 }

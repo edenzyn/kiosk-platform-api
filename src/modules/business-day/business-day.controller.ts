@@ -45,6 +45,24 @@ export class BusinessDayController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  pauseOrders = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.businessDayService.setOrderingPaused({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      user: req.user as UserTokenDto,
+      isPaused: true,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  resumeOrders = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.businessDayService.setOrderingPaused({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      user: req.user as UserTokenDto,
+      isPaused: false,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getBusinessDays = async (req: Request, res: Response): Promise<void> => {
     const queryDto = await BusinessDayValidator.getBusinessDaysQuery.validate(
       req.query,

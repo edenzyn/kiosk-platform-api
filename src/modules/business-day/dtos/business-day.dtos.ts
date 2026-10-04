@@ -10,6 +10,8 @@ export interface BusinessDayDto {
   /** YYYY-MM-DD in the branch time zone: the date the manager opened it on. */
   businessDate: string;
   status: BusinessDayStatusEnum;
+  /** Open, but not taking new orders for now. */
+  isOrderingPaused: boolean;
   openedAt: Date;
   openedBy: BusinessDayUserDto;
   closedAt: Date | null;

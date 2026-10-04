@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
@@ -95,16 +96,34 @@ export class OrderRepository {
       const { order, items, taxes } = input;
 
       return await this.database.client.transaction(async (tx) => {
-        // Takes the next token on the day; the row lock serialises token numbering.
-        const [day] = await tx
-          .update(businessDays)
-          .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
-          .where(eq(businessDays.id, order.businessDayId))
-          .returning({ lastTokenNumber: businessDays.lastTokenNumber });
+        // Holds the day as it is until the order is saved; closing or pausing waits on this lock.
+        const [openDay] = await tx
+          .select({
+            id: businessDays.id,
+            isOrderingPaused: businessDays.isOrderingPaused,
+          })
+          .from(businessDays)
+          .where(
+            and(
+              eq(businessDays.id, order.businessDayId),
+              eq(businessDays.status, BusinessDayStatusEnum.OPEN),
+            ),
+          )
+          .for("share");
 
-        if (!day) throw new Error("Business day not found");
+        if (!openDay) {
+          throw new AppError("The branch is closed for orders right now", {
+            statusCode: HttpStatusCodes.CONFLICT,
+            code: ErrorCodes.BUSINESS_DAY_CLOSED,
+          });
+        }
 
-        const tokenNumber = day.lastTokenNumber;
+        if (openDay.isOrderingPaused) {
+          throw new AppError("The branch is not taking orders right now", {
+            statusCode: HttpStatusCodes.CONFLICT,
+            code: ErrorCodes.ORDERS_PAUSED,
+          });
+        }
 
         const { rows } = await tx.execute<{ value: string }>(
           sql`select nextval(${orderNumberSequence.seqName}::regclass) as value`,
@@ -118,7 +137,6 @@ export class OrderRepository {
           .insert(orders)
           .values({
             ...order,
-            tokenNumber,
             orderNumber: buildOrderNumber(
               BigInt(sequenceValue),
               input.orderDateLabel,
@@ -312,22 +330,40 @@ export class OrderRepository {
 
         if (!payment) return { payment: null, order: null };
 
-        const [order] = await tx
-          .update(orders)
-          .set({
-            paymentStatus: OrderPaymentStatusEnum.COMPLETED,
-            orderStatus: OrderStatusEnum.PLACED,
-            paymentMethod: payment.paymentMethod,
-            placedAt: input.completedAt,
-            expiresAt: null,
-            updatedAt: new Date(),
-          })
+        const [pendingOrder] = await tx
+          .select({ id: orders.id, businessDayId: orders.businessDayId })
+          .from(orders)
           .where(
             and(
               eq(orders.id, payment.orderId),
               eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
             ),
           )
+          .for("update");
+
+        if (!pendingOrder) return { payment, order: null };
+
+        // Only paid orders take a token; the day's row lock serialises the numbering.
+        const [day] = await tx
+          .update(businessDays)
+          .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
+          .where(eq(businessDays.id, pendingOrder.businessDayId))
+          .returning({ lastTokenNumber: businessDays.lastTokenNumber });
+
+        if (!day) throw new Error("Business day not found");
+
+        const [order] = await tx
+          .update(orders)
+          .set({
+            paymentStatus: OrderPaymentStatusEnum.COMPLETED,
+            orderStatus: OrderStatusEnum.PLACED,
+            paymentMethod: payment.paymentMethod,
+            tokenNumber: day.lastTokenNumber,
+            placedAt: input.completedAt,
+            expiresAt: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(orders.id, pendingOrder.id))
           .returning();
 
         if (order) {

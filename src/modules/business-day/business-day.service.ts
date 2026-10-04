@@ -21,6 +21,8 @@ import type {
   GetOpenBusinessDayIdServiceInput,
   OpenBusinessDayServiceInput,
   OpenBusinessDayServiceResult,
+  SetOrderingPausedServiceInput,
+  SetOrderingPausedServiceResult,
 } from "./business-day.types";
 
 export class BusinessDayService {
@@ -59,12 +61,20 @@ export class BusinessDayService {
         businessDate,
       }));
 
+    const [summary, activeOrderCount] = day
+      ? await Promise.all([
+          this.businessDayRepository.findSummary({ id: day.id }),
+          this.businessDayRepository.countActiveOrders({
+            businessDayId: day.id,
+          }),
+        ])
+      : [null, 0];
+
     return {
       businessDate,
       timezone: settings.timezone,
-      day: day
-        ? await this.businessDayRepository.findSummary({ id: day.id })
-        : null,
+      day: summary,
+      activeOrderCount,
     };
   }
 
@@ -163,6 +173,57 @@ export class BusinessDayService {
     return this.getCurrentBusinessDay({ effectiveTenant });
   }
 
+  async setOrderingPaused(
+    input: SetOrderingPausedServiceInput,
+  ): Promise<SetOrderingPausedServiceResult> {
+    const { effectiveTenant, user, isPaused } = input;
+    const { branchId } = effectiveTenant;
+
+    if (!branchId) {
+      throw new AppError(
+        "A branch must be selected to pause or resume orders",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const openDay = await this.businessDayRepository.findOpenDay({ branchId });
+    if (!openDay) {
+      throw new AppError("There is no open business day", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.BUSINESS_DAY_CLOSED,
+      });
+    }
+
+    const updatedDay = await this.businessDayRepository.setOrderingPaused({
+      id: openDay.id,
+      isPaused,
+      performedBy: user.id,
+    });
+
+    if (!updatedDay) {
+      throw new AppError(
+        isPaused ? "Orders are already paused" : "Orders are not paused",
+        {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    this.realtimeProvider.emitToBranch(
+      branchId,
+      isPaused
+        ? SocketEventEnum.BUSINESS_DAY_ORDERS_PAUSED
+        : SocketEventEnum.BUSINESS_DAY_ORDERS_RESUMED,
+      { businessDayId: updatedDay.id, businessDate: updatedDay.businessDate },
+    );
+
+    return this.getCurrentBusinessDay({ effectiveTenant });
+  }
+
   async getBusinessDays(
     input: GetBusinessDaysServiceInput,
   ): Promise<GetBusinessDaysServiceResult> {
@@ -242,6 +303,7 @@ export class BusinessDayService {
 
     return {
       isOpen: Boolean(openDay),
+      isOrderingPaused: openDay?.isOrderingPaused ?? false,
       businessDate: openDay?.businessDate ?? null,
     };
   }
@@ -260,6 +322,13 @@ export class BusinessDayService {
       throw new AppError("The branch is closed for orders right now", {
         statusCode: HttpStatusCodes.CONFLICT,
         code: ErrorCodes.BUSINESS_DAY_CLOSED,
+      });
+    }
+
+    if (openDay.isOrderingPaused) {
+      throw new AppError("The branch is not taking orders right now", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.ORDERS_PAUSED,
       });
     }
 

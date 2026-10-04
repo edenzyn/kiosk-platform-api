@@ -11,4 +11,6 @@ export enum SocketEventEnum {
   // ========================================
   BUSINESS_DAY_OPENED = "business-day.opened",
   BUSINESS_DAY_CLOSED = "business-day.closed",
+  BUSINESS_DAY_ORDERS_PAUSED = "business-day.orders-paused",
+  BUSINESS_DAY_ORDERS_RESUMED = "business-day.orders-resumed",
 }

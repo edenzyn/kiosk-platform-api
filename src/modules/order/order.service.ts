@@ -112,6 +112,15 @@ export class OrderService {
           },
         };
       }
+
+      const openBusinessDayId =
+        await this.businessDayService.getOpenBusinessDayId({ branchId });
+      if (openBusinessDayId !== order.businessDayId) {
+        throw new AppError("The branch is closed for orders right now", {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.BUSINESS_DAY_CLOSED,
+        });
+      }
     } else {
       const businessDayId = await this.businessDayService.getOpenBusinessDayId({
         branchId,

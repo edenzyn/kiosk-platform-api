@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   date,
   index,
   integer,
@@ -26,6 +27,7 @@ export const businessDays = pgTable(
       .references((): AnyPgColumn => branches.id),
     businessDate: date("business_date", { mode: "string" }).notNull(), // Branch time zone; the date the manager opened it on
     status: smallint("status").default(1).notNull(), // BusinessDayStatusEnum: 1 = OPEN, 2 = CLOSED
+    isOrderingPaused: boolean("is_ordering_paused").default(false).notNull(), // Open, but not taking new orders for now
     lastTokenNumber: integer("last_token_number").default(0).notNull(), // Last token handed out; the next order gets this + 1
     openedAt: timestamp("opened_at", { withTimezone: true })
       .defaultNow()

@@ -526,6 +526,20 @@
       "when": 1791081596544,
       "tag": "0074_black_arachne",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1791083835439,
+      "tag": "0075_dark_scarlet_spider",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1791084344475,
+      "tag": "0076_tense_norman_osborn",
+      "breakpoints": true
     }
   ]
 }

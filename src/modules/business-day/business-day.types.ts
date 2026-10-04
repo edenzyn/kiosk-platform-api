@@ -36,6 +36,13 @@ export interface CloseBusinessDayServiceInput {
 }
 export type CloseBusinessDayServiceResult = GetCurrentBusinessDayResponseDto;
 
+export interface SetOrderingPausedServiceInput {
+  effectiveTenant: EffectiveTenant;
+  user: UserTokenDto;
+  isPaused: boolean;
+}
+export type SetOrderingPausedServiceResult = GetCurrentBusinessDayResponseDto;
+
 export interface GetBusinessDaysServiceInput {
   effectiveTenant: EffectiveTenant;
   filters: GetBusinessDaysQueryDto;
@@ -106,6 +113,18 @@ export interface CloseBusinessDayRepoInput {
 }
 /** Null when the day was not open. */
 export type CloseBusinessDayRepoResult = BusinessDayEntity | null;
+
+export interface SetOrderingPausedRepoInput {
+  id: string;
+  isPaused: boolean;
+  performedBy: string;
+}
+/** Null when the day was not open, or was already in that state. */
+export type SetOrderingPausedRepoResult = BusinessDayEntity | null;
+
+export interface CountActiveOrdersRepoInput {
+  businessDayId: string;
+}
 
 export interface FindBusinessDaysRepoInput {
   organizationId: string;

@@ -21,6 +21,10 @@ const businessDaySchema = {
       enum: [1, 2],
       description: "BusinessDayStatusEnum: 1 = OPEN, 2 = CLOSED",
     },
+    isOrderingPaused: {
+      type: "boolean",
+      description: "Open, but not taking new orders for now",
+    },
     openedAt: { type: "string", format: "date-time" },
     openedBy: { ...businessDayUserSchema, nullable: false },
     closedAt: { type: "string", format: "date-time", nullable: true },
@@ -41,6 +45,11 @@ const currentBusinessDayResponse = {
             description: "Today at the branch",
           },
           timezone: { type: "string" },
+          activeOrderCount: {
+            type: "integer",
+            description:
+              "Paid orders of the day that are not completed or cancelled yet",
+          },
           day: {
             ...businessDaySchema,
             nullable: true,
@@ -183,6 +192,46 @@ export const businessDaySwaggerPaths = {
       },
     },
   },
+  "/pvt/u/business-days/pause-orders": {
+    post: {
+      tags: ["Business Days"],
+      summary: "Pause new orders on the open business day",
+      description: `${branchScopeNote} The day stays open and orders in progress carry on, but kiosks stop taking new orders and get a business-day.orders-paused event. 409 when no day is open or orders are already paused.`,
+      responses: {
+        "200": currentBusinessDayResponse,
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "409": {
+          description: "No open business day, or orders are already paused",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+  "/pvt/u/business-days/resume-orders": {
+    post: {
+      tags: ["Business Days"],
+      summary: "Resume orders on the open business day",
+      description: `${branchScopeNote} Kiosks take orders again and get a business-day.orders-resumed event. 409 when no day is open or orders are not paused.`,
+      responses: {
+        "200": currentBusinessDayResponse,
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "409": {
+          description: "No open business day, or orders are not paused",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
   "/pvt/u/business-days/{id}/logs": {
     get: {
       tags: ["Business Days"],
@@ -212,9 +261,9 @@ export const businessDaySwaggerPaths = {
                         id: { type: "string", format: "uuid" },
                         action: {
                           type: "integer",
-                          enum: [1, 2, 3],
+                          enum: [1, 2, 3, 4, 5],
                           description:
-                            "BusinessDayActionEnum: 1 = OPENED, 2 = CLOSED, 3 = REOPENED",
+                            "BusinessDayActionEnum: 1 = OPENED, 2 = CLOSED, 3 = REOPENED, 4 = ORDERS_PAUSED, 5 = ORDERS_RESUMED",
                         },
                         performedBy: {
                           ...businessDayUserSchema,
@@ -252,7 +301,7 @@ export const businessDaySwaggerPaths = {
       tags: ["Business Days"],
       summary: "Is the device's branch open for orders",
       description:
-        "Kiosks take orders only while a business day is open. Listen for business-day.opened / business-day.closed on the device socket to stay in sync.",
+        "Kiosks take orders only while a business day is open and ordering is not paused. Listen for business-day.opened / business-day.closed / business-day.orders-paused / business-day.orders-resumed on the device socket to stay in sync.",
       security: [{ deviceCookieAuth: [] }],
       responses: {
         "200": {
@@ -263,6 +312,10 @@ export const businessDaySwaggerPaths = {
                 type: "object",
                 properties: {
                   isOpen: { type: "boolean" },
+                  isOrderingPaused: {
+                    type: "boolean",
+                    description: "Open, but new orders are on hold",
+                  },
                   businessDate: {
                     type: "string",
                     format: "date",

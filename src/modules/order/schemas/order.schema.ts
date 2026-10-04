@@ -40,7 +40,7 @@ export const orders = pgTable(
       .notNull()
       .references((): AnyPgColumn => businessDays.id),
     orderNumber: varchar("order_number", { length: 30 }).notNull(),
-    tokenNumber: integer("token_number").notNull(), // Counts up from 1 within a business day; never repeats in that day
+    tokenNumber: integer("token_number"), // Given when the order is paid; counts up from 1 within a business day and never repeats in it
     idempotencyKey: varchar("idempotency_key", { length: 100 }).notNull(),
     orderSource: smallint("order_source").notNull(), // OrderSourceEnum: 1 = KIOSK, 2 = COUNTER
     orderType: smallint("order_type").notNull(), // OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY

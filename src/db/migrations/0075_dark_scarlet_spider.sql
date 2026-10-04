@@ -1,0 +1,1 @@
+ALTER TABLE "orders" ALTER COLUMN "token_number" DROP NOT NULL;

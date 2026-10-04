@@ -717,6 +717,21 @@ export interface FindOneActiveLicenseByDeviceIdRepoInput {
 }
 export type FindOneActiveLicenseByDeviceIdRepoResult = LicenseEntity | null;
 
+export interface FindLicenseSummariesByDeviceIdsRepoInput {
+  deviceIds: string[];
+}
+export interface DeviceLicenseSummaryRow {
+  id: string;
+  deviceId: string;
+  status: LicenseStatusEnum;
+  planName: string;
+  activatedAt: Date | null;
+  expiresAt: Date | null;
+}
+/** Newest expiry first, so the first row of a device is its current license. */
+export type FindLicenseSummariesByDeviceIdsRepoResult =
+  DeviceLicenseSummaryRow[];
+
 export interface FindOneLicenseDetailsRepoInput {
   licenseId: string;
   viewerUserType: UserTypeEnums;
@@ -895,8 +910,7 @@ export interface RevokeRedemptionCodeRepoInput {
   resellerId: string;
 }
 export type RevokeRedemptionCodeRepoResult =
-  | LicenseRedemptionCodeEntity
-  | undefined;
+  LicenseRedemptionCodeEntity | undefined;
 
 export interface FindRedemptionCodeDetailsByIdRepoInput {
   id: string;

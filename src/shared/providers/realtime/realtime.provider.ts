@@ -2,6 +2,7 @@ import type { SocketConnection } from "../../../config/socket";
 import type { DeviceTypeEnum } from "../../enums/device/device-type.enum";
 import type { SocketEventEnum } from "../../enums/socket/socket-event.enum";
 import { DEVICE_SOCKET_NAMESPACE, RealtimeRooms } from "./realtime.constants";
+import type { DeviceSocket } from "./realtime.types";
 
 export class RealtimeProvider {
   constructor(private readonly socket: SocketConnection) {}
@@ -35,6 +36,14 @@ export class RealtimeProvider {
       .of(DEVICE_SOCKET_NAMESPACE)
       .to(room)
       .emit(event, payload);
+  }
+
+  async getOnlineDeviceIds(): Promise<Set<string>> {
+    const sockets = (await this.socket.server
+      .of(DEVICE_SOCKET_NAMESPACE)
+      .fetchSockets()) as unknown as DeviceSocket[];
+
+    return new Set(sockets.map((socket) => socket.data.device.id));
   }
 
   /** Closes a device's connections, e.g. after it is deactivated. */

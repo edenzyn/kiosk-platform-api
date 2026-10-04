@@ -19,16 +19,21 @@ export const removeExpiredOneTimeTokensJob: ScheduledJob = {
   enabled: true,
   runOnStartup: false,
   handler: async () => {
-    logger.log("[Job:RemoveExpiredOneTimeTokens] Starting cleanup of expired one-time tokens...");
+    logger.log(
+      "[Job:RemoveExpiredOneTimeTokens] Starting cleanup of expired one-time tokens...",
+    );
     try {
       const count = await removeExpiredOneTimeTokensTask();
       logger.log(
         `[Job:RemoveExpiredOneTimeTokens] Completed. Removed ${count} token(s).`,
       );
     } catch (error) {
-      logger.error("[Job:RemoveExpiredOneTimeTokens] Failed to remove expired one-time tokens", {
-        err: error,
-      });
+      logger.error(
+        "[Job:RemoveExpiredOneTimeTokens] Failed to remove expired one-time tokens",
+        {
+          err: error,
+        },
+      );
     }
   },
 };
@@ -36,7 +41,9 @@ export const removeExpiredOneTimeTokensJob: ScheduledJob = {
 if (require.main === module) {
   (async () => {
     try {
-      logger.log("[Script] Running remove-expired-oneTimeTokens task manually...");
+      logger.log(
+        "[Script] Running remove-expired-oneTimeTokens task manually...",
+      );
       const count = await removeExpiredOneTimeTokensTask();
       logger.log(`[Script] Successfully removed ${count} token(s).`);
       process.exit(0);

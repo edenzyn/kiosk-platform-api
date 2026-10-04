@@ -29,10 +29,9 @@ export const removeAuthSessionsJob: ScheduledJob = {
         `[Job:RemoveAuthSessions] Completed. Removed ${count} auth session(s).`,
       );
     } catch (error) {
-      logger.error(
-        "[Job:RemoveAuthSessions] Failed to remove auth sessions",
-        { err: error },
-      );
+      logger.error("[Job:RemoveAuthSessions] Failed to remove auth sessions", {
+        err: error,
+      });
     }
   },
 };

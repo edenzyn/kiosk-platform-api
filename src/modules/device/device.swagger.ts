@@ -31,6 +31,32 @@ const deviceWithBranchSchema = {
       type: "object",
       properties: {
         branchName: { type: "string", nullable: true },
+        isOnline: {
+          type: "boolean",
+          description: "Whether the device has a live socket connection",
+        },
+        license: {
+          type: "object",
+          nullable: true,
+          description:
+            "The device's current license (the one expiring last); null when none is assigned",
+          properties: {
+            id: { type: "string", format: "uuid" },
+            status: {
+              type: "integer",
+              enum: [1, 2, 3, 4, 5],
+              description:
+                "1=AVAILABLE, 2=ACTIVE, 3=GRACE_PERIOD, 4=EXPIRED, 5=REVOKED",
+            },
+            planName: { type: "string" },
+            activatedAt: {
+              type: "string",
+              format: "date-time",
+              nullable: true,
+            },
+            expiresAt: { type: "string", format: "date-time", nullable: true },
+          },
+        },
       },
     },
   ],
@@ -73,13 +99,15 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
         {
           name: "type",
           in: "query",
-          description: "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS)",
+          description:
+            "Filter by device type (1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS)",
           schema: { type: "integer", enum: [1, 2, 3, 4] },
         },
         {
           name: "branchId",
           in: "query",
-          description: "Ignored when the caller's effective tenant already scopes to a branch",
+          description:
+            "Ignored when the caller's effective tenant already scopes to a branch",
           schema: { type: "string", format: "uuid" },
         },
         { name: "isActive", in: "query", schema: { type: "boolean" } },
@@ -163,13 +191,67 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
     },
   },
   "/pvt/u/devices/{id}": {
+    get: {
+      tags: ["Devices"],
+      summary:
+        "Get a device with its license, online status and active session",
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Device details",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  device: deviceWithBranchSchema,
+                  session: {
+                    type: "object",
+                    nullable: true,
+                    description:
+                      "The device's active sign-in (the most recently used one); null when signed out",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      deviceName: {
+                        type: "string",
+                        nullable: true,
+                        example: "Chrome (Android)",
+                      },
+                      ipAddress: { type: "string", nullable: true },
+                      createdAt: { type: "string", format: "date-time" },
+                      lastUsedAt: { type: "string", format: "date-time" },
+                      expiresAt: { type: "string", format: "date-time" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
     put: {
       tags: ["Devices"],
       summary: "Update a device",
       description:
-        "Partially updates a device's branch, name, device code, PIN, or type. Omitted fields are left unchanged; a field explicitly set to null clears it where nullable.",
+        "Partially updates a device's branch, name, device code or PIN. The device type is fixed once the device is created. Omitted fields are left unchanged; a field explicitly set to null clears it where nullable.",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       requestBody: {
         required: true,
@@ -187,12 +269,6 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                   description: "4-digit numeric PIN (1000-9999)",
                   minimum: 1000,
                   maximum: 9999,
-                },
-                deviceType: {
-                  type: "integer",
-                  nullable: true,
-                  enum: [1, 2, 3, 4],
-                  description: "1=KIOSK, 2=COUNTER, 3=KDS, 4=CDS",
                 },
               },
             },
@@ -218,6 +294,28 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/devices/{id}/session": {
+    delete: {
+      tags: ["Devices"],
+      summary: "Revoke a device's session",
+      description:
+        "Signs the device out everywhere: every active session of the device is revoked, its tokens stop working and its socket is disconnected, so it can sign in again.",
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": { description: "Device session revoked" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/u/devices/{id}/terminal": {
     patch: {
       tags: ["Devices"],
@@ -225,7 +323,12 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       description:
         "Sets the card terminal (Pine Labs) the device is paired with. Send an empty terminalId to unmap it. Only kiosk and counter devices take card payments.",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       requestBody: {
         required: true,
@@ -253,9 +356,15 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
     patch: {
       tags: ["Devices"],
       summary: "Toggle a device's active status",
-      description: "Flips the device's isActive flag (active becomes inactive and vice versa).",
+      description:
+        "Flips the device's isActive flag (active becomes inactive and vice versa).",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       responses: {
         "200": {
@@ -284,7 +393,8 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       security: [{ deviceCookieAuth: [] }],
       responses: {
         "200": {
-          description: "Device session is valid; returns the device and its license",
+          description:
+            "Device session is valid; returns the device and its license",
           content: {
             "application/json": {
               schema: {
@@ -315,11 +425,19 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
         },
         "401": {
           description: "No device session found",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "403": {
           description: "Device, organization, or branch has been deactivated",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "404": { $ref: "#/components/responses/NotFound" },
       },

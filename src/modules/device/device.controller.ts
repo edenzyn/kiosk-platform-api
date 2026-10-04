@@ -10,9 +10,7 @@ import type { CreateDeviceBodyDto } from "./dtos/create-device.dtos";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 
 export class DeviceController {
-  constructor(
-    private readonly deviceService: DeviceService,
-  ) {}
+  constructor(private readonly deviceService: DeviceService) {}
 
   // ========================================
   // ? USER CLIENT APIS
@@ -44,6 +42,32 @@ export class DeviceController {
       filters: queryDto,
     });
     res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  getDeviceDetails = async (req: Request, res: Response): Promise<void> => {
+    const { id } = await DeviceValidator.deviceIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.deviceService.getDeviceDetails({
+      id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  revokeDeviceSession = async (req: Request, res: Response): Promise<void> => {
+    const { id } = await DeviceValidator.deviceIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    await this.deviceService.revokeDeviceSession({
+      id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ message: "Device session revoked" });
   };
 
   updateDevice = async (req: Request, res: Response): Promise<void> => {

@@ -78,6 +78,7 @@ const EnvSchema = Yup.object({
   NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
+  DEVICE_SESSION_LIMIT: Yup.number().integer().positive().default(1),
   IS_NORMAL_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_RESELLER_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_PLATFORM_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),

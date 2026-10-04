@@ -65,7 +65,9 @@ export class OneTimeTokenService {
    *
    * Returns the plaintext code for the caller to deliver — it is never stored.
    */
-  async issue(input: IssueOneTimeTokenServiceInput): Promise<IssueOneTimeTokenServiceResult> {
+  async issue(
+    input: IssueOneTimeTokenServiceInput,
+  ): Promise<IssueOneTimeTokenServiceResult> {
     const windowStart = dayjs()
       .subtract(ONE_TIME_TOKEN_CONSTANTS.GENERATION_WINDOW_MINUTES, "minute")
       .toDate();
@@ -103,9 +105,7 @@ export class OneTimeTokenService {
       channel: input.channel,
       destination: input.destination,
       tokenHash: this._hashToken(code),
-      expiresAt: dayjs()
-        .add(shape.expiryMinutes, "minute")
-        .toDate(),
+      expiresAt: dayjs().add(shape.expiryMinutes, "minute").toDate(),
     });
 
     return { verificationId: record.id, code };
@@ -116,7 +116,9 @@ export class OneTimeTokenService {
    * the token's attempt allowance; exhausting it burns the token so the
    * remaining keyspace can't be walked. A correct value consumes it (single use).
    */
-  async verify(input: VerifyOneTimeTokenServiceInput): Promise<VerifyOneTimeTokenServiceResult> {
+  async verify(
+    input: VerifyOneTimeTokenServiceInput,
+  ): Promise<VerifyOneTimeTokenServiceResult> {
     const record = await this.authRepository.findActiveOneTimeToken({
       id: input.verificationId,
       userId: input.userId,
@@ -149,7 +151,8 @@ export class OneTimeTokenService {
 
       const attemptsRemaining = Math.max(
         0,
-        ONE_TIME_TOKEN_CONSTANTS.MAX_VERIFY_ATTEMPTS - (updated?.attemptCount ?? 0),
+        ONE_TIME_TOKEN_CONSTANTS.MAX_VERIFY_ATTEMPTS -
+          (updated?.attemptCount ?? 0),
       );
 
       if (attemptsRemaining === 0) {

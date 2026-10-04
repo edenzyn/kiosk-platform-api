@@ -1,14 +1,18 @@
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import {
   DEVICE_TYPE_SHORT_LABELS,
   DeviceTypeEnum,
 } from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import { hashData } from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
+import type { AuthRepository } from "../auth/auth.repository";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { BranchService } from "../branch/branch.service";
+import type { LicenseRepository } from "../license/repositories/license.repository";
 import type { LicenseService } from "../license/services/license.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
 import { DeviceMapper } from "./device.mapper";
@@ -19,10 +23,13 @@ import type {
   CreateDeviceServiceResult,
   DeviceAuthCheckServiceInput,
   DeviceAuthCheckServiceResult,
+  GetDeviceDetailsServiceInput,
+  GetDeviceDetailsServiceResult,
   GetDevicesServiceInput,
   GetDevicesServiceResult,
   MapDeviceTerminalServiceInput,
   MapDeviceTerminalServiceResult,
+  RevokeDeviceSessionServiceInput,
   ToggleDeviceStatusServiceInput,
   ToggleDeviceStatusServiceResult,
   UpdateDeviceServiceInput,
@@ -37,6 +44,9 @@ export class DeviceService {
     private readonly organizationRepository: OrganizationRepository,
     private readonly branchRepository: BranchRepository,
     private readonly branchService: BranchService,
+    private readonly licenseRepository: LicenseRepository,
+    private readonly authRepository: AuthRepository,
+    private readonly realtimeProvider: RealtimeProvider,
   ) {}
 
   // ========================================
@@ -82,19 +92,108 @@ export class DeviceService {
       page,
       limit,
       search: filters.search,
+      deviceIds: filters.deviceIds,
       deviceType: filters.type,
       isActive: filters.isActive,
       sortBy: filters.sortBy,
       sortOrder: filters.sortOrder,
     });
 
+    const [licenses, onlineDeviceIds] = await Promise.all([
+      this.licenseRepository.findSummariesByDeviceIds({
+        deviceIds: devices.map((device) => device.id),
+      }),
+      this.realtimeProvider.getOnlineDeviceIds(),
+    ]);
+
     return {
-      devices,
+      devices: devices.map((device) => {
+        const license = licenses.find((row) => row.deviceId === device.id);
+
+        return {
+          ...device,
+          license: license
+            ? {
+                id: license.id,
+                status: license.status,
+                planName: license.planName,
+                activatedAt: license.activatedAt,
+                expiresAt: license.expiresAt,
+              }
+            : null,
+          isOnline: onlineDeviceIds.has(device.id),
+        };
+      }),
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async getDeviceDetails(
+    input: GetDeviceDetailsServiceInput,
+  ): Promise<GetDeviceDetailsServiceResult> {
+    const { id, effectiveTenant } = input;
+
+    const { devices } = await this.getDevices({
+      effectiveTenant,
+      filters: { deviceIds: [id], page: 1, limit: 1 },
+    });
+    const device = devices[0];
+
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const session = await this.authRepository.findActiveDeviceSession({
+      deviceId: device.id,
+    });
+
+    return {
+      device,
+      session: session && {
+        id: session.id,
+        deviceName: session.deviceName,
+        ipAddress: session.ipAddress,
+        createdAt: session.createdAt,
+        lastUsedAt: session.lastUsedAt,
+        expiresAt: session.expiresAt,
+      },
+    };
+  }
+
+  async revokeDeviceSession(
+    input: RevokeDeviceSessionServiceInput,
+  ): Promise<void> {
+    const { id, effectiveTenant } = input;
+
+    const device = await this.deviceRepository.findOne({
+      id,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId ?? undefined,
+    });
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const revokedCount = await this.authRepository.revokeDeviceSessions({
+      deviceId: device.id,
+    });
+    if (revokedCount === 0) {
+      throw new AppError("This device has no active session", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    this.realtimeProvider.disconnectDevice(device.id);
   }
 
   async updateDevice(
@@ -112,7 +211,6 @@ export class DeviceService {
       branchId: updateData.branchId,
       name: updateData.name ?? undefined,
       deviceCode: updateData.deviceCode ?? undefined,
-      deviceType: updateData.deviceType ?? undefined,
       updatedBy: input.user.id,
     };
 

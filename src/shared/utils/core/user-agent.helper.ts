@@ -25,7 +25,7 @@ export function parseDeviceName(userAgent?: string | null): string | undefined {
   const browser = match(BROWSER_PATTERNS, userAgent);
   const os = match(OS_PATTERNS, userAgent);
 
-  if (browser && os) return `${browser} on ${os}`;
+  if (browser && os) return `${browser} (${os})`;
   if (browser) return browser;
   if (os) return os;
   return "Unknown device";

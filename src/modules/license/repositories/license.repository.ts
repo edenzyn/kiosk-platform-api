@@ -33,6 +33,8 @@ import type {
   FindLicensesByResellerRepoResult,
   FindLicensesForStatusCheckRepoInput,
   FindLicensesForStatusCheckRepoResult,
+  FindLicenseSummariesByDeviceIdsRepoInput,
+  FindLicenseSummariesByDeviceIdsRepoResult,
   FindLicensesRepoInput,
   FindLicensesRepoResult,
   FindOneActiveLicenseByDeviceIdRepoInput,
@@ -50,6 +52,7 @@ import type {
 } from "../license.types";
 import { licenseHistory } from "../schemas/license-history.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
+import { licensePlans } from "../schemas/license-plan.schema";
 import { licenses } from "../schemas/license.schema";
 import { AppError } from "../../../shared/errors/app-error";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
@@ -121,6 +124,41 @@ export class LicenseRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_ONE_ACTIVE_BY_DEVICE_ID_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findSummariesByDeviceIds(
+    input: FindLicenseSummariesByDeviceIdsRepoInput,
+  ): Promise<FindLicenseSummariesByDeviceIdsRepoResult> {
+    try {
+      if (input.deviceIds.length === 0) return [];
+
+      const rows = await this.database.client
+        .select({
+          id: licenses.id,
+          deviceId: licenses.deviceId,
+          status: licenses.status,
+          planName: licensePlans.name,
+          activatedAt: licenses.activatedAt,
+          expiresAt: licenses.expiresAt,
+        })
+        .from(licenses)
+        .innerJoin(licensePlans, eq(licenses.currentPlanId, licensePlans.id))
+        .where(inArray(licenses.deviceId, input.deviceIds))
+        .orderBy(sql`${licenses.expiresAt} desc nulls last`);
+
+      return rows.map((row) => ({
+        ...row,
+        deviceId: row.deviceId as string,
+        status: row.status as LicenseStatusEnum,
+      }));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[LICENSE_FIND_SUMMARIES_BY_DEVICE_IDS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

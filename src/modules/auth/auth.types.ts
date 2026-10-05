@@ -38,7 +38,9 @@ export interface LoginServiceInput {
 
 export interface LoginServiceResult {
   clientType: ClientTypeEnum.USER_CLIENT;
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
+  /** Whether the user has set their 4-digit PIN. */
+  isPinSet: boolean;
   tokens: AuthTokens;
   permissions: UserPermissions[];
   availableScopes: UserScope[];
@@ -53,7 +55,7 @@ export interface LoginPlatformUserServiceInput {
 
 export interface LoginPlatformUserServiceResult {
   clientType: ClientTypeEnum.USER_CLIENT;
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   tokens: AuthTokens;
   permissions: UserPermissions[];
   settings: UserSettingsEntity;
@@ -67,7 +69,7 @@ export interface LoginResellerServiceInput {
 
 export interface LoginResellerServiceResult {
   clientType: ClientTypeEnum.USER_CLIENT;
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   tokens: AuthTokens;
   permissions: UserPermissions[];
   settings: UserSettingsEntity;

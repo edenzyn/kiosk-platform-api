@@ -27,7 +27,7 @@ export class PlatformService {
       });
     }
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
 
     const userPermissions = await this.rbacRepository.findUserPermissionKeys({
       userId: user.id,

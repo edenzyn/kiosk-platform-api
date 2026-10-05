@@ -13,12 +13,15 @@ import { branches } from "../../branch/schemas/branch.schema";
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").references((): AnyPgColumn => organizations.id),
+  organizationId: uuid("organization_id").references(
+    (): AnyPgColumn => organizations.id,
+  ),
   branchId: uuid("branch_id").references((): AnyPgColumn => branches.id),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   mobile: varchar("mobile", { length: 20 }).unique(),
   password: varchar("password", { length: 255 }).notNull(),
+  pin: varchar("pin", { length: 255 }), // Hashed 4-digit PIN; null until the user sets one
   userType: integer("user_type").notNull(), // UserTypeEnums: 1 = NORMAL, 2 = RESELLER, 3 = PLATFORM
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })

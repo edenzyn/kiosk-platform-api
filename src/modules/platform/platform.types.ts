@@ -13,8 +13,11 @@ export interface CheckPlatformUserAuthServiceInput {
 }
 
 export interface CheckPlatformUserAuthServiceResult {
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   permissions: UserPermissions[];
-  topRole?: Pick<RoleEntity, "name" | "description" | "rank" | "isSystem"> | null;
+  topRole?: Pick<
+    RoleEntity,
+    "name" | "description" | "rank" | "isSystem"
+  > | null;
   settings: UserSettingsEntity;
 }

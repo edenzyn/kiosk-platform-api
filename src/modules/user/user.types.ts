@@ -141,7 +141,7 @@ export interface FindUsersByRoleIdRepoInput {
   ru?: boolean;
 }
 export interface FindUsersByRoleIdRepoResult {
-  users: Omit<UserEntity, "password" | "createdBy" | "updatedBy">[];
+  users: Omit<UserEntity, "password" | "pin" | "createdBy" | "updatedBy">[];
   total: number;
 }
 
@@ -167,7 +167,13 @@ export interface UpdateUserRepoInput {
   data: Partial<
     Pick<
       UserEntity,
-      "isActive" | "updatedBy" | "password" | "name" | "email" | "mobile"
+      | "isActive"
+      | "updatedBy"
+      | "password"
+      | "pin"
+      | "name"
+      | "email"
+      | "mobile"
     >
   >;
 }

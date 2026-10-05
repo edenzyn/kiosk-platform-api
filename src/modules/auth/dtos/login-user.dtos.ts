@@ -8,7 +8,7 @@ export interface LoginUserRequestDto {
 }
 
 export interface LoginUserResponseDto {
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   permissions: UserPermissions[];
   availableScopes: UserScope[];
 }

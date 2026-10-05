@@ -36,6 +36,14 @@ router.patch(
   }),
   asyncHandler(userController.changePassword),
 );
+router.put(
+  "/pin",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_BASIC],
+    branch: [UserPermissions.BRANCH_BASIC],
+  }),
+  asyncHandler(userController.setPin),
+);
 router.get(
   "/sessions",
   accessMiddleware({

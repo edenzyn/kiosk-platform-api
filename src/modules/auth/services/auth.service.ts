@@ -285,7 +285,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const settings = await this.userService.getOrCreateSettings({
       id: user.id,
@@ -306,6 +306,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes,
@@ -317,7 +318,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginPlatformUserServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings({
@@ -339,7 +340,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginResellerServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings({
@@ -637,7 +638,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const { permissions, availableScopes } =
       await this.userService.getPermissionsAndScopes(
@@ -655,6 +656,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes,
@@ -728,7 +730,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const { permissions } = await this.userService.getPermissionsAndScopes(
       createdUser.id,
@@ -744,6 +746,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes: [],
@@ -808,7 +811,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const userScope = getUserScope(createdUser);
     const { permissions, availableScopes } =
@@ -827,6 +830,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       organization,
       tokens,
       permissions,
@@ -941,7 +945,7 @@ export class AuthService {
         user.branchId,
       );
 
-      const { password, ...userWithoutPassword } = user;
+      const { password, pin, ...userWithoutPassword } = user;
 
       const customRefreshExp = env.JWT_REFRESH_SLIDING_ENABLED
         ? undefined
@@ -999,6 +1003,7 @@ export class AuthService {
         clientType: ClientTypeEnum.USER_CLIENT,
         tokens,
         user: userWithoutPassword,
+        isPinSet: Boolean(pin),
         permissions,
         settings,
         availableScopes,

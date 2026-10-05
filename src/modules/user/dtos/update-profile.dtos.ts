@@ -3,7 +3,7 @@ import type { UserEntity } from "../schemas/user.schema";
 export interface UpdateProfileRequestDto {
   name: string;
 }
-export type UpdateProfileResponseDto = Omit<UserEntity, "password">;
+export type UpdateProfileResponseDto = Omit<UserEntity, "password" | "pin">;
 
 export interface RequestEmailChangeRequestDto {
   newEmail: string;
@@ -23,5 +23,5 @@ export interface ConfirmContactChangeRequestDto {
 }
 export interface ConfirmContactChangeResponseDto {
   message: string;
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
 }

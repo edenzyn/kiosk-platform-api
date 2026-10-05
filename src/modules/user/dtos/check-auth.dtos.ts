@@ -4,7 +4,7 @@ import { UserScopeTypeEnums } from "../../../shared/enums/user/user-scope-type.e
 import type { UserSettingsEntity } from "../schemas/user-settings.schema";
 import type { UserEntity } from "../schemas/user.schema";
 
-export type CheckAuthUserDto = Omit<UserEntity, "password">;
+export type CheckAuthUserDto = Omit<UserEntity, "password" | "pin">;
 
 export interface UserScope {
   id: string;
@@ -15,9 +15,14 @@ export interface UserScope {
 
 export interface CheckAuthResponseDto {
   user: CheckAuthUserDto;
+  /** Whether the user has set their 4-digit PIN. */
+  isPinSet: boolean;
   permissions: UserPermissions[];
   availableScopes?: UserScope[];
-  topRole?: Pick<RoleEntity, "name" | "description" | "rank" | "isSystem"> | null;
+  topRole?: Pick<
+    RoleEntity,
+    "name" | "description" | "rank" | "isSystem"
+  > | null;
   settings: UserSettingsEntity;
   logoUrl?: string | null;
 }

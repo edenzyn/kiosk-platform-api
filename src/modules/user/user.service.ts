@@ -46,6 +46,7 @@ import type {
   ChangePasswordRequestDto,
   ChangePasswordResponseDto,
 } from "./dtos/change-password.dtos";
+import type { SetPinRequestDto, SetPinResponseDto } from "./dtos/user-pin.dtos";
 import type { CheckAuthResponseDto, UserScope } from "./dtos/check-auth.dtos";
 import type {
   GetUsersRequestDto,
@@ -204,7 +205,7 @@ export class UserService {
       user.branchId,
     );
 
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
 
     const userScope = getUserScope(user);
     const settings = await this.getOrCreateSettings({
@@ -224,6 +225,7 @@ export class UserService {
     if (user.userType === UserTypeEnums.RESELLER) {
       return {
         user: userWithoutPassword,
+        isPinSet: Boolean(pin),
         permissions,
         settings,
       };
@@ -261,6 +263,7 @@ export class UserService {
 
     return {
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       permissions,
       availableScopes,
       topRole: topRoleDto,
@@ -352,6 +355,36 @@ export class UserService {
     return { message: "Password changed successfully" };
   }
 
+  async setPin(
+    userId: string,
+    dto: SetPinRequestDto,
+  ): Promise<SetPinResponseDto> {
+    const user = await this.userRepository.findOne({ id: userId });
+
+    if (!user) {
+      throw new AppError("User not found", {
+        statusCode: HttpStatusCodes.UNAUTHORIZED,
+        code: ErrorCodes.UNAUTHORIZED,
+      });
+    }
+
+    const isMatch = await compareHashedData(dto.password, user.password);
+    if (!isMatch) {
+      throw new AppError("Incorrect password", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+      });
+    }
+
+    await this.userRepository.update({
+      userId,
+      data: { pin: await hashData(String(dto.pin)) },
+    });
+
+    return {
+      message: user.pin ? "PIN changed successfully" : "PIN set successfully",
+    };
+  }
+
   async updateProfile(
     userId: string,
     dto: UpdateProfileRequestDto,
@@ -360,7 +393,7 @@ export class UserService {
       userId,
       data: { name: dto.name },
     });
-    const { password, ...safeUser } = updated;
+    const { password, pin, ...safeUser } = updated;
     return safeUser;
   }
 
@@ -442,7 +475,7 @@ export class UserService {
       userId,
       data: { email: destination },
     });
-    const { password, ...safeUser } = updated;
+    const { password, pin, ...safeUser } = updated;
     return { message: "Email updated successfully", user: safeUser };
   }
 
@@ -515,7 +548,7 @@ export class UserService {
       userId,
       data: { mobile: destination },
     });
-    const { password, ...safeUser } = updated;
+    const { password, pin, ...safeUser } = updated;
     return { message: "Mobile number updated successfully", user: safeUser };
   }
 

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { SetPinRequestDto } from "./dtos/user-pin.dtos";
 import type { UserService } from "./user.service";
 import { UserValidator } from "./user.validator";
 
@@ -54,10 +55,13 @@ export class UserController {
     res: Response,
   ): Promise<void> => {
     const effectiveTenant = req.effectiveTenant as EffectiveTenant;
-    const queryDto = await UserValidator.getInvitationsQuery.validate(req.query, {
-      abortEarly: false,
-      stripUnknown: true,
-    });
+    const queryDto = await UserValidator.getInvitationsQuery.validate(
+      req.query,
+      {
+        abortEarly: false,
+        stripUnknown: true,
+      },
+    );
     const result = await this.userService.getInvitationsByTenant({
       effectiveTenant,
       query: queryDto,
@@ -156,16 +160,26 @@ export class UserController {
     res.json(result);
   };
 
+  setPin = async (req: Request, res: Response): Promise<void> => {
+    const userTokenData = req.user as UserTokenDto;
+    const data = await UserValidator.setPin.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const result = await this.userService.setPin(
+      userTokenData.id,
+      data as SetPinRequestDto,
+    );
+    res.json(result);
+  };
+
   updateProfile = async (req: Request, res: Response): Promise<void> => {
     const userTokenData = req.user as UserTokenDto;
     const data = await UserValidator.updateProfile.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.userService.updateProfile(
-      userTokenData.id,
-      data,
-    );
+    const result = await this.userService.updateProfile(userTokenData.id, data);
     res.json(result);
   };
 

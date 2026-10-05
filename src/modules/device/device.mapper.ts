@@ -11,6 +11,7 @@ export class DeviceMapper {
       deviceCode: device.deviceCode,
       name: device.name,
       deviceType: device.deviceType as DeviceTypeEnum,
+      terminalId: device.terminalId,
     };
   }
 }

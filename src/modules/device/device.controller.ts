@@ -1,5 +1,7 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import type { DeviceAdminTokenDto } from "../../shared/dtos/device-admin-token.dto";
+import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
@@ -7,6 +9,7 @@ import { AppError } from "../../shared/errors/app-error";
 import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
 import type { CreateDeviceBodyDto } from "./dtos/create-device.dtos";
+import type { DeviceAdminLoginBodyDto } from "./dtos/device-admin.dtos";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 
 export class DeviceController {
@@ -65,9 +68,28 @@ export class DeviceController {
 
     await this.deviceService.revokeDeviceSession({
       id,
+      user: req.user as UserTokenDto,
       effectiveTenant: req.effectiveTenant as EffectiveTenant,
     });
     res.status(HttpStatusCodes.OK).json({ message: "Device session revoked" });
+  };
+
+  getDeviceLogs = async (req: Request, res: Response): Promise<void> => {
+    const { id } = await DeviceValidator.deviceIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const queryDto = await DeviceValidator.getDeviceLogsQuery.validate(
+      req.query,
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.deviceService.getDeviceLogs({
+      id,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      filters: queryDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   updateDevice = async (req: Request, res: Response): Promise<void> => {
@@ -132,6 +154,36 @@ export class DeviceController {
     }
 
     const result = await this.deviceService.deviceAuthCheck({ id: deviceId });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  // ========================================
+  // ? DEVICE ADMIN APIS
+  // ========================================
+  deviceAdminLogin = async (req: Request, res: Response): Promise<void> => {
+    const dto = await DeviceValidator.adminLogin.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.deviceService.deviceAdminLogin({
+      device: req.device as DeviceTokenDto,
+      dto: dto as DeviceAdminLoginBodyDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  mapOwnTerminal = async (req: Request, res: Response): Promise<void> => {
+    const dto = await DeviceValidator.mapOwnTerminal.validate(
+      { terminalId: req.body?.terminalId },
+      { abortEarly: false, stripUnknown: true },
+    );
+
+    const result = await this.deviceService.mapOwnTerminal({
+      device: req.device as DeviceTokenDto,
+      admin: req.deviceAdmin as DeviceAdminTokenDto,
+      dto,
+    });
     res.status(HttpStatusCodes.OK).json(result);
   };
 }

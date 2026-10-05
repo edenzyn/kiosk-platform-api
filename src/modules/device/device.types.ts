@@ -1,3 +1,5 @@
+import type { DeviceAdminTokenDto } from "../../shared/dtos/device-admin-token.dto";
+import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
@@ -6,7 +8,19 @@ import type { LicenseAuthResponseDto } from "../license/dtos/device-auth.dtos";
 import type { DeviceEntity, DeviceWithBranchEntity } from "./device.schema";
 import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
 import type { BranchBrandingDto } from "../branch/dtos/get-branch-branding.dtos";
+import type { CreateDeviceLogEntity } from "./device-log.schema";
+import type {
+  DeviceAdminLoginBodyDto,
+  DeviceAdminLoginResponseDto,
+  MapOwnTerminalBodyDto,
+  MapOwnTerminalResponseDto,
+} from "./dtos/device-admin.dtos";
 import type { DeviceAuthResponseDto } from "./dtos/device-auth.dtos";
+import type {
+  DeviceLogDto,
+  GetDeviceLogsQueryDto,
+  GetDeviceLogsResponseDto,
+} from "./dtos/get-device-logs.dtos";
 import type { GetDeviceDetailsResponseDto } from "./dtos/get-device-details.dtos";
 import type { GetDevicesResponseDto } from "./dtos/get-devices.dtos";
 
@@ -51,8 +65,29 @@ export type GetDeviceDetailsServiceResult = GetDeviceDetailsResponseDto;
 
 export interface RevokeDeviceSessionServiceInput {
   id: string;
+  user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
 }
+
+export interface GetDeviceLogsServiceInput {
+  id: string;
+  effectiveTenant: EffectiveTenant;
+  filters: GetDeviceLogsQueryDto;
+}
+export type GetDeviceLogsServiceResult = GetDeviceLogsResponseDto;
+
+export interface DeviceAdminLoginServiceInput {
+  device: DeviceTokenDto;
+  dto: DeviceAdminLoginBodyDto;
+}
+export type DeviceAdminLoginServiceResult = DeviceAdminLoginResponseDto;
+
+export interface MapOwnTerminalServiceInput {
+  device: DeviceTokenDto;
+  admin: DeviceAdminTokenDto;
+  dto: MapOwnTerminalBodyDto;
+}
+export type MapOwnTerminalServiceResult = MapOwnTerminalResponseDto;
 
 export interface UpdateDeviceServiceInput {
   data: {
@@ -77,7 +112,7 @@ export type ToggleDeviceStatusServiceResult = Omit<DeviceEntity, "pin">;
 export interface MapDeviceTerminalServiceInput {
   id: string;
   terminalId: string | null;
-  user: UserTokenDto;
+  user: Pick<UserTokenDto, "id">;
 }
 
 export type MapDeviceTerminalServiceResult = Omit<DeviceEntity, "pin">;
@@ -117,6 +152,20 @@ export interface FindDevicesRepoInput {
 }
 export interface FindDevicesRepoResult {
   devices: DeviceWithBranchEntity[];
+  total: number;
+}
+
+export interface CreateDeviceLogRepoInput {
+  data: CreateDeviceLogEntity;
+}
+
+export interface FindDeviceLogsRepoInput {
+  deviceId: string;
+  page: number;
+  limit: number;
+}
+export interface FindDeviceLogsRepoResult {
+  logs: DeviceLogDto[];
   total: number;
 }
 

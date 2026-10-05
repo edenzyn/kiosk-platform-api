@@ -4,16 +4,21 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/e": {
     get: {
       tags: ["Platform"],
-      summary: "Get the current authenticated platform user's profile, permissions, and settings",
+      summary:
+        "Get the current authenticated platform user's profile, permissions, and settings",
       responses: {
         "200": {
-          description: "Current platform user, permissions, top role, and settings",
+          description:
+            "Current platform user, permissions, top role, and settings",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  user: { type: "object", description: "The authenticated user (password omitted)" },
+                  user: {
+                    type: "object",
+                    description: "The authenticated user (password omitted)",
+                  },
                   permissions: { type: "array", items: { type: "string" } },
                   topRole: {
                     type: "object",
@@ -25,7 +30,11 @@ export const platformSwaggerPaths: Record<string, unknown> = {
                       isSystem: { type: "boolean" },
                     },
                   },
-                  settings: { type: "object", description: "The user's settings (theme, locale, 2FA, etc.)" },
+                  settings: {
+                    type: "object",
+                    description:
+                      "The user's settings (theme, locale, 2FA, etc.)",
+                  },
                 },
               },
             },
@@ -47,7 +56,10 @@ export const platformSwaggerPaths: Record<string, unknown> = {
             schema: {
               type: "object",
               properties: {
-                themeMode: { type: "string", enum: ["light", "dark", "system"] },
+                themeMode: {
+                  type: "string",
+                  enum: ["light", "dark", "system"],
+                },
                 primaryColor: {
                   type: "string",
                   pattern: "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$",
@@ -100,13 +112,20 @@ export const platformSwaggerPaths: Record<string, unknown> = {
           description: "Password changed",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { message: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
             },
           },
         },
         "400": {
           description: "Validation error, or the current password is incorrect",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
       },
@@ -150,13 +169,17 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/sessions/others": {
     delete: {
       tags: ["Platform"],
-      summary: "Revoke all sessions for the current platform user except the current one",
+      summary:
+        "Revoke all sessions for the current platform user except the current one",
       responses: {
         "200": {
           description: "Number of sessions revoked",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { revokedCount: { type: "integer" } } },
+              schema: {
+                type: "object",
+                properties: { revokedCount: { type: "integer" } },
+              },
             },
           },
         },
@@ -169,14 +192,22 @@ export const platformSwaggerPaths: Record<string, unknown> = {
       tags: ["Platform"],
       summary: "Revoke a specific session for the current platform user",
       parameters: [
-        { name: "sessionId", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "sessionId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       responses: {
         "200": {
           description: "Whether the session was revoked",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { revoked: { type: "boolean" } } },
+              schema: {
+                type: "object",
+                properties: { revoked: { type: "boolean" } },
+              },
             },
           },
         },
@@ -188,7 +219,8 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/2fa/status": {
     get: {
       tags: ["Platform"],
-      summary: "Get the current platform user's two-factor authentication status",
+      summary:
+        "Get the current platform user's two-factor authentication status",
       responses: {
         "200": {
           description: "Whether 2FA is enabled, and the method in use",
@@ -216,7 +248,8 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/2fa/setup": {
     post: {
       tags: ["Platform"],
-      summary: "Begin two-factor authentication setup for the current platform user",
+      summary:
+        "Begin two-factor authentication setup for the current platform user",
       requestBody: {
         required: true,
         content: {
@@ -259,7 +292,8 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/2fa/enable": {
     post: {
       tags: ["Platform"],
-      summary: "Confirm two-factor authentication setup and enable it for the current platform user",
+      summary:
+        "Confirm two-factor authentication setup and enable it for the current platform user",
       requestBody: {
         required: true,
         content: {
@@ -302,7 +336,8 @@ export const platformSwaggerPaths: Record<string, unknown> = {
   "/pvt/p/2fa/disable": {
     post: {
       tags: ["Platform"],
-      summary: "Disable two-factor authentication for the current platform user",
+      summary:
+        "Disable two-factor authentication for the current platform user",
       requestBody: {
         required: true,
         content: {
@@ -320,13 +355,20 @@ export const platformSwaggerPaths: Record<string, unknown> = {
           description: "2FA disabled",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { message: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
             },
           },
         },
         "400": {
           description: "Validation error, or the password is incorrect",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
       },

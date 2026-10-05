@@ -9,7 +9,7 @@ export interface AcceptInvitationRequestDto {
 }
 
 export interface AcceptInvitationResponseDto {
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   permissions: UserPermissions[];
   availableScopes: UserScope[];
 }

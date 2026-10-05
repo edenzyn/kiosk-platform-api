@@ -11,6 +11,7 @@ import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { DeviceLogActionEnum } from "../../../shared/enums/device/device-log-action.enum";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
@@ -285,7 +286,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const settings = await this.userService.getOrCreateSettings({
       id: user.id,
@@ -306,6 +307,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes,
@@ -317,7 +319,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginPlatformUserServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings({
@@ -339,7 +341,7 @@ export class AuthService {
     user: UserEntity,
     meta: SessionMeta,
   ): Promise<LoginResellerServiceResult> {
-    const { password, ...userWithoutPassword } = user;
+    const { password, pin, ...userWithoutPassword } = user;
     const tokens = await this._issueUserSessionTokens(user, meta);
     const permissions = await this._getUserPermissionKeys(user.id);
     const settings = await this.userService.getOrCreateSettings({
@@ -496,6 +498,21 @@ export class AuthService {
           tokenHash: hashSha256(refreshToken),
         });
       }
+
+      const device = decoded.device?.id
+        ? await this.deviceRepository.findOne({ id: decoded.device.id })
+        : null;
+      if (device) {
+        await this.deviceRepository.createLog({
+          data: {
+            organizationId: device.organizationId,
+            branchId: device.branchId,
+            deviceId: device.id,
+            action: DeviceLogActionEnum.SIGNED_OUT,
+          },
+        });
+      }
+
       return true;
     } catch {
       // Logout is intentionally idempotent, including for expired tokens.
@@ -637,7 +654,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const { permissions, availableScopes } =
       await this.userService.getPermissionsAndScopes(
@@ -655,6 +672,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes,
@@ -728,7 +746,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const { permissions } = await this.userService.getPermissionsAndScopes(
       createdUser.id,
@@ -744,6 +762,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       tokens,
       permissions,
       availableScopes: [],
@@ -808,7 +827,7 @@ export class AuthService {
 
     const tokens = await this._issueUserSessionTokens(createdUser, dto.meta);
 
-    const { password, ...userWithoutPassword } = createdUser;
+    const { password, pin, ...userWithoutPassword } = createdUser;
 
     const userScope = getUserScope(createdUser);
     const { permissions, availableScopes } =
@@ -827,6 +846,7 @@ export class AuthService {
     return {
       clientType: ClientTypeEnum.USER_CLIENT,
       user: userWithoutPassword,
+      isPinSet: Boolean(pin),
       organization,
       tokens,
       permissions,
@@ -941,7 +961,7 @@ export class AuthService {
         user.branchId,
       );
 
-      const { password, ...userWithoutPassword } = user;
+      const { password, pin, ...userWithoutPassword } = user;
 
       const customRefreshExp = env.JWT_REFRESH_SLIDING_ENABLED
         ? undefined
@@ -999,6 +1019,7 @@ export class AuthService {
         clientType: ClientTypeEnum.USER_CLIENT,
         tokens,
         user: userWithoutPassword,
+        isPinSet: Boolean(pin),
         permissions,
         settings,
         availableScopes,
@@ -1084,6 +1105,19 @@ export class AuthService {
         ipAddress: dto.meta.ipAddress,
         userAgent: dto.meta.userAgent,
         deviceName: dto.meta.deviceName,
+      },
+    });
+
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+        deviceId: device.id,
+        action: DeviceLogActionEnum.SIGNED_IN,
+        metadata: {
+          ipAddress: dto.meta.ipAddress,
+          deviceName: dto.meta.deviceName,
+        },
       },
     });
 

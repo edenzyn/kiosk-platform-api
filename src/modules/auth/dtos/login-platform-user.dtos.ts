@@ -7,6 +7,6 @@ export interface LoginPlatformUserRequestDto {
 }
 
 export interface LoginPlatformUserResponseDto {
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   permissions: UserPermissions[];
 }

@@ -4,34 +4,45 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/e": {
     get: {
       tags: ["Users"],
-      summary: "Get the current authenticated user's profile, permissions, and settings",
+      summary:
+        "Get the current authenticated user's profile, permissions, and settings",
       responses: {
         "200": {
-          description: "Current user, permissions, available scopes, top role, and settings",
+          description:
+            "Current user, permissions, available scopes, top role, and settings",
           content: {
             "application/json": {
               schema: {
                 type: "object",
                 properties: {
-                  user: { type: "object", description: "The authenticated user (password omitted)" },
+                  user: {
+                    type: "object",
+                    description: "The authenticated user (password omitted)",
+                  },
                   permissions: { type: "array", items: { type: "string" } },
                   availableScopes: {
                     type: "array",
-                    description: "Present for organization/branch users; omitted for resellers",
+                    description:
+                      "Present for organization/branch users; omitted for resellers",
                     items: {
                       type: "object",
                       properties: {
                         id: { type: "string", format: "uuid" },
                         name: { type: "string" },
                         type: { type: "string" },
-                        createdAt: { type: "string", format: "date-time", nullable: true },
+                        createdAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
                       },
                     },
                   },
                   topRole: {
                     type: "object",
                     nullable: true,
-                    description: "Present for organization/branch users; omitted for resellers",
+                    description:
+                      "Present for organization/branch users; omitted for resellers",
                     properties: {
                       name: { type: "string" },
                       description: { type: "string", nullable: true },
@@ -39,7 +50,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
                       isSystem: { type: "boolean" },
                     },
                   },
-                  settings: { type: "object", description: "The user's settings (theme, locale, 2FA, etc.)" },
+                  settings: {
+                    type: "object",
+                    description:
+                      "The user's settings (theme, locale, 2FA, etc.)",
+                  },
                 },
               },
             },
@@ -47,7 +62,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": {
-          description: "Account deactivated, or the user's organization/branch is inactive",
+          description:
+            "Account deactivated, or the user's organization/branch is inactive",
         },
       },
     },
@@ -63,7 +79,10 @@ export const userSwaggerPaths: Record<string, unknown> = {
             schema: {
               type: "object",
               properties: {
-                themeMode: { type: "string", enum: ["light", "dark", "system"] },
+                themeMode: {
+                  type: "string",
+                  enum: ["light", "dark", "system"],
+                },
                 primaryColor: {
                   type: "string",
                   pattern: "^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$",
@@ -116,13 +135,20 @@ export const userSwaggerPaths: Record<string, unknown> = {
           description: "Password changed",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { message: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
             },
           },
         },
         "400": {
           description: "Validation error, or the current password is incorrect",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
       },
@@ -139,7 +165,9 @@ export const userSwaggerPaths: Record<string, unknown> = {
             schema: {
               type: "object",
               required: ["name"],
-              properties: { name: { type: "string", minLength: 2, maxLength: 100 } },
+              properties: {
+                name: { type: "string", minLength: 2, maxLength: 100 },
+              },
             },
           },
         },
@@ -157,7 +185,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/profile/email/request-change": {
     post: {
       tags: ["Users"],
-      summary: "Request an email change; sends a verification code to the new email",
+      summary:
+        "Request an email change; sends a verification code to the new email",
       requestBody: {
         required: true,
         content: {
@@ -169,7 +198,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 newEmail: { type: "string", format: "email" },
                 password: {
                   type: "string",
-                  description: "The account's current password, re-entered to authorise the change",
+                  description:
+                    "The account's current password, re-entered to authorise the change",
                 },
               },
             },
@@ -178,7 +208,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Verification id to submit alongside the code to POST /profile/email/confirm-change",
+          description:
+            "Verification id to submit alongside the code to POST /profile/email/confirm-change",
           content: {
             "application/json": {
               schema: {
@@ -194,7 +225,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
         "401": { $ref: "#/components/responses/Unauthorized" },
         "409": {
           description: "Email is already in use",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
       },
     },
@@ -214,7 +249,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 verificationId: {
                   type: "string",
                   format: "uuid",
-                  description: "Id returned by POST /profile/email/request-change",
+                  description:
+                    "Id returned by POST /profile/email/request-change",
                 },
                 code: { type: "string" },
               },
@@ -231,7 +267,10 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 type: "object",
                 properties: {
                   message: { type: "string" },
-                  user: { type: "object", description: "The updated user (password omitted)" },
+                  user: {
+                    type: "object",
+                    description: "The updated user (password omitted)",
+                  },
                 },
               },
             },
@@ -239,7 +278,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
         },
         "400": {
           description: "Validation error, or invalid verification code",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
       },
@@ -248,7 +291,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/profile/mobile/request-change": {
     post: {
       tags: ["Users"],
-      summary: "Request a mobile number change; sends a verification code via WhatsApp to the new number",
+      summary:
+        "Request a mobile number change; sends a verification code via WhatsApp to the new number",
       requestBody: {
         required: true,
         content: {
@@ -260,7 +304,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 newMobile: { type: "string" },
                 password: {
                   type: "string",
-                  description: "The account's current password, re-entered to authorise the change",
+                  description:
+                    "The account's current password, re-entered to authorise the change",
                 },
               },
             },
@@ -269,7 +314,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "Verification id to submit alongside the code to POST /profile/mobile/confirm-change",
+          description:
+            "Verification id to submit alongside the code to POST /profile/mobile/confirm-change",
           content: {
             "application/json": {
               schema: {
@@ -285,7 +331,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
         "401": { $ref: "#/components/responses/Unauthorized" },
         "409": {
           description: "Mobile number is already in use",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
       },
     },
@@ -305,7 +355,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 verificationId: {
                   type: "string",
                   format: "uuid",
-                  description: "Id returned by POST /profile/mobile/request-change",
+                  description:
+                    "Id returned by POST /profile/mobile/request-change",
                 },
                 code: { type: "string" },
               },
@@ -322,7 +373,10 @@ export const userSwaggerPaths: Record<string, unknown> = {
                 type: "object",
                 properties: {
                   message: { type: "string" },
-                  user: { type: "object", description: "The updated user (password omitted)" },
+                  user: {
+                    type: "object",
+                    description: "The updated user (password omitted)",
+                  },
                 },
               },
             },
@@ -330,8 +384,49 @@ export const userSwaggerPaths: Record<string, unknown> = {
         },
         "400": {
           description: "Validation error, or invalid verification code",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+      },
+    },
+  },
+  "/pvt/u/users/pin": {
+    put: {
+      tags: ["Users"],
+      summary: "Set or change the user's 4-digit PIN",
+      description:
+        "Stores the PIN hashed on the user. The account password must be re-entered to authorise it. The PIN is never returned by any endpoint; login and the auth check report whether one is set as isPinSet.",
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["pin", "password"],
+              properties: {
+                pin: {
+                  type: "integer",
+                  minimum: 1000,
+                  maximum: 9999,
+                  description: "4-digit numeric PIN",
+                },
+                password: {
+                  type: "string",
+                  description:
+                    "The account's current password, re-entered to authorise the change",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "PIN set" },
+        "400": { $ref: "#/components/responses/ValidationError" },
         "401": { $ref: "#/components/responses/Unauthorized" },
       },
     },
@@ -374,13 +469,17 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/sessions/others": {
     delete: {
       tags: ["Users"],
-      summary: "Revoke all sessions for the current user except the current one",
+      summary:
+        "Revoke all sessions for the current user except the current one",
       responses: {
         "200": {
           description: "Number of sessions revoked",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { revokedCount: { type: "integer" } } },
+              schema: {
+                type: "object",
+                properties: { revokedCount: { type: "integer" } },
+              },
             },
           },
         },
@@ -393,14 +492,22 @@ export const userSwaggerPaths: Record<string, unknown> = {
       tags: ["Users"],
       summary: "Revoke a specific session for the current user",
       parameters: [
-        { name: "sessionId", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "sessionId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       responses: {
         "200": {
           description: "Whether the session was revoked",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { revoked: { type: "boolean" } } },
+              schema: {
+                type: "object",
+                properties: { revoked: { type: "boolean" } },
+              },
             },
           },
         },
@@ -483,7 +590,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/2fa/enable": {
     post: {
       tags: ["Users"],
-      summary: "Confirm two-factor authentication setup and enable it for the current user",
+      summary:
+        "Confirm two-factor authentication setup and enable it for the current user",
       requestBody: {
         required: true,
         content: {
@@ -544,7 +652,10 @@ export const userSwaggerPaths: Record<string, unknown> = {
           description: "2FA disabled",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { message: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
             },
           },
         },
@@ -618,13 +729,15 @@ export const userSwaggerPaths: Record<string, unknown> = {
                   type: "array",
                   items: { type: "string", format: "uuid" },
                   default: [],
-                  description: "Role IDs to assign once the invitation is accepted",
+                  description:
+                    "Role IDs to assign once the invitation is accepted",
                 },
                 branchId: {
                   type: "string",
                   format: "uuid",
                   nullable: true,
-                  description: "Defaults to the caller's effective branch when omitted",
+                  description:
+                    "Defaults to the caller's effective branch when omitted",
                 },
               },
             },
@@ -636,7 +749,10 @@ export const userSwaggerPaths: Record<string, unknown> = {
           description: "Invitation sent",
           content: {
             "application/json": {
-              schema: { type: "object", properties: { message: { type: "string" } } },
+              schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+              },
             },
           },
         },
@@ -653,7 +769,8 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/invitations": {
     get: {
       tags: ["Users"],
-      summary: "List pending/past user invitations for the effective organization/branch",
+      summary:
+        "List pending/past user invitations for the effective organization/branch",
       parameters: [
         { $ref: "#/components/parameters/PageParam" },
         { $ref: "#/components/parameters/LimitParam" },
@@ -681,7 +798,11 @@ export const userSwaggerPaths: Record<string, unknown> = {
             description: "1 = Pending, 2 = Accepted, 3 = Expired, 4 = Revoked",
           },
         },
-        { name: "expiresStart", in: "query", schema: { type: "string", format: "date-time" } },
+        {
+          name: "expiresStart",
+          in: "query",
+          schema: { type: "string", format: "date-time" },
+        },
         {
           name: "expiresEnd",
           in: "query",
@@ -718,7 +839,12 @@ export const userSwaggerPaths: Record<string, unknown> = {
       tags: ["Users"],
       summary: "Revoke a pending user invitation",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       responses: {
         "200": {
@@ -727,18 +853,26 @@ export const userSwaggerPaths: Record<string, unknown> = {
             "application/json": {
               schema: {
                 type: "object",
-                properties: { message: { type: "string" }, success: { type: "boolean" } },
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
               },
             },
           },
         },
         "400": {
           description: "Only pending invitations can be revoked",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": {
-          description: "The invitation does not belong to the caller's organization",
+          description:
+            "The invitation does not belong to the caller's organization",
         },
         "404": { $ref: "#/components/responses/NotFound" },
       },
@@ -747,9 +881,15 @@ export const userSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/users/invitations/{id}/resend": {
     post: {
       tags: ["Users"],
-      summary: "Resend an expired user invitation with a fresh token and expiry",
+      summary:
+        "Resend an expired user invitation with a fresh token and expiry",
       parameters: [
-        { name: "id", in: "path", required: true, schema: { type: "string", format: "uuid" } },
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
       ],
       responses: {
         "200": {
@@ -758,18 +898,26 @@ export const userSwaggerPaths: Record<string, unknown> = {
             "application/json": {
               schema: {
                 type: "object",
-                properties: { message: { type: "string" }, success: { type: "boolean" } },
+                properties: {
+                  message: { type: "string" },
+                  success: { type: "boolean" },
+                },
               },
             },
           },
         },
         "400": {
           description: "Only expired invitations can be resent",
-          content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } },
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
         },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": {
-          description: "The invitation does not belong to the caller's organization",
+          description:
+            "The invitation does not belong to the caller's organization",
         },
         "404": { $ref: "#/components/responses/NotFound" },
       },

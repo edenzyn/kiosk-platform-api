@@ -8,6 +8,6 @@ export interface AcceptResellerInvitationRequestDto {
 }
 
 export interface AcceptResellerInvitationResponseDto {
-  user: Omit<UserEntity, "password">;
+  user: Omit<UserEntity, "password" | "pin">;
   permissions: UserPermissions[];
 }

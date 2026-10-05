@@ -8,6 +8,7 @@ import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { passwordValidator } from "../../shared/validators/password.validator";
+import { pinValidator } from "../../shared/validators/pin.validator";
 import validateMobileNumber from "../../shared/validators/phone.validator";
 import { stringToArray } from "../../shared/validators/yup.transformer";
 import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
@@ -65,6 +66,11 @@ export class UserValidator {
         [Yup.ref("currentPassword")],
         "New password must be different from your current password",
       ),
+  }).noUnknown();
+
+  static setPin = Yup.object({
+    pin: pinValidator(4, true),
+    password: passwordValidator().required("Password is required"),
   }).noUnknown();
 
   static setupTwoFactor = Yup.object({

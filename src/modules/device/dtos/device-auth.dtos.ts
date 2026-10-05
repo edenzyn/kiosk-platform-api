@@ -7,4 +7,6 @@ export interface DeviceAuthResponseDto {
   deviceCode: string | null;
   name: string;
   deviceType: DeviceTypeEnum;
+  /** Card terminal the device is paired with. */
+  terminalId: string | null;
 }

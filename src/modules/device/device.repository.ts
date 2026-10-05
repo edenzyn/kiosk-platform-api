@@ -11,10 +11,15 @@ import {
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
 import { branches } from "../branch/schemas/branch.schema";
+import { users } from "../user/schemas/user.schema";
+import { deviceLogs } from "./device-log.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
+  CreateDeviceLogRepoInput,
   CreateDeviceRepoInput,
   CreateDeviceRepoResult,
+  FindDeviceLogsRepoInput,
+  FindDeviceLogsRepoResult,
   FindDevicesRepoInput,
   FindDevicesRepoResult,
   FindOneDeviceRepoInput,
@@ -267,6 +272,60 @@ export class DeviceRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[DEVICE_UPDATE_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  // ========================================
+  // ? DEVICE LOG SCHEMA METHODS
+  // ========================================
+  async createLog(input: CreateDeviceLogRepoInput): Promise<void> {
+    try {
+      await this.database.client.insert(deviceLogs).values(input.data);
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[DEVICE_CREATE_LOG_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findLogs(
+    input: FindDeviceLogsRepoInput,
+  ): Promise<FindDeviceLogsRepoResult> {
+    try {
+      const condition = eq(deviceLogs.deviceId, input.deviceId);
+
+      const [rows, [totalRow]] = await Promise.all([
+        this.database.client
+          .select({
+            id: deviceLogs.id,
+            action: deviceLogs.action,
+            performedBy: { id: users.id, name: users.name },
+            metadata: deviceLogs.metadata,
+            createdAt: deviceLogs.createdAt,
+          })
+          .from(deviceLogs)
+          .leftJoin(users, eq(deviceLogs.performedBy, users.id))
+          .where(condition)
+          .orderBy(desc(deviceLogs.createdAt))
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit),
+        this.database.client
+          .select({ total: count() })
+          .from(deviceLogs)
+          .where(condition),
+      ]);
+
+      return { logs: rows, total: Number(totalRow?.total ?? 0) };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[DEVICE_FIND_LOGS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

@@ -60,6 +60,7 @@ export enum UserPermissions {
 
   ORGANIZATION_DEVICE_READ = "organization:device:read",
   ORGANIZATION_DEVICE_WRITE = "organization:device:write",
+  ORGANIZATION_DEVICE_MANAGE = "organization:device:manage",
 
   ORGANIZATION_MENU_READ = "organization:menu:read",
   ORGANIZATION_MENU_WRITE = "organization:menu:write",
@@ -94,6 +95,7 @@ export enum UserPermissions {
 
   BRANCH_DEVICE_READ = "branch:device:read",
   BRANCH_DEVICE_WRITE = "branch:device:write",
+  BRANCH_DEVICE_MANAGE = "branch:device:manage",
 
   BRANCH_MENU_READ = "branch:menu:read",
   BRANCH_MENU_WRITE = "branch:menu:write",

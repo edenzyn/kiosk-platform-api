@@ -1,21 +1,40 @@
+import { env } from "../../config/env";
+import {
+  DEVICE_ADMIN_LOGIN_LOCK_SECONDS,
+  DEVICE_ADMIN_LOGIN_MAX_ATTEMPTS,
+  DEVICE_ADMIN_SESSION_EXPIRES_IN,
+} from "../../shared/constants/device-admin.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { RedisKeys } from "../../shared/constants/redis-keys.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { DeviceAdminAuthMethodEnum } from "../../shared/enums/device/device-admin-auth-method.enum";
+import { DeviceLogActionEnum } from "../../shared/enums/device/device-log-action.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
+import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import {
   DEVICE_TYPE_SHORT_LABELS,
   DeviceTypeEnum,
 } from "../../shared/enums/device/device-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
+import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
-import { hashData } from "../../shared/utils/core/bcrypt.helper";
+import {
+  compareHashedData,
+  hashData,
+} from "../../shared/utils/core/bcrypt.helper";
 import { createRandomReadableCode } from "../../shared/utils/core/crypto.helper";
+import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
+import { generateToken } from "../../shared/utils/core/jwt.helper";
 import type { AuthRepository } from "../auth/auth.repository";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { BranchService } from "../branch/branch.service";
 import type { LicenseRepository } from "../license/repositories/license.repository";
 import type { LicenseService } from "../license/services/license.service";
 import type { OrganizationRepository } from "../organization/organization.repository";
+import type { RbacService } from "../rbac/rbac.service";
+import type { UserRepository } from "../user/user.repository";
 import { DeviceMapper } from "./device.mapper";
 import type { DeviceRepository } from "./device.repository";
 import { DeviceEntity } from "./device.schema";
@@ -23,13 +42,19 @@ import type {
   CreateDeviceServiceInput,
   CreateDeviceServiceResult,
   DeviceAuthCheckServiceInput,
+  DeviceAdminLoginServiceInput,
+  DeviceAdminLoginServiceResult,
   DeviceAuthCheckServiceResult,
+  GetDeviceLogsServiceInput,
+  GetDeviceLogsServiceResult,
   GetDeviceDetailsServiceInput,
   GetDeviceDetailsServiceResult,
   GetDevicesServiceInput,
   GetDevicesServiceResult,
   MapDeviceTerminalServiceInput,
   MapDeviceTerminalServiceResult,
+  MapOwnTerminalServiceInput,
+  MapOwnTerminalServiceResult,
   RevokeDeviceSessionServiceInput,
   ToggleDeviceStatusServiceInput,
   ToggleDeviceStatusServiceResult,
@@ -48,6 +73,9 @@ export class DeviceService {
     private readonly licenseRepository: LicenseRepository,
     private readonly authRepository: AuthRepository,
     private readonly realtimeProvider: RealtimeProvider,
+    private readonly userRepository: UserRepository,
+    private readonly rbacService: RbacService,
+    private readonly redisProvider: RedisProvider,
   ) {}
 
   // ========================================
@@ -170,7 +198,7 @@ export class DeviceService {
   async revokeDeviceSession(
     input: RevokeDeviceSessionServiceInput,
   ): Promise<void> {
-    const { id, effectiveTenant } = input;
+    const { id, user, effectiveTenant } = input;
 
     const device = await this.deviceRepository.findOne({
       id,
@@ -194,12 +222,56 @@ export class DeviceService {
       });
     }
 
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+        deviceId: device.id,
+        action: DeviceLogActionEnum.SESSION_REVOKED,
+        performedBy: user.id,
+      },
+    });
+
     this.realtimeProvider.emitToDevice(
       device.id,
       SocketEventEnum.DEVICE_SESSION_REVOKED,
       { deviceId: device.id },
     );
     this.realtimeProvider.disconnectDevice(device.id);
+  }
+
+  async getDeviceLogs(
+    input: GetDeviceLogsServiceInput,
+  ): Promise<GetDeviceLogsServiceResult> {
+    const { id, effectiveTenant, filters } = input;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const device = await this.deviceRepository.findOne({
+      id,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId ?? undefined,
+    });
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const { logs, total } = await this.deviceRepository.findLogs({
+      deviceId: device.id,
+      page,
+      limit,
+    });
+
+    return {
+      logs,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async updateDevice(
@@ -250,6 +322,18 @@ export class DeviceService {
       },
     });
 
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: updated.organizationId,
+        branchId: updated.branchId,
+        deviceId: updated.id,
+        action: updated.isActive
+          ? DeviceLogActionEnum.ACTIVATED
+          : DeviceLogActionEnum.DEACTIVATED,
+        performedBy: input.user.id,
+      },
+    });
+
     if (!updated.isActive) {
       await this.authRepository.revokeDeviceSessions({ deviceId: updated.id });
       this.realtimeProvider.emitToDevice(
@@ -282,13 +366,28 @@ export class DeviceService {
       });
     }
 
-    return this.deviceRepository.update({
+    const updated = await this.deviceRepository.update({
       id: input.id,
       data: {
         terminalId: input.terminalId,
         updatedBy: input.user.id,
       },
     });
+
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: updated.organizationId,
+        branchId: updated.branchId,
+        deviceId: updated.id,
+        action: input.terminalId
+          ? DeviceLogActionEnum.TERMINAL_MAPPED
+          : DeviceLogActionEnum.TERMINAL_UNMAPPED,
+        performedBy: input.user.id,
+        metadata: { terminalId: input.terminalId ?? existing.terminalId },
+      },
+    });
+
+    return updated;
   }
 
   // ========================================
@@ -331,5 +430,153 @@ export class DeviceService {
       license: licenseInfo.license,
       branding,
     };
+  }
+
+  // ========================================
+  // ? DEVICE ADMIN SERVICES
+  // ========================================
+  async deviceAdminLogin(
+    input: DeviceAdminLoginServiceInput,
+  ): Promise<DeviceAdminLoginServiceResult> {
+    const { device, dto } = input;
+    const identity = dto.identity.trim().toLowerCase();
+    const attemptsKey = RedisKeys.deviceAdminLoginAttempts(device.id, identity);
+
+    const attempts = Number((await this.redisProvider.get(attemptsKey)) ?? 0);
+    if (attempts >= DEVICE_ADMIN_LOGIN_MAX_ATTEMPTS) {
+      throw new AppError(
+        "Too many wrong attempts. Try again in a few minutes.",
+        {
+          statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
+          code: ErrorCodes.TOO_MANY_REQUESTS,
+        },
+      );
+    }
+
+    const user = await this.userRepository.findOne(
+      identity.includes("@") ? { email: identity } : { mobile: identity },
+    );
+
+    const isAllowedUser =
+      user !== undefined &&
+      user.isActive &&
+      user.userType === UserTypeEnums.NORMAL &&
+      user.organizationId === device.organizationId &&
+      (user.branchId === null || user.branchId === device.branchId);
+
+    const storedSecret =
+      dto.method === DeviceAdminAuthMethodEnum.PIN ? user?.pin : user?.password;
+
+    if (
+      isAllowedUser &&
+      dto.method === DeviceAdminAuthMethodEnum.PIN &&
+      !user.pin
+    ) {
+      throw new AppError(
+        "You haven't set a PIN yet. Sign in with your password.",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const isSecretValid =
+      isAllowedUser && storedSecret
+        ? await compareHashedData(dto.secret, storedSecret)
+        : false;
+
+    if (!isAllowedUser || !isSecretValid) {
+      const failedAttempts = await this.redisProvider.incr(attemptsKey);
+      if (failedAttempts === 1) {
+        await this.redisProvider.expire(
+          attemptsKey,
+          DEVICE_ADMIN_LOGIN_LOCK_SECONDS,
+        );
+      }
+
+      await this.deviceRepository.createLog({
+        data: {
+          organizationId: device.organizationId,
+          branchId: device.branchId,
+          deviceId: device.id,
+          action: DeviceLogActionEnum.ADMIN_SIGN_IN_FAILED,
+          performedBy: isAllowedUser ? user.id : null,
+          metadata: { identity },
+        },
+      });
+
+      throw new AppError("Incorrect sign-in details", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const permissions = await this.rbacService.getUserPermissionKeys({
+      userId: user.id,
+      organizationId: device.organizationId,
+      branchId: user.branchId,
+    });
+    const canManageDevice = user.branchId
+      ? permissions.has(UserPermissions.BRANCH_ALL_WRITE) ||
+        permissions.has(UserPermissions.BRANCH_DEVICE_MANAGE)
+      : permissions.has(UserPermissions.ORGANIZATION_ALL_WRITE) ||
+        permissions.has(UserPermissions.ORGANIZATION_DEVICE_MANAGE);
+
+    if (!canManageDevice) {
+      throw new AppError("You don't have permission to manage this device", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        code: ErrorCodes.FORBIDDEN,
+      });
+    }
+
+    await this.redisProvider.del(attemptsKey);
+
+    const adminToken = generateToken(
+      { deviceAdmin: { deviceId: device.id, userId: user.id } },
+      env.JWT_ACCESS_SECRET,
+      { expiresIn: DEVICE_ADMIN_SESSION_EXPIRES_IN },
+    );
+
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+        deviceId: device.id,
+        action: DeviceLogActionEnum.ADMIN_SIGNED_IN,
+        performedBy: user.id,
+      },
+    });
+
+    const expiresAt = resolveExpiryDate(DEVICE_ADMIN_SESSION_EXPIRES_IN);
+
+    return {
+      adminToken,
+      expiresAt,
+      expiresInSeconds: Math.round((expiresAt.getTime() - Date.now()) / 1000),
+      admin: { id: user.id, name: user.name },
+    };
+  }
+
+  async mapOwnTerminal(
+    input: MapOwnTerminalServiceInput,
+  ): Promise<MapOwnTerminalServiceResult> {
+    const { device, admin, dto } = input;
+
+    await this.mapDeviceTerminal({
+      id: device.id,
+      terminalId: dto.terminalId,
+      user: { id: admin.userId },
+    });
+
+    const updated = await this.deviceRepository.findOne({ id: device.id });
+    if (!updated) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    return { device: DeviceMapper.toDeviceAuthResponse(updated) };
   }
 }

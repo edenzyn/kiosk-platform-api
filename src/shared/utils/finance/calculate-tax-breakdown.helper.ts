@@ -30,8 +30,10 @@ export function calculateTaxBreakdown(
   const isIntraState =
     !!billingCountry &&
     !!billingState &&
-    billingCountry.trim().toLowerCase() === env.COMPANY_COUNTRY.trim().toLowerCase() &&
-    billingState.trim().toLowerCase() === env.COMPANY_STATE.trim().toLowerCase();
+    billingCountry.trim().toLowerCase() ===
+      env.COMPANY_COUNTRY.trim().toLowerCase() &&
+    billingState.trim().toLowerCase() ===
+      env.COMPANY_STATE.trim().toLowerCase();
 
   const applicableComponents = taxProfile.components.filter((component) => {
     if (!component.isActive) return false;
@@ -85,7 +87,10 @@ export function calculateTaxBreakdown(
     taxProfileId: taxProfile.id,
     taxComponentId: component.id,
   }));
-  const totalTax = components.reduce((sum, component) => sum + component.amount, 0);
+  const totalTax = components.reduce(
+    (sum, component) => sum + component.amount,
+    0,
+  );
 
   return {
     components,

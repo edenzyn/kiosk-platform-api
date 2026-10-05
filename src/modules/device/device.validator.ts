@@ -1,5 +1,6 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { DeviceAdminAuthMethodEnum } from "../../shared/enums/device/device-admin-auth-method.enum";
 import { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { pinValidator } from "../../shared/validators/pin.validator";
@@ -27,6 +28,35 @@ export const DeviceValidator = {
   deviceIdParams: yup
     .object({
       id: yup.string().uuid().required("Device ID is required"),
+    })
+    .noUnknown(),
+  getDeviceLogsQuery: paginationQuerySchema.noUnknown(),
+  adminLogin: yup
+    .object({
+      identity: yup
+        .string()
+        .trim()
+        .max(255, "Email or mobile number is too long")
+        .required("Email or mobile number is required"),
+      method: numericEnumValidator(
+        DeviceAdminAuthMethodEnum,
+        "Sign-in method",
+      ).required("Sign-in method is required"),
+      secret: yup
+        .string()
+        .max(255, "Password or PIN is too long")
+        .required("Password or PIN is required"),
+    })
+    .noUnknown(),
+  mapOwnTerminal: yup
+    .object({
+      terminalId: yup
+        .string()
+        .trim()
+        .max(100, "Terminal ID cannot exceed 100 characters")
+        .nullable()
+        .transform((value) => (value ? value : null))
+        .defined(),
     })
     .noUnknown(),
   toggleStatus: yup

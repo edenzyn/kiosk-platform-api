@@ -14,7 +14,8 @@ export const getInviteResellerTemplate = (
   const subject = "You're invited to become a Kiosk Platform reseller";
   const baseUrl = env.USER_CLIENT_BASE_URL.replace(/\/$/, "");
   const link =
-    inviteUrl || (token ? `${baseUrl}/reseller/accept-invite?it=${token}` : "#");
+    inviteUrl ||
+    (token ? `${baseUrl}/reseller/accept-invite?it=${token}` : "#");
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">

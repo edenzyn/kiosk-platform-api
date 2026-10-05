@@ -11,6 +11,7 @@ import type { DeviceTokenDto } from "../../../shared/dtos/device-token.dto";
 import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
+import { DeviceLogActionEnum } from "../../../shared/enums/device/device-log-action.enum";
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { PermissionEntityType } from "../../../shared/enums/rbac/permission-entity-type.enum";
@@ -497,6 +498,21 @@ export class AuthService {
           tokenHash: hashSha256(refreshToken),
         });
       }
+
+      const device = decoded.device?.id
+        ? await this.deviceRepository.findOne({ id: decoded.device.id })
+        : null;
+      if (device) {
+        await this.deviceRepository.createLog({
+          data: {
+            organizationId: device.organizationId,
+            branchId: device.branchId,
+            deviceId: device.id,
+            action: DeviceLogActionEnum.SIGNED_OUT,
+          },
+        });
+      }
+
       return true;
     } catch {
       // Logout is intentionally idempotent, including for expired tokens.
@@ -1089,6 +1105,19 @@ export class AuthService {
         ipAddress: dto.meta.ipAddress,
         userAgent: dto.meta.userAgent,
         deviceName: dto.meta.deviceName,
+      },
+    });
+
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+        deviceId: device.id,
+        action: DeviceLogActionEnum.SIGNED_IN,
+        metadata: {
+          ipAddress: dto.meta.ipAddress,
+          deviceName: dto.meta.deviceName,
+        },
       },
     });
 

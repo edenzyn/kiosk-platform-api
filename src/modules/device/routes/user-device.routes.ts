@@ -38,6 +38,15 @@ userDeviceRouter.get(
   deviceController.getDeviceDetails,
 );
 
+userDeviceRouter.get(
+  "/:id/logs",
+  accessMiddleware({
+    organization: [...ORGANIZATION_DEVICE_READ_WRITE_PERMS],
+    branch: [...BRANCH_DEVICE_READ_WRITE_PERMS],
+  }),
+  deviceController.getDeviceLogs,
+);
+
 userDeviceRouter.delete(
   "/:id/session",
   accessMiddleware({

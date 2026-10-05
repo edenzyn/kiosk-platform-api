@@ -443,4 +443,161 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/devices/{id}/logs": {
+    get: {
+      tags: ["Devices"],
+      summary: "List a device's activity log",
+      description:
+        "Newest first. Records sign-ins and sign-outs, session revokes, activation changes, admin page sign-ins (successful and failed) and card terminal mapping.",
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+      ],
+      responses: {
+        "200": {
+          description: "Device activity",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  logs: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        action: {
+                          type: "integer",
+                          enum: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+                          description:
+                            "DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_SIGNED_IN, 7 = ADMIN_SIGN_IN_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED",
+                        },
+                        performedBy: {
+                          type: "object",
+                          nullable: true,
+                          description: "Null when the device did it itself",
+                          properties: {
+                            id: { type: "string", format: "uuid" },
+                            name: { type: "string" },
+                          },
+                        },
+                        metadata: { type: "object", nullable: true },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
+  "/pvt/d/devices/admin/login": {
+    post: {
+      tags: ["Devices"],
+      summary: "Sign a staff member in to the device's admin pages",
+      description:
+        "Called by a signed-in device. The staff member gives their registered email or mobile number plus their password or 4-digit PIN. They must belong to the device's organization (and its branch, for a branch user) and hold the device manage permission. Five wrong attempts for one identity on one device lock it for 15 minutes. Returns a short-lived admin token to send in the X-D-Admin header.",
+      security: [{ deviceCookieAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["identity", "method", "secret"],
+              properties: {
+                identity: {
+                  type: "string",
+                  description: "Registered email or mobile number",
+                },
+                method: {
+                  type: "integer",
+                  enum: [1, 2],
+                  description:
+                    "DeviceAdminAuthMethodEnum: 1 = PASSWORD, 2 = PIN",
+                },
+                secret: {
+                  type: "string",
+                  description: "The password or PIN, depending on method",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Signed in",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  adminToken: { type: "string" },
+                  expiresAt: { type: "string", format: "date-time" },
+                  expiresInSeconds: { type: "integer", example: 900 },
+                  admin: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      name: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "429": { description: "Too many wrong attempts" },
+      },
+    },
+  },
+  "/pvt/d/devices/admin/terminal": {
+    patch: {
+      tags: ["Devices"],
+      summary: "Map a card terminal to this device from its admin pages",
+      description:
+        "Needs the X-D-Admin header from the admin sign-in; a missing or expired token returns 403 DEVICE_ADMIN_SESSION_EXPIRED. Send an empty terminalId to unmap. Only kiosk and counter devices take card payments.",
+      security: [{ deviceCookieAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                terminalId: { type: "string", maxLength: 100, nullable: true },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Device with its new terminal" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
 };

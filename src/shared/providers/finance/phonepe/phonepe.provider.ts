@@ -40,8 +40,7 @@ export class PhonePeProvider {
     }
 
     const body = (await response.json().catch(() => ({}))) as
-      | PhonePeTokenResponse
-      | PhonePeErrorResponse;
+      PhonePeTokenResponse | PhonePeErrorResponse;
 
     if (!response.ok || !("access_token" in body)) {
       const message =
@@ -106,8 +105,7 @@ export class PhonePeProvider {
     }
 
     const body = (await response.json().catch(() => ({}))) as
-      | PhonePeCreatePaymentResponse
-      | PhonePeErrorResponse;
+      PhonePeCreatePaymentResponse | PhonePeErrorResponse;
 
     if (!response.ok || !("qrData" in body) || !body.qrData) {
       const message =

@@ -277,7 +277,10 @@ export class AuthController {
       abortEarly: false,
       stripUnknown: true,
     });
-    const result = await this.authService.loginDevice(data);
+    const result = await this.authService.loginDevice({
+      ...data,
+      meta: this._getSessionMeta(req),
+    });
 
     setCookie(
       res,

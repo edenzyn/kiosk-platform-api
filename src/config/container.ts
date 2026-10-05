@@ -7,6 +7,7 @@ import {
 } from "awilix";
 import { AuthContainer } from "../modules/auth/auth.container";
 import { BranchContainer } from "../modules/branch/branch.container";
+import { BusinessDayContainer } from "../modules/business-day/business-day.container";
 import { DeviceContainer } from "../modules/device/device.container";
 import { FileContainer } from "../modules/file/file.container";
 import { FinanceContainer } from "../modules/finance/finance.container";
@@ -78,3 +79,4 @@ PlatformContainer.register(container);
 ResellerContainer.register(container);
 NotificationContainer.register(container);
 OrderContainer.register(container);
+BusinessDayContainer.register(container);

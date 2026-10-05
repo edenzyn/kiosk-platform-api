@@ -2,6 +2,7 @@ import {
   and,
   asc,
   count,
+  desc,
   eq,
   gt,
   gte,
@@ -19,10 +20,16 @@ import type { RedisProvider } from "../../shared/providers/redis/redis.provider"
 import type {
   CreateRefreshTokenRepoInput,
   CreateRefreshTokenRepoResult,
+  FindActiveDeviceSessionRepoInput,
+  FindActiveDeviceSessionRepoResult,
+  ListDeviceSessionsRepoInput,
+  ListDeviceSessionsRepoResult,
   ListSessionsRepoInput,
   ListSessionsRepoResult,
   RemoveAuthSessionsRepoInput,
   RemoveAuthSessionsRepoResult,
+  RevokeDeviceSessionsRepoInput,
+  RevokeDeviceSessionsRepoResult,
   RevokeOldestSessionsRepoInput,
   RevokeOldestSessionsRepoResult,
   RevokeOtherSessionsRepoInput,
@@ -59,8 +66,12 @@ export class AuthRepository {
 
   private async _denylistSession(sessionId: string): Promise<void> {
     try {
+      // Outlives the longest access token, user or device, issued for a session.
       const ttlSeconds = Math.ceil(
-        ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue) / 1000,
+        Math.max(
+          ms(env.JWT_ACCESS_EXPIRES_IN as ms.StringValue),
+          ms(env.JWT_DEVICE_ACCESS_EXPIRES_IN as ms.StringValue),
+        ) / 1000,
       );
       await this.redisProvider.set(
         RedisKeys.authSessionRevoked(sessionId),
@@ -251,6 +262,88 @@ export class AuthRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_OTHER_SESSIONS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async listDeviceSessions(
+    input: ListDeviceSessionsRepoInput,
+  ): Promise<ListDeviceSessionsRepoResult> {
+    try {
+      return await this.database.client
+        .select()
+        .from(authSessions)
+        .where(
+          and(
+            eq(authSessions.deviceId, input.deviceId),
+            isNull(authSessions.revokedAt),
+            gt(authSessions.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(asc(authSessions.createdAt));
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[AUTH_LIST_DEVICE_SESSIONS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findActiveDeviceSession(
+    input: FindActiveDeviceSessionRepoInput,
+  ): Promise<FindActiveDeviceSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .select()
+        .from(authSessions)
+        .where(
+          and(
+            eq(authSessions.deviceId, input.deviceId),
+            isNull(authSessions.revokedAt),
+            gt(authSessions.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(desc(authSessions.lastUsedAt))
+        .limit(1);
+
+      return session ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[AUTH_FIND_ACTIVE_DEVICE_SESSION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async revokeDeviceSessions(
+    input: RevokeDeviceSessionsRepoInput,
+  ): Promise<RevokeDeviceSessionsRepoResult> {
+    try {
+      const revokedRows = await this.database.client
+        .update(authSessions)
+        .set({ revokedAt: new Date() })
+        .where(
+          and(
+            eq(authSessions.deviceId, input.deviceId),
+            isNull(authSessions.revokedAt),
+          ),
+        )
+        .returning({ id: authSessions.id });
+
+      await Promise.all(
+        revokedRows.map((row) => this._denylistSession(row.id)),
+      );
+      return revokedRows.length;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[AUTH_REVOKE_DEVICE_SESSIONS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

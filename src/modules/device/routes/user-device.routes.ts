@@ -29,6 +29,24 @@ userDeviceRouter
     deviceController.createDevice,
   );
 
+userDeviceRouter.get(
+  "/:id",
+  accessMiddleware({
+    organization: [...ORGANIZATION_DEVICE_READ_WRITE_PERMS],
+    branch: [...BRANCH_DEVICE_READ_WRITE_PERMS],
+  }),
+  deviceController.getDeviceDetails,
+);
+
+userDeviceRouter.delete(
+  "/:id/session",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+  }),
+  deviceController.revokeDeviceSession,
+);
+
 userDeviceRouter.put(
   "/:id",
   accessMiddleware({

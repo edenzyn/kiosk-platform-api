@@ -26,8 +26,6 @@ import type {
   UpdateBranchDetailsServiceResult,
   UpdateBranchSettingsServiceInput,
   UpdateBranchSettingsServiceResult,
-  UpdateBusinessDayCutoffServiceInput,
-  UpdateBusinessDayCutoffServiceResult,
 } from "./branch.types";
 import type { CreateBranchRequestDto } from "./dtos/create-branch.dtos";
 import type { BranchBrandingDto } from "./dtos/get-branch-branding.dtos";
@@ -327,39 +325,6 @@ export class BranchService {
     const settings = await this.branchRepository.updateSettings({
       branchId,
       data,
-    });
-
-    return { settings };
-  }
-
-  async updateBusinessDayCutoff(
-    input: UpdateBusinessDayCutoffServiceInput,
-  ): Promise<UpdateBusinessDayCutoffServiceResult> {
-    const { branchId, businessDayCutoffTime, user, effectiveTenant } = input;
-
-    const existing = await this.branchRepository.findOne({ id: branchId });
-    if (!existing) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
-    }
-
-    if (existing.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot update settings for a different branch", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
-    }
-
-    const current = await this.branchRepository.getOrCreateSettings(branchId);
-    if (current.businessDayCutoffTime?.slice(0, 5) === businessDayCutoffTime) {
-      return { settings: current };
-    }
-
-    const settings = await this.branchRepository.updateBusinessDayCutoff({
-      organizationId: existing.organizationId,
-      branchId,
-      businessDayCutoffTime,
-      userId: user.id,
     });
 
     return { settings };

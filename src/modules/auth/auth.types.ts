@@ -76,6 +76,7 @@ export interface LoginResellerServiceResult {
 export interface LoginDeviceServiceInput {
   deviceCode: string;
   pin: string;
+  meta: SessionMeta;
 }
 
 export interface LoginDeviceServiceResult {
@@ -122,8 +123,7 @@ export interface RefreshTokenServiceInput {
 }
 
 export type RefreshTokenServiceResult =
-  | LoginServiceResult
-  | Omit<LoginDeviceServiceResult, "branding">;
+  LoginServiceResult | Omit<LoginDeviceServiceResult, "branding">;
 
 export interface LogoutServiceInput {
   refreshToken: string;
@@ -196,6 +196,22 @@ export interface RevokeOtherSessionsRepoInput {
   keepSessionId?: string;
 }
 export type RevokeOtherSessionsRepoResult = number;
+
+export interface ListDeviceSessionsRepoInput {
+  deviceId: string;
+}
+export type ListDeviceSessionsRepoResult = AuthSessionEntity[];
+
+export interface FindActiveDeviceSessionRepoInput {
+  deviceId: string;
+}
+export type FindActiveDeviceSessionRepoResult = AuthSessionEntity | null;
+
+export interface RevokeDeviceSessionsRepoInput {
+  deviceId: string;
+}
+/** How many active sessions were revoked. */
+export type RevokeDeviceSessionsRepoResult = number;
 
 export interface RevokeOldestSessionsRepoInput {
   userId: string;
@@ -309,4 +325,3 @@ export type UpdateOneTimeTokensRepoResult = OneTimeTokenEntity[];
 export interface DeleteOneTimeTokensRepoInput {
   expiredBefore: Date;
 }
-

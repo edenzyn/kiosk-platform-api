@@ -1,5 +1,4 @@
 import type { DeviceEntity } from "../device.schema";
-import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 
 export interface UpdateDeviceBodyDto {
   id: string;
@@ -7,7 +6,6 @@ export interface UpdateDeviceBodyDto {
   deviceCode?: string | null;
   name?: string | null;
   pin?: number | null;
-  deviceType?: DeviceTypeEnum | null;
 }
 
 export interface UpdateDeviceRequestDto {
@@ -17,7 +15,6 @@ export interface UpdateDeviceRequestDto {
   deviceCode?: string | null;
   name?: string | null;
   pin?: string | null;
-  deviceType?: DeviceTypeEnum | null;
   updatedBy: string;
 }
 

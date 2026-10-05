@@ -22,9 +22,11 @@ export const DeviceValidator = {
       deviceCode: yup.string().max(255).nullable().optional(),
       name: yup.string().max(255).nullable().optional(),
       pin: pinValidator(4, false),
-      deviceType: numericEnumValidator(DeviceTypeEnum, "Device type")
-        .nullable()
-        .optional(),
+    })
+    .noUnknown(),
+  deviceIdParams: yup
+    .object({
+      id: yup.string().uuid().required("Device ID is required"),
     })
     .noUnknown(),
   toggleStatus: yup

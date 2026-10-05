@@ -27,6 +27,8 @@ export const buildOrderNumber = (
     sequenceValue,
   ).padStart(ORDER_CODE_MIN_LENGTH, "0")}`;
 
-/** Daily pickup token for display, e.g. 7 → "007", 1204 → "1204". */
-export const formatTokenNumber = (tokenNumber: number): string =>
-  String(tokenNumber).padStart(TOKEN_NUMBER_MIN_DIGITS, "0");
+/** Daily pickup token for display, e.g. 7 → "007", 1204 → "1204"; null until the order is paid. */
+export const formatTokenNumber = (tokenNumber: number | null): string | null =>
+  tokenNumber === null
+    ? null
+    : String(tokenNumber).padStart(TOKEN_NUMBER_MIN_DIGITS, "0");

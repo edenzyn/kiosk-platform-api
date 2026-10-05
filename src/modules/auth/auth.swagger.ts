@@ -71,10 +71,13 @@ export const authSwaggerPaths: Record<string, unknown> = {
       },
       responses: {
         "200": {
-          description: "2FA verified; auth cookies set and user payload returned.",
+          description:
+            "2FA verified; auth cookies set and user payload returned.",
         },
         "400": { $ref: "#/components/responses/ValidationError" },
-        "401": { description: "Invalid or expired 2FA session, or incorrect code" },
+        "401": {
+          description: "Invalid or expired 2FA session, or incorrect code",
+        },
       },
     },
   },
@@ -86,8 +89,14 @@ export const authSwaggerPaths: Record<string, unknown> = {
         "Reads the `ur_ref` refresh-token cookie (no request body). Rejects device-client sessions.",
       security: [],
       responses: {
-        "200": { description: "Token rotation succeeded and replacement cookies were set" },
-        "401": { description: "Refresh token is missing, expired, revoked, already used, or belongs to a device session" },
+        "200": {
+          description:
+            "Token rotation succeeded and replacement cookies were set",
+        },
+        "401": {
+          description:
+            "Refresh token is missing, expired, revoked, already used, or belongs to a device session",
+        },
       },
     },
   },
@@ -113,7 +122,10 @@ export const authSwaggerPaths: Record<string, unknown> = {
               type: "object",
               required: ["token", "name", "password"],
               properties: {
-                token: { type: "string", description: "Invitation token from the invite email/link" },
+                token: {
+                  type: "string",
+                  description: "Invitation token from the invite email/link",
+                },
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 password: { type: "string" },
               },
@@ -127,7 +139,8 @@ export const authSwaggerPaths: Record<string, unknown> = {
   "/auth/o/accept-invite": {
     post: {
       tags: ["Auth"],
-      summary: "Accept an organization-owner invitation (creates the organization)",
+      summary:
+        "Accept an organization-owner invitation (creates the organization)",
       description:
         "Used for the top-level invite that both creates a new organization and its first admin user.",
       security: [],
@@ -148,8 +161,16 @@ export const authSwaggerPaths: Record<string, unknown> = {
                 token: { type: "string" },
                 name: { type: "string", minLength: 2, maxLength: 100 },
                 password: { type: "string" },
-                registeredName: { type: "string", minLength: 2, maxLength: 255 },
-                registrationNumber: { type: "string", minLength: 2, maxLength: 100 },
+                registeredName: {
+                  type: "string",
+                  minLength: 2,
+                  maxLength: 255,
+                },
+                registrationNumber: {
+                  type: "string",
+                  minLength: 2,
+                  maxLength: 100,
+                },
               },
             },
           },
@@ -161,7 +182,9 @@ export const authSwaggerPaths: Record<string, unknown> = {
             "Invitation accepted; organization + user created, auth cookies set. Response includes the created `organization` alongside `user`.",
         },
         "400": { $ref: "#/components/responses/ValidationError" },
-        "404": { description: "Invitation not found, expired, or already used" },
+        "404": {
+          description: "Invitation not found, expired, or already used",
+        },
       },
     },
   },
@@ -222,7 +245,10 @@ export const authSwaggerPaths: Record<string, unknown> = {
               type: "object",
               required: ["deviceCode", "pin"],
               properties: {
-                deviceCode: { type: "string", description: "Device pairing code" },
+                deviceCode: {
+                  type: "string",
+                  description: "Device pairing code",
+                },
                 pin: {
                   type: "string",
                   minLength: 4,
@@ -249,11 +275,17 @@ export const authSwaggerPaths: Record<string, unknown> = {
     post: {
       tags: ["Auth"],
       summary: "Rotate the refresh token and issue new device auth tokens",
-      description: "Reads the `dvc_ref` refresh-token cookie (no request body). Rejects user-client sessions.",
+      description:
+        "Reads the `dvc_ref` refresh-token cookie (no request body). Rejects user-client sessions.",
       security: [],
       responses: {
-        "200": { description: "Token rotation succeeded; returns `{ device, token }`" },
-        "401": { description: "Refresh token is missing, expired, revoked, already used, or belongs to a user session" },
+        "200": {
+          description: "Token rotation succeeded; returns `{ device, token }`",
+        },
+        "401": {
+          description:
+            "Refresh token is missing, expired, revoked, already used, or belongs to a user session",
+        },
       },
     },
   },
@@ -263,7 +295,9 @@ export const authSwaggerPaths: Record<string, unknown> = {
       summary: "Revoke the current device refresh-token session",
       security: [{ deviceCookieAuth: [] }],
       responses: {
-        "204": { description: "Session revoked and device auth cookies cleared" },
+        "204": {
+          description: "Session revoked and device auth cookies cleared",
+        },
       },
     },
   },

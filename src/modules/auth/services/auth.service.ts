@@ -1051,6 +1051,19 @@ export class AuthService {
       });
     }
 
+    const activeSessions = await this.authRepository.listDeviceSessions({
+      deviceId: device.id,
+    });
+    if (activeSessions.length >= env.DEVICE_SESSION_LIMIT) {
+      throw new AppError(
+        "This device is already signed in on another screen. Ask an administrator to revoke its session from the Devices page, then sign in again.",
+        {
+          statusCode: HttpStatusCodes.FORBIDDEN,
+          code: ErrorCodes.SESSION_LIMIT_REACHED,
+        },
+      );
+    }
+
     const generatedTokens = this._generateTokens(ClientTypeEnum.DEVICE_CLIENT, {
       device: {
         id: device.id,
@@ -1068,6 +1081,9 @@ export class AuthService {
         deviceId: device.id,
         tokenHash: hashSha256(generatedTokens.refreshToken),
         expiresAt: this._getRefreshTokenExpiry(generatedTokens.refreshToken),
+        ipAddress: dto.meta.ipAddress,
+        userAgent: dto.meta.userAgent,
+        deviceName: dto.meta.deviceName,
       },
     });
 

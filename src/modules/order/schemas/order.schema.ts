@@ -14,6 +14,7 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { branches } from "../../branch/schemas/branch.schema";
+import { businessDays } from "../../business-day/schemas/business-day.schema";
 import { devices } from "../../device/device.schema";
 import { tenantTaxProfiles } from "../../finance/schemas/tenant-tax-profile.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
@@ -35,13 +36,17 @@ export const orders = pgTable(
       .notNull()
       .references((): AnyPgColumn => branches.id),
     deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
+    businessDayId: uuid("business_day_id")
+      .notNull()
+      .references((): AnyPgColumn => businessDays.id),
     orderNumber: varchar("order_number", { length: 30 }).notNull(),
-    tokenNumber: integer("token_number").notNull(), // Restarts every business day (cutoff from business_day_cutoff_logs)
+    tokenNumber: integer("token_number"), // Given when the order is paid; counts up from 1 within a business day and never repeats in it
     idempotencyKey: varchar("idempotency_key", { length: 100 }).notNull(),
     orderSource: smallint("order_source").notNull(), // OrderSourceEnum: 1 = KIOSK, 2 = COUNTER
     orderType: smallint("order_type").notNull(), // OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY
+    isPayAtCounter: boolean("is_pay_at_counter").default(false).notNull(), // Ordered on a device, paid at the counter; payment_method stays null until the counter takes the money
     orderStatus: smallint("order_status").default(1).notNull(), // OrderStatusEnum: 1 = PENDING_PAYMENT, 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED, 6 = CANCELLED
-    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = PROCESSING, 3 = COMPLETED, 4 = FAILED, 5 = REFUNDED, 6 = CANCELLED
+    paymentStatus: smallint("payment_status").default(1).notNull(), // OrderPaymentStatusEnum: 1 = PENDING, 2 = COMPLETED, 3 = FAILED, 4 = REFUNDED, 5 = CANCELLED
     paymentMethod: smallint("payment_method"), // TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH
     currencyCode: varchar("currency_code", { length: 3 }).notNull(), // snapshot of the branch market currency
     // Pricing snapshot
@@ -100,6 +105,14 @@ export const orders = pgTable(
     ),
     index("orders_branch_created_at_idx").on(table.branchId, table.createdAt),
     index("orders_branch_status_idx").on(table.branchId, table.orderStatus),
+    index("orders_business_day_status_idx").on(
+      table.businessDayId,
+      table.orderStatus,
+    ),
+    uniqueIndex("orders_business_day_token_idx").on(
+      table.businessDayId,
+      table.tokenNumber,
+    ),
     index("orders_organization_created_at_idx").on(
       table.organizationId,
       table.createdAt,

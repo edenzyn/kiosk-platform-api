@@ -104,15 +104,6 @@ export const BranchValidator = {
       logo: yup.string().trim().max(255).nullable().optional(),
     })
     .noUnknown(),
-  updateBusinessDayCutoff: yup
-    .object({
-      businessDayCutoffTime: yup
-        .string()
-        .trim()
-        .matches(/^([01]\d|2[0-3]):[0-5]\d$/, "Cutoff time must be HH:mm")
-        .required("Cutoff time is required"),
-    })
-    .noUnknown(),
   requestBrandLogoUpload: yup
     .object({
       contentType: yup.string().required("File content type is required"),

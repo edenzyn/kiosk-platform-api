@@ -18,11 +18,11 @@ import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import { logger } from "../../shared/utils/core/logger";
 import { toMinorUnits } from "../../shared/utils/finance/currency.helper";
-import { resolveBusinessDayStart } from "../../shared/utils/order/business-day.helper";
 import { calculateOrderPricing } from "../../shared/utils/order/calculate-order-pricing.helper";
 import { formatTokenNumber } from "../../shared/utils/order/order-number.helper";
 import { getPaymentWindow } from "../../shared/utils/order/payment-window.helper";
 import type { BranchRepository } from "../branch/branch.repository";
+import type { BusinessDayService } from "../business-day/business-day.service";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
 import type { PaymentService } from "../finance/services/payment.service";
 import type { MarketRepository } from "../market/market.repository";
@@ -31,6 +31,10 @@ import type { OrderRepository } from "./order.repository";
 import type {
   CreateDeviceOrderServiceInput,
   CreateDeviceOrderServiceResult,
+  GetLiveOrderCountsServiceInput,
+  GetLiveOrderCountsServiceResult,
+  GetOrdersServiceInput,
+  GetOrdersServiceResult,
   HandlePhonePeWebhookServiceInput,
 } from "./order.types";
 
@@ -43,6 +47,7 @@ export class OrderService {
     private readonly taxRepository: TaxRepository,
     private readonly paymentService: PaymentService,
     private readonly realtimeProvider: RealtimeProvider,
+    private readonly businessDayService: BusinessDayService,
   ) {}
 
   // ========================================
@@ -54,11 +59,16 @@ export class OrderService {
     const { device, dto } = input;
     const { organizationId, branchId } = device;
 
-    if (dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
-      throw new AppError("Only QR payments are available right now", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+    const { isPayAtCounter } = dto;
+
+    if (!isPayAtCounter && dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
+      throw new AppError(
+        "Only QR payments are available on the device right now",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
     }
 
     let order = await this.orderRepository.findOneByIdempotencyKey({
@@ -72,6 +82,20 @@ export class OrderService {
           statusCode: HttpStatusCodes.CONFLICT,
           code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
         });
+      }
+
+      if (order.isPayAtCounter) {
+        return {
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            tokenNumber: formatTokenNumber(order.tokenNumber),
+            orderStatus: order.orderStatus,
+            currencyCode: order.currencyCode,
+            totalAmount: order.totalAmount,
+          },
+          payment: null,
+        };
       }
 
       const latestPayment = await this.orderRepository.findLatestPayment({
@@ -107,7 +131,20 @@ export class OrderService {
           },
         };
       }
+
+      const openBusinessDayId =
+        await this.businessDayService.getOpenBusinessDayId({ branchId });
+      if (openBusinessDayId !== order.businessDayId) {
+        throw new AppError("The branch is closed for orders right now", {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.BUSINESS_DAY_CLOSED,
+        });
+      }
     } else {
+      const businessDayId = await this.businessDayService.getOpenBusinessDayId({
+        branchId,
+      });
+
       const [menuItems, market, settings, taxProfile] = await Promise.all([
         this.menuRepository.findOrderableItems({
           organizationId,
@@ -133,7 +170,15 @@ export class OrderService {
         });
       }
 
+      if (isPayAtCounter && !settings.isCashPaymentEnabled) {
+        throw new AppError("Pay at counter is not available at this branch", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        });
+      }
+
       const isTakeaway = dto.orderType === OrderTypeEnum.TAKEAWAY;
+
       const lines = dto.items.map((dtoItem, index) => {
         const menuItem = menuItems.find(
           (item) => item.id === dtoItem.menuItemId,
@@ -208,27 +253,26 @@ export class OrderService {
         market.currencyCode,
       );
 
-      const now = new Date();
-      const businessDayStartsAt = resolveBusinessDayStart(
-        now,
-        settings.timezone,
-        settings.businessDayCutoffTime,
-      );
-
       order = await this.orderRepository.createOrder({
-        orderDateLabel: formatDateInTimezone(now, settings.timezone, "YYMMDD"),
-        businessDayStartsAt,
+        orderDateLabel: formatDateInTimezone(
+          new Date(),
+          settings.timezone,
+          "YYMMDD",
+        ),
+        assignToken: isPayAtCounter,
         order: {
           organizationId,
           branchId,
           deviceId: device.id,
+          businessDayId,
           idempotencyKey: dto.idempotencyKey,
           orderSource:
             device.type === DeviceTypeEnum.COUNTER
               ? OrderSourceEnum.COUNTER
               : OrderSourceEnum.KIOSK,
           orderType: dto.orderType,
-          paymentMethod: dto.paymentMethod,
+          isPayAtCounter,
+          paymentMethod: isPayAtCounter ? null : dto.paymentMethod,
           currencyCode: market.currencyCode,
           subtotalAmount: pricing.subtotalAmount,
           takeawayChargeAmount: pricing.takeawayChargeAmount,
@@ -263,6 +307,20 @@ export class OrderService {
         })),
         taxes: pricing.taxes,
       });
+    }
+
+    if (isPayAtCounter) {
+      return {
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+          orderStatus: order.orderStatus,
+          currencyCode: order.currencyCode,
+          totalAmount: order.totalAmount,
+        },
+        payment: null,
+      };
     }
 
     const pendingPayment = await this.orderRepository.createPayment({
@@ -337,6 +395,76 @@ export class OrderService {
   }
 
   // ========================================
+  // ? USER ORDER LISTS
+  // ========================================
+  async getOrders(
+    input: GetOrdersServiceInput,
+  ): Promise<GetOrdersServiceResult> {
+    const { effectiveTenant, filters } = input;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const { orders, total } = await this.orderRepository.findOrders({
+      ...filters,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || filters.branchId || undefined,
+      page,
+      limit,
+    });
+
+    return {
+      orders: orders.map((order) => ({
+        ...order,
+        tokenNumber: formatTokenNumber(order.tokenNumber),
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getLiveOrderCounts(
+    input: GetLiveOrderCountsServiceInput,
+  ): Promise<GetLiveOrderCountsServiceResult> {
+    const { effectiveTenant, filters } = input;
+    const { branchId } = effectiveTenant;
+
+    if (!branchId) {
+      throw new AppError("A branch must be selected to view live orders", {
+        statusCode: HttpStatusCodes.BAD_REQUEST,
+        code: ErrorCodes.BAD_REQUEST,
+      });
+    }
+
+    const businessDayId =
+      await this.businessDayService.findCurrentBusinessDayId({ branchId });
+
+    const statusCounts = businessDayId
+      ? await this.orderRepository.countBusinessDayOrdersByStatus({
+          businessDayId,
+          orderStatuses: [
+            OrderStatusEnum.PLACED,
+            OrderStatusEnum.PREPARING,
+            OrderStatusEnum.READY,
+            OrderStatusEnum.COMPLETED,
+          ],
+          orderType: filters.orderType,
+        })
+      : [];
+    const countByStatus = new Map(
+      statusCounts.map(({ orderStatus, count }) => [orderStatus, count]),
+    );
+
+    return {
+      placed: countByStatus.get(OrderStatusEnum.PLACED) ?? 0,
+      preparing: countByStatus.get(OrderStatusEnum.PREPARING) ?? 0,
+      ready: countByStatus.get(OrderStatusEnum.READY) ?? 0,
+      completed: countByStatus.get(OrderStatusEnum.COMPLETED) ?? 0,
+    };
+  }
+
+  // ========================================
   // ? PAYMENT WEBHOOKS
   // ========================================
   async handlePhonePeWebhook(
@@ -369,7 +497,7 @@ export class OrderService {
       SocketEventEnum.ORDER_PAYMENT_PROCESSING,
       {
         ...paymentEvent,
-        paymentStatus: OrderPaymentStatusEnum.PROCESSING,
+        paymentStatus: OrderPaymentStatusEnum.PENDING,
       },
     );
 

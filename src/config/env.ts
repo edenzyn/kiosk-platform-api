@@ -78,6 +78,7 @@ const EnvSchema = Yup.object({
   NORMAL_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   RESELLER_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
   PLATFORM_USER_SESSION_LIMIT: Yup.number().integer().positive().default(5),
+  DEVICE_SESSION_LIMIT: Yup.number().integer().positive().default(1),
   IS_NORMAL_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_RESELLER_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
   IS_PLATFORM_SESSION_AUTO_LOGOUT_ENABLED: Yup.boolean().default(true),
@@ -138,12 +139,6 @@ const EnvSchema = Yup.object({
     .default("https://api-preprod.phonepe.com/apis/pg-sandbox"),
   PHONEPE_WEBHOOK_USERNAME: Yup.string().required().min(1),
   PHONEPE_WEBHOOK_PASSWORD: Yup.string().required().min(1),
-
-  // ==============================
-  // Sockets
-  // ==============================
-  SOCKET_ADMIN_USERNAME: Yup.string().optional(),
-  SOCKET_ADMIN_PASSWORD: Yup.string().optional(),
 
   // ==============================
   // Checkout

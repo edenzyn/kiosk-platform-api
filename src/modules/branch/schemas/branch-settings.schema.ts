@@ -1,7 +1,6 @@
 import {
   boolean,
   pgTable,
-  time,
   timestamp,
   uuid,
   varchar,
@@ -26,7 +25,6 @@ export const branchSettings = pgTable("branch_settings", {
   timezone: varchar("timezone", { length: 100 })
     .notNull()
     .default("Asia/Kolkata"),
-  businessDayCutoffTime: time("business_day_cutoff_time"),
   isCashPaymentEnabled: boolean("is_cash_payment_enabled")
     .default(true)
     .notNull(),

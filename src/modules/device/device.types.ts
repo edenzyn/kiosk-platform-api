@@ -7,6 +7,8 @@ import type { DeviceEntity, DeviceWithBranchEntity } from "./device.schema";
 import type { CreateDeviceRequestDto } from "./dtos/create-device.dtos";
 import type { BranchBrandingDto } from "../branch/dtos/get-branch-branding.dtos";
 import type { DeviceAuthResponseDto } from "./dtos/device-auth.dtos";
+import type { GetDeviceDetailsResponseDto } from "./dtos/get-device-details.dtos";
+import type { GetDevicesResponseDto } from "./dtos/get-devices.dtos";
 
 // ========================================
 // ? SERVICE INPUTS & RESULTS
@@ -27,6 +29,7 @@ export type CreateDeviceServiceResult = Omit<DeviceEntity, "pin">;
 export interface GetDevicesServiceInput {
   effectiveTenant: EffectiveTenant;
   filters?: {
+    deviceIds?: string[];
     page?: number;
     limit?: number;
     search?: string;
@@ -38,12 +41,17 @@ export interface GetDevicesServiceInput {
   };
 }
 
-export interface GetDevicesServiceResult {
-  devices: DeviceWithBranchEntity[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+export type GetDevicesServiceResult = GetDevicesResponseDto;
+
+export interface GetDeviceDetailsServiceInput {
+  id: string;
+  effectiveTenant: EffectiveTenant;
+}
+export type GetDeviceDetailsServiceResult = GetDeviceDetailsResponseDto;
+
+export interface RevokeDeviceSessionServiceInput {
+  id: string;
+  effectiveTenant: EffectiveTenant;
 }
 
 export interface UpdateDeviceServiceInput {
@@ -53,7 +61,6 @@ export interface UpdateDeviceServiceInput {
     deviceCode?: string | null;
     name?: string | null;
     pin?: number | null;
-    deviceType?: DeviceTypeEnum | null;
   };
   user: UserTokenDto;
 }

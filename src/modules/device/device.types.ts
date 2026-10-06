@@ -34,7 +34,10 @@ import type {
   GetDeviceLogsQueryDto,
   GetDeviceLogsResponseDto,
 } from "./dtos/get-device-logs.dtos";
-import type { GetDeviceDetailsResponseDto } from "./dtos/get-device-details.dtos";
+import type {
+  DeviceStaffSessionDto,
+  GetDeviceDetailsResponseDto,
+} from "./dtos/get-device-details.dtos";
 import type { GetDevicesResponseDto } from "./dtos/get-devices.dtos";
 
 // ========================================
@@ -77,6 +80,12 @@ export interface GetDeviceDetailsServiceInput {
 export type GetDeviceDetailsServiceResult = GetDeviceDetailsResponseDto;
 
 export interface RevokeDeviceSessionServiceInput {
+  id: string;
+  user: UserTokenDto;
+  effectiveTenant: EffectiveTenant;
+}
+
+export interface RevokeDeviceStaffSessionServiceInput {
   id: string;
   user: UserTokenDto;
   effectiveTenant: EffectiveTenant;
@@ -235,6 +244,11 @@ export interface FindActiveStaffSessionRepoInput {
 }
 export type FindActiveStaffSessionRepoResult =
   DeviceStaffSessionEntity | undefined;
+
+export interface FindOpenStaffSessionRepoInput {
+  deviceId: string;
+}
+export type FindOpenStaffSessionRepoResult = DeviceStaffSessionDto | undefined;
 
 export interface RotateStaffSessionRepoInput {
   id: string;

@@ -4,6 +4,7 @@ export enum SocketEventEnum {
   // ========================================
   DEVICE_SESSION_REVOKED = "device.session.revoked",
   DEVICE_DEACTIVATED = "device.deactivated",
+  DEVICE_STAFF_SESSION_REVOKED = "device.staff-session.revoked",
 
   // ========================================
   // ? ORDERS

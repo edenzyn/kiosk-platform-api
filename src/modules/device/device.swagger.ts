@@ -332,6 +332,28 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/devices/{id}/staff-session": {
+    delete: {
+      tags: ["Devices"],
+      summary: "Revoke the staff session on a device",
+      description:
+        "Signs the staff member out of a counter or KDS device without signing the device itself out. The device gets a `device.staff-session.revoked` socket event and returns to the staff sign-in. 404 when nobody is signed in.",
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": { description: "Staff session revoked" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/u/devices/{id}/terminal": {
     patch: {
       tags: ["Devices"],
@@ -493,7 +515,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                           type: "integer",
                           enum: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                           description:
-                            "DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_PANEL_ENTERED, 7 = ADMIN_PANEL_ENTRY_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED, 10 = STAFF_LOGIN, 11 = STAFF_LOGIN_FAILED, 12 = STAFF_LOGOUT",
+                            "DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_PANEL_ENTERED, 7 = ADMIN_PANEL_ENTRY_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED, 10 = STAFF_LOGIN, 11 = STAFF_LOGIN_FAILED, 12 = STAFF_LOGOUT, 13 = STAFF_SESSION_REVOKED",
                         },
                         performedBy: {
                           type: "object",

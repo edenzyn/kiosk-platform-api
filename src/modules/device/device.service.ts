@@ -70,6 +70,7 @@ import type {
   MapOwnTerminalServiceResult,
   RefreshDeviceStaffSessionServiceInput,
   RevokeDeviceSessionServiceInput,
+  RevokeDeviceStaffSessionServiceInput,
   ToggleDeviceStatusServiceInput,
   ToggleDeviceStatusServiceResult,
   UpdateDeviceServiceInput,
@@ -196,6 +197,9 @@ export class DeviceService {
     const session = await this.authRepository.findActiveDeviceSession({
       deviceId: device.id,
     });
+    const staffSession = await this.deviceRepository.findOpenStaffSession({
+      deviceId: device.id,
+    });
 
     return {
       device,
@@ -207,7 +211,55 @@ export class DeviceService {
         lastUsedAt: session.lastUsedAt,
         expiresAt: session.expiresAt,
       },
+      staffSession: staffSession ?? null,
     };
+  }
+
+  async revokeDeviceStaffSession(
+    input: RevokeDeviceStaffSessionServiceInput,
+  ): Promise<void> {
+    const { id, user, effectiveTenant } = input;
+
+    const device = await this.deviceRepository.findOne({
+      id,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId ?? undefined,
+    });
+    if (!device) {
+      throw new AppError("Device not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const staffSession = await this.deviceRepository.findOpenStaffSession({
+      deviceId: device.id,
+    });
+    if (!staffSession) {
+      throw new AppError("No staff member is signed in on this device", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    await this.deviceRepository.endStaffSessions({ deviceId: device.id });
+
+    await this.deviceRepository.createLog({
+      data: {
+        organizationId: device.organizationId,
+        branchId: device.branchId,
+        deviceId: device.id,
+        action: DeviceLogActionEnum.STAFF_SESSION_REVOKED,
+        performedBy: user.id,
+        metadata: { staffName: staffSession.staff.name },
+      },
+    });
+
+    this.realtimeProvider.emitToDevice(
+      device.id,
+      SocketEventEnum.DEVICE_STAFF_SESSION_REVOKED,
+      { deviceId: device.id },
+    );
   }
 
   async revokeDeviceSession(

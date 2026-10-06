@@ -25,7 +25,7 @@ export const deviceLogs = pgTable(
     deviceId: uuid("device_id")
       .notNull()
       .references((): AnyPgColumn => devices.id),
-    action: smallint("action").notNull(), // DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_PANEL_ENTERED, 7 = ADMIN_PANEL_ENTRY_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED, 10 = STAFF_LOGIN, 11 = STAFF_LOGIN_FAILED, 12 = STAFF_LOGOUT
+    action: smallint("action").notNull(), // DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_PANEL_ENTERED, 7 = ADMIN_PANEL_ENTRY_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED, 10 = STAFF_LOGIN, 11 = STAFF_LOGIN_FAILED, 12 = STAFF_LOGOUT, 13 = STAFF_SESSION_REVOKED
     performedBy: uuid("performed_by").references((): AnyPgColumn => users.id), // Null when the device did it itself
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { withTimezone: true })

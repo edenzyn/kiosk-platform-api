@@ -85,6 +85,23 @@ export class DeviceController {
     res.status(HttpStatusCodes.OK).json({ message: "Device session revoked" });
   };
 
+  revokeDeviceStaffSession = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { id } = await DeviceValidator.deviceIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    await this.deviceService.revokeDeviceStaffSession({
+      id,
+      user: req.user as UserTokenDto,
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+    });
+    res.status(HttpStatusCodes.OK).json({ message: "Staff session revoked" });
+  };
+
   getDeviceLogs = async (req: Request, res: Response): Promise<void> => {
     const { id } = await DeviceValidator.deviceIdParams.validate(req.params, {
       abortEarly: false,

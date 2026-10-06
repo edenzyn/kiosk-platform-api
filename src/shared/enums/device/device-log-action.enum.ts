@@ -11,4 +11,5 @@ export enum DeviceLogActionEnum {
   STAFF_LOGIN = 10,
   STAFF_LOGIN_FAILED = 11,
   STAFF_LOGOUT = 12,
+  STAFF_SESSION_REVOKED = 13,
 }

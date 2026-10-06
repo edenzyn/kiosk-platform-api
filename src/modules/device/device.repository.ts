@@ -23,6 +23,8 @@ import type {
   EndStaffSessionsRepoInput,
   FindActiveStaffSessionRepoInput,
   FindActiveStaffSessionRepoResult,
+  FindOpenStaffSessionRepoInput,
+  FindOpenStaffSessionRepoResult,
   RotateStaffSessionRepoInput,
   CreateDeviceLogRepoInput,
   CreateDeviceRepoInput,
@@ -329,6 +331,40 @@ export class DeviceRepository {
       return session;
     } catch (error) {
       logger.error("[DEVICE_FIND_ACTIVE_STAFF_SESSION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findOpenStaffSession(
+    input: FindOpenStaffSessionRepoInput,
+  ): Promise<FindOpenStaffSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .select({
+          id: deviceStaffSessions.id,
+          staff: { id: users.id, name: users.name },
+          createdAt: deviceStaffSessions.createdAt,
+          lastUsedAt: deviceStaffSessions.lastUsedAt,
+          expiresAt: deviceStaffSessions.expiresAt,
+        })
+        .from(deviceStaffSessions)
+        .innerJoin(users, eq(deviceStaffSessions.userId, users.id))
+        .where(
+          and(
+            eq(deviceStaffSessions.deviceId, input.deviceId),
+            isNull(deviceStaffSessions.endedAt),
+            gt(deviceStaffSessions.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(desc(deviceStaffSessions.createdAt))
+        .limit(1);
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_FIND_OPEN_STAFF_SESSION_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

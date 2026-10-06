@@ -7,8 +7,11 @@ import { CustomRequestHeaders } from "../shared/enums/core/custom-request-header
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
+import { isSessionRevoked } from "./auth.middleware";
 
-export function verifyDeviceStaffToken(req: Request): DeviceStaffTokenDto {
+export async function verifyDeviceStaffToken(
+  req: Request,
+): Promise<DeviceStaffTokenDto> {
   try {
     const token = req.get(CustomRequestHeaders.DEVICE_STAFF_TOKEN);
     if (!token) throw new Error("Missing device staff token");
@@ -24,6 +27,10 @@ export function verifyDeviceStaffToken(req: Request): DeviceStaffTokenDto {
       throw new Error("Invalid device staff token");
     }
 
+    if (await isSessionRevoked(decoded.deviceStaff.sessionId)) {
+      throw new Error("Revoked device staff session");
+    }
+
     return decoded.deviceStaff;
   } catch {
     throw new AppError("Your staff session has ended. Sign in again.", {
@@ -33,13 +40,13 @@ export function verifyDeviceStaffToken(req: Request): DeviceStaffTokenDto {
   }
 }
 
-export function deviceStaffMiddleware(
+export async function deviceStaffMiddleware(
   req: Request,
   _res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   try {
-    req.deviceStaff = verifyDeviceStaffToken(req);
+    req.deviceStaff = await verifyDeviceStaffToken(req);
     next();
   } catch (error) {
     next(error);

@@ -7,7 +7,7 @@
  * and collision-free across features that share the same Redis instance.
  */
 export const RedisKeys = {
-  /** Marks an auth session (jti) as revoked ahead of its access token's natural expiry. */
+  /** Marks an auth session (jti) or a device staff session as revoked ahead of its access token's natural expiry. */
   authSessionRevoked: (sessionId: string): string =>
     `auth:session:revoked:${sessionId}`,
 

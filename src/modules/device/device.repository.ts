@@ -12,6 +12,9 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { DEVICE_STAFF_CONSTANTS } from "../../shared/constants/auth-security.constants";
+import { RedisKeys } from "../../shared/constants/redis-keys.constants";
+import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
 import { branches } from "../branch/schemas/branch.schema";
 import { users } from "../user/schemas/user.schema";
 import { deviceLogs } from "./device-log.schema";
@@ -44,7 +47,10 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { logger } from "../../shared/utils/core/logger";
 
 export class DeviceRepository {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly redisProvider: RedisProvider,
+  ) {}
 
   // ========================================
   // ? DEVICE SCHEMA METHODS
@@ -400,7 +406,7 @@ export class DeviceRepository {
 
   async endStaffSessions(input: EndStaffSessionsRepoInput): Promise<void> {
     try {
-      await this.database.client
+      const endedRows = await this.database.client
         .update(deviceStaffSessions)
         .set({ endedAt: new Date() })
         .where(
@@ -411,7 +417,18 @@ export class DeviceRepository {
               : undefined,
             isNull(deviceStaffSessions.endedAt),
           ),
-        );
+        )
+        .returning({ id: deviceStaffSessions.id });
+
+      await Promise.all(
+        endedRows.map((row) =>
+          this.redisProvider.set(
+            RedisKeys.authSessionRevoked(row.id),
+            "1",
+            DEVICE_STAFF_CONSTANTS.ACCESS_EXPIRES_IN_SECONDS,
+          ),
+        ),
+      );
     } catch (error) {
       logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
       throw new AppError(`${error}`, {

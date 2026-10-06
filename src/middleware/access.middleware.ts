@@ -68,7 +68,7 @@ export const accessMiddleware = (
           STAFF_DEVICE_TYPES.includes(req.device.type) &&
           !permissions.allowWithoutStaff
         ) {
-          const deviceStaff = verifyDeviceStaffToken(req);
+          const deviceStaff = await verifyDeviceStaffToken(req);
 
           const hasStaffPermission = await rbacService.hasDeviceStaffPermission(
             {

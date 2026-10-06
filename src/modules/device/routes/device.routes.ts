@@ -18,6 +18,7 @@ deviceRouter.post(
   asyncHandler(deviceController.deviceAdminLogin),
 );
 
+// Logging to admin panel as a staff
 deviceRouter.post(
   "/admin/staff-login",
   deviceStaffMiddleware,
@@ -32,13 +33,19 @@ deviceRouter.patch(
 
 deviceRouter.post(
   "/staff/login",
-  accessMiddleware({ deviceType: STAFF_DEVICE_TYPES }),
+  accessMiddleware({
+    deviceType: STAFF_DEVICE_TYPES,
+    allowWithoutStaff: true,
+  }),
   asyncHandler(deviceController.deviceStaffLogin),
 );
 
 deviceRouter.post(
   "/staff/refresh",
-  accessMiddleware({ deviceType: STAFF_DEVICE_TYPES }),
+  accessMiddleware({
+    deviceType: STAFF_DEVICE_TYPES,
+    allowWithoutStaff: true,
+  }),
   asyncHandler(deviceController.refreshDeviceStaffSession),
 );
 

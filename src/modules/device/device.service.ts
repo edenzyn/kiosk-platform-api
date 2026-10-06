@@ -676,18 +676,12 @@ export class DeviceService {
       failedAction: DeviceLogActionEnum.STAFF_LOGIN_FAILED,
     });
 
-    const permissions = await this.rbacService.getUserPermissionKeys({
+    const canOperateDevice = await this.rbacService.hasDeviceStaffPermission({
       userId: user.id,
       organizationId: device.organizationId,
       branchId: user.branchId,
+      deviceType: device.type,
     });
-    const staffPermission = DEVICE_STAFF_CONSTANTS.PERMISSIONS[device.type];
-    const canOperateDevice =
-      staffPermission !== undefined &&
-      (user.branchId
-        ? permissions.has(UserPermissions.BRANCH_ALL_WRITE) ||
-          permissions.has(staffPermission)
-        : permissions.has(UserPermissions.ORGANIZATION_ALL_WRITE));
 
     if (!canOperateDevice) {
       throw new AppError("You don't have permission to use this device", {
@@ -703,7 +697,12 @@ export class DeviceService {
       Date.now() + DEVICE_STAFF_CONSTANTS.SESSION_MAX_AGE_SECONDS * 1000,
     );
     const tokens = this.generateDeviceStaffTokens({
-      deviceStaff: { sessionId, deviceId: device.id, userId: user.id },
+      deviceStaff: {
+        sessionId,
+        deviceId: device.id,
+        userId: user.id,
+        userBranchId: user.branchId,
+      },
       sessionExpiresAt,
     });
 
@@ -759,7 +758,17 @@ export class DeviceService {
     if (!session) throw sessionExpiredError;
 
     const user = await this.userRepository.findOne({ id: session.userId });
-    if (!user || !user.isActive) {
+    const canOperateDevice =
+      user !== undefined &&
+      user.isActive &&
+      (await this.rbacService.hasDeviceStaffPermission({
+        userId: user.id,
+        organizationId: device.organizationId,
+        branchId: user.branchId,
+        deviceType: device.type,
+      }));
+
+    if (!user || !canOperateDevice) {
       await this.deviceRepository.endStaffSessions({
         deviceId: device.id,
         id: session.id,
@@ -772,6 +781,7 @@ export class DeviceService {
         sessionId: session.id,
         deviceId: device.id,
         userId: user.id,
+        userBranchId: user.branchId,
       },
       sessionExpiresAt: session.expiresAt,
     });

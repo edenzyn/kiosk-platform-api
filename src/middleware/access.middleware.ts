@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { container } from "../config/container";
 import { env } from "../config/env";
 import { RbacService } from "../modules/rbac/rbac.service";
+import { STAFF_DEVICE_TYPES } from "../shared/constants/device.constants";
 import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
@@ -13,12 +14,15 @@ import { UserScopeTypeEnums } from "../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../shared/enums/user/user-type.enum";
 import { AppError } from "../shared/errors/app-error";
 import { getUserScope } from "../shared/utils/user/user-scope.helper";
+import { verifyDeviceStaffToken } from "./device-staff.middleware";
 
 const isReadAction = (permission: string): boolean =>
   permission.endsWith(":read");
 
 export interface AccessPermissions {
   deviceType?: DeviceTypeEnum | DeviceTypeEnum[];
+  /** Skips the staff permission check on counter and KDS devices; only for the staff sign-in routes. */
+  allowWithoutStaff?: boolean;
   userType?: UserTypeEnums | UserTypeEnums[];
   platform?: UserPermissions[];
   reseller?: UserPermissions[];
@@ -58,6 +62,31 @@ export const accessMiddleware = (
               code: ErrorCodes.FORBIDDEN,
             });
           }
+        }
+
+        if (
+          STAFF_DEVICE_TYPES.includes(req.device.type) &&
+          !permissions.allowWithoutStaff
+        ) {
+          const deviceStaff = verifyDeviceStaffToken(req);
+
+          const hasStaffPermission = await rbacService.hasDeviceStaffPermission(
+            {
+              userId: deviceStaff.userId,
+              organizationId: req.device.organizationId,
+              branchId: deviceStaff.userBranchId,
+              deviceType: req.device.type,
+            },
+          );
+
+          if (!hasStaffPermission) {
+            throw new AppError("You don't have permission to use this device", {
+              statusCode: HttpStatusCodes.FORBIDDEN,
+              code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
+            });
+          }
+
+          req.deviceStaff = deviceStaff;
         }
 
         return next();

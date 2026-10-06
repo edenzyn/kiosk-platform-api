@@ -8,11 +8,7 @@ import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
 
-export function deviceStaffMiddleware(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void {
+export function verifyDeviceStaffToken(req: Request): DeviceStaffTokenDto {
   try {
     const token = req.get(CustomRequestHeaders.DEVICE_STAFF_TOKEN);
     if (!token) throw new Error("Missing device staff token");
@@ -28,14 +24,24 @@ export function deviceStaffMiddleware(
       throw new Error("Invalid device staff token");
     }
 
-    req.deviceStaff = decoded.deviceStaff;
-    next();
+    return decoded.deviceStaff;
   } catch {
-    next(
-      new AppError("Your staff session has ended. Sign in again.", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
-      }),
-    );
+    throw new AppError("Your staff session has ended. Sign in again.", {
+      statusCode: HttpStatusCodes.FORBIDDEN,
+      code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
+    });
+  }
+}
+
+export function deviceStaffMiddleware(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): void {
+  try {
+    req.deviceStaff = verifyDeviceStaffToken(req);
+    next();
+  } catch (error) {
+    next(error);
   }
 }

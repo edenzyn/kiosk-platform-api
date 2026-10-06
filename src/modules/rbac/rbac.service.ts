@@ -1,8 +1,10 @@
+import { DEVICE_STAFF_CONSTANTS } from "../../shared/constants/auth-security.constants";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
+import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
@@ -30,6 +32,7 @@ import type { RbacRepository } from "./rbac.repository";
 import type {
   GetUserRolesServiceInput,
   GetUserRolesServiceResult,
+  HasDeviceStaffPermissionServiceInput,
 } from "./rbac.types";
 import type { RoleEntity } from "./schemas/role.schema";
 
@@ -505,6 +508,26 @@ export class RbacService {
     data: GetUserPermissionsRequestDto,
   ): Promise<Set<string>> {
     return this.rbacRepository.findUserPermissionKeys(data);
+  }
+
+  async hasDeviceStaffPermission(
+    input: HasDeviceStaffPermissionServiceInput,
+  ): Promise<boolean> {
+    const { userId, organizationId, branchId, deviceType } = input;
+
+    const staffPermission = DEVICE_STAFF_CONSTANTS.PERMISSIONS[deviceType];
+    if (!staffPermission) return false;
+
+    const permissions = await this.rbacRepository.findUserPermissionKeys({
+      userId,
+      organizationId,
+      branchId,
+    });
+
+    return branchId
+      ? permissions.has(UserPermissions.BRANCH_ALL_WRITE) ||
+          permissions.has(staffPermission)
+      : permissions.has(UserPermissions.ORGANIZATION_ALL_WRITE);
   }
 
   async getRolesByTenantAndScope(

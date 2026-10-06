@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { env } from "../../../config/env";
 import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { ONE_TIME_TOKEN_CONSTANTS } from "../../../shared/constants/one-time-token.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../../shared/constants/auth-security.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { AppError } from "../../../shared/errors/app-error";

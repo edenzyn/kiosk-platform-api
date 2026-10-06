@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/auth-security.constants";
 import { deviceCodeValidator } from "../../shared/validators/device-code.validator";
 import { emailValidator } from "../../shared/validators/email.validator";
 import validateMobileNumber from "../../shared/validators/phone.validator";

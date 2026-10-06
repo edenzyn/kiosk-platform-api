@@ -1,5 +1,5 @@
 import * as Yup from "yup";
-import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/one-time-token.constants";
+import { ONE_TIME_TOKEN_CONSTANTS } from "../../shared/constants/auth-security.constants";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { ThemeModeEnums } from "../../shared/enums/theme/theme-mode.enum";
 import { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-method.enum";

@@ -561,6 +561,13 @@
       "when": 1791185255286,
       "tag": "0079_broad_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1791265364763,
+      "tag": "0080_overconfident_star_brand",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,0 @@
-export const DEVICE_ADMIN_SESSION_EXPIRES_IN = "5m";
-
-export const DEVICE_ADMIN_LOGIN_MAX_ATTEMPTS = 5;
-
-export const DEVICE_ADMIN_LOGIN_LOCK_SECONDS = 15 * 60;

@@ -1,15 +1,26 @@
 import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { DeviceAdminTokenDto } from "../../shared/dtos/device-admin-token.dto";
+import type { DeviceStaffTokenDto } from "../../shared/dtos/device-staff-token.dto";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
+import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
 import { AppError } from "../../shared/errors/app-error";
+import {
+  clearCookie,
+  DEVICE_COOKIE_OPTIONS,
+  setCookie,
+} from "../../shared/utils/core/cookie.helper";
 import type { DeviceService } from "./device.service";
 import { DeviceValidator } from "./device.validator";
 import type { CreateDeviceBodyDto } from "./dtos/create-device.dtos";
 import type { DeviceAdminLoginBodyDto } from "./dtos/device-admin.dtos";
+import type {
+  DeviceAdminStaffLoginBodyDto,
+  DeviceStaffLoginBodyDto,
+} from "./dtos/device-staff.dtos";
 import type { UpdateDeviceBodyDto } from "./dtos/update-device.dtos";
 
 export class DeviceController {
@@ -173,6 +184,23 @@ export class DeviceController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  deviceAdminStaffLogin = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const dto = await DeviceValidator.adminStaffLogin.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.deviceService.deviceAdminStaffLogin({
+      device: req.device as DeviceTokenDto,
+      staff: req.deviceStaff as DeviceStaffTokenDto,
+      dto: dto as DeviceAdminStaffLoginBodyDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   mapOwnTerminal = async (req: Request, res: Response): Promise<void> => {
     const dto = await DeviceValidator.mapOwnTerminal.validate(
       { terminalId: req.body?.terminalId },
@@ -185,5 +213,79 @@ export class DeviceController {
       dto,
     });
     res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  // ========================================
+  // ? DEVICE STAFF APIS
+  // ========================================
+  deviceStaffLogin = async (req: Request, res: Response): Promise<void> => {
+    const dto = await DeviceValidator.staffLogin.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const { refreshToken, ...session } =
+      await this.deviceService.deviceStaffLogin({
+        device: req.device as DeviceTokenDto,
+        dto: dto as DeviceStaffLoginBodyDto,
+      });
+
+    setCookie(
+      res,
+      SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN,
+      refreshToken,
+      session.sessionExpiresAt.getTime() - Date.now(),
+      DEVICE_COOKIE_OPTIONS,
+    );
+    res.status(HttpStatusCodes.OK).json(session);
+  };
+
+  refreshDeviceStaffSession = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const currentRefreshToken =
+      req.cookies[SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN];
+
+    if (!currentRefreshToken) {
+      throw new AppError("Your staff session has ended. Sign in again.", {
+        statusCode: HttpStatusCodes.FORBIDDEN,
+        code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
+      });
+    }
+
+    const { refreshToken, ...session } =
+      await this.deviceService.refreshDeviceStaffSession({
+        device: req.device as DeviceTokenDto,
+        refreshToken: currentRefreshToken,
+      });
+
+    setCookie(
+      res,
+      SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN,
+      refreshToken,
+      session.sessionExpiresAt.getTime() - Date.now(),
+      DEVICE_COOKIE_OPTIONS,
+    );
+    res.status(HttpStatusCodes.OK).json(session);
+  };
+
+  deviceStaffLogout = async (req: Request, res: Response): Promise<void> => {
+    const refreshToken =
+      req.cookies[SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN];
+
+    if (refreshToken) {
+      await this.deviceService.deviceStaffLogout({
+        device: req.device as DeviceTokenDto,
+        refreshToken,
+      });
+    }
+
+    clearCookie(
+      res,
+      SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN,
+      DEVICE_COOKIE_OPTIONS,
+    );
+    res.status(HttpStatusCodes.NO_CONTENT).send();
   };
 }

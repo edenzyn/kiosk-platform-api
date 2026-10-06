@@ -4,8 +4,10 @@ import {
   count,
   desc,
   eq,
+  gt,
   ilike,
   inArray,
+  isNull,
   or,
   type SQL,
 } from "drizzle-orm";
@@ -13,8 +15,15 @@ import type { Database } from "../../config/db";
 import { branches } from "../branch/schemas/branch.schema";
 import { users } from "../user/schemas/user.schema";
 import { deviceLogs } from "./device-log.schema";
+import { deviceStaffSessions } from "./device-staff-session.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
+  CreateStaffSessionRepoInput,
+  CreateStaffSessionRepoResult,
+  EndStaffSessionsRepoInput,
+  FindActiveStaffSessionRepoInput,
+  FindActiveStaffSessionRepoResult,
+  RotateStaffSessionRepoInput,
   CreateDeviceLogRepoInput,
   CreateDeviceRepoInput,
   CreateDeviceRepoResult,
@@ -58,7 +67,7 @@ export class DeviceRepository {
       }
 
       if (conditions.length === 0) {
-        return await null;
+        return null;
       }
 
       const [device] = await this.database.client
@@ -67,9 +76,8 @@ export class DeviceRepository {
         .where(and(...conditions))
         .limit(1);
 
-      return (await device) || null;
+      return device || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_ONE_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -181,12 +189,11 @@ export class DeviceRepository {
       }
 
       const rows = await query;
-      return await {
+      return {
         devices: rows as DeviceWithBranchEntity[],
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -228,9 +235,8 @@ export class DeviceRepository {
         throw new Error("Failed to create device");
       }
 
-      return await device;
+      return device;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_CREATE_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -268,9 +274,8 @@ export class DeviceRepository {
         throw new Error("Failed to update device");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_UPDATE_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -282,11 +287,108 @@ export class DeviceRepository {
   // ========================================
   // ? DEVICE LOG SCHEMA METHODS
   // ========================================
+  async createStaffSession(
+    input: CreateStaffSessionRepoInput,
+  ): Promise<CreateStaffSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .insert(deviceStaffSessions)
+        .values(input.data)
+        .returning();
+
+      if (!session) throw new Error("Failed to create the staff session");
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_CREATE_STAFF_SESSION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findActiveStaffSession(
+    input: FindActiveStaffSessionRepoInput,
+  ): Promise<FindActiveStaffSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .select()
+        .from(deviceStaffSessions)
+        .where(
+          and(
+            eq(deviceStaffSessions.id, input.id),
+            eq(deviceStaffSessions.deviceId, input.deviceId),
+            eq(deviceStaffSessions.tokenHash, input.tokenHash),
+            isNull(deviceStaffSessions.endedAt),
+            gt(deviceStaffSessions.expiresAt, new Date()),
+          ),
+        )
+        .limit(1);
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_FIND_ACTIVE_STAFF_SESSION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async rotateStaffSession(
+    input: RotateStaffSessionRepoInput,
+  ): Promise<boolean> {
+    try {
+      const rows = await this.database.client
+        .update(deviceStaffSessions)
+        .set({ tokenHash: input.newTokenHash, lastUsedAt: new Date() })
+        .where(
+          and(
+            eq(deviceStaffSessions.id, input.id),
+            eq(deviceStaffSessions.tokenHash, input.currentTokenHash),
+            isNull(deviceStaffSessions.endedAt),
+          ),
+        )
+        .returning({ id: deviceStaffSessions.id });
+
+      return rows.length > 0;
+    } catch (error) {
+      logger.error("[DEVICE_ROTATE_STAFF_SESSION_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async endStaffSessions(input: EndStaffSessionsRepoInput): Promise<void> {
+    try {
+      await this.database.client
+        .update(deviceStaffSessions)
+        .set({ endedAt: new Date() })
+        .where(
+          and(
+            eq(deviceStaffSessions.deviceId, input.deviceId),
+            input.id !== undefined
+              ? eq(deviceStaffSessions.id, input.id)
+              : undefined,
+            isNull(deviceStaffSessions.endedAt),
+          ),
+        );
+    } catch (error) {
+      logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
   async createLog(input: CreateDeviceLogRepoInput): Promise<void> {
     try {
       await this.database.client.insert(deviceLogs).values(input.data);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_CREATE_LOG_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -324,7 +426,6 @@ export class DeviceRepository {
 
       return { logs: rows, total: Number(totalRow?.total ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_LOGS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,

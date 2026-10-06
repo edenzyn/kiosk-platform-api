@@ -503,6 +503,7 @@ export class AuthService {
         ? await this.deviceRepository.findOne({ id: decoded.device.id })
         : null;
       if (device) {
+        await this.deviceRepository.endStaffSessions({ deviceId: device.id });
         await this.deviceRepository.createLog({
           data: {
             organizationId: device.organizationId,

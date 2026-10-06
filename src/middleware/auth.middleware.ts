@@ -5,6 +5,7 @@ import { env } from "../config/env";
 import { RedisKeys } from "../shared/constants/redis-keys.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import type { DeviceAdminTokenDto } from "../shared/dtos/device-admin-token.dto";
+import type { DeviceStaffTokenDto } from "../shared/dtos/device-staff-token.dto";
 import type { DeviceTokenDto } from "../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../shared/dtos/effective-tenant.dto";
 import type { UserRequestScope } from "../shared/dtos/user-request-scope.dto";
@@ -26,6 +27,7 @@ declare global {
       device?: DeviceTokenDto;
       clientType?: ClientTypeEnum;
       deviceAdmin?: DeviceAdminTokenDto;
+      deviceStaff?: DeviceStaffTokenDto;
     }
   }
 }

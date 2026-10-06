@@ -56,7 +56,7 @@ export const orderPayments = pgTable(
       .notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
-    collectedBy: uuid("collected_by").references((): AnyPgColumn => users.id), // staff who accepted CASH
+    collectedBy: uuid("collected_by").references((): AnyPgColumn => users.id), // staff who took the payment on a counter device
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

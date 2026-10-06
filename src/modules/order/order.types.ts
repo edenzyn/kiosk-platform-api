@@ -1,3 +1,4 @@
+import type { DeviceStaffTokenDto } from "../../shared/dtos/device-staff-token.dto";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
@@ -33,6 +34,7 @@ import type { CreateOrderTaxEntity } from "./schemas/order-tax.schema";
 // ========================================
 export interface CreateDeviceOrderServiceInput {
   device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
   dto: CreateDeviceOrderBodyDto;
 }
 export type CreateDeviceOrderServiceResult = CreateDeviceOrderResponseDto;
@@ -107,8 +109,8 @@ export type FindOneOrderPaymentRepoResult = OrderPaymentEntity | null;
 
 export interface CompletePendingPaymentRepoInput {
   paymentId: string;
-  providerStatus: string;
-  responsePayload: unknown;
+  providerStatus?: string;
+  responsePayload?: unknown;
   completedAt: Date;
 }
 export interface CompletePendingPaymentRepoResult {

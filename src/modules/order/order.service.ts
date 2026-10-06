@@ -56,14 +56,21 @@ export class OrderService {
   async createDeviceOrder(
     input: CreateDeviceOrderServiceInput,
   ): Promise<CreateDeviceOrderServiceResult> {
-    const { device, dto } = input;
+    const { device, staff, dto } = input;
     const { organizationId, branchId } = device;
 
     const { isPayAtCounter } = dto;
+    const isCounter = device.type === DeviceTypeEnum.COUNTER;
+    const isCashPayment =
+      isCounter && dto.paymentMethod === TenantPaymentMethodEnum.CASH;
 
-    if (!isPayAtCounter && dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
+    if (
+      !isPayAtCounter &&
+      !isCashPayment &&
+      dto.paymentMethod !== TenantPaymentMethodEnum.QR
+    ) {
       throw new AppError(
-        "Only QR payments are available on the device right now",
+        "This payment method is not available on the device right now",
         {
           statusCode: HttpStatusCodes.BAD_REQUEST,
           code: ErrorCodes.BAD_REQUEST,
@@ -77,6 +84,24 @@ export class OrderService {
     });
 
     if (order) {
+      if (
+        isCashPayment &&
+        order.paymentMethod === TenantPaymentMethodEnum.CASH &&
+        order.paymentStatus === OrderPaymentStatusEnum.COMPLETED
+      ) {
+        return {
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            tokenNumber: formatTokenNumber(order.tokenNumber),
+            orderStatus: order.orderStatus,
+            currencyCode: order.currencyCode,
+            totalAmount: order.totalAmount,
+          },
+          payment: null,
+        };
+      }
+
       if (order.orderStatus !== OrderStatusEnum.PENDING_PAYMENT) {
         throw new AppError("This order has already been processed", {
           statusCode: HttpStatusCodes.CONFLICT,
@@ -98,9 +123,11 @@ export class OrderService {
         };
       }
 
-      const latestPayment = await this.orderRepository.findLatestPayment({
-        orderId: order.id,
-      });
+      const latestPayment = isCashPayment
+        ? null
+        : await this.orderRepository.findLatestPayment({
+            orderId: order.id,
+          });
       if (
         latestPayment &&
         latestPayment.paymentStatus === OrderPaymentStatusEnum.PENDING &&
@@ -172,6 +199,13 @@ export class OrderService {
 
       if (isPayAtCounter && !settings.isCashPaymentEnabled) {
         throw new AppError("Pay at counter is not available at this branch", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        });
+      }
+
+      if (isCashPayment && !settings.isCashPaymentEnabled) {
+        throw new AppError("Cash payment is not available at this branch", {
           statusCode: HttpStatusCodes.BAD_REQUEST,
           code: ErrorCodes.BAD_REQUEST,
         });
@@ -266,10 +300,9 @@ export class OrderService {
           deviceId: device.id,
           businessDayId,
           idempotencyKey: dto.idempotencyKey,
-          orderSource:
-            device.type === DeviceTypeEnum.COUNTER
-              ? OrderSourceEnum.COUNTER
-              : OrderSourceEnum.KIOSK,
+          orderSource: isCounter
+            ? OrderSourceEnum.COUNTER
+            : OrderSourceEnum.KIOSK,
           orderType: dto.orderType,
           isPayAtCounter,
           paymentMethod: isPayAtCounter ? null : dto.paymentMethod,
@@ -281,6 +314,7 @@ export class OrderService {
           isTaxInclusive: taxProfile?.isTaxInclusive ?? false,
           taxProfileId: taxProfile?.id ?? null,
           totalAmount: pricing.totalAmount,
+          createdBy: staff?.userId ?? null,
         },
         items: pricing.lines.map((line) => ({
           menuItemId: line.menuItem.id,
@@ -323,6 +357,51 @@ export class OrderService {
       };
     }
 
+    if (isCashPayment) {
+      const cashPayment = await this.orderRepository.createPayment({
+        orderId: order.id,
+        organizationId,
+        branchId,
+        deviceId: device.id,
+        paymentMethod: TenantPaymentMethodEnum.CASH,
+        amount: order.totalAmount,
+        currencyCode: order.currencyCode,
+        collectedBy: staff?.userId ?? null,
+      });
+
+      const { order: placedOrder } =
+        await this.orderRepository.completePendingPayment({
+          paymentId: cashPayment.id,
+          completedAt: new Date(),
+        });
+
+      if (!placedOrder) {
+        await this.orderRepository.updatePayment({
+          id: cashPayment.id,
+          data: {
+            paymentStatus: OrderPaymentStatusEnum.CANCELLED,
+            failureReason: "Order was already settled",
+          },
+        });
+        throw new AppError("This order has already been processed", {
+          statusCode: HttpStatusCodes.CONFLICT,
+          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+        });
+      }
+
+      return {
+        order: {
+          id: placedOrder.id,
+          orderNumber: placedOrder.orderNumber,
+          tokenNumber: formatTokenNumber(placedOrder.tokenNumber),
+          orderStatus: placedOrder.orderStatus,
+          currencyCode: placedOrder.currencyCode,
+          totalAmount: placedOrder.totalAmount,
+        },
+        payment: null,
+      };
+    }
+
     const pendingPayment = await this.orderRepository.createPayment({
       orderId: order.id,
       organizationId,
@@ -331,6 +410,7 @@ export class OrderService {
       paymentMethod: TenantPaymentMethodEnum.QR,
       amount: order.totalAmount,
       currencyCode: order.currencyCode,
+      collectedBy: staff?.userId ?? null,
     });
 
     try {

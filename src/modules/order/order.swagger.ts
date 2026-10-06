@@ -7,7 +7,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Place a kiosk order and start its payment",
       description:
-        "Prices the cart on the server from the current menu and branch tax profile and saves the order as PENDING_PAYMENT in the open business day. With paymentMethod QR (1) it starts a PhonePe UPI QR payment and returns it; the token number is given once that payment completes, and retrying with the same idempotencyKey returns the same order and its QR while still valid. With isPayAtCounter true the order gets its token straight away, has no payment method yet, stays PENDING_PAYMENT until the counter takes the money, and `payment` is null; it is cancelled if the business day closes before it is paid. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
+        "Prices the cart on the server from the current menu and branch tax profile and saves the order as PENDING_PAYMENT in the open business day. With paymentMethod QR (1) it starts a PhonePe UPI QR payment and returns it; the token number is given once that payment completes, and retrying with the same idempotencyKey returns the same order and its QR while still valid. With paymentMethod CASH (3), on a counter device only, the signed-in staff member takes the money now: the order is saved as PLACED and paid with its token, `payment` is null, and retrying with the same idempotencyKey returns that same order. Counter orders record the staff member in created_by and the payment in collected_by. With isPayAtCounter true the order gets its token straight away, has no payment method yet, stays PENDING_PAYMENT until the counter takes the money, and `payment` is null; it is cancelled if the business day closes before it is paid. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -37,7 +37,7 @@ export const orderSwaggerPaths = {
                   type: "integer",
                   enum: [1, 2, 3],
                   description:
-                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; only QR is supported on the device for now",
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; QR on every device and CASH on a counter are supported for now",
                 },
                 items: {
                   type: "array",
@@ -63,7 +63,8 @@ export const orderSwaggerPaths = {
       },
       responses: {
         "201": {
-          description: "Order created with a pending QR payment",
+          description:
+            "Order created with a pending QR payment, or placed straight away when paid in cash on a counter",
           content: {
             "application/json": {
               schema: {

@@ -22,6 +22,7 @@ export class OrderController {
 
     const result = await this.orderService.createDeviceOrder({
       device: req.device as DeviceTokenDto,
+      staff: req.deviceStaff,
       dto: dto as CreateDeviceOrderBodyDto,
     });
     res.status(HttpStatusCodes.CREATED).json(result);

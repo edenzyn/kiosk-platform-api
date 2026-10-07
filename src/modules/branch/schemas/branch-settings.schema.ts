@@ -33,7 +33,7 @@ export const branchSettings = pgTable("branch_settings", {
     .notNull(),
   shiftVerifier: smallint("shift_verifier")
     .default(ShiftVerifierEnum.STAFF)
-    .notNull(), // ShiftVerifierEnum: 1 = STAFF, 2 = MANAGER
+    .notNull(), // ShiftVerifierEnum: 1 = STAFF, 2 = SHIFT_MANAGER
   managerVerificationMethod: smallint("manager_verification_method")
     .default(ManagerVerificationMethodEnum.PIN_OR_PASSWORD)
     .notNull(), // ManagerVerificationMethodEnum: 1 = PIN_OR_PASSWORD, 2 = OTP

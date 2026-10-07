@@ -1,4 +1,4 @@
 export enum ShiftVerifierEnum {
   STAFF = 1,
-  MANAGER = 2,
+  SHIFT_MANAGER = 2,
 }

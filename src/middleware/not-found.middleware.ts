@@ -1,14 +1,10 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import { AppError } from "../shared/errors/app-error";
+import { NotFoundError } from "../shared/errors/not-found-error";
 
 export const notFoundHandler: RequestHandler = (
   _request: Request,
   _response: Response,
   next: NextFunction,
 ): void => {
-  next(
-    new AppError("Resource not found", {
-      statusCode: 404,
-    }),
-  );
+  next(new NotFoundError("Resource not found"));
 };

@@ -36,9 +36,7 @@ import type {
 import { licensePlanDiscountRuleMapper } from "../schemas/license-plan-discount-rule-mapper.schema";
 import { licensePlanDiscountRules } from "../schemas/license-plan-discount-rule.schema";
 import { licensePlans } from "../schemas/license-plan.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 export class LicenseDiscountRepository {
@@ -68,12 +66,8 @@ export class LicenseDiscountRepository {
         ),
       ) as SQL;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_DISCOUNT__MARKET_SCOPE_CONDITION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -171,14 +165,10 @@ export class LicenseDiscountRepository {
         ...resellerIndividualRules.map((row) => row.rule),
       ];
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_DISCOUNT_FIND_ACTIVE_DISCOUNT_RULES_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -194,12 +184,8 @@ export class LicenseDiscountRepository {
 
       return (await rule) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_DISCOUNT_FIND_DISCOUNT_RULE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -273,14 +259,10 @@ export class LicenseDiscountRepository {
       const rules = await query;
       return await { rules, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_DISCOUNT_FIND_PAGINATED_DISCOUNT_RULES_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -347,14 +329,10 @@ export class LicenseDiscountRepository {
 
       return await result;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_DISCOUNT_FIND_DISCOUNT_RULE_TARGETS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -418,14 +396,10 @@ export class LicenseDiscountRepository {
         return rule;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_DISCOUNT_CREATE_DISCOUNT_RULE_WITH_TARGETS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -500,14 +474,10 @@ export class LicenseDiscountRepository {
         return rule;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_DISCOUNT_UPDATE_DISCOUNT_RULE_WITH_TARGETS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -528,12 +498,8 @@ export class LicenseDiscountRepository {
       if (!updated) throw new Error("Discount rule not found");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_DISCOUNT_UPDATE_DISCOUNT_RULE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

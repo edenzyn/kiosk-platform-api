@@ -1,11 +1,10 @@
 import type { NextFunction, Request, Response } from "express";
 import type jwt from "jsonwebtoken";
 import { env } from "../config/env";
-import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import type { DeviceStaffTokenDto } from "../shared/dtos/device-staff-token.dto";
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
-import { AppError } from "../shared/errors/app-error";
+import { ForbiddenError } from "../shared/errors/forbidden-error";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
 import { isSessionRevoked } from "./auth.middleware";
 
@@ -33,8 +32,7 @@ export async function verifyDeviceStaffToken(
 
     return decoded.deviceStaff;
   } catch {
-    throw new AppError("Your staff session has ended. Sign in again.", {
-      statusCode: HttpStatusCodes.FORBIDDEN,
+    throw new ForbiddenError("Your staff session has ended. Sign in again.", {
       code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
     });
   }

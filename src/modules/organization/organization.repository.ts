@@ -26,9 +26,7 @@ import type {
   UpdateOrganizationRepoResult,
   UpdateOrganizationSettingsRepoInput,
 } from "./organization.types";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class OrganizationRepository {
@@ -62,12 +60,8 @@ export class OrganizationRepository {
 
       return await organization;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORGANIZATION_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -89,12 +83,8 @@ export class OrganizationRepository {
       }
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORGANIZATION_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -145,12 +135,8 @@ export class OrganizationRepository {
       const organizationsResult = await query;
       return await { organizations: organizationsResult, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORGANIZATION_FIND_PAGINATED_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -274,14 +260,10 @@ export class OrganizationRepository {
         };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[ORGANIZATION_CREATE_ORGANIZATION_WITH_OWNER_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -319,12 +301,8 @@ export class OrganizationRepository {
         throw new Error("Failed to get or create organization settings");
       return await settings;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORGANIZATION_GET_OR_CREATE_SETTINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -345,12 +323,8 @@ export class OrganizationRepository {
       if (!updated) throw new Error("Failed to update organization settings");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORGANIZATION_UPDATE_SETTINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

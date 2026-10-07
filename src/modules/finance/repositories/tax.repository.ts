@@ -21,9 +21,7 @@ import { appTaxComponents } from "../schemas/app-tax-component.schema";
 import { appTaxProfiles } from "../schemas/app-tax-profile.schema";
 import { tenantTaxComponents } from "../schemas/tenant-tax-component.schema";
 import { tenantTaxProfiles } from "../schemas/tenant-tax-profile.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 type Transaction = Parameters<
@@ -45,12 +43,8 @@ export class TaxRepository {
 
       return (await taxProfile) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -69,12 +63,8 @@ export class TaxRepository {
         )
         .orderBy(asc(appTaxComponents.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_FIND_COMPONENTS_BY_PROFILE_ID_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -89,12 +79,8 @@ export class TaxRepository {
         .from(appTaxProfiles)
         .where(inArray(appTaxProfiles.id, input.taxProfileIds));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_FIND_TAX_PROFILE_SUMMARIES_BY_IDS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -131,12 +117,8 @@ export class TaxRepository {
         return taxProfile;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_CREATE_TAX_PROFILE_WITH_COMPONENTS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -233,12 +215,8 @@ export class TaxRepository {
         return taxProfile;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_UPDATE_TAX_PROFILE_WITH_COMPONENTS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -280,12 +258,8 @@ export class TaxRepository {
 
       return await { ...profile, components };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_FIND_TENANT_PROFILE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -321,12 +295,8 @@ export class TaxRepository {
         return { ...profile, components };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_CREATE_TENANT_PROFILE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -409,12 +379,8 @@ export class TaxRepository {
         return { ...profile, components };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_UPDATE_TENANT_PROFILE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -439,12 +405,8 @@ export class TaxRepository {
         )
         .returning();
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[TAX_INSERT_COMPONENTS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

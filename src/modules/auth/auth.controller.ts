@@ -5,7 +5,7 @@ import { HttpStatusCodes } from "../../shared/constants/http-status-codes.consta
 import { ClientTypeEnum } from "../../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { UnauthorizedError } from "../../shared/errors/unauthorized-error";
 import {
   clearCookie,
   DEVICE_COOKIE_OPTIONS,
@@ -119,17 +119,16 @@ export class AuthController {
     const refreshToken = req.cookies[SecurityTokenEnums.USER_REFRESH_TOKEN];
 
     if (!refreshToken) {
-      throw new AppError("Your session has expired. Please sign in again.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-        code: ErrorCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError(
+        "Your session has expired. Please sign in again.",
+        { code: ErrorCodes.UNAUTHORIZED },
+      );
     }
 
     const result = await this.authService.refreshToken(refreshToken);
 
     if (result.clientType !== ClientTypeEnum.USER_CLIENT) {
-      throw new AppError("Invalid session type.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Invalid session type.", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -309,17 +308,16 @@ export class AuthController {
     const refreshToken = req.cookies[SecurityTokenEnums.DEVICE_REFRESH_TOKEN];
 
     if (!refreshToken) {
-      throw new AppError("Your session has expired. Please sign in again.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-        code: ErrorCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError(
+        "Your session has expired. Please sign in again.",
+        { code: ErrorCodes.UNAUTHORIZED },
+      );
     }
 
     const result = await this.authService.refreshToken(refreshToken);
 
     if (result.clientType !== ClientTypeEnum.DEVICE_CLIENT) {
-      throw new AppError("Invalid session type.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Invalid session type.", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }

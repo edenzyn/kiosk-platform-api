@@ -1,11 +1,12 @@
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ConflictError } from "../../shared/errors/conflict-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteOrganizationTemplate } from "../../shared/utils/emailTemplates/invite-organization.template";
 import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
@@ -68,10 +69,7 @@ export class OrganizationService {
       email: dto.email,
     });
     if (existingUser) {
-      throw new AppError("User already exists with this email address", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("User already exists with this email address");
     }
 
     const existingPendingInvitation =
@@ -80,12 +78,8 @@ export class OrganizationService {
         status: UserInvitationStatusEnum.PENDING,
       });
     if (existingPendingInvitation) {
-      throw new AppError(
+      throw new ConflictError(
         "A pending invitation already exists for this email address",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        },
       );
     }
 
@@ -218,17 +212,11 @@ export class OrganizationService {
     });
 
     if (!invitation || !invitation.isOrgRegistration) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.PENDING) {
-      throw new AppError("Only pending invitations can be revoked", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Only pending invitations can be revoked");
     }
 
     await this.userRepository.updateInvitation({
@@ -253,17 +241,11 @@ export class OrganizationService {
     });
 
     if (!invitation || !invitation.isOrgRegistration) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
-      throw new AppError("Only expired invitations can be resent", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Only expired invitations can be resent");
     }
 
     const token = generateToken(
@@ -321,10 +303,7 @@ export class OrganizationService {
     });
 
     if (!target) {
-      throw new AppError("Organization not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Organization not found");
     }
 
     const updated = await this.organizationRepository.update({
@@ -349,10 +328,7 @@ export class OrganizationService {
     });
 
     if (!existing) {
-      throw new AppError("Organization not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Organization not found");
     }
 
     const organization = await this.organizationRepository.update({
@@ -371,10 +347,7 @@ export class OrganizationService {
     });
 
     if (!organization) {
-      throw new AppError("Organization not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Organization not found");
     }
 
     const settings =
@@ -382,9 +355,7 @@ export class OrganizationService {
 
     let brandLogoUrl: string | null = null;
     if (settings.logo) {
-      const result = await this.fileService.generateBrandLogoUrl(
-        settings.logo,
-      );
+      const result = await this.fileService.generateBrandLogoUrl(settings.logo);
       brandLogoUrl = result.brandLogoUrl;
     }
 
@@ -412,15 +383,16 @@ export class OrganizationService {
         contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
       )
     ) {
-      throw new AppError("Unsupported or missing image content type", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Unsupported or missing image content type", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
-    if (fileSize <= 0 || fileSize > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes) {
-      throw new AppError("Image is too large", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+    if (
+      fileSize <= 0 ||
+      fileSize > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes
+    ) {
+      throw new BadRequestError("Image is too large", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }

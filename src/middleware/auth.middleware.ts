@@ -3,7 +3,6 @@ import type jwt from "jsonwebtoken";
 import { container } from "../config/container";
 import { env } from "../config/env";
 import { RedisKeys } from "../shared/constants/redis-keys.constants";
-import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import type { DeviceAdminTokenDto } from "../shared/dtos/device-admin-token.dto";
 import type { DeviceStaffTokenDto } from "../shared/dtos/device-staff-token.dto";
 import type { DeviceTokenDto } from "../shared/dtos/device-token.dto";
@@ -13,7 +12,7 @@ import type { UserTokenDto } from "../shared/dtos/user-token.dto";
 import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../shared/enums/core/security-token-type.enum";
-import { AppError } from "../shared/errors/app-error";
+import { UnauthorizedError } from "../shared/errors/unauthorized-error";
 import type { RedisProvider } from "../shared/providers/redis/redis.provider";
 import { logger } from "../shared/utils/core/logger";
 import { verifyToken } from "../shared/utils/core/jwt.helper";
@@ -69,8 +68,7 @@ export async function authMiddleware(
     }
 
     if (!token) {
-      throw new AppError("Invalid Session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Invalid Session.", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -80,16 +78,14 @@ export async function authMiddleware(
     >(token, env.JWT_ACCESS_SECRET);
 
     if (decoded.jti && (await isSessionRevoked(decoded.jti))) {
-      throw new AppError("Invalid Session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Invalid Session.", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
     if (isDeviceRoute) {
       if (!decoded?.device?.id) {
-        throw new AppError("Invalid Session.", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid Session.", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -97,8 +93,7 @@ export async function authMiddleware(
       req.clientType = ClientTypeEnum.DEVICE_CLIENT;
     } else {
       if (!decoded?.user?.id) {
-        throw new AppError("Invalid Session.", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid Session.", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -109,8 +104,7 @@ export async function authMiddleware(
     next();
   } catch (error) {
     next(
-      new AppError("Invalid Session.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      new UnauthorizedError("Invalid Session.", {
         code: ErrorCodes.UNAUTHORIZED,
         details: error,
       }),

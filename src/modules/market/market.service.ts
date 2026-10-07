@@ -1,6 +1,7 @@
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ConflictError } from "../../shared/errors/conflict-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { TaxProfileWithComponents } from "../finance/types/tax.types";
 import type { TaxRepository } from "../finance/repositories/tax.repository";
@@ -109,10 +110,7 @@ export class MarketService {
   ): Promise<GetMarketWithTaxServiceResult> {
     const market = await this.marketRepository.findOne({ id: input.marketId });
     if (!market) {
-      throw new AppError("Market not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Market not found");
     }
 
     const taxProfile = await this._getTaxProfileWithComponents(
@@ -138,10 +136,7 @@ export class MarketService {
     });
 
     if (!branch) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
     return branch.marketId;
   }
@@ -154,20 +149,14 @@ export class MarketService {
     if (branchId) {
       const branch = await this.branchRepository.findOne({ id: branchId });
       if (!branch) {
-        throw new AppError("Branch not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("Branch not found");
       }
 
       const market = await this.marketRepository.findOne({
         id: branch.marketId,
       });
       if (!market) {
-        throw new AppError("Market not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("Market not found");
       }
 
       const taxProfile = await this._getTaxProfileWithComponents(
@@ -219,10 +208,10 @@ export class MarketService {
       marketId: input.marketId,
     });
     if (!isMapped) {
-      throw new AppError("This market is not available for your organization", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.VALIDATION_ERROR,
-      });
+      throw new BadRequestError(
+        "This market is not available for your organization",
+        { code: ErrorCodes.VALIDATION_ERROR },
+      );
     }
   }
 
@@ -234,8 +223,7 @@ export class MarketService {
       marketId: input.marketId,
     });
     if (!isMapped) {
-      throw new AppError("This market is not available for you", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("This market is not available for you", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -246,12 +234,8 @@ export class MarketService {
       countryCode,
     });
     if (existing) {
-      throw new AppError(
+      throw new ConflictError(
         `A market for country code ${countryCode} already exists`,
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        },
       );
     }
   }
@@ -309,10 +293,7 @@ export class MarketService {
       id: input.marketId,
     });
     if (!existing) {
-      throw new AppError("Market not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Market not found");
     }
 
     const appTaxProfileId = await this._createOrUpdateTaxProfile(
@@ -341,10 +322,7 @@ export class MarketService {
       id: input.marketId,
     });
     if (!existing) {
-      throw new AppError("Market not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Market not found");
     }
 
     const market = await this.marketRepository.update({

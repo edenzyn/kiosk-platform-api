@@ -1,10 +1,10 @@
 import dayjs from "dayjs";
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ONE_TIME_TOKEN_CONSTANTS } from "../../../shared/constants/auth-security.constants";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { TooManyRequestsError } from "../../../shared/errors/too-many-requests-error";
+import { UnauthorizedError } from "../../../shared/errors/unauthorized-error";
 import {
   createRandomReadableCode,
   hmacSha256,
@@ -79,12 +79,8 @@ export class OneTimeTokenService {
     });
 
     if (generations >= ONE_TIME_TOKEN_CONSTANTS.MAX_GENERATIONS_PER_WINDOW) {
-      throw new AppError(
+      throw new TooManyRequestsError(
         "Too many verification codes requested. Please try again later.",
-        {
-          statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
-          code: ErrorCodes.TOO_MANY_REQUESTS,
-        },
       );
     }
 
@@ -126,20 +122,15 @@ export class OneTimeTokenService {
     });
 
     if (!record) {
-      throw new AppError(
+      throw new UnauthorizedError(
         "This verification session has expired. Please start over.",
-        { statusCode: HttpStatusCodes.UNAUTHORIZED },
       );
     }
 
     if (record.attemptCount >= ONE_TIME_TOKEN_CONSTANTS.MAX_VERIFY_ATTEMPTS) {
       await this._burn(record.id);
-      throw new AppError(
+      throw new TooManyRequestsError(
         "Too many incorrect attempts. Please request a new code.",
-        {
-          statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
-          code: ErrorCodes.TOO_MANY_REQUESTS,
-        },
       );
     }
 
@@ -157,24 +148,17 @@ export class OneTimeTokenService {
 
       if (attemptsRemaining === 0) {
         await this._burn(record.id);
-        throw new AppError(
+        throw new TooManyRequestsError(
           "Too many incorrect attempts. Please request a new code.",
-          {
-            statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
-            code: ErrorCodes.TOO_MANY_REQUESTS,
-          },
         );
       }
 
-      throw new AppError(
+      throw new BadRequestError(
         `Invalid verification code. ${pluralizeByCount(
           attemptsRemaining,
           "attempt",
         )} remaining.`,
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          details: { attemptsRemaining },
-        },
+        { details: { attemptsRemaining } },
       );
     }
 

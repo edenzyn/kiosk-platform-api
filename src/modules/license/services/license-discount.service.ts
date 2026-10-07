@@ -1,7 +1,5 @@
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import type { MarketService } from "../../market/market.service";
 import type { LicenseDiscountRepository } from "../repositories/license-discount.repository";
 import type {
@@ -52,10 +50,11 @@ export class LicenseDiscountService {
 
     const targetsByRuleId = new Map<string, { id: string; name: string }[]>();
     for (const [targetEntity, ruleIds] of individualRuleIdsByEntity) {
-      const targets = await this.licenseDiscountRepository.findDiscountRuleTargets({
-        ruleIds,
-        targetEntity,
-      });
+      const targets =
+        await this.licenseDiscountRepository.findDiscountRuleTargets({
+          ruleIds,
+          targetEntity,
+        });
       for (const [ruleId, ruleTargets] of targets) {
         targetsByRuleId.set(ruleId, ruleTargets);
       }
@@ -83,7 +82,9 @@ export class LicenseDiscountService {
       marketId,
     });
     return {
-      rules: await this._attachTargets(rules, { includeResellerTargets: false }),
+      rules: await this._attachTargets(rules, {
+        includeResellerTargets: false,
+      }),
     };
   }
 
@@ -136,10 +137,11 @@ export class LicenseDiscountService {
       return [];
     }
 
-    const targetsMap = await this.licenseDiscountRepository.findDiscountRuleTargets({
-      ruleIds: [rule.id],
-      targetEntity: rule.targetEntity,
-    });
+    const targetsMap =
+      await this.licenseDiscountRepository.findDiscountRuleTargets({
+        ruleIds: [rule.id],
+        targetEntity: rule.targetEntity,
+      });
     return targetsMap.get(rule.id) ?? [];
   }
 
@@ -148,21 +150,22 @@ export class LicenseDiscountService {
   ): Promise<CreateDiscountRuleServiceResult> {
     const { dto, currentUser } = input;
 
-    const rule = await this.licenseDiscountRepository.createDiscountRuleWithTargets({
-      name: dto.name,
-      targetEntity: dto.targetEntity,
-      discountType: dto.discountType,
-      discountValue: dto.discountValue,
-      scopeType: dto.scopeType,
-      marketId: dto.marketId,
-      minQuantity: dto.minQuantity,
-      maxQuantity: dto.maxQuantity,
-      startsAt: dto.startsAt,
-      endsAt: dto.endsAt,
-      resellerIds: dto.resellerIds,
-      licensePlanIds: dto.licensePlanIds,
-      createdBy: currentUser.id,
-    });
+    const rule =
+      await this.licenseDiscountRepository.createDiscountRuleWithTargets({
+        name: dto.name,
+        targetEntity: dto.targetEntity,
+        discountType: dto.discountType,
+        discountValue: dto.discountValue,
+        scopeType: dto.scopeType,
+        marketId: dto.marketId,
+        minQuantity: dto.minQuantity,
+        maxQuantity: dto.maxQuantity,
+        startsAt: dto.startsAt,
+        endsAt: dto.endsAt,
+        resellerIds: dto.resellerIds,
+        licensePlanIds: dto.licensePlanIds,
+        createdBy: currentUser.id,
+      });
 
     const targets = await this._fetchTargetsForRule(rule);
     return { rule: { ...rule, targets } };
@@ -177,28 +180,26 @@ export class LicenseDiscountService {
       ruleId,
     });
     if (!existing) {
-      throw new AppError("Discount rule not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Discount rule not found");
     }
 
-    const rule = await this.licenseDiscountRepository.updateDiscountRuleWithTargets({
-      ruleId,
-      name: dto.name,
-      targetEntity: dto.targetEntity,
-      discountType: dto.discountType,
-      discountValue: dto.discountValue,
-      scopeType: dto.scopeType,
-      marketId: dto.marketId,
-      minQuantity: dto.minQuantity,
-      maxQuantity: dto.maxQuantity,
-      startsAt: dto.startsAt,
-      endsAt: dto.endsAt,
-      resellerIds: dto.resellerIds,
-      licensePlanIds: dto.licensePlanIds,
-      updatedBy: currentUser.id,
-    });
+    const rule =
+      await this.licenseDiscountRepository.updateDiscountRuleWithTargets({
+        ruleId,
+        name: dto.name,
+        targetEntity: dto.targetEntity,
+        discountType: dto.discountType,
+        discountValue: dto.discountValue,
+        scopeType: dto.scopeType,
+        marketId: dto.marketId,
+        minQuantity: dto.minQuantity,
+        maxQuantity: dto.maxQuantity,
+        startsAt: dto.startsAt,
+        endsAt: dto.endsAt,
+        resellerIds: dto.resellerIds,
+        licensePlanIds: dto.licensePlanIds,
+        updatedBy: currentUser.id,
+      });
 
     const targets = await this._fetchTargetsForRule(rule);
     return { rule: { ...rule, targets } };
@@ -211,10 +212,7 @@ export class LicenseDiscountService {
       ruleId: input.ruleId,
     });
     if (!existing) {
-      throw new AppError("Discount rule not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Discount rule not found");
     }
 
     const rule = await this.licenseDiscountRepository.updateDiscountRule({

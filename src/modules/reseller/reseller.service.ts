@@ -1,10 +1,10 @@
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ConflictError } from "../../shared/errors/conflict-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import { NotificationChannelEnum } from "../../shared/enums/notification/notification-channel.enum";
 import { getInviteResellerTemplate } from "../../shared/utils/emailTemplates/invite-reseller.template";
 import { resolveExpiryDate } from "../../shared/utils/core/date.helper";
@@ -44,10 +44,7 @@ export class ResellerService {
       email: dto.email,
     });
     if (existingUser) {
-      throw new AppError("User already exists with this email address", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("User already exists with this email address");
     }
 
     const existingPendingInvitation =
@@ -56,12 +53,8 @@ export class ResellerService {
         status: UserInvitationStatusEnum.PENDING,
       });
     if (existingPendingInvitation) {
-      throw new AppError(
+      throw new ConflictError(
         "A pending invitation already exists for this email address",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        },
       );
     }
 
@@ -155,17 +148,11 @@ export class ResellerService {
     });
 
     if (!invitation || invitation.entityType !== UserTypeEnums.RESELLER) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.PENDING) {
-      throw new AppError("Only pending invitations can be revoked", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Only pending invitations can be revoked");
     }
 
     await this.userRepository.updateInvitation({
@@ -190,17 +177,11 @@ export class ResellerService {
     });
 
     if (!invitation || invitation.entityType !== UserTypeEnums.RESELLER) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
-      throw new AppError("Only expired invitations can be resent", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Only expired invitations can be resent");
     }
 
     const token = generateToken(
@@ -251,8 +232,15 @@ export class ResellerService {
   async getResellers(
     input: GetResellersServiceInput,
   ): Promise<GetResellersServiceResult> {
-    const { page = 1, limit = 10, search, sortBy, sortOrder, status, marketId } =
-      input.query;
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy,
+      sortOrder,
+      status,
+      marketId,
+    } = input.query;
 
     const isActive =
       status === "active" ? true : status === "inactive" ? false : undefined;
@@ -285,10 +273,7 @@ export class ResellerService {
     });
 
     if (!target) {
-      throw new AppError("Reseller not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Reseller not found");
     }
 
     const updated = await this.userRepository.update({

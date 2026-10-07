@@ -5,7 +5,6 @@ import {
   DEVICE_ADMIN_CONSTANTS,
   DEVICE_STAFF_CONSTANTS,
 } from "../../shared/constants/auth-security.constants";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { RedisKeys } from "../../shared/constants/redis-keys.constants";
 import type { DeviceStaffTokenDto } from "../../shared/dtos/device-staff-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
@@ -18,7 +17,10 @@ import {
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
+import { TooManyRequestsError } from "../../shared/errors/too-many-requests-error";
 import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
@@ -188,10 +190,7 @@ export class DeviceService {
     const device = devices[0];
 
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const session = await this.authRepository.findActiveDeviceSession({
@@ -226,20 +225,14 @@ export class DeviceService {
       branchId: effectiveTenant.branchId ?? undefined,
     });
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const staffSession = await this.deviceRepository.findOpenStaffSession({
       deviceId: device.id,
     });
     if (!staffSession) {
-      throw new AppError("No staff member is signed in on this device", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("No staff member is signed in on this device");
     }
 
     await this.deviceRepository.endStaffSessions({ deviceId: device.id });
@@ -273,10 +266,7 @@ export class DeviceService {
       branchId: effectiveTenant.branchId ?? undefined,
     });
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const revokedCount = await this.authRepository.revokeDeviceSessions({
@@ -284,10 +274,7 @@ export class DeviceService {
     });
     await this.deviceRepository.endStaffSessions({ deviceId: device.id });
     if (revokedCount === 0) {
-      throw new AppError("This device has no active session", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("This device has no active session");
     }
 
     await this.deviceRepository.createLog({
@@ -321,10 +308,7 @@ export class DeviceService {
       branchId: effectiveTenant.branchId ?? undefined,
     });
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const { logs, total } = await this.deviceRepository.findLogs({
@@ -348,9 +332,7 @@ export class DeviceService {
     const { id, pin, ...updateData } = input.data;
     const existing = await this.deviceRepository.findOne({ id });
     if (!existing) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const prepareData: Partial<DeviceEntity> = {
@@ -377,9 +359,7 @@ export class DeviceService {
   ): Promise<ToggleDeviceStatusServiceResult> {
     const existing = await this.deviceRepository.findOne({ id: input.id });
     if (!existing) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     const updated = await this.deviceRepository.update({
@@ -421,18 +401,16 @@ export class DeviceService {
   ): Promise<MapDeviceTerminalServiceResult> {
     const existing = await this.deviceRepository.findOne({ id: input.id });
     if (!existing) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     if (
       existing.deviceType !== DeviceTypeEnum.KIOSK &&
       existing.deviceType !== DeviceTypeEnum.COUNTER
     ) {
-      throw new AppError("Only kiosk and counter devices can map a terminal", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "Only kiosk and counter devices can map a terminal",
+      );
     }
 
     const updated = await this.deviceRepository.update({
@@ -467,17 +445,12 @@ export class DeviceService {
   ): Promise<DeviceAuthCheckServiceResult> {
     const device = await this.deviceRepository.findOne({ id: input.id });
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     if (!device.isActive) {
-      throw new AppError(
+      throw new ForbiddenError(
         "Device is deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
       );
     }
 
@@ -511,12 +484,8 @@ export class DeviceService {
 
     const attempts = Number((await this.redisProvider.get(attemptsKey)) ?? 0);
     if (attempts >= DEVICE_ADMIN_CONSTANTS.LOGIN_MAX_ATTEMPTS) {
-      throw new AppError(
+      throw new TooManyRequestsError(
         "Too many wrong attempts. Try again in a few minutes.",
-        {
-          statusCode: HttpStatusCodes.TOO_MANY_REQUESTS,
-          code: ErrorCodes.TOO_MANY_REQUESTS,
-        },
       );
     }
 
@@ -541,12 +510,8 @@ export class DeviceService {
       method === DeviceAdminAuthMethodEnum.PIN &&
       !user.pin
     ) {
-      throw new AppError(
+      throw new BadRequestError(
         "You haven't set a PIN yet. Sign in with your password.",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -575,10 +540,7 @@ export class DeviceService {
         },
       });
 
-      throw new AppError("Incorrect sign-in details", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Incorrect sign-in details");
     }
 
     await this.redisProvider.del(attemptsKey);
@@ -603,10 +565,9 @@ export class DeviceService {
         permissions.has(UserPermissions.ORGANIZATION_DEVICE_ADMIN);
 
     if (!canManageDevice) {
-      throw new AppError("You don't have permission to manage this device", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError(
+        "You don't have permission to manage this device",
+      );
     }
 
     const adminToken = generateToken(
@@ -736,10 +697,7 @@ export class DeviceService {
     });
 
     if (!canOperateDevice) {
-      throw new AppError("You don't have permission to use this device", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("You don't have permission to use this device");
     }
 
     await this.deviceRepository.endStaffSessions({ deviceId: device.id });
@@ -791,12 +749,9 @@ export class DeviceService {
     input: RefreshDeviceStaffSessionServiceInput,
   ): Promise<DeviceStaffSessionServiceResult> {
     const { device } = input;
-    const sessionExpiredError = new AppError(
+    const sessionExpiredError = new ForbiddenError(
       "Your staff session has ended. Sign in again.",
-      {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
-      },
+      { code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED },
     );
 
     const sessionId = this.readDeviceStaffSessionId(input.refreshToken);
@@ -894,10 +849,7 @@ export class DeviceService {
 
     const updated = await this.deviceRepository.findOne({ id: device.id });
     if (!updated) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     return { device: DeviceMapper.toDeviceAuthResponse(updated) };

@@ -1,13 +1,11 @@
 import { and, asc, count, desc, eq, gte, inArray, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { BusinessDayActionEnum } from "../../shared/enums/business-day/business-day-action.enum";
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 import { orders } from "../order/schemas/order.schema";
 import { users } from "../user/schemas/user.schema";
@@ -69,12 +67,8 @@ export class BusinessDayRepository {
 
       return day ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_OPEN_DAY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -95,12 +89,8 @@ export class BusinessDayRepository {
 
       return day ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_ONE_BY_DATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -118,12 +108,8 @@ export class BusinessDayRepository {
 
       return day ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_SUMMARY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -145,12 +131,8 @@ export class BusinessDayRepository {
 
       return day ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -205,10 +187,7 @@ export class BusinessDayRepository {
           .limit(1);
 
         if (stillOpen) {
-          throw new AppError("A business day is already open", {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-          });
+          throw new Error("A business day is already open");
         }
 
         const [existing] = await tx
@@ -261,12 +240,8 @@ export class BusinessDayRepository {
         return { day, action };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_OPEN_DAY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -305,12 +280,8 @@ export class BusinessDayRepository {
         return day;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_CLOSE_DAY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -344,12 +315,8 @@ export class BusinessDayRepository {
         return day;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_SET_ORDERING_PAUSED_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -371,12 +338,8 @@ export class BusinessDayRepository {
 
       return Number(row?.total ?? 0);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_COUNT_ACTIVE_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -412,12 +375,8 @@ export class BusinessDayRepository {
 
       return { businessDays: rows, total: Number(totalRow?.total ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_DAYS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -437,12 +396,8 @@ export class BusinessDayRepository {
         .where(eq(businessDayLogs.businessDayId, input.businessDayId))
         .orderBy(asc(businessDayLogs.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[BUSINESS_DAY_FIND_DAY_LOGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

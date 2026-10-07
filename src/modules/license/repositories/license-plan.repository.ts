@@ -29,9 +29,7 @@ import {
   licensePlans,
   type LicensePlanEntity,
 } from "../schemas/license-plan.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 type QueryExecutor =
@@ -88,12 +86,8 @@ export class LicensePlanRepository {
         marketPrices: pricesByPlanId.get(plan.id) ?? [],
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN__ATTACH_MARKET_PRICES_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -138,12 +132,8 @@ export class LicensePlanRepository {
           };
         });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN__ATTACH_SINGLE_MARKET_PRICE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -180,12 +170,8 @@ export class LicensePlanRepository {
         currencyCode: null,
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN_FIND_LICENSE_PLANS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -211,14 +197,10 @@ export class LicensePlanRepository {
 
       return await this._attachMarketPrices(plans);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_PLAN_FIND_LICENSE_PLANS_WITH_MARKET_PRICES_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -263,14 +245,10 @@ export class LicensePlanRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_PLAN_FIND_LICENSE_PLANS_PAGINATED_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -309,12 +287,8 @@ export class LicensePlanRepository {
         return withPrices;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN_CREATE_LICENSE_PLAN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -330,12 +304,8 @@ export class LicensePlanRepository {
 
       return (await plan) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN_FIND_LICENSE_PLAN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -405,12 +375,8 @@ export class LicensePlanRepository {
         return withPrices;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_PLAN_UPDATE_LICENSE_PLAN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

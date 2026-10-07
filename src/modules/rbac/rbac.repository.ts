@@ -48,9 +48,7 @@ import { permissionMapper as permissionsMapper } from "./schemas/permission-mapp
 import { permissions } from "./schemas/permission.schema";
 import { roles } from "./schemas/role.schema";
 import { userRolesMapper } from "./schemas/user-roles-mapper.schema";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class RbacRepository {
@@ -94,12 +92,8 @@ export class RbacRepository {
 
       return (await role) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_ONE_ROLE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -124,12 +118,8 @@ export class RbacRepository {
 
       return await queryResult.rows;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_ROLES_BY_TENANT_AND_SCOPE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -149,12 +139,8 @@ export class RbacRepository {
       if (!role) throw new Error("Failed to create role");
       return await role;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_CREATE_ROLE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -180,12 +166,8 @@ export class RbacRepository {
 
       return await updatedRole;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_UPDATE_ROLE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -205,12 +187,8 @@ export class RbacRepository {
       if (!updated) throw new Error("Role not found");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_UPDATE_ROLE_STATUS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -238,12 +216,8 @@ export class RbacRepository {
           .where(and(eq(roles.id, input.roleId), eq(roles.isSystem, false)));
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_DELETE_ROLE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -275,12 +249,8 @@ export class RbacRepository {
 
       return (await permission) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_ONE_PERMISSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -294,12 +264,8 @@ export class RbacRepository {
         .from(permissions)
         .where(inArray(permissions.key, input.keys));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_PERMISSIONS_BY_KEYS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -325,12 +291,8 @@ export class RbacRepository {
 
       return await queryResult.rows;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_PERMISSIONS_BY_TENANT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -347,12 +309,8 @@ export class RbacRepository {
 
       return await new Set(queryResult.rows.map((row) => row.key));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_USER_PERMISSION_KEYS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -378,12 +336,8 @@ export class RbacRepository {
         .from(permissionsMapper)
         .where(and(...conditions));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_PERMISSION_MAPPERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -406,12 +360,8 @@ export class RbacRepository {
       if (!inserted) throw new Error("Failed to create permission mapper");
       return await inserted;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_CREATE_PERMISSION_MAPPER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -424,12 +374,8 @@ export class RbacRepository {
         .insert(permissionsMapper)
         .values(input.mappers);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_CREATE_BULK_PERMISSION_MAPPERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -450,12 +396,8 @@ export class RbacRepository {
         throw new Error("Failed to update permission mapper status");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_UPDATE_PERMISSION_MAPPER_STATUS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -494,12 +436,8 @@ export class RbacRepository {
 
       return (await topRole) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_ONE_TOP_RANKED_ROLE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -543,12 +481,8 @@ export class RbacRepository {
 
       return await { roles: rows, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_FIND_USER_ROLES_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -567,12 +501,8 @@ export class RbacRepository {
       if (!mapper) throw new Error("Failed to create user role mapper");
       return await mapper;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_CREATE_USER_ROLE_MAPPER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -586,12 +516,8 @@ export class RbacRepository {
         .values(input.mappers)
         .returning();
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_CREATE_USER_ROLE_MAPPERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -608,12 +534,8 @@ export class RbacRepository {
           ),
         );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[RBAC_DELETE_USER_ROLE_MAPPERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

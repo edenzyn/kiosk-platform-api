@@ -1,8 +1,9 @@
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseRedemptionStatusEnum } from "../../../shared/enums/license/license-redemption-status.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { ConflictError } from "../../../shared/errors/conflict-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import {
   decryptData,
   encryptData,
@@ -50,9 +51,8 @@ export class LicenseRedemptionService {
       });
 
     if (ownedAvailable.length !== licenseIds.length) {
-      throw new AppError(
+      throw new BadRequestError(
         "One or more selected licenses are unavailable or not owned by you",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
@@ -63,9 +63,8 @@ export class LicenseRedemptionService {
         },
       );
     if (blockedLicenseIds.length > 0) {
-      throw new AppError(
+      throw new ConflictError(
         "One or more selected licenses already have an active redemption code",
-        { statusCode: HttpStatusCodes.CONFLICT },
       );
     }
 
@@ -73,17 +72,16 @@ export class LicenseRedemptionService {
       ownedAvailable.map((license) => license.marketId),
     );
     if (marketIds.size > 1) {
-      throw new AppError(
+      throw new BadRequestError(
         "All licenses bundled into a redemption code must belong to the same market",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
     const [marketId] = Array.from(marketIds);
     if (!marketId) {
-      throw new AppError("Could not determine the market for these licenses", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "Could not determine the market for these licenses",
+      );
     }
 
     const isMapped = await this.marketRepository.isResellerMappedToMarket({
@@ -91,8 +89,7 @@ export class LicenseRedemptionService {
       marketId,
     });
     if (!isMapped) {
-      throw new AppError("This market is not available for you", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("This market is not available for you", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -195,10 +192,7 @@ export class LicenseRedemptionService {
       });
 
     if (!details) {
-      throw new AppError("Redemption code not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Redemption code not found");
     }
 
     return {
@@ -232,10 +226,7 @@ export class LicenseRedemptionService {
       });
 
     if (!details) {
-      throw new AppError("Redemption code not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Redemption code not found");
     }
 
     const bundledLicenseIds = new Set(
@@ -247,9 +238,8 @@ export class LicenseRedemptionService {
       [...bundledLicenseIds].every((id) => submittedLicenseIds.has(id));
 
     if (!sameLicenseSet) {
-      throw new AppError(
+      throw new BadRequestError(
         "Submitted licenses do not match this redemption code's bundled licenses",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
@@ -264,17 +254,15 @@ export class LicenseRedemptionService {
         item.lockedPrice < (basePriceByLicenseId.get(item.licenseId) ?? 0),
     );
     if (hasBelowMinimumPrice) {
-      throw new AppError(
+      throw new BadRequestError(
         "Sold price for a license cannot be less than what it originally cost",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
     const itemsSum = items.reduce((sum, item) => sum + item.lockedPrice, 0);
     if (Math.abs(itemsSum - totalSoldPrice) > 0.01) {
-      throw new AppError(
+      throw new BadRequestError(
         "Per-license locked prices must add up to the total sold price",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
@@ -290,12 +278,9 @@ export class LicenseRedemptionService {
       });
 
     if (!verified) {
-      throw new AppError(
+      throw new ConflictError(
         "Redemption code is not in a claimed state and cannot be verified",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        },
+        { code: ErrorCodes.RESOURCE_NOT_FOUND },
       );
     }
 
@@ -313,12 +298,9 @@ export class LicenseRedemptionService {
     );
 
     if (!revoked) {
-      throw new AppError(
+      throw new ConflictError(
         "Redemption code not found or already claimed/revoked",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        },
+        { code: ErrorCodes.RESOURCE_NOT_FOUND },
       );
     }
 
@@ -336,10 +318,7 @@ export class LicenseRedemptionService {
       });
 
     if (!existing) {
-      throw new AppError("Invalid redeem code.", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invalid redeem code.");
     }
 
     if (existing.status !== LicenseRedemptionStatusEnum.GENERATED) {
@@ -351,9 +330,8 @@ export class LicenseRedemptionService {
         [LicenseRedemptionStatusEnum.REVOKED]: "This code has been revoked.",
         [LicenseRedemptionStatusEnum.EXPIRED]: "This code has expired.",
       };
-      throw new AppError(
+      throw new ConflictError(
         messages[existing.status] ?? "This code can no longer be redeemed.",
-        { statusCode: HttpStatusCodes.CONFLICT },
       );
     }
 
@@ -361,24 +339,18 @@ export class LicenseRedemptionService {
       existing.redeemExpiresAt &&
       new Date(existing.redeemExpiresAt) < new Date()
     ) {
-      throw new AppError("This code has expired.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("This code has expired.");
     }
 
     const { organizationId, branchId } = input.effectiveTenant;
     if (branchId) {
       const branch = await this.branchRepository.findOne({ id: branchId });
       if (!branch) {
-        throw new AppError("Branch not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("Branch not found");
       }
       if (branch.marketId !== existing.marketId) {
-        throw new AppError(
+        throw new BadRequestError(
           "This redeem code's market is not available for your branch",
-          { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
     } else {
@@ -386,9 +358,8 @@ export class LicenseRedemptionService {
         { organizationId, marketId: existing.marketId },
       );
       if (!isMapped) {
-        throw new AppError(
+        throw new BadRequestError(
           "This redeem code's market is not available for your organization",
-          { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
     }
@@ -402,14 +373,13 @@ export class LicenseRedemptionService {
 
     if (!result.ok) {
       if (result.reason === "licenses_unavailable") {
-        throw new AppError(
+        throw new ConflictError(
           "One or more licenses in this code are no longer available.",
-          { statusCode: HttpStatusCodes.CONFLICT },
         );
       }
-      throw new AppError("This code was just redeemed or is no longer valid.", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
+      throw new ConflictError(
+        "This code was just redeemed or is no longer valid.",
+      );
     }
 
     const decryptedLicenses = result.licenses.map(

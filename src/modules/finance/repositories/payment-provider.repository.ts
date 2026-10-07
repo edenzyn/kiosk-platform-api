@@ -36,9 +36,7 @@ import type {
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentProviderWithMappingsRepoResult,
 } from "../types/payment-provider.types";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 const SORTABLE_COLUMNS: Record<string, AnyPgColumn> = {
@@ -101,12 +99,8 @@ export class PaymentProviderRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_PAGINATED_WITH_MAPPINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -126,12 +120,8 @@ export class PaymentProviderRepository {
         mappings: mappingsByProviderId.get(provider.id) ?? [],
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_ONE_WITH_MAPPINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -147,12 +137,8 @@ export class PaymentProviderRepository {
 
       return (await provider) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -199,12 +185,8 @@ export class PaymentProviderRepository {
         return provider;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_UPDATE_WITH_MAPPINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -225,12 +207,8 @@ export class PaymentProviderRepository {
       if (!provider) throw new Error("Failed to update payment provider");
       return await provider;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -265,12 +243,8 @@ export class PaymentProviderRepository {
         )
         .orderBy(asc(paymentProviders.name));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_TENANT_PAYMENT_OPTIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -305,12 +279,8 @@ export class PaymentProviderRepository {
 
       return (await option) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_TENANT_PAYMENT_OPTION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -341,12 +311,8 @@ export class PaymentProviderRepository {
           ),
         );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_TENANT_PAYMENT_CONFIGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -415,12 +381,8 @@ export class PaymentProviderRepository {
           );
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_SAVE_TENANT_PAYMENT_CONFIG_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -463,12 +425,8 @@ export class PaymentProviderRepository {
 
       return await mappingsByProviderId;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[PAYMENT_FIND_MAPPINGS_BY_PROVIDER_IDS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

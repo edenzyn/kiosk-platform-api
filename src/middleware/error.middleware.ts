@@ -5,6 +5,7 @@ import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
 import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { AppError } from "../shared/errors/app-error";
+import { BadRequestError } from "../shared/errors/bad-request-error";
 
 export const errorHandler: ErrorRequestHandler = (
   error: unknown,
@@ -15,8 +16,7 @@ export const errorHandler: ErrorRequestHandler = (
   if (env.NODE_ENV === "development") console.log(error);
   const normalized =
     error instanceof ValidationError
-      ? new AppError("Request validation failed", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
+      ? new BadRequestError("Request validation failed", {
           code: ErrorCodes.VALIDATION_ERROR,
           details: error.inner.reduce(
             (acc, err) => {

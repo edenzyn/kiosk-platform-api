@@ -1,5 +1,4 @@
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import {
   PAYMENT_CONFIG_SECRET_KEYS,
   PAYMENT_CONNECTION_TEST_SUPPORT,
@@ -8,7 +7,10 @@ import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { PaymentProviderSlugEnum } from "../../../shared/enums/finance/payment-provider-slug.enum";
 import { TenantPaymentMethodEnum } from "../../../shared/enums/finance/tenant-payment-method.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { ConflictError } from "../../../shared/errors/conflict-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
+import { PaymentRequiredError } from "../../../shared/errors/payment-required-error";
 import type { PhonePeProvider } from "../../../shared/providers/finance/phonepe/phonepe.provider";
 import type { PhonePeQrPaymentConfig } from "../../../shared/providers/finance/phonepe/phonepe.types";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay/razorpay.provider";
@@ -112,8 +114,7 @@ export class PaymentProviderService {
       signature: params.razorpaySignature,
     });
     if (!isSignatureValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
+      throw new PaymentRequiredError("Payment verification failed", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
@@ -131,8 +132,7 @@ export class PaymentProviderService {
       order.currency === params.expectedCurrency;
 
     if (!isValid) {
-      throw new AppError("Payment verification failed", {
-        statusCode: HttpStatusCodes.PAYMENT_REQUIRED,
+      throw new PaymentRequiredError("Payment verification failed", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
@@ -189,10 +189,7 @@ export class PaymentProviderService {
       if (mapping.id) {
         const current = existingMappingsById.get(mapping.id);
         if (!current) {
-          throw new AppError("Payment provider mapping not found", {
-            statusCode: HttpStatusCodes.NOT_FOUND,
-            code: ErrorCodes.RESOURCE_NOT_FOUND,
-          });
+          throw new NotFoundError("Payment provider mapping not found");
         }
         if (current.isActive !== mapping.isActive) {
           mappingsToUpdate.push({ id: mapping.id, isActive: mapping.isActive });
@@ -203,12 +200,8 @@ export class PaymentProviderService {
       if (
         existingMappingKeys.has(`${mapping.marketId}:${mapping.paymentMethod}`)
       ) {
-        throw new AppError(
+        throw new ConflictError(
           "This payment method is already mapped to the market for this provider",
-          {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-          },
         );
       }
       mappingsToCreate.push({
@@ -252,12 +245,8 @@ export class PaymentProviderService {
   ): Promise<GetTenantPaymentConfigsServiceResult> {
     const { effectiveTenant } = input;
     if (!effectiveTenant.branchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "A branch must be selected to manage payment configs",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -265,10 +254,7 @@ export class PaymentProviderService {
       branchId: effectiveTenant.branchId,
     });
     if (!market) {
-      throw new AppError("This branch has no market", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("This branch has no market");
     }
 
     const [settings, configs, options] = await Promise.all([
@@ -337,10 +323,7 @@ export class PaymentProviderService {
         ]
       : undefined;
     if (!option || !configSchema) {
-      throw new AppError("This payment provider is not available", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("This payment provider is not available");
     }
     const hasOtherEnabledMethod =
       isCashPaymentEnabled ||
@@ -351,10 +334,7 @@ export class PaymentProviderService {
           options.some((item) => item.mapperId === config.mapperId),
       );
     if (!dto.isActive && !hasOtherEnabledMethod) {
-      throw new AppError("At least one payment method must be enabled", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("At least one payment method must be enabled");
     }
 
     const isTestable = Boolean(
@@ -425,10 +405,7 @@ export class PaymentProviderService {
         ]
       : undefined;
     if (!option || !configSchema) {
-      throw new AppError("This payment provider is not available", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("This payment provider is not available");
     }
 
     const storedConfig = (configs.find(
@@ -469,12 +446,8 @@ export class PaymentProviderService {
       return { isSuccessful: true };
     }
 
-    throw new AppError(
+    throw new BadRequestError(
       "Testing the connection isn't available for this provider yet",
-      {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      },
     );
   }
 
@@ -499,17 +472,11 @@ export class PaymentProviderService {
     );
     const option = options.find((item) => item.mapperId === config?.mapperId);
     if (!config || !option) {
-      throw new AppError("QR payment isn't available at this branch", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("QR payment isn't available at this branch");
     }
 
     if (option.provider.slug !== PaymentProviderSlugEnum.PHONEPE) {
-      throw new AppError("This QR payment provider isn't supported yet", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("This QR payment provider isn't supported yet");
     }
 
     const storedConfig = config.config as PhonePeQrPaymentConfig;
@@ -560,10 +527,7 @@ export class PaymentProviderService {
         options.some((item) => item.mapperId === config.mapperId),
     );
     if (!dto.isEnabled && !hasProviderMethodEnabled) {
-      throw new AppError("At least one payment method must be enabled", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("At least one payment method must be enabled");
     }
 
     await this.branchRepository.updateSettings({
@@ -579,10 +543,7 @@ export class PaymentProviderService {
       id: providerId,
     });
     if (!provider) {
-      throw new AppError("Payment provider not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Payment provider not found");
     }
 
     return provider;
@@ -595,10 +556,7 @@ export class PaymentProviderService {
       id: providerId,
     });
     if (!provider) {
-      throw new AppError("Payment provider not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Payment provider not found");
     }
 
     return provider;

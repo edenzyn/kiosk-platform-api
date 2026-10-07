@@ -1,7 +1,6 @@
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import type { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { UnauthorizedError } from "../../shared/errors/unauthorized-error";
 import type { RbacRepository } from "../rbac/rbac.repository";
 import type { UserRepository } from "../user/user.repository";
 import type {
@@ -21,8 +20,7 @@ export class PlatformService {
     const user = await this.userRepository.findOne({ id: input.tokenUser.id });
 
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }

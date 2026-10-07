@@ -8,9 +8,7 @@ import type {
   S3Provider,
   UploadObjectInput,
 } from "../../shared/providers/s3/s3.provider";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class FileRepository {
@@ -20,12 +18,8 @@ export class FileRepository {
     try {
       return `${env.S3_APP_FOLDER_PATH}/${key}`;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE__BUILD_KEY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -36,12 +30,8 @@ export class FileRepository {
         key: this._buildKey(input.key),
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE_UPLOAD_OBJECT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -52,12 +42,8 @@ export class FileRepository {
         key: this._buildKey(input.key),
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE_GET_UPLOAD_URL_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -69,12 +55,8 @@ export class FileRepository {
         key: this._buildKey(input.key),
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE_GET_DOWNLOAD_URL_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -82,12 +64,8 @@ export class FileRepository {
     try {
       return await this.s3Provider.headObject(this._buildKey(key));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE_HEAD_OBJECT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -95,12 +73,8 @@ export class FileRepository {
     try {
       return await this.s3Provider.deleteObject(this._buildKey(key));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[FILE_DELETE_OBJECT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

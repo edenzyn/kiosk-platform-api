@@ -32,9 +32,7 @@ import { licenseTransactionItems } from "../schemas/license-transaction-item.sch
 import { licenseTransactionTaxes } from "../schemas/license-transaction-tax.schema";
 import { licenseTransactions } from "../schemas/license-transaction.schema";
 import { licenses } from "../schemas/license.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 export class LicenseTransactionRepository {
@@ -94,14 +92,10 @@ export class LicenseTransactionRepository {
         )
         .orderBy(desc(licenseTransactionItems.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FIND_TRANSACTIONS_FOR_LICENSE_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -168,15 +162,11 @@ export class LicenseTransactionRepository {
         total: totalRows[0]?.total ?? 0,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FIND_TRANSACTIONS_FOR_ORGANIZATION_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -244,14 +234,10 @@ export class LicenseTransactionRepository {
         total: totalRows[0]?.total ?? 0,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FIND_TRANSACTIONS_FOR_RESELLER_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -351,14 +337,10 @@ export class LicenseTransactionRepository {
         items: itemRows,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FIND_TRANSACTION_WITH_ITEMS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -439,14 +421,10 @@ export class LicenseTransactionRepository {
         return insertedTx;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_CREATE_PENDING_TRANSACTION_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -550,14 +528,10 @@ export class LicenseTransactionRepository {
         return createdLicenses;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FINALIZE_LICENSE_PURCHASE_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -587,14 +561,10 @@ export class LicenseTransactionRepository {
 
       return await !!cancelledTx;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_CANCEL_PENDING_TRANSACTION_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -625,15 +595,11 @@ export class LicenseTransactionRepository {
 
       return await !!updatedTx;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_UPDATE_TRANSACTION_STATUS_BY_ORDER_ID_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -710,14 +676,10 @@ export class LicenseTransactionRepository {
         return updatedLicense;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FINALIZE_LICENSE_EXTEND_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -739,14 +701,10 @@ export class LicenseTransactionRepository {
         .limit(1);
       return (await item) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_TRANSACTION_FIND_ONE_LATEST_PURCHASE_ITEM_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

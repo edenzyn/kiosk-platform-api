@@ -14,13 +14,11 @@ import {
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
@@ -89,10 +87,7 @@ export class OrderRepository {
       return order ?? null;
     } catch (error) {
       logger.error("[ORDER_FIND_ONE_BY_IDEMPOTENCY_KEY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -109,10 +104,7 @@ export class OrderRepository {
       return order ?? null;
     } catch (error) {
       logger.error("[ORDER_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -201,10 +193,7 @@ export class OrderRepository {
       });
     } catch (error) {
       logger.error("[ORDER_CREATE_ORDER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -225,10 +214,7 @@ export class OrderRepository {
       return updated;
     } catch (error) {
       logger.error("[ORDER_UPDATE_ORDER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -249,10 +235,7 @@ export class OrderRepository {
       return payment ?? null;
     } catch (error) {
       logger.error("[ORDER_FIND_LATEST_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -272,10 +255,7 @@ export class OrderRepository {
       return payment;
     } catch (error) {
       logger.error("[ORDER_CREATE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -296,10 +276,7 @@ export class OrderRepository {
       return updated;
     } catch (error) {
       logger.error("[ORDER_UPDATE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -316,10 +293,7 @@ export class OrderRepository {
       return payment ?? null;
     } catch (error) {
       logger.error("[ORDER_FIND_ONE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -406,10 +380,7 @@ export class OrderRepository {
       });
     } catch (error) {
       logger.error("[ORDER_COMPLETE_PENDING_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -437,10 +408,7 @@ export class OrderRepository {
       return payment ?? null;
     } catch (error) {
       logger.error("[ORDER_FAIL_PENDING_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -541,10 +509,7 @@ export class OrderRepository {
       return { orders: rows, total: Number(totalRow?.count ?? 0) };
     } catch (error) {
       logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -606,10 +571,7 @@ export class OrderRepository {
       return { orders: rows, total: Number(totalRow?.count ?? 0) };
     } catch (error) {
       logger.error("[ORDER_FIND_PENDING_COUNTER_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -654,10 +616,7 @@ export class OrderRepository {
       });
     } catch (error) {
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -701,10 +660,7 @@ export class OrderRepository {
       });
     } catch (error) {
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -734,10 +690,7 @@ export class OrderRepository {
       logger.error(
         "[ORDER_COUNT_BUSINESS_DAY_ORDERS_BY_STATUS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

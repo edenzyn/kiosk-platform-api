@@ -1,12 +1,12 @@
 import { DEVICE_STAFF_CONSTANTS } from "../../shared/constants/auth-security.constants";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { PermissionScope } from "../../shared/enums/rbac/permission-scope.enum";
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { UserRepository } from "../user/user.repository";
 import type {
@@ -74,9 +74,7 @@ export class RbacService {
   ): Promise<RoleEntity> {
     const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
 
     const isBranchRole = Boolean(targetRole.branchId);
@@ -87,9 +85,8 @@ export class RbacService {
     if (!isBypassed) {
       const userTopRole = await this._getUsersTopRankedRole(user.id);
       if (userTopRole && targetRole.rank <= userTopRole.rank) {
-        throw new AppError(
+        throw new ForbiddenError(
           "Cannot act on a role with equal or higher rank than your top role",
-          { statusCode: HttpStatusCodes.FORBIDDEN },
         );
       }
     }
@@ -123,15 +120,12 @@ export class RbacService {
           id: entityId,
         });
         if (!targetRole) {
-          throw new AppError("Role not found", {
-            statusCode: HttpStatusCodes.NOT_FOUND,
-          });
+          throw new NotFoundError("Role not found");
         }
         const userTopRole = await this._getUsersTopRankedRole(actionedUser.id);
         if (userTopRole && targetRole.rank <= userTopRole.rank) {
-          throw new AppError(
+          throw new ForbiddenError(
             "Cannot assign/remove permission for a role with equal or higher rank than your top role",
-            { statusCode: HttpStatusCodes.FORBIDDEN },
           );
         }
       } else if (entityType === PermissionEntityType.USER) {
@@ -144,9 +138,8 @@ export class RbacService {
           actionedUserTopRole &&
           targetUserTopRole.rank <= actionedUserTopRole.rank
         ) {
-          throw new AppError(
+          throw new ForbiddenError(
             "Cannot assign/remove permission for a user with equal or higher top role rank than your top role",
-            { statusCode: HttpStatusCodes.FORBIDDEN },
           );
         }
       }
@@ -164,9 +157,8 @@ export class RbacService {
 
     const userTopRole = await this._getUsersTopRankedRole(user.id);
     if (!isBypassed && userTopRole && data.rank <= userTopRole.rank) {
-      throw new AppError(
+      throw new ForbiddenError(
         "Cannot create a role with equal or higher rank than your top role",
-        { statusCode: HttpStatusCodes.FORBIDDEN },
       );
     }
 
@@ -202,9 +194,7 @@ export class RbacService {
       id: data.roleId,
     });
     if (!targetRole) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
 
     const isBranchRole = Boolean(targetRole.branchId);
@@ -214,16 +204,14 @@ export class RbacService {
     const userTopRole = await this._getUsersTopRankedRole(user.id);
     if (!isBypassed && userTopRole) {
       if (targetRole.rank <= userTopRole.rank) {
-        throw new AppError(
+        throw new ForbiddenError(
           "Cannot update a role with equal or higher rank than your top role",
-          { statusCode: HttpStatusCodes.FORBIDDEN },
         );
       }
 
       if (data.rank !== undefined && data.rank <= userTopRole.rank) {
-        throw new AppError(
+        throw new ForbiddenError(
           "Cannot assign a rank equal to or higher than your top role",
-          { statusCode: HttpStatusCodes.FORBIDDEN },
         );
       }
     }
@@ -248,17 +236,14 @@ export class RbacService {
       id: data.permissionId,
     });
     if (!permission) {
-      throw new AppError("Permission not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Permission not found");
     }
 
     if (permission.isPrivileged) {
       const topScope = await this._getUserTopPermissionScope(user);
       if (permission.scope === topScope) {
-        throw new AppError(
+        throw new ForbiddenError(
           "Cannot assign privileged permissions of your own scope level",
-          { statusCode: HttpStatusCodes.FORBIDDEN },
         );
       }
     }
@@ -325,17 +310,14 @@ export class RbacService {
       id: data.permissionId,
     });
     if (!permission) {
-      throw new AppError("Permission not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Permission not found");
     }
 
     if (permission.isPrivileged) {
       const topScope = await this._getUserTopPermissionScope(user);
       if (permission.scope === topScope) {
-        throw new AppError(
+        throw new ForbiddenError(
           "Cannot remove privileged permissions of your own scope level",
-          { statusCode: HttpStatusCodes.FORBIDDEN },
         );
       }
     }
@@ -355,9 +337,7 @@ export class RbacService {
     const existing = mappers[0];
 
     if (!existing) {
-      throw new AppError("Permission mapping not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Permission mapping not found");
     }
 
     const mapper = await this.rbacRepository.updatePermissionMapperStatus({
@@ -388,9 +368,7 @@ export class RbacService {
 
     const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
 
     const page = query.page;
@@ -420,9 +398,7 @@ export class RbacService {
     await this.validateUserCanManageRole(user, roleId);
     const source = await this.rbacRepository.findOneRole({ id: roleId });
     if (!source) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
 
     const newRole = await this.rbacRepository.createRole({
@@ -460,14 +436,10 @@ export class RbacService {
   async toggleRoleStatus(roleId: string, user: UserTokenDto) {
     const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
     if (targetRole.isSystem) {
-      throw new AppError("Cannot toggle a system role", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Cannot toggle a system role");
     }
     await this.validateUserCanManageRole(user, roleId);
     return this.rbacRepository.updateRoleStatus({
@@ -480,14 +452,10 @@ export class RbacService {
   async deleteRole(roleId: string, user: UserTokenDto) {
     const targetRole = await this.rbacRepository.findOneRole({ id: roleId });
     if (!targetRole) {
-      throw new AppError("Role not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Role not found");
     }
     if (targetRole.isSystem) {
-      throw new AppError("Cannot delete a system role", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Cannot delete a system role");
     }
     await this.validateUserCanManageRole(user, roleId);
     await this.rbacRepository.deleteRole({ roleId });

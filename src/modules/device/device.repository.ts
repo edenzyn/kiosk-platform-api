@@ -41,9 +41,7 @@ import type {
   UpdateDeviceRepoInput,
   UpdateDeviceRepoResult,
 } from "./device.types";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class DeviceRepository {
@@ -87,10 +85,7 @@ export class DeviceRepository {
       return device || null;
     } catch (error) {
       logger.error("[DEVICE_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -203,10 +198,7 @@ export class DeviceRepository {
       };
     } catch (error) {
       logger.error("[DEVICE_FIND_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -246,10 +238,7 @@ export class DeviceRepository {
       return device;
     } catch (error) {
       logger.error("[DEVICE_CREATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -285,10 +274,7 @@ export class DeviceRepository {
       return updated;
     } catch (error) {
       logger.error("[DEVICE_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -309,10 +295,7 @@ export class DeviceRepository {
       return session;
     } catch (error) {
       logger.error("[DEVICE_CREATE_STAFF_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -337,10 +320,7 @@ export class DeviceRepository {
       return session;
     } catch (error) {
       logger.error("[DEVICE_FIND_ACTIVE_STAFF_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -371,10 +351,7 @@ export class DeviceRepository {
       return session;
     } catch (error) {
       logger.error("[DEVICE_FIND_OPEN_STAFF_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -397,10 +374,7 @@ export class DeviceRepository {
       return rows.length > 0;
     } catch (error) {
       logger.error("[DEVICE_ROTATE_STAFF_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -431,10 +405,7 @@ export class DeviceRepository {
       );
     } catch (error) {
       logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -443,10 +414,7 @@ export class DeviceRepository {
       await this.database.client.insert(deviceLogs).values(input.data);
     } catch (error) {
       logger.error("[DEVICE_CREATE_LOG_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -480,10 +448,7 @@ export class DeviceRepository {
       return { logs: rows, total: Number(totalRow?.total ?? 0) };
     } catch (error) {
       logger.error("[DEVICE_FIND_LOGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

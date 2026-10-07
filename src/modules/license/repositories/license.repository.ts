@@ -54,9 +54,7 @@ import { licenseHistory } from "../schemas/license-history.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licensePlans } from "../schemas/license-plan.schema";
 import { licenses } from "../schemas/license.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 export class LicenseRepository {
@@ -94,12 +92,8 @@ export class LicenseRepository {
 
       return (await license) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -122,12 +116,8 @@ export class LicenseRepository {
 
       return (await license) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_ONE_ACTIVE_BY_DEVICE_ID_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -157,12 +147,8 @@ export class LicenseRepository {
         status: row.status as LicenseStatusEnum,
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_SUMMARIES_BY_DEVICE_IDS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -195,12 +181,8 @@ export class LicenseRepository {
 
       return (await license) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_ONE_DETAILS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -309,12 +291,8 @@ export class LicenseRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -414,12 +392,8 @@ export class LicenseRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_BY_RESELLER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -440,12 +414,8 @@ export class LicenseRepository {
 
       return await !!mapping;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_IS_LICENSE_OWNED_BY_RESELLER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -470,12 +440,8 @@ export class LicenseRepository {
 
       return await rows.map((row) => row.license);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_OWNED_AVAILABLE_LICENSES_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -498,12 +464,8 @@ export class LicenseRepository {
           ),
         );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_LICENSES_FOR_STATUS_CHECK_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -530,12 +492,8 @@ export class LicenseRepository {
 
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_ACTIVATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -573,12 +531,8 @@ export class LicenseRepository {
         deviceName: names?.deviceName ?? null,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -630,12 +584,8 @@ export class LicenseRepository {
         )
         .orderBy(desc(licenseHistory.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_FIND_HISTORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -655,12 +605,8 @@ export class LicenseRepository {
         remarks: input.remarks || null,
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_CREATE_HISTORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

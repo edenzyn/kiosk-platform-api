@@ -7,7 +7,8 @@ import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SecurityTokenEnums } from "../../shared/enums/core/security-token-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { UnauthorizedError } from "../../shared/errors/unauthorized-error";
 import {
   clearCookie,
   DEVICE_COOKIE_OPTIONS,
@@ -175,8 +176,7 @@ export class DeviceController {
   deviceAuthCheck = async (req: Request, res: Response): Promise<void> => {
     const deviceId = req.device?.id;
     if (!deviceId) {
-      throw new AppError("No device session found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("No device session found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -265,8 +265,7 @@ export class DeviceController {
       req.cookies[SecurityTokenEnums.DEVICE_STAFF_REFRESH_TOKEN];
 
     if (!currentRefreshToken) {
-      throw new AppError("Your staff session has ended. Sign in again.", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
+      throw new ForbiddenError("Your staff session has ended. Sign in again.", {
         code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED,
       });
     }

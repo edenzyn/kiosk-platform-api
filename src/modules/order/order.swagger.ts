@@ -37,7 +37,7 @@ export const orderSwaggerPaths = {
                   type: "integer",
                   enum: [1, 2, 3],
                   description:
-                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; QR on every device and CASH on a counter are supported for now",
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; QR on every device and CASH on a counter are supported for now, CARD answers 501 NOT_IMPLEMENTED",
                 },
                 items: {
                   type: "array",
@@ -206,8 +206,9 @@ export const orderSwaggerPaths = {
               properties: {
                 paymentMethod: {
                   type: "integer",
-                  enum: [1, 3],
-                  description: "TenantPaymentMethodEnum: 1 = QR, 3 = CASH",
+                  enum: [1, 2, 3],
+                  description:
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD (answers 501 NOT_IMPLEMENTED for now), 3 = CASH",
                 },
               },
             },

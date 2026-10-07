@@ -86,9 +86,8 @@ export class OrderRepository {
         )
         .limit(1);
 
-      return (await order) ?? null;
+      return order ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_BY_IDEMPOTENCY_KEY_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -109,7 +108,6 @@ export class OrderRepository {
 
       return order ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -125,34 +123,19 @@ export class OrderRepository {
       const { order, items, taxes } = input;
 
       return await this.database.client.transaction(async (tx) => {
-        // Holds the day as it is until the order is saved; closing or pausing waits on this lock.
         const [openDay] = await tx
-          .select({
-            id: businessDays.id,
-            isOrderingPaused: businessDays.isOrderingPaused,
-          })
+          .select({ id: businessDays.id })
           .from(businessDays)
           .where(
             and(
               eq(businessDays.id, order.businessDayId),
               eq(businessDays.status, BusinessDayStatusEnum.OPEN),
+              eq(businessDays.isOrderingPaused, false),
             ),
           )
           .for(input.assignToken ? "update" : "share");
 
-        if (!openDay) {
-          throw new AppError("The branch is closed for orders right now", {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.BUSINESS_DAY_CLOSED,
-          });
-        }
-
-        if (openDay.isOrderingPaused) {
-          throw new AppError("The branch is not taking orders right now", {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.ORDERS_PAUSED,
-          });
-        }
+        if (!openDay) throw new Error("Business day is not open for orders");
 
         const [tokenDay] = input.assignToken
           ? await tx
@@ -217,7 +200,6 @@ export class OrderRepository {
         return created;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CREATE_ORDER_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -240,9 +222,8 @@ export class OrderRepository {
         throw new Error("Failed to update order");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_UPDATE_ORDER_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -265,9 +246,8 @@ export class OrderRepository {
         .orderBy(desc(orderPayments.createdAt))
         .limit(1);
 
-      return (await payment) ?? null;
+      return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_LATEST_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -289,9 +269,8 @@ export class OrderRepository {
         throw new Error("Failed to create order payment");
       }
 
-      return await payment;
+      return payment;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CREATE_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -314,9 +293,8 @@ export class OrderRepository {
         throw new Error("Failed to update order payment");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_UPDATE_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -337,7 +315,6 @@ export class OrderRepository {
 
       return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -428,7 +405,6 @@ export class OrderRepository {
         return { payment, order: order ?? null };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_COMPLETE_PENDING_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -460,7 +436,6 @@ export class OrderRepository {
 
       return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FAIL_PENDING_PAYMENT_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -565,7 +540,6 @@ export class OrderRepository {
 
       return { orders: rows, total: Number(totalRow?.count ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -631,7 +605,6 @@ export class OrderRepository {
 
       return { orders: rows, total: Number(totalRow?.count ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_PENDING_COUNTER_ORDERS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -680,7 +653,6 @@ export class OrderRepository {
         return cancelledOrder;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDER_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -728,7 +700,6 @@ export class OrderRepository {
         return cancelledOrders.length;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDERS_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
@@ -760,7 +731,6 @@ export class OrderRepository {
         count: Number(row.count),
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[ORDER_COUNT_BUSINESS_DAY_ORDERS_BY_STATUS_ERROR] " + error,
       );

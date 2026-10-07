@@ -6,7 +6,7 @@ import type { UserTokenDto } from "../../../shared/dtos/user-token.dto";
 import type { PhonePeProvider } from "../../../shared/providers/finance/phonepe/phonepe.provider";
 import type { PhonePeWebhookPayload } from "../../../shared/providers/finance/phonepe/phonepe.types";
 import type { RazorpayProvider } from "../../../shared/providers/finance/razorpay/razorpay.provider";
-import type { OrderService } from "../../order/order.service";
+import type { OrderPaymentService } from "../../order/services/order-payment.service";
 import type { PaymentService } from "../services/payment.service";
 import type { RazorpayWebhookPayload } from "../types/payment.types";
 import { PaymentValidator } from "../validators/payment.validator";
@@ -16,7 +16,7 @@ export class PaymentController {
     private readonly paymentService: PaymentService,
     private readonly razorpayProvider: RazorpayProvider,
     private readonly phonePeProvider: PhonePeProvider,
-    private readonly orderService: OrderService,
+    private readonly orderPaymentService: OrderPaymentService,
   ) {}
 
   // ========================================
@@ -55,7 +55,7 @@ export class PaymentController {
       return;
     }
 
-    await this.orderService.handlePhonePeWebhook({
+    await this.orderPaymentService.handlePhonePeWebhook({
       body: req.body as PhonePeWebhookPayload,
     });
     res.sendStatus(HttpStatusCodes.OK);

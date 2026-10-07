@@ -45,10 +45,16 @@ export interface CreateDeviceOrderServiceInput {
 }
 export type CreateDeviceOrderServiceResult = CreateDeviceOrderResponseDto;
 
-export interface PayDeviceOrderServiceInput {
+export interface AssertPaymentMethodAvailableServiceInput {
+  device: DeviceTokenDto;
+  paymentMethod?: TenantPaymentMethodEnum;
+}
+
+export interface ProcessOrderPaymentServiceInput {
   device: DeviceTokenDto;
   staff?: DeviceStaffTokenDto;
   order: OrderEntity;
+  paymentMethod?: TenantPaymentMethodEnum;
 }
 
 export interface GetPendingPaymentOrdersServiceInput {

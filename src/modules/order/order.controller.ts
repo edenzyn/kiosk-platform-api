@@ -7,7 +7,7 @@ import type { CreateDeviceOrderBodyDto } from "./dtos/create-device-order.dtos";
 import type { GetLiveOrderCountsQueryDto } from "./dtos/get-live-order-counts.dtos";
 import type { GetOrdersQueryDto } from "./dtos/get-orders.dtos";
 import type { GetPendingPaymentOrdersQueryDto } from "./dtos/get-pending-payment-orders.dtos";
-import type { OrderService } from "./order.service";
+import type { OrderService } from "./services/order.service";
 import { OrderValidator } from "./order.validator";
 
 export class OrderController {

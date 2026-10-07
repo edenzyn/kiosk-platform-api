@@ -1,0 +1,2 @@
+ALTER TABLE "branch_settings" ADD COLUMN "shift_verifier" smallint DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "branch_settings" ADD COLUMN "manager_verification_method" smallint DEFAULT 1 NOT NULL;

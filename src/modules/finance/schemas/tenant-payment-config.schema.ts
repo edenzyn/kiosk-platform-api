@@ -11,7 +11,7 @@ import {
 import { branches } from "../../branch/schemas/branch.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
 import { users } from "../../user/schemas/user.schema";
-import type { TenantPaymentConfigValues } from "../types/payment.types";
+import type { TenantPaymentConfigValues } from "../types/payment-provider.types";
 import { paymentProviderMarketMappers } from "./payment-provider-market-mapper.schema";
 
 export const tenantPaymentConfigs = pgTable(

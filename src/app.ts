@@ -13,7 +13,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import { branchRouter as branchRoutes } from "./modules/branch/branch.routes";
 import { deviceRouter } from "./modules/device/routes/device.routes";
 import { userDeviceRouter } from "./modules/device/routes/user-device.routes";
-import { platformPaymentRouter } from "./modules/finance/routes/platform-payment.routes";
+import { platformPaymentProviderRouter } from "./modules/finance/routes/platform-payment-provider.routes";
 import { financeWebhookRouter } from "./modules/finance/routes/finance-webhook.routes";
 import { deviceLicenseRouter } from "./modules/license/routes/device-license.routes";
 import { platformLicenseRouter } from "./modules/license/routes/platform-license.routes";
@@ -23,9 +23,9 @@ import { platformMarketRouter } from "./modules/market/routes/platform-market.ro
 import { resellerMarketRouter } from "./modules/market/routes/reseller-market.routes";
 import { userMarketRouter } from "./modules/market/routes/user-market.routes";
 import { deviceMenuRouter } from "./modules/menu/routes/device-menu.routes";
-import { devicePaymentRouter } from "./modules/finance/routes/device-payment.routes";
+import { devicePaymentProviderRouter } from "./modules/finance/routes/device-payment-provider.routes";
 import { deviceTaxRouter } from "./modules/finance/routes/device-tax.routes";
-import { userPaymentRouter } from "./modules/finance/routes/user-payment.routes";
+import { userPaymentProviderRouter } from "./modules/finance/routes/user-payment-provider.routes";
 import { userTaxRouter } from "./modules/finance/routes/user-tax.routes";
 import { userMenuRouter } from "./modules/menu/routes/user-menu.routes";
 import { deviceOrderRouter } from "./modules/order/routes/device-order.routes";
@@ -142,7 +142,7 @@ export class App {
     );
     this.instance.use(
       `${this.platformUserApiV1Prefix}/payment-providers`,
-      platformPaymentRouter,
+      platformPaymentProviderRouter,
     );
   }
 
@@ -179,7 +179,7 @@ export class App {
     this.instance.use(`${this.normalUserApiV1Prefix}/taxes`, userTaxRouter);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/payment-configs`,
-      userPaymentRouter,
+      userPaymentProviderRouter,
     );
     this.instance.use(
       `${this.normalUserApiV1Prefix}/licenses`,
@@ -201,7 +201,7 @@ export class App {
     this.instance.use(`${this.deviceApiV1Prefix}/taxes`, deviceTaxRouter);
     this.instance.use(
       `${this.deviceApiV1Prefix}/payments`,
-      devicePaymentRouter,
+      devicePaymentProviderRouter,
     );
     this.instance.use(`${this.deviceApiV1Prefix}/orders`, deviceOrderRouter);
     this.instance.use(

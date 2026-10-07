@@ -14,7 +14,7 @@ import type { RealtimeProvider } from "../../../shared/providers/realtime/realti
 import { logger } from "../../../shared/utils/core/logger";
 import { toMinorUnits } from "../../../shared/utils/finance/currency.helper";
 import { formatTokenNumber } from "../../../shared/utils/order/order-number.helper";
-import type { PaymentService } from "../../finance/services/payment.service";
+import type { PaymentProviderService } from "../../finance/services/payment-provider.service";
 import { OrderMapper } from "../order.mapper";
 import type { OrderRepository } from "../order.repository";
 import type {
@@ -28,7 +28,7 @@ import type { OrderEntity } from "../schemas/order.schema";
 export class OrderPaymentService {
   constructor(
     private readonly orderRepository: OrderRepository,
-    private readonly paymentService: PaymentService,
+    private readonly paymentProviderService: PaymentProviderService,
     private readonly realtimeProvider: RealtimeProvider,
   ) {}
 
@@ -51,7 +51,7 @@ export class OrderPaymentService {
       throw new BadRequestError("Cash can only be taken at a counter");
     }
 
-    const methods = await this.paymentService.getDevicePaymentMethods({
+    const methods = await this.paymentProviderService.getDevicePaymentMethods({
       device,
     });
     const isMethodEnabled = {
@@ -164,7 +164,7 @@ export class OrderPaymentService {
     });
 
     try {
-      const qrPayment = await this.paymentService.createQrPayment({
+      const qrPayment = await this.paymentProviderService.createQrPayment({
         organizationId,
         branchId,
         merchantOrderId: pendingPayment.id,

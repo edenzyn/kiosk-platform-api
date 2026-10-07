@@ -25,7 +25,7 @@ import type { BranchRepository } from "../../branch/branch.repository";
 import type { DeviceRepository } from "../../device/device.repository";
 import type { LicenseTransactionRepository } from "../../license/repositories/license-transaction.repository";
 import type { MarketRepository } from "../../market/market.repository";
-import type { PaymentRepository } from "../repositories/payment.repository";
+import type { PaymentProviderRepository } from "../repositories/payment-provider.repository";
 import type {
   CreateQrPaymentServiceInput,
   CreateQrPaymentServiceResult,
@@ -49,14 +49,14 @@ import type {
   UpdatePaymentProviderWithMappingsRepoInput,
   UpdatePaymentServiceInput,
   VerifyRazorpayPaymentServiceInput,
-} from "../types/payment.types";
-import { PaymentValidator } from "../validators/payment.validator";
+} from "../types/payment-provider.types";
+import { PaymentProviderValidator } from "../validators/payment-provider.validator";
 
-export class PaymentService {
+export class PaymentProviderService {
   constructor(
     private readonly razorpayProvider: RazorpayProvider,
     private readonly licenseTransactionRepository: LicenseTransactionRepository,
-    private readonly paymentRepository: PaymentRepository,
+    private readonly paymentProviderRepository: PaymentProviderRepository,
     private readonly marketRepository: MarketRepository,
     private readonly branchRepository: BranchRepository,
     private readonly phonePeProvider: PhonePeProvider,
@@ -70,7 +70,7 @@ export class PaymentService {
     input: HandleRazorpayWebhookServiceInput,
   ): Promise<void> {
     logger.log(
-      `[PaymentService] Razorpay webhook received: ${JSON.stringify({
+      `[PaymentProviderService] Razorpay webhook received: ${JSON.stringify({
         headers: input.headers,
         body: input.body,
       })}`,
@@ -147,7 +147,7 @@ export class PaymentService {
     const { page, limit, search, isActive, sortBy, sortOrder } = input.query;
 
     const { providers, total } =
-      await this.paymentRepository.findPaginatedWithMappings({
+      await this.paymentProviderRepository.findPaginatedWithMappings({
         page,
         limit,
         search,
@@ -218,7 +218,7 @@ export class PaymentService {
       });
     }
 
-    await this.paymentRepository.updateWithMappings({
+    await this.paymentProviderRepository.updateWithMappings({
       providerId,
       mappingsToUpdate,
       mappingsToCreate,
@@ -233,7 +233,7 @@ export class PaymentService {
   ): Promise<PaymentServiceResult> {
     const existing = await this.getProviderOrThrow(input.providerId);
 
-    await this.paymentRepository.update({
+    await this.paymentProviderRepository.update({
       providerId: input.providerId,
       updatedBy: input.currentUser.id,
       data: { isActive: !existing.isActive },
@@ -273,11 +273,11 @@ export class PaymentService {
 
     const [settings, configs, options] = await Promise.all([
       this.branchRepository.getOrCreateSettings(effectiveTenant.branchId),
-      this.paymentRepository.findTenantPaymentConfigs({
+      this.paymentProviderRepository.findTenantPaymentConfigs({
         organizationId: effectiveTenant.organizationId,
         branchId: effectiveTenant.branchId,
       }),
-      this.paymentRepository.findTenantPaymentOptions({
+      this.paymentProviderRepository.findTenantPaymentOptions({
         marketId: market.id,
       }),
     ]);
@@ -332,7 +332,7 @@ export class PaymentService {
 
     const option = options.find((item) => item.mapperId === dto.mapperId);
     const configSchema = option
-      ? PaymentValidator.paymentConfigs[option.provider.slug]?.[
+      ? PaymentProviderValidator.paymentConfigs[option.provider.slug]?.[
           option.paymentMethod
         ]
       : undefined;
@@ -395,7 +395,7 @@ export class PaymentService {
       }
     }
 
-    await this.paymentRepository.saveTenantPaymentConfig({
+    await this.paymentProviderRepository.saveTenantPaymentConfig({
       organizationId: effectiveTenant.organizationId,
       branchId: effectiveTenant.branchId as string,
       mapperId: dto.mapperId,
@@ -420,7 +420,7 @@ export class PaymentService {
 
     const option = options.find((item) => item.mapperId === dto.mapperId);
     const configSchema = option
-      ? PaymentValidator.paymentConfigs[option.provider.slug]?.[
+      ? PaymentProviderValidator.paymentConfigs[option.provider.slug]?.[
           option.paymentMethod
         ]
       : undefined;
@@ -575,7 +575,7 @@ export class PaymentService {
   }
 
   private async getProviderOrThrow(providerId: string) {
-    const provider = await this.paymentRepository.findOne({
+    const provider = await this.paymentProviderRepository.findOne({
       id: providerId,
     });
     if (!provider) {
@@ -591,7 +591,7 @@ export class PaymentService {
   private async getProviderWithMappingsOrThrow(
     providerId: string,
   ): Promise<PaymentProviderWithMappings> {
-    const provider = await this.paymentRepository.findOneWithMappings({
+    const provider = await this.paymentProviderRepository.findOneWithMappings({
       id: providerId,
     });
     if (!provider) {

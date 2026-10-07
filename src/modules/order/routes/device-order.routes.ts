@@ -16,4 +16,22 @@ deviceOrderRouter.post(
   asyncHandler(orderController.createDeviceOrder),
 );
 
+deviceOrderRouter.get(
+  "/pending-payments",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.COUNTER] }),
+  asyncHandler(orderController.getPendingPaymentOrders),
+);
+
+deviceOrderRouter.post(
+  "/:id/payments",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.COUNTER] }),
+  asyncHandler(orderController.collectPendingPayment),
+);
+
+deviceOrderRouter.post(
+  "/:id/cancel",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.COUNTER] }),
+  asyncHandler(orderController.cancelDeviceOrder),
+);
+
 export { deviceOrderRouter };

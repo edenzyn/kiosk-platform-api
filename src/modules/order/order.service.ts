@@ -29,13 +29,18 @@ import type { MarketRepository } from "../market/market.repository";
 import type { MenuRepository } from "../menu/menu.repository";
 import type { OrderRepository } from "./order.repository";
 import type {
+  CancelDeviceOrderServiceInput,
+  CollectPendingPaymentServiceInput,
   CreateDeviceOrderServiceInput,
   CreateDeviceOrderServiceResult,
+  GetPendingPaymentOrdersServiceInput,
+  GetPendingPaymentOrdersServiceResult,
   GetLiveOrderCountsServiceInput,
   GetLiveOrderCountsServiceResult,
   GetOrdersServiceInput,
   GetOrdersServiceResult,
   HandlePhonePeWebhookServiceInput,
+  PayDeviceOrderServiceInput,
 } from "./order.types";
 
 export class OrderService {
@@ -344,6 +349,13 @@ export class OrderService {
     }
 
     if (isPayAtCounter) {
+      this.realtimeProvider.emitToBranch(
+        branchId,
+        SocketEventEnum.ORDER_PENDING_PAYMENTS_CHANGED,
+        { orderId: order.id },
+        DeviceTypeEnum.COUNTER,
+      );
+
       return {
         order: {
           id: order.id,
@@ -358,49 +370,66 @@ export class OrderService {
     }
 
     if (isCashPayment) {
-      const cashPayment = await this.orderRepository.createPayment({
-        orderId: order.id,
-        organizationId,
-        branchId,
-        deviceId: device.id,
-        paymentMethod: TenantPaymentMethodEnum.CASH,
-        amount: order.totalAmount,
-        currencyCode: order.currencyCode,
-        collectedBy: staff?.userId ?? null,
+      return this.payDeviceOrderInCash({ device, staff, order });
+    }
+
+    return this.startDeviceOrderQrPayment({ device, staff, order });
+  }
+
+  async payDeviceOrderInCash(
+    input: PayDeviceOrderServiceInput,
+  ): Promise<CreateDeviceOrderServiceResult> {
+    const { device, staff, order } = input;
+
+    const cashPayment = await this.orderRepository.createPayment({
+      orderId: order.id,
+      organizationId: order.organizationId,
+      branchId: order.branchId,
+      deviceId: device.id,
+      paymentMethod: TenantPaymentMethodEnum.CASH,
+      amount: order.totalAmount,
+      currencyCode: order.currencyCode,
+      collectedBy: staff?.userId ?? null,
+    });
+
+    const { order: placedOrder } =
+      await this.orderRepository.completePendingPayment({
+        paymentId: cashPayment.id,
+        completedAt: new Date(),
       });
 
-      const { order: placedOrder } =
-        await this.orderRepository.completePendingPayment({
-          paymentId: cashPayment.id,
-          completedAt: new Date(),
-        });
-
-      if (!placedOrder) {
-        await this.orderRepository.updatePayment({
-          id: cashPayment.id,
-          data: {
-            paymentStatus: OrderPaymentStatusEnum.CANCELLED,
-            failureReason: "Order was already settled",
-          },
-        });
-        throw new AppError("This order has already been processed", {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        });
-      }
-
-      return {
-        order: {
-          id: placedOrder.id,
-          orderNumber: placedOrder.orderNumber,
-          tokenNumber: formatTokenNumber(placedOrder.tokenNumber),
-          orderStatus: placedOrder.orderStatus,
-          currencyCode: placedOrder.currencyCode,
-          totalAmount: placedOrder.totalAmount,
+    if (!placedOrder) {
+      await this.orderRepository.updatePayment({
+        id: cashPayment.id,
+        data: {
+          paymentStatus: OrderPaymentStatusEnum.CANCELLED,
+          failureReason: "Order was already settled",
         },
-        payment: null,
-      };
+      });
+      throw new AppError("This order has already been processed", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+      });
     }
+
+    return {
+      order: {
+        id: placedOrder.id,
+        orderNumber: placedOrder.orderNumber,
+        tokenNumber: formatTokenNumber(placedOrder.tokenNumber),
+        orderStatus: placedOrder.orderStatus,
+        currencyCode: placedOrder.currencyCode,
+        totalAmount: placedOrder.totalAmount,
+      },
+      payment: null,
+    };
+  }
+
+  async startDeviceOrderQrPayment(
+    input: PayDeviceOrderServiceInput,
+  ): Promise<CreateDeviceOrderServiceResult> {
+    const { device, staff, order } = input;
+    const { organizationId, branchId } = order;
 
     const pendingPayment = await this.orderRepository.createPayment({
       orderId: order.id,
@@ -436,10 +465,12 @@ export class OrderService {
             expiresAt: qrPayment.expiresAt,
           },
         }),
-        this.orderRepository.updateOrder({
-          id: order.id,
-          data: { expiresAt: qrPayment.expiresAt },
-        }),
+        order.isPayAtCounter
+          ? order
+          : this.orderRepository.updateOrder({
+              id: order.id,
+              data: { expiresAt: qrPayment.expiresAt },
+            }),
       ]);
 
       return {
@@ -472,6 +503,179 @@ export class OrderService {
       });
       throw error;
     }
+  }
+
+  // ========================================
+  // ? COUNTER PENDING PAYMENTS
+  // ========================================
+  async getPendingPaymentOrders(
+    input: GetPendingPaymentOrdersServiceInput,
+  ): Promise<GetPendingPaymentOrdersServiceResult> {
+    const { device, filters } = input;
+    const page = filters.page || 1;
+    const limit = filters.limit || 10;
+
+    const businessDayId =
+      await this.businessDayService.findCurrentBusinessDayId({
+        branchId: device.branchId,
+      });
+    if (!businessDayId) {
+      return { orders: [], total: 0, page, limit, totalPages: 0 };
+    }
+
+    const { orders, total } =
+      await this.orderRepository.findPendingCounterOrders({
+        businessDayId,
+        search: filters.search,
+        page,
+        limit,
+      });
+
+    return {
+      orders,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async collectPendingPayment(
+    input: CollectPendingPaymentServiceInput,
+  ): Promise<CreateDeviceOrderServiceResult> {
+    const { device, staff, orderId, dto } = input;
+    const { branchId } = device;
+
+    const order = await this.orderRepository.findOne({ id: orderId, branchId });
+    if (!order) {
+      throw new AppError("Order not found", {
+        statusCode: HttpStatusCodes.NOT_FOUND,
+        code: ErrorCodes.RESOURCE_NOT_FOUND,
+      });
+    }
+
+    const isCashPayment = dto.paymentMethod === TenantPaymentMethodEnum.CASH;
+
+    if (
+      isCashPayment &&
+      order.paymentMethod === TenantPaymentMethodEnum.CASH &&
+      order.paymentStatus === OrderPaymentStatusEnum.COMPLETED
+    ) {
+      return {
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+          orderStatus: order.orderStatus,
+          currencyCode: order.currencyCode,
+          totalAmount: order.totalAmount,
+        },
+        payment: null,
+      };
+    }
+
+    if (
+      !order.isPayAtCounter ||
+      order.orderStatus !== OrderStatusEnum.PENDING_PAYMENT
+    ) {
+      throw new AppError("This order has already been processed", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+      });
+    }
+
+    if (isCashPayment) {
+      const settings =
+        await this.branchRepository.getOrCreateSettings(branchId);
+      if (!settings.isCashPaymentEnabled) {
+        throw new AppError("Cash payment is not available at this branch", {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        });
+      }
+
+      const result = await this.payDeviceOrderInCash({ device, staff, order });
+
+      this.realtimeProvider.emitToBranch(
+        branchId,
+        SocketEventEnum.ORDER_PENDING_PAYMENTS_CHANGED,
+        { orderId: order.id },
+        DeviceTypeEnum.COUNTER,
+      );
+
+      return result;
+    }
+
+    if (dto.paymentMethod !== TenantPaymentMethodEnum.QR) {
+      throw new AppError(
+        "This payment method is not available on the device right now",
+        {
+          statusCode: HttpStatusCodes.BAD_REQUEST,
+          code: ErrorCodes.BAD_REQUEST,
+        },
+      );
+    }
+
+    const latestPayment = await this.orderRepository.findLatestPayment({
+      orderId: order.id,
+    });
+    if (
+      latestPayment &&
+      latestPayment.paymentStatus === OrderPaymentStatusEnum.PENDING &&
+      latestPayment.qrPayload &&
+      latestPayment.expiresAt &&
+      latestPayment.expiresAt > new Date()
+    ) {
+      return {
+        order: {
+          id: order.id,
+          orderNumber: order.orderNumber,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+          orderStatus: order.orderStatus,
+          currencyCode: order.currencyCode,
+          totalAmount: order.totalAmount,
+        },
+        payment: {
+          id: latestPayment.id,
+          paymentMethod: latestPayment.paymentMethod,
+          paymentStatus: latestPayment.paymentStatus,
+          amount: latestPayment.amount,
+          qrData: latestPayment.qrPayload,
+          expiresAt: latestPayment.expiresAt,
+          ...getPaymentWindow(
+            latestPayment.initiatedAt,
+            latestPayment.expiresAt,
+          ),
+        },
+      };
+    }
+
+    return this.startDeviceOrderQrPayment({ device, staff, order });
+  }
+
+  async cancelDeviceOrder(input: CancelDeviceOrderServiceInput): Promise<void> {
+    const { device, staff, orderId } = input;
+    const { branchId } = device;
+
+    const cancelledOrder = await this.orderRepository.cancelUnpaidCounterOrder({
+      id: orderId,
+      branchId,
+      reason: "Cancelled at the counter before payment",
+      cancelledBy: staff?.userId ?? null,
+    });
+    if (!cancelledOrder) {
+      throw new AppError("This order can no longer be cancelled", {
+        statusCode: HttpStatusCodes.CONFLICT,
+        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
+      });
+    }
+
+    this.realtimeProvider.emitToBranch(
+      branchId,
+      SocketEventEnum.ORDER_PENDING_PAYMENTS_CHANGED,
+      { orderId: cancelledOrder.id },
+      DeviceTypeEnum.COUNTER,
+    );
   }
 
   // ========================================
@@ -625,6 +829,15 @@ export class OrderService {
           tokenNumber: formatTokenNumber(order.tokenNumber),
         },
       );
+
+      if (order.isPayAtCounter) {
+        this.realtimeProvider.emitToBranch(
+          order.branchId,
+          SocketEventEnum.ORDER_PENDING_PAYMENTS_CHANGED,
+          { orderId: order.id },
+          DeviceTypeEnum.COUNTER,
+        );
+      }
       return;
     }
 

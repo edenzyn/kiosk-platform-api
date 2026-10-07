@@ -16,10 +16,16 @@ import type {
   OrderListItemDto,
 } from "./dtos/get-orders.dtos";
 import type { PhonePeWebhookPayload } from "../../shared/providers/finance/phonepe/phonepe.types";
+import type { CollectPendingPaymentBodyDto } from "./dtos/collect-pending-payment.dtos";
 import type {
   CreateDeviceOrderBodyDto,
   CreateDeviceOrderResponseDto,
 } from "./dtos/create-device-order.dtos";
+import type {
+  GetPendingPaymentOrdersQueryDto,
+  GetPendingPaymentOrdersResponseDto,
+  PendingPaymentOrderDto,
+} from "./dtos/get-pending-payment-orders.dtos";
 import type { CreateOrderItemModifierEntity } from "./schemas/order-item-modifier.schema";
 import type { CreateOrderItemEntity } from "./schemas/order-item.schema";
 import type {
@@ -38,6 +44,32 @@ export interface CreateDeviceOrderServiceInput {
   dto: CreateDeviceOrderBodyDto;
 }
 export type CreateDeviceOrderServiceResult = CreateDeviceOrderResponseDto;
+
+export interface PayDeviceOrderServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  order: OrderEntity;
+}
+
+export interface GetPendingPaymentOrdersServiceInput {
+  device: DeviceTokenDto;
+  filters: GetPendingPaymentOrdersQueryDto;
+}
+export type GetPendingPaymentOrdersServiceResult =
+  GetPendingPaymentOrdersResponseDto;
+
+export interface CollectPendingPaymentServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  orderId: string;
+  dto: CollectPendingPaymentBodyDto;
+}
+
+export interface CancelDeviceOrderServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  orderId: string;
+}
 
 export interface HandlePhonePeWebhookServiceInput {
   body: PhonePeWebhookPayload;
@@ -63,6 +95,12 @@ export interface FindOrderByIdempotencyKeyRepoInput {
   idempotencyKey: string;
 }
 export type FindOrderByIdempotencyKeyRepoResult = OrderEntity | null;
+
+export interface FindOneOrderRepoInput {
+  id: string;
+  branchId: string;
+}
+export type FindOneOrderRepoResult = OrderEntity | null;
 
 export interface FindLatestOrderPaymentRepoInput {
   orderId: string;
@@ -151,6 +189,25 @@ export interface FindOrdersRepoResult {
   orders: OrderListRow[];
   total: number;
 }
+
+export interface FindPendingCounterOrdersRepoInput {
+  businessDayId: string;
+  search?: string;
+  page: number;
+  limit: number;
+}
+export interface FindPendingCounterOrdersRepoResult {
+  orders: PendingPaymentOrderDto[];
+  total: number;
+}
+
+export interface CancelUnpaidCounterOrderRepoInput {
+  id: string;
+  branchId: string;
+  reason: string;
+  cancelledBy: string | null;
+}
+export type CancelUnpaidCounterOrderRepoResult = OrderEntity | null;
 
 export interface CancelUnpaidCounterOrdersRepoInput {
   businessDayId: string;

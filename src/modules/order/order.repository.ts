@@ -23,14 +23,16 @@ import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { AppError } from "../../shared/errors/app-error";
 import { logger } from "../../shared/utils/core/logger";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
-import { businessDays } from "../business-day/schemas/business-day.schema";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
 import { branches } from "../branch/schemas/branch.schema";
+import { businessDays } from "../business-day/schemas/business-day.schema";
 import type {
-  CompletePendingPaymentRepoInput,
-  CompletePendingPaymentRepoResult,
+  CancelUnpaidCounterOrderRepoInput,
+  CancelUnpaidCounterOrderRepoResult,
   CancelUnpaidCounterOrdersRepoInput,
   CancelUnpaidCounterOrdersRepoResult,
+  CompletePendingPaymentRepoInput,
+  CompletePendingPaymentRepoResult,
   CountBusinessDayOrdersByStatusRepoInput,
   CountBusinessDayOrdersByStatusRepoResult,
   CreateOrderPaymentRepoInput,
@@ -43,10 +45,14 @@ import type {
   FindLatestOrderPaymentRepoResult,
   FindOneOrderPaymentRepoInput,
   FindOneOrderPaymentRepoResult,
+  FindOneOrderRepoInput,
+  FindOneOrderRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
   FindOrdersRepoInput,
   FindOrdersRepoResult,
+  FindPendingCounterOrdersRepoInput,
+  FindPendingCounterOrdersRepoResult,
   UpdateOrderPaymentRepoInput,
   UpdateOrderPaymentRepoResult,
   UpdateOrderRepoInput,
@@ -84,6 +90,27 @@ export class OrderRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_BY_IDEMPOTENCY_KEY_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findOne(input: FindOneOrderRepoInput): Promise<FindOneOrderRepoResult> {
+    try {
+      const [order] = await this.database.client
+        .select()
+        .from(orders)
+        .where(
+          and(eq(orders.id, input.id), eq(orders.branchId, input.branchId)),
+        )
+        .limit(1);
+
+      return order ?? null;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_FIND_ONE_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,
@@ -344,7 +371,11 @@ export class OrderRepository {
         if (!payment) return { payment: null, order: null };
 
         const [pendingOrder] = await tx
-          .select({ id: orders.id, businessDayId: orders.businessDayId })
+          .select({
+            id: orders.id,
+            businessDayId: orders.businessDayId,
+            tokenNumber: orders.tokenNumber,
+          })
           .from(orders)
           .where(
             and(
@@ -356,14 +387,20 @@ export class OrderRepository {
 
         if (!pendingOrder) return { payment, order: null };
 
-        // Only paid orders take a token; the day's row lock serialises the numbering.
-        const [day] = await tx
-          .update(businessDays)
-          .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
-          .where(eq(businessDays.id, pendingOrder.businessDayId))
-          .returning({ lastTokenNumber: businessDays.lastTokenNumber });
+        // A pay-at-counter order already holds its token; any other order takes one
+        // now, and the day's row lock serialises the numbering.
+        let tokenNumber = pendingOrder.tokenNumber;
+        if (tokenNumber === null) {
+          const [day] = await tx
+            .update(businessDays)
+            .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
+            .where(eq(businessDays.id, pendingOrder.businessDayId))
+            .returning({ lastTokenNumber: businessDays.lastTokenNumber });
 
-        if (!day) throw new Error("Business day not found");
+          if (!day) throw new Error("Business day not found");
+
+          tokenNumber = day.lastTokenNumber;
+        }
 
         const [order] = await tx
           .update(orders)
@@ -371,7 +408,7 @@ export class OrderRepository {
             paymentStatus: OrderPaymentStatusEnum.COMPLETED,
             orderStatus: OrderStatusEnum.PLACED,
             paymentMethod: payment.paymentMethod,
-            tokenNumber: day.lastTokenNumber,
+            tokenNumber,
             placedAt: input.completedAt,
             expiresAt: null,
             updatedAt: new Date(),
@@ -530,6 +567,121 @@ export class OrderRepository {
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async findPendingCounterOrders(
+    input: FindPendingCounterOrdersRepoInput,
+  ): Promise<FindPendingCounterOrdersRepoResult> {
+    try {
+      const conditions: (SQL | undefined)[] = [
+        eq(orders.businessDayId, input.businessDayId),
+        eq(orders.isPayAtCounter, true),
+        eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+      ];
+
+      if (input.search) {
+        const tokenMatch = /^#?(\d+)$/.exec(input.search);
+        conditions.push(
+          or(
+            ilike(orders.orderNumber, `%${input.search}%`),
+            tokenMatch
+              ? eq(orders.tokenNumber, Number(tokenMatch[1]))
+              : undefined,
+          ),
+        );
+      }
+
+      const condition = and(...conditions);
+
+      const [rows, [totalRow]] = await Promise.all([
+        this.database.client
+          .select({
+            id: orders.id,
+            orderNumber: orders.orderNumber,
+            tokenNumber: orders.tokenNumber,
+            orderType: orders.orderType,
+            currencyCode: orders.currencyCode,
+            totalAmount: orders.totalAmount,
+            itemCount: sql<number>`(
+              select coalesce(sum(${orderItems.quantity}), 0)::int
+              from ${orderItems}
+              where ${orderItems.orderId} = ${orders}.${sql.identifier(orders.id.name)}
+            )`,
+            createdAt: orders.createdAt,
+          })
+          .from(orders)
+          .where(condition)
+          .orderBy(
+            asc(orders.tokenNumber),
+            asc(orders.createdAt),
+            asc(orders.id),
+          )
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit),
+        this.database.client
+          .select({ count: count() })
+          .from(orders)
+          .where(condition),
+      ]);
+
+      return { orders: rows, total: Number(totalRow?.count ?? 0) };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_FIND_PENDING_COUNTER_ORDERS_ERROR] " + error);
+      throw new AppError(`${error}`, {
+        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
+        code: ErrorCodes.DATABASE_ERROR,
+      });
+    }
+  }
+
+  async cancelUnpaidCounterOrder(
+    input: CancelUnpaidCounterOrderRepoInput,
+  ): Promise<CancelUnpaidCounterOrderRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const now = new Date();
+
+        const [cancelledOrder] = await tx
+          .update(orders)
+          .set({
+            orderStatus: OrderStatusEnum.CANCELLED,
+            paymentStatus: OrderPaymentStatusEnum.CANCELLED,
+            cancelledAt: now,
+            cancellationReason: input.reason,
+            updatedAt: now,
+            updatedBy: input.cancelledBy,
+          })
+          .where(
+            and(
+              eq(orders.id, input.id),
+              eq(orders.branchId, input.branchId),
+              eq(orders.isPayAtCounter, true),
+              eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+            ),
+          )
+          .returning();
+
+        if (!cancelledOrder) return null;
+
+        await tx.insert(orderStatusLogs).values({
+          orderId: cancelledOrder.id,
+          fromStatus: OrderStatusEnum.PENDING_PAYMENT,
+          toStatus: OrderStatusEnum.CANCELLED,
+          note: input.reason,
+          changedBy: input.cancelledBy,
+        });
+
+        return cancelledOrder;
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDER_ERROR] " + error);
       throw new AppError(`${error}`, {
         statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
         code: ErrorCodes.DATABASE_ERROR,

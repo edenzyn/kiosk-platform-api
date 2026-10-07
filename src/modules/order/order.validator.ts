@@ -58,6 +58,30 @@ export class OrderValidator {
     })
     .noUnknown();
 
+  static orderIdParams = yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid order id")
+        .required("Order ID is required"),
+    })
+    .noUnknown();
+
+  static getPendingPaymentOrdersQuery = paginationQuerySchema
+    .shape({
+      search: yup.string().trim().max(100).optional(),
+    })
+    .noUnknown();
+
+  static collectPendingPayment = yup
+    .object({
+      paymentMethod: numericEnumValidator(
+        TenantPaymentMethodEnum,
+        "Payment method",
+      ).required("Payment method is required"),
+    })
+    .noUnknown();
+
   static getOrdersQuery = paginationQuerySchema
     .shape({
       search: yup.string().trim().max(100).optional(),

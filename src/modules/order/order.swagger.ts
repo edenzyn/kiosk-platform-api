@@ -127,6 +127,147 @@ export const orderSwaggerPaths = {
     },
   },
 
+  "/pvt/d/orders/pending-payments": {
+    get: {
+      tags: ["Orders"],
+      summary: "List pay-at-counter orders waiting for payment (counter)",
+      description:
+        "Counter devices only, with a signed-in staff member. Returns the pay-at-counter orders of the current business day that are still PENDING_PAYMENT, by token number, a page at a time. `total` is the number of matching orders. Counter devices in the branch get the socket event order.pending-payments.changed whenever this list changes: a kiosk places a pay-at-counter order, or one is paid or cancelled at a counter.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        {
+          name: "search",
+          in: "query",
+          schema: { type: "string" },
+          description: "Order number, or a token number (e.g. 42 or #042)",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Orders waiting for payment at the counter",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  orders: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        orderNumber: { type: "string" },
+                        tokenNumber: { type: "integer", example: 7 },
+                        orderType: { type: "integer", enum: [1, 2] },
+                        currencyCode: { type: "string", example: "INR" },
+                        totalAmount: { type: "string", example: "354.90" },
+                        itemCount: { type: "integer" },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/payments": {
+    post: {
+      tags: ["Orders"],
+      summary: "Take the payment for a pay-at-counter order (counter)",
+      description:
+        "Counter devices only. With paymentMethod CASH (3) the signed-in staff member takes the money now: the order becomes PLACED and keeps the token it was given on the kiosk, `payment` is null, and repeating the call returns the same order. With paymentMethod QR (1) it starts a PhonePe UPI QR payment for the order and returns it (the still-valid QR is returned again on a repeat); the order is placed when that payment completes. The staff member is recorded in collected_by. 409 when the order is not a pay-at-counter order waiting for payment.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["paymentMethod"],
+              properties: {
+                paymentMethod: {
+                  type: "integer",
+                  enum: [1, 3],
+                  description: "TenantPaymentMethodEnum: 1 = QR, 3 = CASH",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description:
+            "The order, with the QR payment to show or null when paid in cash (same shape as placing an order)",
+        },
+        "404": {
+          description: "Order not found in this branch",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        "409": {
+          description: "The order was already paid or cancelled",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/cancel": {
+    post: {
+      tags: ["Orders"],
+      summary: "Cancel a pay-at-counter order before it is paid (counter)",
+      description:
+        "Counter devices only. Cancels a pay-at-counter order that is still PENDING_PAYMENT and records the signed-in staff member. 409 when the order was already paid or cancelled.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": { description: "Order cancelled" },
+        "409": {
+          description: "The order can no longer be cancelled",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
   // ========================================
   // ? USER ORDERS (mounted /pvt/u/orders)
   // ========================================

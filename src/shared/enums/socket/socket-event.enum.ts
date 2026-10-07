@@ -12,6 +12,7 @@ export enum SocketEventEnum {
   ORDER_PAYMENT_PROCESSING = "order.payment.processing",
   ORDER_PAYMENT_COMPLETED = "order.payment.completed",
   ORDER_PAYMENT_FAILED = "order.payment.failed",
+  ORDER_PENDING_PAYMENTS_CHANGED = "order.pending-payments.changed",
 
   // ========================================
   // ? BUSINESS DAYS

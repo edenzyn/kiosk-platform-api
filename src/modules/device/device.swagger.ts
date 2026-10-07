@@ -337,7 +337,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       tags: ["Devices"],
       summary: "Revoke the staff session on a device",
       description:
-        "Signs the staff member out of a counter or KDS device without signing the device itself out. The device gets a `device.staff-session.revoked` socket event and returns to the staff sign-in. 404 when nobody is signed in.",
+        "Signs the staff member out of a counter device without signing the device itself out. The device gets a `device.staff-session.revoked` socket event and returns to the staff sign-in. 404 when nobody is signed in.",
       parameters: [
         {
           name: "id",
@@ -615,7 +615,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       tags: ["Devices"],
       summary: "Open the admin pages as the staff member already signed in",
       description:
-        "Counter and KDS devices. Needs the X-D-Staff header from the staff sign-in, so only the password or PIN is sent; the identity comes from the staff session. Same checks, lockout and 200 response as the admin sign-in. A missing or expired staff token returns 403 DEVICE_STAFF_SESSION_EXPIRED.",
+        "Counter devices. Needs the X-D-Staff header from the staff sign-in, so only the password or PIN is sent; the identity comes from the staff session. Same checks, lockout and 200 response as the admin sign-in. A missing or expired staff token returns 403 DEVICE_STAFF_SESSION_EXPIRED.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -643,9 +643,9 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
   "/pvt/d/devices/staff/login": {
     post: {
       tags: ["Devices"],
-      summary: "Sign a staff member in on a counter or KDS device",
+      summary: "Sign a staff member in on a counter device",
       description:
-        "Counter and KDS devices only. The staff member gives their registered email or mobile number plus their password or 4-digit PIN, and must hold the branch staff permission for that device type (branch:device:staff:counter or branch:device:staff:kds); an organization-level user needs organization all-write. Replaces any staff session already open on the device. Returns a short-lived staff token for the X-D-Staff header and sets a refresh cookie; the session lasts at most 12 hours.",
+        "Counter devices only. The staff member gives their registered email or mobile number plus their password or 4-digit PIN, and must hold the branch staff permission (branch:device:staff:counter); an organization-level user needs organization all-write. Replaces any staff session already open on the device. Returns a short-lived staff token for the X-D-Staff header and sets a refresh cookie; the session lasts at most 12 hours.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,

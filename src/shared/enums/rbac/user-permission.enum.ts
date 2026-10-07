@@ -97,7 +97,6 @@ export enum UserPermissions {
   BRANCH_DEVICE_WRITE = "branch:device:write",
   BRANCH_DEVICE_ADMIN = "branch:device:admin",
   BRANCH_DEVICE_STAFF_COUNTER = "branch:device:staff:counter",
-  BRANCH_DEVICE_STAFF_KDS = "branch:device:staff:kds",
 
   BRANCH_MENU_READ = "branch:menu:read",
   BRANCH_MENU_WRITE = "branch:menu:write",

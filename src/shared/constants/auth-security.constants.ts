@@ -35,6 +35,5 @@ export const DEVICE_STAFF_CONSTANTS = {
   /** The branch permission a staff member needs to sign in on each staff-facing device type. */
   PERMISSIONS: {
     [DeviceTypeEnum.COUNTER]: UserPermissions.BRANCH_DEVICE_STAFF_COUNTER,
-    [DeviceTypeEnum.KDS]: UserPermissions.BRANCH_DEVICE_STAFF_KDS,
   } as Partial<Record<DeviceTypeEnum, UserPermissions>>,
 } as const;

@@ -3,6 +3,7 @@ import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
+import type { OrderDateFilterEnum } from "../../shared/enums/order/order-date-filter.enum";
 import type { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import type { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
@@ -205,8 +206,11 @@ export interface FindOrdersRepoInput {
   page: number;
   limit: number;
   search?: string;
-  createdFrom?: Date;
-  createdTo?: Date;
+  /** Which date the range applies to; the created time when omitted. */
+  dateField?: OrderDateFilterEnum;
+  /** YYYY-MM-DD for the business date, an ISO date-time for every other field. */
+  dateFrom?: string;
+  dateTo?: string;
   /** When omitted, unpaid (PENDING_PAYMENT) orders are left out. */
   orderStatus?: OrderStatusEnum;
   paymentStatus?: OrderPaymentStatusEnum;

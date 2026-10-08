@@ -17,6 +17,7 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderDateFilterEnum } from "../../shared/enums/order/order-date-filter.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import { DatabaseError } from "../../shared/errors/database-error";
@@ -67,6 +68,14 @@ import { orderPayments } from "./schemas/order-payment.schema";
 import { orderStatusLogs } from "./schemas/order-status-log.schema";
 import { orderTaxes } from "./schemas/order-tax.schema";
 import { orderNumberSequence, orders } from "./schemas/order.schema";
+
+const ORDER_DATE_COLUMNS = {
+  [OrderDateFilterEnum.CREATED_AT]: orders.createdAt,
+  [OrderDateFilterEnum.PLACED_AT]: orders.placedAt,
+  [OrderDateFilterEnum.READY_AT]: orders.readyAt,
+  [OrderDateFilterEnum.COMPLETED_AT]: orders.completedAt,
+  [OrderDateFilterEnum.CANCELLED_AT]: orders.cancelledAt,
+};
 
 const createdByUser = alias(users, "created_by_user");
 const collectedByUser = alias(users, "collected_by_user");
@@ -585,11 +594,23 @@ export class OrderRepository {
       if (input.orderType !== undefined) {
         conditions.push(eq(orders.orderType, input.orderType));
       }
-      if (input.createdFrom) {
-        conditions.push(gte(orders.createdAt, input.createdFrom));
-      }
-      if (input.createdTo) {
-        conditions.push(lte(orders.createdAt, input.createdTo));
+      if (input.dateField === OrderDateFilterEnum.BUSINESS_DATE) {
+        if (input.dateFrom) {
+          conditions.push(gte(businessDays.businessDate, input.dateFrom));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(businessDays.businessDate, input.dateTo));
+        }
+      } else {
+        const dateColumn =
+          ORDER_DATE_COLUMNS[input.dateField ?? OrderDateFilterEnum.CREATED_AT];
+
+        if (input.dateFrom) {
+          conditions.push(gte(dateColumn, new Date(input.dateFrom)));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(dateColumn, new Date(input.dateTo)));
+        }
       }
       if (input.search) {
         const tokenMatch = /^#?(\d+)$/.exec(input.search);
@@ -637,6 +658,7 @@ export class OrderRepository {
           })
           .from(orders)
           .innerJoin(branches, eq(branches.id, orders.branchId))
+          .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
           .leftJoin(
             branchSettings,
             eq(branchSettings.branchId, orders.branchId),
@@ -648,6 +670,7 @@ export class OrderRepository {
         this.database.client
           .select({ count: count() })
           .from(orders)
+          .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
           .where(condition),
       ]);
 

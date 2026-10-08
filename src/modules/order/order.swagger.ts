@@ -294,14 +294,34 @@ export const orderSwaggerPaths = {
           description: "Organization scope only",
         },
         {
-          name: "createdFrom",
+          name: "dateField",
           in: "query",
-          schema: { type: "string", format: "date-time" },
+          schema: {
+            type: "string",
+            enum: [
+              "businessDate",
+              "createdAt",
+              "placedAt",
+              "readyAt",
+              "completedAt",
+              "cancelledAt",
+            ],
+          },
+          description:
+            "Which date dateFrom and dateTo apply to; createdAt when omitted",
         },
         {
-          name: "createdTo",
+          name: "dateFrom",
           in: "query",
-          schema: { type: "string", format: "date-time" },
+          schema: { type: "string" },
+          description:
+            "YYYY-MM-DD for the business date, an ISO date-time for every other field",
+        },
+        {
+          name: "dateTo",
+          in: "query",
+          schema: { type: "string" },
+          description: "Same format as dateFrom; cannot be before it",
         },
         {
           name: "orderStatus",

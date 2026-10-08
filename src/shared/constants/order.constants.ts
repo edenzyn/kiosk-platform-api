@@ -8,8 +8,7 @@ export const KDS_STATUS_FLOW = [
   OrderStatusEnum.COMPLETED,
 ];
 
-/** Statuses the kitchen is still working on. */
-export const KDS_ACTIVE_STATUSES = [
+export const LIVE_ORDER_STATUSES = [
   OrderStatusEnum.PLACED,
   OrderStatusEnum.PREPARING,
   OrderStatusEnum.READY,

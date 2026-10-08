@@ -23,9 +23,9 @@ deviceOrderRouter.get(
 );
 
 deviceOrderRouter.get(
-  "/kds",
-  accessMiddleware({ deviceType: [DeviceTypeEnum.KDS] }),
-  asyncHandler(orderController.getKdsOrders),
+  "/live",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.KDS, DeviceTypeEnum.CDS] }),
+  asyncHandler(orderController.getLiveOrders),
 );
 
 deviceOrderRouter.patch(

@@ -228,12 +228,17 @@ export class OrderPaymentService {
   }
 
   emitOrderPlaced(order: OrderEntity): void {
-    this.realtimeProvider.emitToBranch(
-      order.branchId,
-      SocketEventEnum.ORDER_PLACED,
-      { orderId: order.id, tokenNumber: formatTokenNumber(order.tokenNumber) },
-      DeviceTypeEnum.KDS,
-    );
+    for (const deviceType of [DeviceTypeEnum.KDS, DeviceTypeEnum.CDS]) {
+      this.realtimeProvider.emitToBranch(
+        order.branchId,
+        SocketEventEnum.ORDER_PLACED,
+        {
+          orderId: order.id,
+          tokenNumber: formatTokenNumber(order.tokenNumber),
+        },
+        deviceType,
+      );
+    }
   }
 
   // ========================================

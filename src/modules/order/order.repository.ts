@@ -51,8 +51,8 @@ import type {
   FindOneOrderPaymentRepoResult,
   FindOneOrderRepoInput,
   FindOneOrderRepoResult,
-  FindKdsOrdersRepoInput,
-  FindKdsOrdersRepoResult,
+  FindLiveOrdersRepoInput,
+  FindLiveOrdersRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
   FindOrderDetailsRepoInput,
@@ -849,9 +849,9 @@ export class OrderRepository {
   // ========================================
   // ? KDS ORDER METHODS
   // ========================================
-  async findKdsOrders(
-    input: FindKdsOrdersRepoInput,
-  ): Promise<FindKdsOrdersRepoResult> {
+  async findLiveOrders(
+    input: FindLiveOrdersRepoInput,
+  ): Promise<FindLiveOrdersRepoResult> {
     try {
       const fields = {
         id: orders.id,
@@ -877,17 +877,19 @@ export class OrderRepository {
             ),
           )
           .orderBy(asc(orders.placedAt), asc(orders.tokenNumber)),
-        this.database.client
-          .select(fields)
-          .from(orders)
-          .where(
-            and(
-              eq(orders.businessDayId, input.businessDayId),
-              eq(orders.orderStatus, OrderStatusEnum.COMPLETED),
-            ),
-          )
-          .orderBy(desc(orders.completedAt))
-          .limit(input.completedLimit),
+        input.completedLimit > 0
+          ? this.database.client
+              .select(fields)
+              .from(orders)
+              .where(
+                and(
+                  eq(orders.businessDayId, input.businessDayId),
+                  eq(orders.orderStatus, OrderStatusEnum.COMPLETED),
+                ),
+              )
+              .orderBy(desc(orders.completedAt))
+              .limit(input.completedLimit)
+          : [],
       ]);
       const rows = [...activeRows, ...completedRows];
 
@@ -934,7 +936,7 @@ export class OrderRepository {
           })),
       }));
     } catch (error) {
-      logger.error("[ORDER_FIND_KDS_ORDERS_ERROR] " + error);
+      logger.error("[ORDER_FIND_LIVE_ORDERS_ERROR] " + error);
       throw new DatabaseError(`${error}`);
     }
   }

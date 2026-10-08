@@ -17,6 +17,7 @@ deviceBusinessDayRouter.get(
       DeviceTypeEnum.KIOSK,
       DeviceTypeEnum.COUNTER,
       DeviceTypeEnum.KDS,
+      DeviceTypeEnum.CDS,
     ],
   }),
   asyncHandler(businessDayController.getDeviceBusinessDay),

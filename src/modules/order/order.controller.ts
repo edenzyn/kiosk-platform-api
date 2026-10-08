@@ -86,8 +86,8 @@ export class OrderController {
   // ========================================
   // ? KDS ORDER APIS
   // ========================================
-  getKdsOrders = async (req: Request, res: Response): Promise<void> => {
-    const result = await this.orderService.getKdsOrders({
+  getLiveOrders = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.orderService.getLiveOrders({
       device: req.device as DeviceTokenDto,
     });
     res.status(HttpStatusCodes.OK).json(result);

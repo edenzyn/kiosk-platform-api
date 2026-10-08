@@ -1,7 +1,7 @@
 import {
-  KDS_ACTIVE_STATUSES,
   KDS_COMPLETED_ORDERS_LIMIT,
   KDS_STATUS_FLOW,
+  LIVE_ORDER_STATUSES,
 } from "../../../shared/constants/order.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
@@ -25,7 +25,6 @@ import type { TaxRepository } from "../../finance/repositories/tax.repository";
 import type { MarketRepository } from "../../market/market.repository";
 import type { MenuRepository } from "../../menu/menu.repository";
 import type { ShiftService } from "../../shift/shift.service";
-import type { OrderPaymentService } from "./order-payment.service";
 import { OrderMapper } from "../order.mapper";
 import type { OrderRepository } from "../order.repository";
 import type {
@@ -34,20 +33,21 @@ import type {
   ChangeKdsOrderStatusServiceResult,
   CollectPendingPaymentServiceInput,
   CreateDeviceOrderServiceInput,
-  CreateOrderFromCartServiceInput,
   CreateDeviceOrderServiceResult,
-  GetKdsOrdersServiceInput,
-  GetKdsOrdersServiceResult,
-  GetPendingPaymentOrdersServiceInput,
-  GetPendingPaymentOrdersServiceResult,
+  CreateOrderFromCartServiceInput,
   GetLiveOrderCountsServiceInput,
   GetLiveOrderCountsServiceResult,
-  GetOrdersServiceInput,
-  GetOrdersServiceResult,
+  GetLiveOrdersServiceInput,
+  GetLiveOrdersServiceResult,
   GetOrderDetailsServiceInput,
   GetOrderDetailsServiceResult,
+  GetOrdersServiceInput,
+  GetOrdersServiceResult,
+  GetPendingPaymentOrdersServiceInput,
+  GetPendingPaymentOrdersServiceResult,
 } from "../order.types";
 import type { OrderEntity } from "../schemas/order.schema";
+import type { OrderPaymentService } from "./order-payment.service";
 
 export class OrderService {
   constructor(
@@ -401,29 +401,35 @@ export class OrderService {
   }
 
   // ========================================
-  // ? KDS ORDERS
+  // ? LIVE ORDERS (KDS, CDS)
   // ========================================
-  async getKdsOrders(
-    input: GetKdsOrdersServiceInput,
-  ): Promise<GetKdsOrdersServiceResult> {
+  async getLiveOrders(
+    input: GetLiveOrdersServiceInput,
+  ): Promise<GetLiveOrdersServiceResult> {
+    const { device } = input;
+
     const businessDayId =
       await this.businessDayService.findCurrentBusinessDayId({
-        branchId: input.device.branchId,
+        branchId: device.branchId,
       });
     if (!businessDayId) {
       return { orders: [], completedCount: 0 };
     }
 
+    const isKds = device.type === DeviceTypeEnum.KDS;
+
     const [orders, completedCounts] = await Promise.all([
-      this.orderRepository.findKdsOrders({
+      this.orderRepository.findLiveOrders({
         businessDayId,
-        activeStatuses: KDS_ACTIVE_STATUSES,
-        completedLimit: KDS_COMPLETED_ORDERS_LIMIT,
+        activeStatuses: LIVE_ORDER_STATUSES,
+        completedLimit: isKds ? KDS_COMPLETED_ORDERS_LIMIT : 0,
       }),
-      this.orderRepository.countBusinessDayOrdersByStatus({
-        businessDayId,
-        orderStatuses: [OrderStatusEnum.COMPLETED],
-      }),
+      isKds
+        ? this.orderRepository.countBusinessDayOrdersByStatus({
+            businessDayId,
+            orderStatuses: [OrderStatusEnum.COMPLETED],
+          })
+        : [],
     ]);
 
     return {

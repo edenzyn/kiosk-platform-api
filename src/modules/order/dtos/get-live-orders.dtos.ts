@@ -2,20 +2,20 @@ import type { OrderSourceEnum } from "../../../shared/enums/order/order-source.e
 import type { OrderStatusEnum } from "../../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../../shared/enums/order/order-type.enum";
 
-export interface KdsOrderItemModifierDto {
+export interface LiveOrderItemModifierDto {
   id: string;
   modifierName: string;
   optionName: string;
 }
 
-export interface KdsOrderItemDto {
+export interface LiveOrderItemDto {
   id: string;
   itemName: string;
   quantity: number;
-  modifiers: KdsOrderItemModifierDto[];
+  modifiers: LiveOrderItemModifierDto[];
 }
 
-export interface KdsOrderDto {
+export interface LiveOrderDto {
   id: string;
   orderNumber: string;
   tokenNumber: string | null;
@@ -26,11 +26,11 @@ export interface KdsOrderDto {
   preparingAt: Date | null;
   readyAt: Date | null;
   completedAt: Date | null;
-  items: KdsOrderItemDto[];
+  items: LiveOrderItemDto[];
 }
 
-export interface GetKdsOrdersResponseDto {
-  orders: KdsOrderDto[];
+export interface GetLiveOrdersResponseDto {
+  orders: LiveOrderDto[];
   /** Every completed order of the business day; `orders` only carries the latest ones. */
   completedCount: number;
 }

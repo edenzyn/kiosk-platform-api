@@ -269,16 +269,16 @@ export const orderSwaggerPaths = {
     },
   },
 
-  "/pvt/d/orders/kds": {
+  "/pvt/d/orders/live": {
     get: {
       tags: ["Orders"],
-      summary: "List the orders for the KDS board",
+      summary: "List the live orders for the KDS and CDS",
       description:
-        "KDS devices only. Returns the PLACED, PREPARING and READY orders of the current business day with their items and chosen options, oldest first, followed by the 30 most recently COMPLETED ones; completedCount is how many orders the day has completed in all. KDS devices in the branch get the socket event order.placed when a paid order arrives and order.status.changed when an order moves; CDS devices get order.status.changed too.",
+        "KDS and CDS devices. Returns the PLACED, PREPARING and READY orders of the current business day with their items and chosen options, oldest first. A KDS also gets the 30 most recently COMPLETED orders and, in completedCount, how many orders the day has completed in all; a CDS gets no completed orders and completedCount 0. KDS and CDS devices in the branch get the socket event order.placed when a paid order arrives and order.status.changed when an order moves.",
       security: [{ deviceCookieAuth: [] }],
       responses: {
         "200": {
-          description: "Orders for the KDS board",
+          description: "Live orders",
           content: {
             "application/json": {
               schema: {

@@ -8,9 +8,9 @@ import type { OrderPaymentStatusEnum } from "../../shared/enums/order/order-paym
 import type { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import type {
-  GetKdsOrdersResponseDto,
-  KdsOrderDto,
-} from "./dtos/get-kds-orders.dtos";
+  GetLiveOrdersResponseDto,
+  LiveOrderDto,
+} from "./dtos/get-live-orders.dtos";
 import type {
   GetLiveOrderCountsQueryDto,
   GetLiveOrderCountsResponseDto,
@@ -101,10 +101,10 @@ export interface HandlePhonePeWebhookServiceInput {
   body: PhonePeWebhookPayload;
 }
 
-export interface GetKdsOrdersServiceInput {
+export interface GetLiveOrdersServiceInput {
   device: DeviceTokenDto;
 }
-export type GetKdsOrdersServiceResult = GetKdsOrdersResponseDto;
+export type GetLiveOrdersServiceResult = GetLiveOrdersResponseDto;
 
 export interface ChangeKdsOrderStatusServiceInput {
   device: DeviceTokenDto;
@@ -285,16 +285,16 @@ export type CountBusinessDayOrdersByStatusRepoResult = {
   count: number;
 }[];
 
-export interface FindKdsOrdersRepoInput {
+export interface FindLiveOrdersRepoInput {
   businessDayId: string;
   activeStatuses: OrderStatusEnum[];
-  /** How many of the latest completed orders to return with the active ones. */
+  /** How many of the latest completed orders to return with the active ones; 0 for none. */
   completedLimit: number;
 }
-export type KdsOrderRow = Omit<KdsOrderDto, "tokenNumber"> & {
+export type LiveOrderRow = Omit<LiveOrderDto, "tokenNumber"> & {
   tokenNumber: number | null;
 };
-export type FindKdsOrdersRepoResult = KdsOrderRow[];
+export type FindLiveOrdersRepoResult = LiveOrderRow[];
 
 export interface ChangeOrderStatusRepoInput {
   id: string;

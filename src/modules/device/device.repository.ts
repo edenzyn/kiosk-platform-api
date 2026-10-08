@@ -14,35 +14,35 @@ import {
 import type { Database } from "../../config/db";
 import { DEVICE_STAFF_CONSTANTS } from "../../shared/constants/auth-security.constants";
 import { RedisKeys } from "../../shared/constants/redis-keys.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
+import { logger } from "../../shared/utils/core/logger";
 import { branches } from "../branch/schemas/branch.schema";
 import { users } from "../user/schemas/user.schema";
 import { deviceLogs } from "./device-log.schema";
 import { deviceStaffSessions } from "./device-staff-session.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
+  CreateDeviceLogRepoInput,
+  CreateDeviceRepoInput,
+  CreateDeviceRepoResult,
   CreateStaffSessionRepoInput,
   CreateStaffSessionRepoResult,
   EndStaffSessionsRepoInput,
   FindActiveStaffSessionRepoInput,
   FindActiveStaffSessionRepoResult,
-  FindOpenStaffSessionRepoInput,
-  FindOpenStaffSessionRepoResult,
-  RotateStaffSessionRepoInput,
-  CreateDeviceLogRepoInput,
-  CreateDeviceRepoInput,
-  CreateDeviceRepoResult,
   FindDeviceLogsRepoInput,
   FindDeviceLogsRepoResult,
   FindDevicesRepoInput,
   FindDevicesRepoResult,
   FindOneDeviceRepoInput,
   FindOneDeviceRepoResult,
+  FindOpenStaffSessionRepoInput,
+  FindOpenStaffSessionRepoResult,
+  RotateStaffSessionRepoInput,
   UpdateDeviceRepoInput,
   UpdateDeviceRepoResult,
 } from "./device.types";
-import { DatabaseError } from "../../shared/errors/database-error";
-import { logger } from "../../shared/utils/core/logger";
 
 export class DeviceRepository {
   constructor(
@@ -403,18 +403,26 @@ export class DeviceRepository {
         )
         .returning({ id: deviceStaffSessions.id });
 
+      await this._denylistStaffSessions(endedRows.map((row) => row.id));
+    } catch (error) {
+      logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  private async _denylistStaffSessions(sessionIds: string[]): Promise<void> {
+    try {
       await Promise.all(
-        endedRows.map((row) =>
+        sessionIds.map((sessionId) =>
           this.redisProvider.set(
-            RedisKeys.authSessionRevoked(row.id),
+            RedisKeys.authSessionRevoked(sessionId),
             "1",
             DEVICE_STAFF_CONSTANTS.ACCESS_EXPIRES_IN_SECONDS,
           ),
         ),
       );
     } catch (error) {
-      logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
-      throw new DatabaseError(`${error}`);
+      logger.error("[DEVICE__DENYLIST_STAFF_SESSIONS_ERROR] " + error);
     }
   }
 

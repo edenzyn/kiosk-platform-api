@@ -98,6 +98,19 @@ export class OrderController {
     res.status(HttpStatusCodes.OK).json(result);
   };
 
+  getOrderDetails = async (req: Request, res: Response): Promise<void> => {
+    const { id } = await OrderValidator.orderIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.orderService.getOrderDetails({
+      effectiveTenant: req.effectiveTenant as EffectiveTenant,
+      orderId: id,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
   getLiveOrderCounts = async (req: Request, res: Response): Promise<void> => {
     const queryDto = await OrderValidator.getLiveOrderCountsQuery.validate(
       req.query,

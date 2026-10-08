@@ -394,6 +394,52 @@ export const orderSwaggerPaths = {
       },
     },
   },
+  "/pvt/u/orders/{id}": {
+    get: {
+      tags: ["Orders"],
+      summary: "One order with its items, bill, payments and timeline",
+      description:
+        "Returns any order of the organization, or of the selected branch when one is selected, whatever its status. Items carry the options chosen, taxes are the snapshot taken at order time, and payments list every attempt with the staff member who took it on a counter.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Order details",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  order: {
+                    type: "object",
+                    description:
+                      "Order fields plus items[] (with modifiers[]), taxes[] and payments[]",
+                  },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": {
+          description: "Order not found",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
   "/pvt/u/orders/live-counts": {
     get: {
       tags: ["Orders"],

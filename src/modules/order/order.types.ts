@@ -11,6 +11,10 @@ import type {
   GetLiveOrderCountsResponseDto,
 } from "./dtos/get-live-order-counts.dtos";
 import type {
+  GetOrderDetailsResponseDto,
+  OrderDetailsDto,
+} from "./dtos/get-order-details.dtos";
+import type {
   GetOrdersQueryDto,
   GetOrdersResponseDto,
   OrderListItemDto,
@@ -93,6 +97,12 @@ export interface GetOrdersServiceInput {
   filters: GetOrdersQueryDto;
 }
 export type GetOrdersServiceResult = GetOrdersResponseDto;
+
+export interface GetOrderDetailsServiceInput {
+  effectiveTenant: EffectiveTenant;
+  orderId: string;
+}
+export type GetOrderDetailsServiceResult = GetOrderDetailsResponseDto;
 
 export interface GetLiveOrderCountsServiceInput {
   effectiveTenant: EffectiveTenant;
@@ -178,6 +188,16 @@ export interface FailPendingPaymentRepoInput {
   responsePayload: unknown;
 }
 export type FailPendingPaymentRepoResult = OrderPaymentEntity | null;
+
+export interface FindOrderDetailsRepoInput {
+  id: string;
+  organizationId: string;
+  branchId?: string;
+}
+/** The token is the raw number here; the service formats it. Null when the order is not found. */
+export type FindOrderDetailsRepoResult =
+  | (Omit<OrderDetailsDto, "tokenNumber"> & { tokenNumber: number | null })
+  | null;
 
 export interface FindOrdersRepoInput {
   organizationId: string;

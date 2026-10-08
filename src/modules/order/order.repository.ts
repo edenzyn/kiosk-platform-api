@@ -13,6 +13,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
@@ -24,6 +25,8 @@ import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
 import { branches } from "../branch/schemas/branch.schema";
 import { businessDays } from "../business-day/schemas/business-day.schema";
+import { devices } from "../device/device.schema";
+import { users } from "../user/schemas/user.schema";
 import type {
   CancelUnpaidCounterOrderRepoInput,
   CancelUnpaidCounterOrderRepoResult,
@@ -47,6 +50,8 @@ import type {
   FindOneOrderRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
+  FindOrderDetailsRepoInput,
+  FindOrderDetailsRepoResult,
   FindOrdersRepoInput,
   FindOrdersRepoResult,
   FindPendingCounterOrdersRepoInput,
@@ -62,6 +67,9 @@ import { orderPayments } from "./schemas/order-payment.schema";
 import { orderStatusLogs } from "./schemas/order-status-log.schema";
 import { orderTaxes } from "./schemas/order-tax.schema";
 import { orderNumberSequence, orders } from "./schemas/order.schema";
+
+const createdByUser = alias(users, "created_by_user");
+const collectedByUser = alias(users, "collected_by_user");
 
 export class OrderRepository {
   constructor(private readonly database: Database) {}
@@ -415,6 +423,143 @@ export class OrderRepository {
   // ========================================
   // ? ORDER LISTING METHODS
   // ========================================
+  async findOrderDetails(
+    input: FindOrderDetailsRepoInput,
+  ): Promise<FindOrderDetailsRepoResult> {
+    try {
+      const [order] = await this.database.client
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          tokenNumber: orders.tokenNumber,
+          branchId: orders.branchId,
+          branchName: branches.name,
+          branchTimezone: branchSettings.timezone,
+          deviceName: devices.name,
+          orderType: orders.orderType,
+          orderSource: orders.orderSource,
+          orderStatus: orders.orderStatus,
+          paymentStatus: orders.paymentStatus,
+          paymentMethod: orders.paymentMethod,
+          isPayAtCounter: orders.isPayAtCounter,
+          currencyCode: orders.currencyCode,
+          subtotalAmount: orders.subtotalAmount,
+          takeawayChargeAmount: orders.takeawayChargeAmount,
+          discountAmount: orders.discountAmount,
+          amountBeforeTax: orders.amountBeforeTax,
+          taxAmount: orders.taxAmount,
+          isTaxInclusive: orders.isTaxInclusive,
+          totalAmount: orders.totalAmount,
+          notes: orders.notes,
+          cancellationReason: orders.cancellationReason,
+          createdAt: orders.createdAt,
+          placedAt: orders.placedAt,
+          preparingAt: orders.preparingAt,
+          readyAt: orders.readyAt,
+          completedAt: orders.completedAt,
+          cancelledAt: orders.cancelledAt,
+          createdBy: { id: createdByUser.id, name: createdByUser.name },
+        })
+        .from(orders)
+        .innerJoin(branches, eq(branches.id, orders.branchId))
+        .leftJoin(branchSettings, eq(branchSettings.branchId, orders.branchId))
+        .leftJoin(devices, eq(devices.id, orders.deviceId))
+        .leftJoin(createdByUser, eq(createdByUser.id, orders.createdBy))
+        .where(
+          and(
+            eq(orders.id, input.id),
+            eq(orders.organizationId, input.organizationId),
+            input.branchId ? eq(orders.branchId, input.branchId) : undefined,
+          ),
+        )
+        .limit(1);
+
+      if (!order) return null;
+
+      const [items, modifiers, taxes, payments] = await Promise.all([
+        this.database.client
+          .select({
+            id: orderItems.id,
+            itemName: orderItems.itemName,
+            itemCode: orderItems.itemCode,
+            categoryName: orderItems.categoryName,
+            quantity: orderItems.quantity,
+            unitPrice: orderItems.unitPrice,
+            modifiersUnitAmount: orderItems.modifiersUnitAmount,
+            takeawayChargeAmount: orderItems.takeawayChargeAmount,
+            lineTotal: orderItems.lineTotal,
+            notes: orderItems.notes,
+          })
+          .from(orderItems)
+          .where(eq(orderItems.orderId, order.id))
+          .orderBy(asc(orderItems.displayOrder), asc(orderItems.createdAt)),
+        this.database.client
+          .select({
+            id: orderItemModifiers.id,
+            orderItemId: orderItemModifiers.orderItemId,
+            modifierName: orderItemModifiers.modifierName,
+            optionName: orderItemModifiers.optionName,
+            optionPrice: orderItemModifiers.optionPrice,
+          })
+          .from(orderItemModifiers)
+          .innerJoin(
+            orderItems,
+            eq(orderItems.id, orderItemModifiers.orderItemId),
+          )
+          .where(eq(orderItems.orderId, order.id))
+          .orderBy(asc(orderItemModifiers.createdAt)),
+        this.database.client
+          .select({
+            id: orderTaxes.id,
+            taxName: orderTaxes.taxName,
+            taxRate: orderTaxes.taxRate,
+            taxAmount: orderTaxes.taxAmount,
+          })
+          .from(orderTaxes)
+          .where(eq(orderTaxes.orderId, order.id))
+          .orderBy(asc(orderTaxes.createdAt)),
+        this.database.client
+          .select({
+            id: orderPayments.id,
+            paymentMethod: orderPayments.paymentMethod,
+            paymentStatus: orderPayments.paymentStatus,
+            amount: orderPayments.amount,
+            providerSlug: orderPayments.providerSlug,
+            providerTransactionId: orderPayments.providerTransactionId,
+            failureReason: orderPayments.failureReason,
+            initiatedAt: orderPayments.initiatedAt,
+            completedAt: orderPayments.completedAt,
+            collectedBy: {
+              id: collectedByUser.id,
+              name: collectedByUser.name,
+            },
+          })
+          .from(orderPayments)
+          .leftJoin(
+            collectedByUser,
+            eq(collectedByUser.id, orderPayments.collectedBy),
+          )
+          .where(eq(orderPayments.orderId, order.id))
+          .orderBy(asc(orderPayments.initiatedAt)),
+      ]);
+
+      return {
+        ...order,
+        items: items.map((item) => ({
+          ...item,
+          modifiers: modifiers
+            .filter((modifier) => modifier.orderItemId === item.id)
+            .map(({ orderItemId: _orderItemId, ...modifier }) => modifier),
+        })),
+        taxes,
+        payments,
+      };
+    } catch (error) {
+      logger.error("[ORDER_FIND_ORDER_DETAILS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
   async findOrders(input: FindOrdersRepoInput): Promise<FindOrdersRepoResult> {
     try {
       const conditions: (SQL | undefined)[] = [

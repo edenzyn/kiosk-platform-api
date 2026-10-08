@@ -33,6 +33,8 @@ import type {
   GetLiveOrderCountsServiceResult,
   GetOrdersServiceInput,
   GetOrdersServiceResult,
+  GetOrderDetailsServiceInput,
+  GetOrderDetailsServiceResult,
 } from "../order.types";
 import type { OrderEntity } from "../schemas/order.schema";
 
@@ -428,6 +430,25 @@ export class OrderService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async getOrderDetails(
+    input: GetOrderDetailsServiceInput,
+  ): Promise<GetOrderDetailsServiceResult> {
+    const { effectiveTenant, orderId } = input;
+
+    const order = await this.orderRepository.findOrderDetails({
+      id: orderId,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || undefined,
+    });
+    if (!order) {
+      throw new NotFoundError("Order not found");
+    }
+
+    return {
+      order: { ...order, tokenNumber: formatTokenNumber(order.tokenNumber) },
     };
   }
 

@@ -10,11 +10,15 @@ import { OneTimeTokenTypeEnum } from "../../shared/enums/one-time-token/one-time
 import { UserPermissions } from "../../shared/enums/rbac/user-permission.enum";
 import { ManagerVerificationMethodEnum } from "../../shared/enums/shift/manager-verification-method.enum";
 import { ShiftEndTypeEnum } from "../../shared/enums/shift/shift-end-type.enum";
+import { ShiftStatusEnum } from "../../shared/enums/shift/shift-status.enum";
 import { ShiftVerifierEnum } from "../../shared/enums/shift/shift-verifier.enum";
+import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { BadRequestError } from "../../shared/errors/bad-request-error";
 import { ConflictError } from "../../shared/errors/conflict-error";
 import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
+import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import { maskEmail, maskMobile } from "../../shared/utils/core/string.helper";
 import { getTwoFactorOtpTemplate } from "../../shared/utils/emailTemplates/two-factor-otp.template";
 import type { OneTimeTokenService } from "../auth/services/one-time-token.service";
@@ -32,7 +36,11 @@ import type {
   EndShiftServiceInput,
   EndShiftServiceResult,
   FindShiftManagerServiceInput,
+  ForceCloseShiftServiceInput,
+  ForceCloseShiftServiceResult,
   GetActiveShiftIdServiceInput,
+  GetBusinessDayShiftsServiceInput,
+  GetBusinessDayShiftsServiceResult,
   GetCurrentShiftServiceInput,
   GetCurrentShiftServiceResult,
   GetShiftManagersServiceInput,
@@ -58,6 +66,7 @@ export class ShiftService {
     private readonly deviceService: DeviceService,
     private readonly oneTimeTokenService: OneTimeTokenService,
     private readonly notificationService: NotificationService,
+    private readonly realtimeProvider: RealtimeProvider,
   ) {}
 
   // ========================================
@@ -293,6 +302,69 @@ export class ShiftService {
         ShiftMapper.toSavedTotals(closedShift),
       ),
     };
+  }
+
+  // ========================================
+  // ? USER SHIFT APIS
+  // ========================================
+  async getBusinessDayShifts(
+    input: GetBusinessDayShiftsServiceInput,
+  ): Promise<GetBusinessDayShiftsServiceResult> {
+    const { effectiveTenant, businessDayId } = input;
+
+    const rows = await this.shiftRepository.findBusinessDayShifts({
+      businessDayId,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || undefined,
+    });
+
+    const shifts = await Promise.all(
+      rows.map(async (row) =>
+        ShiftMapper.toBusinessDayShift(
+          row,
+          row.shift.status === ShiftStatusEnum.OPEN
+            ? await this.shiftRepository.getShiftTotals({
+                shiftId: row.shift.id,
+              })
+            : ShiftMapper.toSavedTotals(row.shift),
+        ),
+      ),
+    );
+
+    return { shifts };
+  }
+
+  async forceCloseShift(
+    input: ForceCloseShiftServiceInput,
+  ): Promise<ForceCloseShiftServiceResult> {
+    const { effectiveTenant, user, shiftId, dto } = input;
+
+    const shift = await this.shiftRepository.findShift({
+      id: shiftId,
+      organizationId: effectiveTenant.organizationId,
+      branchId: effectiveTenant.branchId || undefined,
+    });
+    if (!shift) {
+      throw new NotFoundError("Shift not found");
+    }
+
+    const closedShift = await this.shiftRepository.closeShift({
+      id: shift.id,
+      endType: ShiftEndTypeEnum.FORCE_CLOSED,
+      endedBy: user.id,
+      note: dto.reason,
+    });
+    if (!closedShift) {
+      throw new ConflictError("This shift is already closed");
+    }
+
+    this.realtimeProvider.emitToDevice(
+      closedShift.deviceId,
+      SocketEventEnum.SHIFT_FORCE_CLOSED,
+      { shiftId: closedShift.id },
+    );
+
+    return { message: "Shift force closed" };
   }
 
   // ========================================

@@ -53,6 +53,34 @@ export class ShiftValidator {
     })
     .noUnknown();
 
+  static getBusinessDayShiftsQuery = yup
+    .object({
+      businessDayId: yup
+        .string()
+        .uuid("Invalid business day id")
+        .required("Business day is required"),
+    })
+    .noUnknown();
+
+  static shiftIdParams = yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid shift id")
+        .required("Shift id is required"),
+    })
+    .noUnknown();
+
+  static forceCloseShift = yup
+    .object({
+      reason: yup
+        .string()
+        .trim()
+        .max(500, "Reason cannot exceed 500 characters")
+        .required("Reason is required"),
+    })
+    .noUnknown();
+
   static endShift = yup
     .object({
       note: yup

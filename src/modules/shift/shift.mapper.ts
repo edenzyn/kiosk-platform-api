@@ -3,9 +3,13 @@ import {
   toMinorUnits,
 } from "../../shared/utils/finance/currency.helper";
 import type { UserEntity } from "../user/schemas/user.schema";
+import type { BusinessDayShiftDto } from "./dtos/get-business-day-shifts.dtos";
 import type { DeviceShiftDto, ShiftSummaryDto } from "./dtos/shift.dtos";
 import type { StaffShiftEntity } from "./schemas/staff-shift.schema";
-import type { GetShiftTotalsRepoResult } from "./shift.types";
+import type {
+  BusinessDayShiftRow,
+  GetShiftTotalsRepoResult,
+} from "./shift.types";
 
 export class ShiftMapper {
   static toDeviceShift(
@@ -42,6 +46,43 @@ export class ShiftMapper {
       openingCash,
       ...totals,
       expectedCash,
+    };
+  }
+
+  static toBusinessDayShift(
+    row: BusinessDayShiftRow,
+    totals: GetShiftTotalsRepoResult,
+  ): BusinessDayShiftDto {
+    const { shift } = row;
+    const summary = ShiftMapper.toShiftSummary(shift, totals);
+    const collectedAmount = shift.currencyCode
+      ? fromMinorUnits(
+          toMinorUnits(totals.cash.amount, shift.currencyCode) +
+            toMinorUnits(totals.qr.amount, shift.currencyCode) +
+            toMinorUnits(totals.card.amount, shift.currencyCode),
+          shift.currencyCode,
+        )
+      : totals.cash.amount;
+
+    return {
+      id: shift.id,
+      status: shift.status,
+      staff: { id: shift.userId, name: row.staffName },
+      deviceName: row.deviceName,
+      startedAt: shift.startedAt,
+      endedAt: shift.endedAt,
+      endType: shift.endType,
+      endedBy: row.endedBy,
+      note: shift.note,
+      currencyCode: shift.currencyCode,
+      openingCash: summary.openingCash,
+      expectedCash: summary.expectedCash,
+      collectedAmount,
+      ...totals,
+      startVerifiedBy: row.startVerifiedBy,
+      startVerificationMethod: shift.startVerificationMethod,
+      endVerifiedBy: row.endVerifiedBy,
+      endVerificationMethod: shift.endVerificationMethod,
     };
   }
 

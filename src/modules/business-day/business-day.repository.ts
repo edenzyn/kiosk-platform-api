@@ -5,9 +5,11 @@ import { BusinessDayActionEnum } from "../../shared/enums/business-day/business-
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
+import { ShiftStatusEnum } from "../../shared/enums/shift/shift-status.enum";
 import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 import { orders } from "../order/schemas/order.schema";
+import { staffShifts } from "../shift/schemas/staff-shift.schema";
 import { users } from "../user/schemas/user.schema";
 import type {
   CloseBusinessDayRepoInput,
@@ -45,6 +47,17 @@ const businessDaySummaryFields = {
   openedBy: { id: openedByUser.id, name: openedByUser.name },
   closedAt: businessDays.closedAt,
   closedBy: { id: closedByUser.id, name: closedByUser.name },
+  shiftCount: sql<number>`(
+    select count(*)::int
+    from ${staffShifts}
+    where ${staffShifts.businessDayId} = ${businessDays.id}
+  )`,
+  openShiftCount: sql<number>`(
+    select count(*)::int
+    from ${staffShifts}
+    where ${staffShifts.businessDayId} = ${businessDays.id}
+      and ${staffShifts.status} = ${ShiftStatusEnum.OPEN}
+  )`,
 };
 
 export class BusinessDayRepository {

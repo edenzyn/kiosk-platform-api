@@ -33,6 +33,7 @@ import { userOrderRouter } from "./modules/order/routes/user-order.routes";
 import { deviceBusinessDayRouter } from "./modules/business-day/routes/device-business-day.routes";
 import { userBusinessDayRouter } from "./modules/business-day/routes/user-business-day.routes";
 import { deviceShiftRouter } from "./modules/shift/routes/device-shift.routes";
+import { userShiftRouter } from "./modules/shift/routes/user-shift.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -177,6 +178,7 @@ export class App {
       `${this.normalUserApiV1Prefix}/business-days`,
       userBusinessDayRouter,
     );
+    this.instance.use(`${this.normalUserApiV1Prefix}/shifts`, userShiftRouter);
     this.instance.use(`${this.normalUserApiV1Prefix}/taxes`, userTaxRouter);
     this.instance.use(
       `${this.normalUserApiV1Prefix}/payment-configs`,

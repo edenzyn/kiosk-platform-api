@@ -21,4 +21,9 @@ export enum SocketEventEnum {
   BUSINESS_DAY_CLOSED = "business-day.closed",
   BUSINESS_DAY_ORDERS_PAUSED = "business-day.orders-paused",
   BUSINESS_DAY_ORDERS_RESUMED = "business-day.orders-resumed",
+
+  // ========================================
+  // ? SHIFTS
+  // ========================================
+  SHIFT_FORCE_CLOSED = "shift.force-closed",
 }

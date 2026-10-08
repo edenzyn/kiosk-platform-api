@@ -1,4 +1,5 @@
-import { and, count, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
 import { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
@@ -9,8 +10,10 @@ import { ShiftStatusEnum } from "../../shared/enums/shift/shift-status.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
 import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
+import { devices } from "../device/device.schema";
 import { orderPayments } from "../order/schemas/order-payment.schema";
 import { orders } from "../order/schemas/order.schema";
+import { users } from "../user/schemas/user.schema";
 import { staffShifts } from "./schemas/staff-shift.schema";
 import type {
   CloseBusinessDayShiftsRepoInput,
@@ -19,8 +22,12 @@ import type {
   CloseShiftRepoResult,
   CreateShiftRepoInput,
   CreateShiftRepoResult,
+  FindBusinessDayShiftsRepoInput,
+  FindBusinessDayShiftsRepoResult,
   FindOpenShiftRepoInput,
   FindOpenShiftRepoResult,
+  FindShiftRepoInput,
+  FindShiftRepoResult,
   FindShiftManagersRepoInput,
   FindShiftManagersRepoResult,
   GetShiftTotalsRepoInput,
@@ -30,6 +37,11 @@ import type {
 type Transaction = Parameters<
   Parameters<Database["client"]["transaction"]>[0]
 >[0];
+
+const staffUser = alias(users, "staff_user");
+const endedByUser = alias(users, "ended_by_user");
+const startVerifiedByUser = alias(users, "start_verified_by_user");
+const endVerifiedByUser = alias(users, "end_verified_by_user");
 
 export class ShiftRepository {
   constructor(private readonly database: Database) {}
@@ -59,6 +71,76 @@ export class ShiftRepository {
       return shift ?? null;
     } catch (error) {
       logger.error("[SHIFT_FIND_OPEN_SHIFT_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findShift(input: FindShiftRepoInput): Promise<FindShiftRepoResult> {
+    try {
+      const [shift] = await this.database.client
+        .select()
+        .from(staffShifts)
+        .where(
+          and(
+            eq(staffShifts.id, input.id),
+            eq(staffShifts.organizationId, input.organizationId),
+            input.branchId
+              ? eq(staffShifts.branchId, input.branchId)
+              : undefined,
+          ),
+        )
+        .limit(1);
+
+      return shift ?? null;
+    } catch (error) {
+      logger.error("[SHIFT_FIND_SHIFT_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findBusinessDayShifts(
+    input: FindBusinessDayShiftsRepoInput,
+  ): Promise<FindBusinessDayShiftsRepoResult> {
+    try {
+      return await this.database.client
+        .select({
+          shift: staffShifts,
+          staffName: staffUser.name,
+          deviceName: devices.name,
+          endedBy: { id: endedByUser.id, name: endedByUser.name },
+          startVerifiedBy: {
+            id: startVerifiedByUser.id,
+            name: startVerifiedByUser.name,
+          },
+          endVerifiedBy: {
+            id: endVerifiedByUser.id,
+            name: endVerifiedByUser.name,
+          },
+        })
+        .from(staffShifts)
+        .innerJoin(staffUser, eq(staffUser.id, staffShifts.userId))
+        .innerJoin(devices, eq(devices.id, staffShifts.deviceId))
+        .leftJoin(endedByUser, eq(endedByUser.id, staffShifts.endedBy))
+        .leftJoin(
+          startVerifiedByUser,
+          eq(startVerifiedByUser.id, staffShifts.startVerifiedBy),
+        )
+        .leftJoin(
+          endVerifiedByUser,
+          eq(endVerifiedByUser.id, staffShifts.endVerifiedBy),
+        )
+        .where(
+          and(
+            eq(staffShifts.businessDayId, input.businessDayId),
+            eq(staffShifts.organizationId, input.organizationId),
+            input.branchId
+              ? eq(staffShifts.branchId, input.branchId)
+              : undefined,
+          ),
+        )
+        .orderBy(desc(staffShifts.startedAt));
+    } catch (error) {
+      logger.error("[SHIFT_FIND_BUSINESS_DAY_SHIFTS_ERROR] " + error);
       throw new DatabaseError(`${error}`);
     }
   }

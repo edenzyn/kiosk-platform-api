@@ -328,6 +328,10 @@ export class DeviceRepository {
     input: FindOpenStaffSessionRepoInput,
   ): Promise<FindOpenStaffSessionRepoResult> {
     try {
+      if (!input.deviceId && !input.userId) {
+        throw new Error("A device or a staff member is required");
+      }
+
       const [session] = await this.database.client
         .select({
           id: deviceStaffSessions.id,
@@ -340,7 +344,12 @@ export class DeviceRepository {
         .innerJoin(users, eq(deviceStaffSessions.userId, users.id))
         .where(
           and(
-            eq(deviceStaffSessions.deviceId, input.deviceId),
+            input.deviceId
+              ? eq(deviceStaffSessions.deviceId, input.deviceId)
+              : undefined,
+            input.userId
+              ? eq(deviceStaffSessions.userId, input.userId)
+              : undefined,
             isNull(deviceStaffSessions.endedAt),
             gt(deviceStaffSessions.expiresAt, new Date()),
           ),

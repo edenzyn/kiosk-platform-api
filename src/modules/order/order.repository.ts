@@ -589,6 +589,7 @@ export class OrderRepository {
             paymentStatus: OrderPaymentStatusEnum.CANCELLED,
             cancelledAt: now,
             cancellationReason: input.reason,
+            shiftId: input.shiftId,
             updatedAt: now,
             updatedBy: input.cancelledBy,
           })

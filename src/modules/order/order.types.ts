@@ -50,11 +50,18 @@ export interface AssertPaymentMethodAvailableServiceInput {
   paymentMethod?: TenantPaymentMethodEnum;
 }
 
+export interface CreateOrderFromCartServiceInput extends CreateDeviceOrderServiceInput {
+  /** The counter shift placing the order; null on a kiosk. */
+  shiftId: string | null;
+}
+
 export interface ProcessOrderPaymentServiceInput {
   device: DeviceTokenDto;
   staff?: DeviceStaffTokenDto;
   order: OrderEntity;
   paymentMethod?: TenantPaymentMethodEnum;
+  /** The counter shift taking the payment; null on a kiosk. */
+  shiftId: string | null;
 }
 
 export interface GetPendingPaymentOrdersServiceInput {
@@ -212,6 +219,8 @@ export interface CancelUnpaidCounterOrderRepoInput {
   branchId: string;
   reason: string;
   cancelledBy: string | null;
+  /** The counter shift cancelling the order. */
+  shiftId: string;
 }
 export type CancelUnpaidCounterOrderRepoResult = OrderEntity | null;
 

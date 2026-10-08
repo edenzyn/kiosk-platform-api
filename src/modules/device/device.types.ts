@@ -114,6 +114,8 @@ export interface VerifyDeviceUserSecretServiceInput {
   secret: string;
   attemptsKey: string;
   failedAction: DeviceLogActionEnum;
+  /** Shown when the secret is wrong; defaults to the sign-in wording. */
+  failedMessage?: string;
 }
 
 export interface IssueDeviceAdminSessionServiceInput {
@@ -245,8 +247,10 @@ export interface FindActiveStaffSessionRepoInput {
 export type FindActiveStaffSessionRepoResult =
   DeviceStaffSessionEntity | undefined;
 
+/** Give the device or the staff member. */
 export interface FindOpenStaffSessionRepoInput {
-  deviceId: string;
+  deviceId?: string;
+  userId?: string;
 }
 export type FindOpenStaffSessionRepoResult = DeviceStaffSessionDto | undefined;
 

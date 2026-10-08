@@ -32,6 +32,7 @@ import { deviceOrderRouter } from "./modules/order/routes/device-order.routes";
 import { userOrderRouter } from "./modules/order/routes/user-order.routes";
 import { deviceBusinessDayRouter } from "./modules/business-day/routes/device-business-day.routes";
 import { userBusinessDayRouter } from "./modules/business-day/routes/user-business-day.routes";
+import { deviceShiftRouter } from "./modules/shift/routes/device-shift.routes";
 import notificationRoutes from "./modules/notification/notification.routes";
 import { platformOrganizationRouter } from "./modules/organization/routes/platform-organization.routes";
 import { userOrganizationRouter } from "./modules/organization/routes/user-organization.routes";
@@ -208,6 +209,7 @@ export class App {
       `${this.deviceApiV1Prefix}/business-days`,
       deviceBusinessDayRouter,
     );
+    this.instance.use(`${this.deviceApiV1Prefix}/shifts`, deviceShiftRouter);
   }
 
   private configureErrorHandling(): void {

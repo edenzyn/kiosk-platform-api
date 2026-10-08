@@ -8,6 +8,7 @@ import {
 import { AuthContainer } from "../modules/auth/auth.container";
 import { BranchContainer } from "../modules/branch/branch.container";
 import { BusinessDayContainer } from "../modules/business-day/business-day.container";
+import { ShiftContainer } from "../modules/shift/shift.container";
 import { DeviceContainer } from "../modules/device/device.container";
 import { FileContainer } from "../modules/file/file.container";
 import { FinanceContainer } from "../modules/finance/finance.container";
@@ -80,3 +81,4 @@ ResellerContainer.register(container);
 NotificationContainer.register(container);
 OrderContainer.register(container);
 BusinessDayContainer.register(container);
+ShiftContainer.register(container);

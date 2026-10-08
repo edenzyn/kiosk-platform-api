@@ -90,7 +90,7 @@ export class OrderPaymentService {
   private async _processCashPayment(
     input: ProcessOrderPaymentServiceInput,
   ): Promise<CreateDeviceOrderServiceResult> {
-    const { device, staff, order } = input;
+    const { device, staff, order, shiftId } = input;
 
     const cashPayment = await this.orderRepository.createPayment({
       orderId: order.id,
@@ -101,6 +101,7 @@ export class OrderPaymentService {
       amount: order.totalAmount,
       currencyCode: order.currencyCode,
       collectedBy: staff?.userId ?? null,
+      shiftId,
     });
 
     const { order: placedOrder } =
@@ -133,7 +134,7 @@ export class OrderPaymentService {
   private async _processQrPayment(
     input: ProcessOrderPaymentServiceInput,
   ): Promise<CreateDeviceOrderServiceResult> {
-    const { device, staff, order } = input;
+    const { device, staff, order, shiftId } = input;
     const { organizationId, branchId } = order;
 
     const latestPayment = await this.orderRepository.findLatestPayment({
@@ -161,6 +162,7 @@ export class OrderPaymentService {
       amount: order.totalAmount,
       currencyCode: order.currencyCode,
       collectedBy: staff?.userId ?? null,
+      shiftId,
     });
 
     try {

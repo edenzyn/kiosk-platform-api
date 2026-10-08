@@ -645,7 +645,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       tags: ["Devices"],
       summary: "Sign a staff member in on a counter device",
       description:
-        "Counter devices only. The staff member gives their registered email or mobile number plus their password or 4-digit PIN, and must hold the branch staff permission (branch:device:staff:counter); an organization-level user needs organization all-write. Replaces any staff session already open on the device. Returns a short-lived staff token for the X-D-Staff header and sets a refresh cookie; the session lasts at most 12 hours.",
+        "Counter devices only. The staff member gives their registered email or mobile number plus their password or 4-digit PIN, and must hold the branch staff permission (branch:device:staff:counter); an organization-level user needs organization all-write. Replaces another staff member's session already open on the device. A staff member who still has an open session on any device gets 403 SESSION_LIMIT_REACHED until it is revoked from the Devices page or they sign out. Returns a short-lived staff token for the X-D-Staff header and sets a refresh cookie; the session lasts at most 12 hours.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,

@@ -7,6 +7,7 @@ import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrderRepository } from "../order/order.repository";
+import type { ShiftRepository } from "../shift/shift.repository";
 import type { BusinessDayRepository } from "./business-day.repository";
 import type {
   CloseBusinessDayServiceInput,
@@ -33,6 +34,7 @@ export class BusinessDayService {
     private readonly branchRepository: BranchRepository,
     private readonly realtimeProvider: RealtimeProvider,
     private readonly orderRepository: OrderRepository,
+    private readonly shiftRepository: ShiftRepository,
   ) {}
 
   // ========================================
@@ -125,6 +127,11 @@ export class BusinessDayService {
         reason:
           "The business day was closed before the order was paid at the counter",
       });
+      await this.shiftRepository.closeBusinessDayShifts({
+        businessDayId: openDay.id,
+        endedBy: user.id,
+        note: "Ended automatically when the business day was closed",
+      });
     }
 
     this.realtimeProvider.emitToBranch(
@@ -166,6 +173,11 @@ export class BusinessDayService {
       businessDayId: closedDay.id,
       reason:
         "The business day was closed before the order was paid at the counter",
+    });
+    await this.shiftRepository.closeBusinessDayShifts({
+      businessDayId: closedDay.id,
+      endedBy: user.id,
+      note: "Ended automatically when the business day was closed",
     });
 
     this.realtimeProvider.emitToBranch(

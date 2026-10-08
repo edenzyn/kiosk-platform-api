@@ -8,4 +8,5 @@ export enum OneTimeTokenTypeEnum {
   EMAIL_CHANGE = 3,
   MOBILE_CHANGE = 4,
   PASSWORD_RESET = 5,
+  SHIFT_VERIFICATION = 6,
 }

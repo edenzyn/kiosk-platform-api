@@ -107,6 +107,8 @@ export enum UserPermissions {
   BRANCH_BUSINESS_DAY_READ = "branch:business-day:read",
   BRANCH_BUSINESS_DAY_WRITE = "branch:business-day:write",
 
+  BRANCH_SHIFT_MANAGE = "branch:shift:manage",
+
   // ======================================================
   // Reseller
   // ======================================================

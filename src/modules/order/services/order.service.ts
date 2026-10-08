@@ -17,6 +17,7 @@ import type { BusinessDayService } from "../../business-day/business-day.service
 import type { TaxRepository } from "../../finance/repositories/tax.repository";
 import type { MarketRepository } from "../../market/market.repository";
 import type { MenuRepository } from "../../menu/menu.repository";
+import type { ShiftService } from "../../shift/shift.service";
 import type { OrderPaymentService } from "./order-payment.service";
 import { OrderMapper } from "../order.mapper";
 import type { OrderRepository } from "../order.repository";
@@ -24,6 +25,7 @@ import type {
   CancelDeviceOrderServiceInput,
   CollectPendingPaymentServiceInput,
   CreateDeviceOrderServiceInput,
+  CreateOrderFromCartServiceInput,
   CreateDeviceOrderServiceResult,
   GetPendingPaymentOrdersServiceInput,
   GetPendingPaymentOrdersServiceResult,
@@ -43,6 +45,7 @@ export class OrderService {
     private readonly taxRepository: TaxRepository,
     private readonly businessDayService: BusinessDayService,
     private readonly orderPaymentService: OrderPaymentService,
+    private readonly shiftService: ShiftService,
   ) {}
 
   // ========================================
@@ -53,6 +56,11 @@ export class OrderService {
   ): Promise<CreateDeviceOrderServiceResult> {
     const { device, staff, dto } = input;
     const { isPayAtCounter, paymentMethod } = dto;
+
+    const shiftId =
+      device.type === DeviceTypeEnum.COUNTER
+        ? await this.shiftService.getActiveShiftId({ device, staff })
+        : null;
 
     let order = await this.orderRepository.findOneByIdempotencyKey({
       deviceId: device.id,
@@ -97,7 +105,7 @@ export class OrderService {
     }
 
     if (!order) {
-      order = await this._createOrderFromCart({ device, staff, dto });
+      order = await this._createOrderFromCart({ device, staff, dto, shiftId });
 
       if (isPayAtCounter) {
         this.orderPaymentService.emitPendingPaymentsChanged(order);
@@ -113,14 +121,15 @@ export class OrderService {
       staff,
       order,
       paymentMethod,
+      shiftId,
     });
   }
 
   /** Prices the cart on the server and saves it as a new order in the open business day. */
   private async _createOrderFromCart(
-    input: CreateDeviceOrderServiceInput,
+    input: CreateOrderFromCartServiceInput,
   ): Promise<OrderEntity> {
-    const { device, staff, dto } = input;
+    const { device, staff, dto, shiftId } = input;
     const { organizationId, branchId } = device;
     const { isPayAtCounter } = dto;
 
@@ -230,6 +239,7 @@ export class OrderService {
         organizationId,
         branchId,
         deviceId: device.id,
+        shiftId,
         businessDayId,
         idempotencyKey: dto.idempotencyKey,
         orderSource:
@@ -316,6 +326,8 @@ export class OrderService {
   ): Promise<CreateDeviceOrderServiceResult> {
     const { device, staff, orderId, dto } = input;
 
+    const shiftId = await this.shiftService.getActiveShiftId({ device, staff });
+
     const order = await this.orderRepository.findOne({
       id: orderId,
       branchId: device.branchId,
@@ -341,22 +353,31 @@ export class OrderService {
       paymentMethod: dto.paymentMethod,
     });
 
+    const collectedOrder = await this.orderRepository.updateOrder({
+      id: order.id,
+      data: { shiftId },
+    });
+
     return this.orderPaymentService.processPayment({
       device,
       staff,
-      order,
+      order: collectedOrder,
       paymentMethod: dto.paymentMethod,
+      shiftId,
     });
   }
 
   async cancelDeviceOrder(input: CancelDeviceOrderServiceInput): Promise<void> {
     const { device, staff, orderId } = input;
 
+    const shiftId = await this.shiftService.getActiveShiftId({ device, staff });
+
     const cancelledOrder = await this.orderRepository.cancelUnpaidCounterOrder({
       id: orderId,
       branchId: device.branchId,
       reason: "Cancelled at the counter before payment",
       cancelledBy: staff?.userId ?? null,
+      shiftId,
     });
     if (!cancelledOrder) {
       throw new ConflictError("This order can no longer be cancelled");

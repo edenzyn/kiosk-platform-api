@@ -540,7 +540,9 @@ export class DeviceService {
         },
       });
 
-      throw new BadRequestError("Incorrect sign-in details");
+      throw new BadRequestError(
+        input.failedMessage ?? "Incorrect sign-in details",
+      );
     }
 
     await this.redisProvider.del(attemptsKey);
@@ -698,6 +700,16 @@ export class DeviceService {
 
     if (!canOperateDevice) {
       throw new ForbiddenError("You don't have permission to use this device");
+    }
+
+    const activeSession = await this.deviceRepository.findOpenStaffSession({
+      userId: user.id,
+    });
+    if (activeSession) {
+      throw new ForbiddenError(
+        "You're already signed in on a device. Ask a manager to revoke that session from the Devices page, then sign in again.",
+        { code: ErrorCodes.SESSION_LIMIT_REACHED },
+      );
     }
 
     await this.deviceRepository.endStaffSessions({ deviceId: device.id });

@@ -70,6 +70,7 @@ export const DEFAULT_BRANCH_ROLES = [
       ...BRANCH_MENU_READ_WRITE_PERMS,
       ...BRANCH_ORDER_READ_WRITE_PERMS,
       ...BRANCH_BUSINESS_DAY_READ_WRITE_PERMS,
+      UserPermissions.BRANCH_SHIFT_MANAGE,
       UserPermissions.BRANCH_USER_INVITE,
       UserPermissions.BRANCH_UPDATE,
       UserPermissions.BRANCH_READ,

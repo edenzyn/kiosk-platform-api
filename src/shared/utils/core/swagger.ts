@@ -8,6 +8,7 @@ import { menuSwaggerPaths } from "../../../modules/menu/menu.swagger";
 import { notificationSwaggerPaths } from "../../../modules/notification/notification.swagger";
 import { orderSwaggerPaths } from "../../../modules/order/order.swagger";
 import { businessDaySwaggerPaths } from "../../../modules/business-day/business-day.swagger";
+import { shiftSwaggerPaths } from "../../../modules/shift/shift.swagger";
 import { organizationSwaggerPaths } from "../../../modules/organization/organization.swagger";
 import { platformSwaggerPaths } from "../../../modules/platform/platform.swagger";
 import { rbacSwaggerPaths } from "../../../modules/rbac/rbac.swagger";
@@ -228,5 +229,6 @@ export const swaggerDocument = {
     ...financeSwaggerPaths,
     ...orderSwaggerPaths,
     ...businessDaySwaggerPaths,
+    ...shiftSwaggerPaths,
   },
 };

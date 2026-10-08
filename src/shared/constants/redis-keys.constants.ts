@@ -18,4 +18,8 @@ export const RedisKeys = {
   /** Counts wrong staff sign-in attempts for one identity on one device. */
   deviceStaffLoginAttempts: (deviceId: string, identity: string): string =>
     `device:staff:login-attempts:${deviceId}:${identity}`,
+
+  /** Counts wrong shift verification attempts for one shift manager on one device. */
+  shiftVerificationAttempts: (deviceId: string, managerId: string): string =>
+    `device:shift:verification-attempts:${deviceId}:${managerId}`,
 } as const;

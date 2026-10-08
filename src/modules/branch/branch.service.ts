@@ -1,5 +1,4 @@
 import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { DEFAULT_BRANCH_ROLES } from "../../shared/constants/user-role.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
@@ -7,7 +6,9 @@ import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import { PermissionEntityType } from "../../shared/enums/rbac/permission-entity-type.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import { getUserScope } from "../../shared/utils/user/user-scope.helper";
 import type { FileService } from "../file/file.service";
 import type { MarketRepository } from "../market/market.repository";
@@ -46,9 +47,9 @@ export class BranchService {
     effectiveTenant: EffectiveTenant,
   ) {
     if (effectiveTenant.organizationId !== user.organizationId) {
-      throw new AppError("Cannot create branch for a different organization", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError(
+        "Cannot create branch for a different organization",
+      );
     }
 
     const isMarketMapped =
@@ -57,9 +58,9 @@ export class BranchService {
         marketId: data.marketId,
       });
     if (!isMarketMapped) {
-      throw new AppError("This market is not available for your organization", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "This market is not available for your organization",
+      );
     }
 
     const branch = await this.branchRepository.create({
@@ -211,15 +212,13 @@ export class BranchService {
     const { id, ...updateData } = data;
     const existing = await this.branchRepository.findOne({ id });
     if (!existing) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
 
     if (existing.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot update branch for a different organization", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError(
+        "Cannot update branch for a different organization",
+      );
     }
 
     const updated = await this.branchRepository.update({
@@ -240,15 +239,11 @@ export class BranchService {
 
     const existing = await this.branchRepository.findOne({ id: branchId });
     if (!existing) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
 
     if (existing.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot update details for a different branch", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Cannot update details for a different branch");
     }
 
     const branch = await this.branchRepository.update({
@@ -266,15 +261,11 @@ export class BranchService {
 
     const branch = await this.branchRepository.findOne({ id: branchId });
     if (!branch) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
 
     if (branch.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot access settings for a different branch", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Cannot access settings for a different branch");
     }
 
     const settings = await this.branchRepository.getOrCreateSettings(branchId);
@@ -311,15 +302,11 @@ export class BranchService {
 
     const existing = await this.branchRepository.findOne({ id: branchId });
     if (!existing) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
 
     if (existing.organizationId !== effectiveTenant.organizationId) {
-      throw new AppError("Cannot update settings for a different branch", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Cannot update settings for a different branch");
     }
 
     const settings = await this.branchRepository.updateSettings({
@@ -340,8 +327,7 @@ export class BranchService {
         contentType as (typeof FILE_UPLOAD_CONFIG.BRAND_LOGO.acceptedTypes)[number],
       )
     ) {
-      throw new AppError("Unsupported or missing image content type", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Unsupported or missing image content type", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -350,8 +336,7 @@ export class BranchService {
       fileSize <= 0 ||
       fileSize > FILE_UPLOAD_CONFIG.BRAND_LOGO.maxSizeBytes
     ) {
-      throw new AppError("Image is too large", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Image is too large", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }

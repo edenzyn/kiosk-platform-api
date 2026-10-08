@@ -1,7 +1,6 @@
 import type jwt from "jsonwebtoken";
 import { randomUUID } from "node:crypto";
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { DEFAULT_ORGANIZATION_ROLES } from "../../../shared/constants/user-role.constants";
 import {
   WHATSAPP_TEMPLATE_LANGUAGES,
@@ -20,6 +19,11 @@ import { UserInvitationStatusEnum } from "../../../shared/enums/user/user-invita
 import { UserScopeTypeEnums } from "../../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
 import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { ConflictError } from "../../../shared/errors/conflict-error";
+import { ForbiddenError } from "../../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
+import { UnauthorizedError } from "../../../shared/errors/unauthorized-error";
 import {
   getSessionLimitForUserType,
   isSessionAutoLogoutEnabled,
@@ -174,28 +178,21 @@ export class AuthService {
     const user = await this.userRepository.findOne({ email });
 
     if (!user) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("Invalid Credentials");
     }
 
     hooks.beforePasswordCheck?.(user);
 
     const isMatch = await compareHashedData(password, user.password);
     if (!isMatch) {
-      throw new AppError("Invalid Credentials", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("Invalid Credentials");
     }
 
     hooks.afterPasswordCheck?.(user);
 
     if (!user.isActive) {
-      throw new AppError(
+      throw new ForbiddenError(
         "Your account has been deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
       );
     }
 
@@ -226,12 +223,9 @@ export class AuthService {
       return;
     }
 
-    throw new AppError(
+    throw new ForbiddenError(
       `You've reached the maximum of ${pluralizeByCount(limit, "active session")} for your account. Please sign out from another device before logging in again.`,
-      {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.SESSION_LIMIT_REACHED,
-      },
+      { code: ErrorCodes.SESSION_LIMIT_REACHED },
     );
   }
 
@@ -368,20 +362,14 @@ export class AuthService {
     const user = await this._authenticateUser(dto.email, dto.password, {
       afterPasswordCheck: (user) => {
         if (user.userType === UserTypeEnums.PLATFORM) {
-          throw new AppError(
+          throw new ForbiddenError(
             "Platform users must sign in through the platform portal",
-            {
-              statusCode: HttpStatusCodes.FORBIDDEN,
-            },
           );
         }
 
         if (user.userType === UserTypeEnums.RESELLER) {
-          throw new AppError(
+          throw new ForbiddenError(
             "Resellers must sign in through the reseller portal",
-            {
-              statusCode: HttpStatusCodes.FORBIDDEN,
-            },
           );
         }
       },
@@ -409,9 +397,9 @@ export class AuthService {
           !!user.organizationId ||
           !!user.branchId
         ) {
-          throw new AppError("Access Denied, You are not a platform user", {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(
+            "Access Denied, You are not a platform user",
+          );
         }
       },
     });
@@ -434,9 +422,7 @@ export class AuthService {
     const user = await this._authenticateUser(dto.email, dto.password, {
       beforePasswordCheck: (user) => {
         if (user.userType !== UserTypeEnums.RESELLER) {
-          throw new AppError("Access Denied, You are not a reseller", {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError("Access Denied, You are not a reseller");
         }
       },
     });
@@ -464,9 +450,8 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({ id: userId });
     if (!user || !user.isActive) {
-      throw new AppError(
+      throw new UnauthorizedError(
         "Invalid or expired verification session. Please log in again.",
-        { statusCode: HttpStatusCodes.UNAUTHORIZED },
       );
     }
 
@@ -503,6 +488,7 @@ export class AuthService {
         ? await this.deviceRepository.findOne({ id: decoded.device.id })
         : null;
       if (device) {
+        await this.deviceRepository.endStaffSessions({ deviceId: device.id });
         await this.deviceRepository.createLog({
           data: {
             organizationId: device.organizationId,
@@ -526,38 +512,28 @@ export class AuthService {
     try {
       verifyToken(token, env.JWT_INVITE_USER_SECRET);
     } catch (error) {
-      throw new AppError("Invalid or expired invitation.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Invalid or expired invitation.");
     }
 
     const invitation = await this.userRepository.findOneInvitation({
       token,
     });
     if (!invitation) {
-      throw new AppError("Invitation not found.", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found.");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.PENDING) {
       switch (invitation.status) {
         case UserInvitationStatusEnum.ACCEPTED:
-          throw new AppError("This invitation has already been accepted.", {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-          });
+          throw new BadRequestError(
+            "This invitation has already been accepted.",
+          );
         case UserInvitationStatusEnum.REVOKED:
-          throw new AppError("This invitation has been revoked.", {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-          });
+          throw new BadRequestError("This invitation has been revoked.");
         case UserInvitationStatusEnum.EXPIRED:
-          throw new AppError("This invitation has expired.", {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-          });
+          throw new BadRequestError("This invitation has expired.");
         default:
-          throw new AppError("This invitation is no longer valid.", {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-          });
+          throw new BadRequestError("This invitation is no longer valid.");
       }
     }
 
@@ -569,9 +545,7 @@ export class AuthService {
           updatedBy: invitation.id,
         },
       });
-      throw new AppError("Invitation has expired.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Invitation has expired.");
     }
 
     return invitation;
@@ -593,9 +567,7 @@ export class AuthService {
       email: invitation.email,
     });
     if (existingUser) {
-      throw new AppError("Email already registered", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
+      throw new ConflictError("Email already registered");
     }
 
     const hashedPassword = await hashData(dto.password);
@@ -686,18 +658,16 @@ export class AuthService {
     const invitation = await this._verifyAndGetPendingInvitation(dto.token);
 
     if (invitation.entityType !== UserTypeEnums.RESELLER) {
-      throw new AppError("This invitation is not a reseller invitation.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "This invitation is not a reseller invitation.",
+      );
     }
 
     const existingUser = await this.userRepository.findOne({
       email: invitation.email,
     });
     if (existingUser) {
-      throw new AppError("Email already registered", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
+      throw new ConflictError("Email already registered");
     }
 
     const hashedPassword = await hashData(dto.password);
@@ -776,18 +746,16 @@ export class AuthService {
     const invitation = await this._verifyAndGetPendingInvitation(dto.token);
 
     if (!invitation.isOrgRegistration || !invitation.organizationName) {
-      throw new AppError("This invitation is not an organization invitation.", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "This invitation is not an organization invitation.",
+      );
     }
 
     const existingUser = await this.userRepository.findOne({
       email: invitation.email,
     });
     if (existingUser) {
-      throw new AppError("Email already registered", {
-        statusCode: HttpStatusCodes.CONFLICT,
-      });
+      throw new ConflictError("Email already registered");
     }
 
     // const existingOrg = await this.organizationRepository.findOne({
@@ -863,8 +831,7 @@ export class AuthService {
       );
 
       if (!decoded.jti) {
-        throw new AppError("Invalid or expired refresh token", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid or expired refresh token", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -874,8 +841,7 @@ export class AuthService {
           id: decoded.device.id,
         });
         if (!device || !device.isActive) {
-          throw new AppError("Invalid or expired refresh token", {
-            statusCode: HttpStatusCodes.UNAUTHORIZED,
+          throw new UnauthorizedError("Invalid or expired refresh token", {
             code: ErrorCodes.UNAUTHORIZED,
           });
         }
@@ -916,8 +882,7 @@ export class AuthService {
         });
 
         if (!rotated) {
-          throw new AppError("Invalid or expired refresh token", {
-            statusCode: HttpStatusCodes.UNAUTHORIZED,
+          throw new UnauthorizedError("Invalid or expired refresh token", {
             code: ErrorCodes.UNAUTHORIZED,
           });
         }
@@ -940,16 +905,14 @@ export class AuthService {
       }
 
       if (!decoded.user?.id) {
-        throw new AppError("Invalid or expired refresh token", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid or expired refresh token", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
 
       const user = await this.userRepository.findOne({ id: decoded.user.id });
       if (!user || !user.isActive) {
-        throw new AppError("Invalid or expired refresh token", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid or expired refresh token", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -989,8 +952,7 @@ export class AuthService {
       });
 
       if (!rotated) {
-        throw new AppError("Invalid or expired refresh token", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Invalid or expired refresh token", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -1026,8 +988,7 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError("Invalid or expired refresh token", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Invalid or expired refresh token", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -1044,17 +1005,12 @@ export class AuthService {
     });
 
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("Device not found");
     }
 
     if (!device.isActive) {
-      throw new AppError(
+      throw new ForbiddenError(
         "Device is deactivated. Please contact your administrator.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-        },
       );
     }
 
@@ -1067,21 +1023,16 @@ export class AuthService {
 
     const isMatch = await compareHashedData(String(dto.pin), device.pin);
     if (!isMatch) {
-      throw new AppError("Incorrect PIN", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("Incorrect PIN");
     }
 
     const activeSessions = await this.authRepository.listDeviceSessions({
       deviceId: device.id,
     });
     if (activeSessions.length >= env.DEVICE_SESSION_LIMIT) {
-      throw new AppError(
+      throw new ForbiddenError(
         "This device is already signed in on another screen. Ask an administrator to revoke its session from the Devices page, then sign in again.",
-        {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-          code: ErrorCodes.SESSION_LIMIT_REACHED,
-        },
+        { code: ErrorCodes.SESSION_LIMIT_REACHED },
       );
     }
 
@@ -1199,9 +1150,7 @@ export class AuthService {
     const [verificationId, code] = dto.token.split(".");
 
     if (!verificationId || !code) {
-      throw new AppError("This reset link is invalid or has expired.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("This reset link is invalid or has expired.");
     }
 
     const { userId } = await this.oneTimeTokenService.verify({
@@ -1212,9 +1161,7 @@ export class AuthService {
 
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
-      throw new AppError("This reset link is invalid or has expired.", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("This reset link is invalid or has expired.");
     }
 
     const hashedPassword = await hashData(dto.newPassword);

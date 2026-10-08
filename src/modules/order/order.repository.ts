@@ -13,24 +13,30 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Database } from "../../config/db";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { BusinessDayStatusEnum } from "../../shared/enums/business-day/business-day-status.enum";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderDateFilterEnum } from "../../shared/enums/order/order-date-filter.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 import { buildOrderNumber } from "../../shared/utils/order/order-number.helper";
-import { businessDays } from "../business-day/schemas/business-day.schema";
 import { branchSettings } from "../branch/schemas/branch-settings.schema";
 import { branches } from "../branch/schemas/branch.schema";
+import { businessDays } from "../business-day/schemas/business-day.schema";
+import { devices } from "../device/device.schema";
+import { users } from "../user/schemas/user.schema";
 import type {
-  CompletePendingPaymentRepoInput,
-  CompletePendingPaymentRepoResult,
+  CancelUnpaidCounterOrderRepoInput,
+  CancelUnpaidCounterOrderRepoResult,
   CancelUnpaidCounterOrdersRepoInput,
   CancelUnpaidCounterOrdersRepoResult,
+  ChangeOrderStatusRepoInput,
+  ChangeOrderStatusRepoResult,
+  CompletePendingPaymentRepoInput,
+  CompletePendingPaymentRepoResult,
   CountBusinessDayOrdersByStatusRepoInput,
   CountBusinessDayOrdersByStatusRepoResult,
   CreateOrderPaymentRepoInput,
@@ -43,10 +49,18 @@ import type {
   FindLatestOrderPaymentRepoResult,
   FindOneOrderPaymentRepoInput,
   FindOneOrderPaymentRepoResult,
+  FindOneOrderRepoInput,
+  FindOneOrderRepoResult,
+  FindLiveOrdersRepoInput,
+  FindLiveOrdersRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
+  FindOrderDetailsRepoInput,
+  FindOrderDetailsRepoResult,
   FindOrdersRepoInput,
   FindOrdersRepoResult,
+  FindPendingCounterOrdersRepoInput,
+  FindPendingCounterOrdersRepoResult,
   UpdateOrderPaymentRepoInput,
   UpdateOrderPaymentRepoResult,
   UpdateOrderRepoInput,
@@ -58,6 +72,17 @@ import { orderPayments } from "./schemas/order-payment.schema";
 import { orderStatusLogs } from "./schemas/order-status-log.schema";
 import { orderTaxes } from "./schemas/order-tax.schema";
 import { orderNumberSequence, orders } from "./schemas/order.schema";
+
+const ORDER_DATE_COLUMNS = {
+  [OrderDateFilterEnum.CREATED_AT]: orders.createdAt,
+  [OrderDateFilterEnum.PLACED_AT]: orders.placedAt,
+  [OrderDateFilterEnum.READY_AT]: orders.readyAt,
+  [OrderDateFilterEnum.COMPLETED_AT]: orders.completedAt,
+  [OrderDateFilterEnum.CANCELLED_AT]: orders.cancelledAt,
+};
+
+const createdByUser = alias(users, "created_by_user");
+const collectedByUser = alias(users, "collected_by_user");
 
 export class OrderRepository {
   constructor(private readonly database: Database) {}
@@ -80,14 +105,27 @@ export class OrderRepository {
         )
         .limit(1);
 
-      return (await order) ?? null;
+      return order ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_BY_IDEMPOTENCY_KEY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findOne(input: FindOneOrderRepoInput): Promise<FindOneOrderRepoResult> {
+    try {
+      const [order] = await this.database.client
+        .select()
+        .from(orders)
+        .where(
+          and(eq(orders.id, input.id), eq(orders.branchId, input.branchId)),
+        )
+        .limit(1);
+
+      return order ?? null;
+    } catch (error) {
+      logger.error("[ORDER_FIND_ONE_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -98,34 +136,19 @@ export class OrderRepository {
       const { order, items, taxes } = input;
 
       return await this.database.client.transaction(async (tx) => {
-        // Holds the day as it is until the order is saved; closing or pausing waits on this lock.
         const [openDay] = await tx
-          .select({
-            id: businessDays.id,
-            isOrderingPaused: businessDays.isOrderingPaused,
-          })
+          .select({ id: businessDays.id })
           .from(businessDays)
           .where(
             and(
               eq(businessDays.id, order.businessDayId),
               eq(businessDays.status, BusinessDayStatusEnum.OPEN),
+              eq(businessDays.isOrderingPaused, false),
             ),
           )
           .for(input.assignToken ? "update" : "share");
 
-        if (!openDay) {
-          throw new AppError("The branch is closed for orders right now", {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.BUSINESS_DAY_CLOSED,
-          });
-        }
-
-        if (openDay.isOrderingPaused) {
-          throw new AppError("The branch is not taking orders right now", {
-            statusCode: HttpStatusCodes.CONFLICT,
-            code: ErrorCodes.ORDERS_PAUSED,
-          });
-        }
+        if (!openDay) throw new Error("Business day is not open for orders");
 
         const [tokenDay] = input.assignToken
           ? await tx
@@ -190,12 +213,8 @@ export class OrderRepository {
         return created;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CREATE_ORDER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -213,14 +232,10 @@ export class OrderRepository {
         throw new Error("Failed to update order");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_UPDATE_ORDER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -238,14 +253,10 @@ export class OrderRepository {
         .orderBy(desc(orderPayments.createdAt))
         .limit(1);
 
-      return (await payment) ?? null;
+      return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_LATEST_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -262,14 +273,10 @@ export class OrderRepository {
         throw new Error("Failed to create order payment");
       }
 
-      return await payment;
+      return payment;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CREATE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -287,14 +294,10 @@ export class OrderRepository {
         throw new Error("Failed to update order payment");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_UPDATE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -310,12 +313,8 @@ export class OrderRepository {
 
       return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FIND_ONE_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -344,7 +343,11 @@ export class OrderRepository {
         if (!payment) return { payment: null, order: null };
 
         const [pendingOrder] = await tx
-          .select({ id: orders.id, businessDayId: orders.businessDayId })
+          .select({
+            id: orders.id,
+            businessDayId: orders.businessDayId,
+            tokenNumber: orders.tokenNumber,
+          })
           .from(orders)
           .where(
             and(
@@ -356,14 +359,20 @@ export class OrderRepository {
 
         if (!pendingOrder) return { payment, order: null };
 
-        // Only paid orders take a token; the day's row lock serialises the numbering.
-        const [day] = await tx
-          .update(businessDays)
-          .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
-          .where(eq(businessDays.id, pendingOrder.businessDayId))
-          .returning({ lastTokenNumber: businessDays.lastTokenNumber });
+        // A pay-at-counter order already holds its token; any other order takes one
+        // now, and the day's row lock serialises the numbering.
+        let tokenNumber = pendingOrder.tokenNumber;
+        if (tokenNumber === null) {
+          const [day] = await tx
+            .update(businessDays)
+            .set({ lastTokenNumber: sql`${businessDays.lastTokenNumber} + 1` })
+            .where(eq(businessDays.id, pendingOrder.businessDayId))
+            .returning({ lastTokenNumber: businessDays.lastTokenNumber });
 
-        if (!day) throw new Error("Business day not found");
+          if (!day) throw new Error("Business day not found");
+
+          tokenNumber = day.lastTokenNumber;
+        }
 
         const [order] = await tx
           .update(orders)
@@ -371,7 +380,7 @@ export class OrderRepository {
             paymentStatus: OrderPaymentStatusEnum.COMPLETED,
             orderStatus: OrderStatusEnum.PLACED,
             paymentMethod: payment.paymentMethod,
-            tokenNumber: day.lastTokenNumber,
+            tokenNumber,
             placedAt: input.completedAt,
             expiresAt: null,
             updatedAt: new Date(),
@@ -391,12 +400,8 @@ export class OrderRepository {
         return { payment, order: order ?? null };
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_COMPLETE_PENDING_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -423,18 +428,153 @@ export class OrderRepository {
 
       return payment ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_FAIL_PENDING_PAYMENT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
   // ========================================
   // ? ORDER LISTING METHODS
   // ========================================
+  async findOrderDetails(
+    input: FindOrderDetailsRepoInput,
+  ): Promise<FindOrderDetailsRepoResult> {
+    try {
+      const [order] = await this.database.client
+        .select({
+          id: orders.id,
+          orderNumber: orders.orderNumber,
+          tokenNumber: orders.tokenNumber,
+          branchId: orders.branchId,
+          branchName: branches.name,
+          branchTimezone: branchSettings.timezone,
+          businessDate: businessDays.businessDate,
+          deviceName: devices.name,
+          orderType: orders.orderType,
+          orderSource: orders.orderSource,
+          orderStatus: orders.orderStatus,
+          paymentStatus: orders.paymentStatus,
+          paymentMethod: orders.paymentMethod,
+          isPayAtCounter: orders.isPayAtCounter,
+          currencyCode: orders.currencyCode,
+          subtotalAmount: orders.subtotalAmount,
+          takeawayChargeAmount: orders.takeawayChargeAmount,
+          discountAmount: orders.discountAmount,
+          amountBeforeTax: orders.amountBeforeTax,
+          taxAmount: orders.taxAmount,
+          isTaxInclusive: orders.isTaxInclusive,
+          totalAmount: orders.totalAmount,
+          notes: orders.notes,
+          cancellationReason: orders.cancellationReason,
+          createdAt: orders.createdAt,
+          placedAt: orders.placedAt,
+          preparingAt: orders.preparingAt,
+          readyAt: orders.readyAt,
+          completedAt: orders.completedAt,
+          cancelledAt: orders.cancelledAt,
+          createdBy: { id: createdByUser.id, name: createdByUser.name },
+        })
+        .from(orders)
+        .innerJoin(branches, eq(branches.id, orders.branchId))
+        .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
+        .leftJoin(branchSettings, eq(branchSettings.branchId, orders.branchId))
+        .leftJoin(devices, eq(devices.id, orders.deviceId))
+        .leftJoin(createdByUser, eq(createdByUser.id, orders.createdBy))
+        .where(
+          and(
+            eq(orders.id, input.id),
+            eq(orders.organizationId, input.organizationId),
+            input.branchId ? eq(orders.branchId, input.branchId) : undefined,
+          ),
+        )
+        .limit(1);
+
+      if (!order) return null;
+
+      const [items, modifiers, taxes, payments] = await Promise.all([
+        this.database.client
+          .select({
+            id: orderItems.id,
+            itemName: orderItems.itemName,
+            itemCode: orderItems.itemCode,
+            categoryName: orderItems.categoryName,
+            quantity: orderItems.quantity,
+            unitPrice: orderItems.unitPrice,
+            modifiersUnitAmount: orderItems.modifiersUnitAmount,
+            takeawayChargeAmount: orderItems.takeawayChargeAmount,
+            lineTotal: orderItems.lineTotal,
+            notes: orderItems.notes,
+          })
+          .from(orderItems)
+          .where(eq(orderItems.orderId, order.id))
+          .orderBy(asc(orderItems.displayOrder), asc(orderItems.createdAt)),
+        this.database.client
+          .select({
+            id: orderItemModifiers.id,
+            orderItemId: orderItemModifiers.orderItemId,
+            modifierName: orderItemModifiers.modifierName,
+            optionName: orderItemModifiers.optionName,
+            optionPrice: orderItemModifiers.optionPrice,
+          })
+          .from(orderItemModifiers)
+          .innerJoin(
+            orderItems,
+            eq(orderItems.id, orderItemModifiers.orderItemId),
+          )
+          .where(eq(orderItems.orderId, order.id))
+          .orderBy(asc(orderItemModifiers.createdAt)),
+        this.database.client
+          .select({
+            id: orderTaxes.id,
+            taxName: orderTaxes.taxName,
+            taxRate: orderTaxes.taxRate,
+            taxAmount: orderTaxes.taxAmount,
+          })
+          .from(orderTaxes)
+          .where(eq(orderTaxes.orderId, order.id))
+          .orderBy(asc(orderTaxes.createdAt)),
+        this.database.client
+          .select({
+            id: orderPayments.id,
+            paymentMethod: orderPayments.paymentMethod,
+            paymentStatus: orderPayments.paymentStatus,
+            amount: orderPayments.amount,
+            providerSlug: orderPayments.providerSlug,
+            providerTransactionId: orderPayments.providerTransactionId,
+            failureReason: orderPayments.failureReason,
+            initiatedAt: orderPayments.initiatedAt,
+            completedAt: orderPayments.completedAt,
+            collectedBy: {
+              id: collectedByUser.id,
+              name: collectedByUser.name,
+            },
+          })
+          .from(orderPayments)
+          .leftJoin(
+            collectedByUser,
+            eq(collectedByUser.id, orderPayments.collectedBy),
+          )
+          .where(eq(orderPayments.orderId, order.id))
+          .orderBy(asc(orderPayments.initiatedAt)),
+      ]);
+
+      return {
+        ...order,
+        items: items.map((item) => ({
+          ...item,
+          modifiers: modifiers
+            .filter((modifier) => modifier.orderItemId === item.id)
+            .map(({ orderItemId: _orderItemId, ...modifier }) => modifier),
+        })),
+        taxes,
+        payments,
+      };
+    } catch (error) {
+      logger.error("[ORDER_FIND_ORDER_DETAILS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
   async findOrders(input: FindOrdersRepoInput): Promise<FindOrdersRepoResult> {
     try {
       const conditions: (SQL | undefined)[] = [
@@ -460,11 +600,23 @@ export class OrderRepository {
       if (input.orderType !== undefined) {
         conditions.push(eq(orders.orderType, input.orderType));
       }
-      if (input.createdFrom) {
-        conditions.push(gte(orders.createdAt, input.createdFrom));
-      }
-      if (input.createdTo) {
-        conditions.push(lte(orders.createdAt, input.createdTo));
+      if (input.dateField === OrderDateFilterEnum.BUSINESS_DATE) {
+        if (input.dateFrom) {
+          conditions.push(gte(businessDays.businessDate, input.dateFrom));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(businessDays.businessDate, input.dateTo));
+        }
+      } else {
+        const dateColumn =
+          ORDER_DATE_COLUMNS[input.dateField ?? OrderDateFilterEnum.CREATED_AT];
+
+        if (input.dateFrom) {
+          conditions.push(gte(dateColumn, new Date(input.dateFrom)));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(dateColumn, new Date(input.dateTo)));
+        }
       }
       if (input.search) {
         const tokenMatch = /^#?(\d+)$/.exec(input.search);
@@ -485,7 +637,9 @@ export class OrderRepository {
           ? orders.orderNumber
           : input.sortBy === "totalAmount"
             ? orders.totalAmount
-            : orders.createdAt;
+            : input.sortBy === "businessDate"
+              ? businessDays.businessDate
+              : orders.createdAt;
 
       const [rows, [totalRow]] = await Promise.all([
         this.database.client
@@ -496,6 +650,7 @@ export class OrderRepository {
             branchId: orders.branchId,
             branchName: branches.name,
             branchTimezone: branchSettings.timezone,
+            businessDate: businessDays.businessDate,
             orderType: orders.orderType,
             orderSource: orders.orderSource,
             orderStatus: orders.orderStatus,
@@ -512,12 +667,80 @@ export class OrderRepository {
           })
           .from(orders)
           .innerJoin(branches, eq(branches.id, orders.branchId))
+          .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
           .leftJoin(
             branchSettings,
             eq(branchSettings.branchId, orders.branchId),
           )
           .where(condition)
-          .orderBy(orderFn(sortColumn), desc(orders.id))
+          .orderBy(
+            orderFn(sortColumn),
+            orderFn(orders.createdAt),
+            desc(orders.id),
+          )
+          .limit(input.limit)
+          .offset((input.page - 1) * input.limit),
+        this.database.client
+          .select({ count: count() })
+          .from(orders)
+          .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
+          .where(condition),
+      ]);
+
+      return { orders: rows, total: Number(totalRow?.count ?? 0) };
+    } catch (error) {
+      logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findPendingCounterOrders(
+    input: FindPendingCounterOrdersRepoInput,
+  ): Promise<FindPendingCounterOrdersRepoResult> {
+    try {
+      const conditions: (SQL | undefined)[] = [
+        eq(orders.businessDayId, input.businessDayId),
+        eq(orders.isPayAtCounter, true),
+        eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+      ];
+
+      if (input.search) {
+        const tokenMatch = /^#?(\d+)$/.exec(input.search);
+        conditions.push(
+          or(
+            ilike(orders.orderNumber, `%${input.search}%`),
+            tokenMatch
+              ? eq(orders.tokenNumber, Number(tokenMatch[1]))
+              : undefined,
+          ),
+        );
+      }
+
+      const condition = and(...conditions);
+
+      const [rows, [totalRow]] = await Promise.all([
+        this.database.client
+          .select({
+            id: orders.id,
+            orderNumber: orders.orderNumber,
+            tokenNumber: orders.tokenNumber,
+            orderType: orders.orderType,
+            currencyCode: orders.currencyCode,
+            totalAmount: orders.totalAmount,
+            itemCount: sql<number>`(
+              select coalesce(sum(${orderItems.quantity}), 0)::int
+              from ${orderItems}
+              where ${orderItems.orderId} = ${orders}.${sql.identifier(orders.id.name)}
+            )`,
+            createdAt: orders.createdAt,
+          })
+          .from(orders)
+          .where(condition)
+          .orderBy(
+            asc(orders.tokenNumber),
+            asc(orders.createdAt),
+            asc(orders.id),
+          )
           .limit(input.limit)
           .offset((input.page - 1) * input.limit),
         this.database.client
@@ -528,12 +751,54 @@ export class OrderRepository {
 
       return { orders: rows, total: Number(totalRow?.count ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
-      logger.error("[ORDER_FIND_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
+      logger.error("[ORDER_FIND_PENDING_COUNTER_ORDERS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async cancelUnpaidCounterOrder(
+    input: CancelUnpaidCounterOrderRepoInput,
+  ): Promise<CancelUnpaidCounterOrderRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const now = new Date();
+
+        const [cancelledOrder] = await tx
+          .update(orders)
+          .set({
+            orderStatus: OrderStatusEnum.CANCELLED,
+            paymentStatus: OrderPaymentStatusEnum.CANCELLED,
+            cancelledAt: now,
+            cancellationReason: input.reason,
+            shiftId: input.shiftId,
+            updatedAt: now,
+            updatedBy: input.cancelledBy,
+          })
+          .where(
+            and(
+              eq(orders.id, input.id),
+              eq(orders.branchId, input.branchId),
+              eq(orders.isPayAtCounter, true),
+              eq(orders.orderStatus, OrderStatusEnum.PENDING_PAYMENT),
+            ),
+          )
+          .returning();
+
+        if (!cancelledOrder) return null;
+
+        await tx.insert(orderStatusLogs).values({
+          orderId: cancelledOrder.id,
+          fromStatus: OrderStatusEnum.PENDING_PAYMENT,
+          toStatus: OrderStatusEnum.CANCELLED,
+          note: input.reason,
+          changedBy: input.cancelledBy,
+        });
+
+        return cancelledOrder;
       });
+    } catch (error) {
+      logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDER_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -576,12 +841,141 @@ export class OrderRepository {
         return cancelledOrders.length;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  // ========================================
+  // ? KDS ORDER METHODS
+  // ========================================
+  async findLiveOrders(
+    input: FindLiveOrdersRepoInput,
+  ): Promise<FindLiveOrdersRepoResult> {
+    try {
+      const fields = {
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        tokenNumber: orders.tokenNumber,
+        orderType: orders.orderType,
+        orderSource: orders.orderSource,
+        orderStatus: orders.orderStatus,
+        placedAt: orders.placedAt,
+        preparingAt: orders.preparingAt,
+        readyAt: orders.readyAt,
+        completedAt: orders.completedAt,
+      };
+
+      const [activeRows, completedRows] = await Promise.all([
+        this.database.client
+          .select(fields)
+          .from(orders)
+          .where(
+            and(
+              eq(orders.businessDayId, input.businessDayId),
+              inArray(orders.orderStatus, input.activeStatuses),
+            ),
+          )
+          .orderBy(asc(orders.placedAt), asc(orders.tokenNumber)),
+        input.completedLimit > 0
+          ? this.database.client
+              .select(fields)
+              .from(orders)
+              .where(
+                and(
+                  eq(orders.businessDayId, input.businessDayId),
+                  eq(orders.orderStatus, OrderStatusEnum.COMPLETED),
+                ),
+              )
+              .orderBy(desc(orders.completedAt))
+              .limit(input.completedLimit)
+          : [],
+      ]);
+      const rows = [...activeRows, ...completedRows];
+
+      if (rows.length === 0) return [];
+
+      const orderIds = rows.map((row) => row.id);
+
+      const [items, modifiers] = await Promise.all([
+        this.database.client
+          .select({
+            id: orderItems.id,
+            orderId: orderItems.orderId,
+            itemName: orderItems.itemName,
+            quantity: orderItems.quantity,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds))
+          .orderBy(asc(orderItems.displayOrder), asc(orderItems.createdAt)),
+        this.database.client
+          .select({
+            id: orderItemModifiers.id,
+            orderItemId: orderItemModifiers.orderItemId,
+            modifierName: orderItemModifiers.modifierName,
+            optionName: orderItemModifiers.optionName,
+          })
+          .from(orderItemModifiers)
+          .innerJoin(
+            orderItems,
+            eq(orderItems.id, orderItemModifiers.orderItemId),
+          )
+          .where(inArray(orderItems.orderId, orderIds))
+          .orderBy(asc(orderItemModifiers.createdAt)),
+      ]);
+
+      return rows.map((row) => ({
+        ...row,
+        items: items
+          .filter((item) => item.orderId === row.id)
+          .map(({ orderId: _orderId, ...item }) => ({
+            ...item,
+            modifiers: modifiers
+              .filter((modifier) => modifier.orderItemId === item.id)
+              .map(({ orderItemId: _orderItemId, ...modifier }) => modifier),
+          })),
+      }));
+    } catch (error) {
+      logger.error("[ORDER_FIND_LIVE_ORDERS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  /** Moves an order between statuses; null when it was no longer in fromStatus. */
+  async changeOrderStatus(
+    input: ChangeOrderStatusRepoInput,
+  ): Promise<ChangeOrderStatusRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [order] = await tx
+          .update(orders)
+          .set({
+            ...input.timestamps,
+            orderStatus: input.toStatus,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(orders.id, input.id),
+              eq(orders.orderStatus, input.fromStatus),
+            ),
+          )
+          .returning();
+
+        if (!order) return null;
+
+        await tx.insert(orderStatusLogs).values({
+          orderId: order.id,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+          changedByDeviceId: input.changedByDeviceId,
+        });
+
+        return order;
       });
+    } catch (error) {
+      logger.error("[ORDER_CHANGE_ORDER_STATUS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -608,14 +1002,10 @@ export class OrderRepository {
         count: Number(row.count),
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[ORDER_COUNT_BUSINESS_DAY_ORDERS_BY_STATUS_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

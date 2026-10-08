@@ -1,12 +1,26 @@
 import * as yup from "yup";
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { OrderDateFilterEnum } from "../../shared/enums/order/order-date-filter.enum";
 import { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
-import { dateIsAfterRef } from "../../shared/validators/date-range.validator";
 import { paginationQuerySchema } from "../../shared/validators/pagination.validator";
 import { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
 import { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
+
+const BUSINESS_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The business date is a calendar day; every other order date is a moment in time. */
+const isValidOrderDate = (
+  value: string | undefined,
+  dateField?: OrderDateFilterEnum,
+): boolean => {
+  if (!value) return true;
+
+  return dateField === OrderDateFilterEnum.BUSINESS_DATE
+    ? BUSINESS_DATE_PATTERN.test(value)
+    : !Number.isNaN(Date.parse(value));
+};
 
 export class OrderValidator {
   static createDeviceOrder = yup
@@ -58,12 +72,79 @@ export class OrderValidator {
     })
     .noUnknown();
 
+  static orderIdParams = yup
+    .object({
+      id: yup
+        .string()
+        .uuid("Invalid order id")
+        .required("Order ID is required"),
+    })
+    .noUnknown();
+
+  static getPendingPaymentOrdersQuery = paginationQuerySchema
+    .shape({
+      search: yup.string().trim().max(100).optional(),
+    })
+    .noUnknown();
+
+  static collectPendingPayment = yup
+    .object({
+      paymentMethod: numericEnumValidator(
+        TenantPaymentMethodEnum,
+        "Payment method",
+      ).required("Payment method is required"),
+    })
+    .noUnknown();
+
+  static changeKdsOrderStatus = yup
+    .object({
+      orderStatus: numericEnumValidator(OrderStatusEnum, "Order status", {
+        exclude: [
+          OrderStatusEnum.PENDING_PAYMENT,
+          OrderStatusEnum.PLACED,
+          OrderStatusEnum.CANCELLED,
+        ],
+      }).required("Order status is required"),
+    })
+    .noUnknown();
+
   static getOrdersQuery = paginationQuerySchema
     .shape({
       search: yup.string().trim().max(100).optional(),
       branchId: yup.string().uuid("Invalid branch id").optional(),
-      createdFrom: yup.date().typeError("Invalid start date").optional(),
-      createdTo: dateIsAfterRef("createdFrom").optional(),
+      dateField: yup
+        .string()
+        .oneOf(Object.values(OrderDateFilterEnum), "Invalid date field")
+        .optional(),
+      dateFrom: yup
+        .string()
+        .trim()
+        .test("is-valid-date", "Invalid start date", function (value) {
+          return isValidOrderDate(value, this.parent.dateField);
+        })
+        .optional(),
+      dateTo: yup
+        .string()
+        .trim()
+        .test("is-valid-date", "Invalid end date", function (value) {
+          return isValidOrderDate(value, this.parent.dateField);
+        })
+        .test(
+          "is-on-or-after-start",
+          "End date cannot be before start date",
+          function (value) {
+            const { dateField, dateFrom } = this.parent as {
+              dateField?: OrderDateFilterEnum;
+              dateFrom?: string;
+            };
+            if (!value || !dateFrom) return true;
+
+            return dateField === OrderDateFilterEnum.BUSINESS_DATE
+              ? value >= dateFrom
+              : new Date(value) >= new Date(dateFrom);
+          },
+        )
+        .optional(),
       orderStatus: numericEnumValidator(
         OrderStatusEnum,
         "Order status",
@@ -80,7 +161,7 @@ export class OrderValidator {
       sortBy: yup
         .string()
         .oneOf(
-          ["createdAt", "orderNumber", "totalAmount"],
+          ["createdAt", "businessDate", "orderNumber", "totalAmount"],
           "Invalid sort field",
         )
         .optional(),

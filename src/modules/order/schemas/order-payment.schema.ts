@@ -15,6 +15,7 @@ import { devices } from "../../device/device.schema";
 import { paymentProviders } from "../../finance/schemas/payment-provider.schema";
 import { tenantPaymentConfigs } from "../../finance/schemas/tenant-payment-config.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
+import { staffShifts } from "../../shift/schemas/staff-shift.schema";
 import { users } from "../../user/schemas/user.schema";
 import { orders } from "./order.schema";
 
@@ -56,7 +57,8 @@ export const orderPayments = pgTable(
       .notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }),
-    collectedBy: uuid("collected_by").references((): AnyPgColumn => users.id), // staff who accepted CASH
+    collectedBy: uuid("collected_by").references((): AnyPgColumn => users.id), // staff who took the payment on a counter device
+    shiftId: uuid("shift_id").references((): AnyPgColumn => staffShifts.id), // counter shift the payment was taken in
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -66,6 +68,7 @@ export const orderPayments = pgTable(
   },
   (table) => [
     index("order_payments_order_idx").on(table.orderId),
+    index("order_payments_shift_idx").on(table.shiftId),
     index("order_payments_provider_transaction_idx").on(
       table.paymentProviderId,
       table.providerTransactionId,

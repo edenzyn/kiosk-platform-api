@@ -3,45 +3,46 @@ import asyncHandler from "express-async-handler";
 import { container } from "../../../config/container";
 import { accessMiddleware } from "../../../middleware/access.middleware";
 import { UserPermissions } from "../../../shared/enums/rbac/user-permission.enum";
-import type { PaymentController } from "../controllers/payment.controller";
+import type { PaymentProviderController } from "../controllers/payment-provider.controller";
 
-const userPaymentRouter = Router();
-const paymentController =
-  container.resolve<PaymentController>("paymentController");
+const userPaymentProviderRouter = Router();
+const paymentProviderController = container.resolve<PaymentProviderController>(
+  "paymentProviderController",
+);
 
-userPaymentRouter
+userPaymentProviderRouter
   .route("/")
   .get(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    asyncHandler(paymentController.getTenantPaymentConfigs),
+    asyncHandler(paymentProviderController.getTenantPaymentConfigs),
   )
   .put(
     accessMiddleware({
       organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
       branch: [UserPermissions.BRANCH_UPDATE],
     }),
-    asyncHandler(paymentController.saveTenantPaymentConfig),
+    asyncHandler(paymentProviderController.saveTenantPaymentConfig),
   );
 
-userPaymentRouter.put(
+userPaymentProviderRouter.put(
   "/cash",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
     branch: [UserPermissions.BRANCH_UPDATE],
   }),
-  asyncHandler(paymentController.saveCashPaymentConfig),
+  asyncHandler(paymentProviderController.saveCashPaymentConfig),
 );
 
-userPaymentRouter.post(
+userPaymentProviderRouter.post(
   "/test",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_BRANCH_WRITE],
     branch: [UserPermissions.BRANCH_UPDATE],
   }),
-  asyncHandler(paymentController.testTenantPaymentConfig),
+  asyncHandler(paymentProviderController.testTenantPaymentConfig),
 );
 
-export { userPaymentRouter };
+export { userPaymentProviderRouter };

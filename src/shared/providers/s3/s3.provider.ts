@@ -8,9 +8,8 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../constants/http-status-codes.constants";
 import { ErrorCodes } from "../../enums/core/error-codes.enum";
-import { AppError } from "../../errors/app-error";
+import { ServiceUnavailableError } from "../../errors/service-unavailable-error";
 
 export interface UploadObjectInput {
   key: string;
@@ -56,8 +55,7 @@ export class S3Provider {
         }),
       );
     } catch (error) {
-      throw new AppError("Failed to upload file to storage", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to upload file to storage", {
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
       });
@@ -81,8 +79,7 @@ export class S3Provider {
         expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
       };
     } catch (error) {
-      throw new AppError("Failed to generate upload URL", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to generate upload URL", {
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
       });
@@ -107,8 +104,7 @@ export class S3Provider {
         expiresIn: env.S3_PRESIGNED_URL_EXPIRES_IN_SECONDS,
       };
     } catch (error) {
-      throw new AppError("Failed to generate download URL", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to generate download URL", {
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
       });
@@ -133,8 +129,7 @@ export class S3Provider {
         return { exists: false, contentLength: 0 };
       }
 
-      throw new AppError("Failed to verify uploaded file", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to verify uploaded file", {
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
       });
@@ -150,8 +145,7 @@ export class S3Provider {
         }),
       );
     } catch (error) {
-      throw new AppError("Failed to delete file from storage", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to delete file from storage", {
         code: ErrorCodes.STORAGE_PROVIDER_ERROR,
         details: error,
       });

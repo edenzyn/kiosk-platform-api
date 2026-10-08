@@ -3,4 +3,5 @@ export enum CustomRequestHeaders {
   ORGANIZATION_ID = "X-O-Id",
   BRANCH_ID = "X-B-Id",
   DEVICE_ADMIN_TOKEN = "X-D-Admin",
+  DEVICE_STAFF_TOKEN = "X-D-Staff",
 }

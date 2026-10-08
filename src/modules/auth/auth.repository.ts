@@ -53,9 +53,7 @@ import {
   type CreateOneTimeTokenEntity,
   type OneTimeTokenEntity,
 } from "./schemas/one-time-token.schema";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class AuthRepository {
@@ -79,12 +77,8 @@ export class AuthRepository {
         ttlSeconds,
       );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH__DENYLIST_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -94,12 +88,8 @@ export class AuthRepository {
     try {
       await this.database.client.insert(authSessions).values(input.data);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_CREATE_REFRESH_TOKEN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -126,12 +116,8 @@ export class AuthRepository {
 
       return await Boolean(updated);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_ROTATE_REFRESH_TOKEN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -154,12 +140,8 @@ export class AuthRepository {
 
       if (revoked) await this._denylistSession(revoked.id);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_REFRESH_TOKEN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -175,12 +157,8 @@ export class AuthRepository {
 
       return await deletedRows.length;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REMOVE_AUTH_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -200,12 +178,8 @@ export class AuthRepository {
         )
         .orderBy(asc(authSessions.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_LIST_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -228,12 +202,8 @@ export class AuthRepository {
       if (revoked) await this._denylistSession(revoked.id);
       return await Boolean(revoked);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -260,12 +230,8 @@ export class AuthRepository {
       );
       return await revokedRows.length;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_OTHER_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -285,12 +251,8 @@ export class AuthRepository {
         )
         .orderBy(asc(authSessions.createdAt));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_LIST_DEVICE_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -313,12 +275,8 @@ export class AuthRepository {
 
       return session ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_FIND_ACTIVE_DEVICE_SESSION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -342,12 +300,8 @@ export class AuthRepository {
       );
       return revokedRows.length;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_DEVICE_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -384,12 +338,8 @@ export class AuthRepository {
 
       await Promise.all(oldest.map((row) => this._denylistSession(row.id)));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_REVOKE_OLDEST_SESSIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -410,12 +360,8 @@ export class AuthRepository {
       }
       return await created;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_CREATE_ONE_TIME_TOKEN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -440,12 +386,8 @@ export class AuthRepository {
 
       return await record;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_FIND_ACTIVE_ONE_TIME_TOKEN_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -466,12 +408,8 @@ export class AuthRepository {
 
       return (await row?.value) ?? 0;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_COUNT_ONE_TIME_TOKEN_GENERATIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -504,12 +442,8 @@ export class AuthRepository {
         )
         .returning();
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_UPDATE_ONE_TIME_TOKENS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -525,12 +459,8 @@ export class AuthRepository {
 
       return await rows.length;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[AUTH_DELETE_ONE_TIME_TOKENS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

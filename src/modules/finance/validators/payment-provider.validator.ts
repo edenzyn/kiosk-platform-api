@@ -55,7 +55,7 @@ const numericField = (label: string) =>
     .max(20, `${label} cannot exceed 20 digits`)
     .required(`${label} is required`);
 
-export class PaymentValidator {
+export class PaymentProviderValidator {
   static getPaymentProvidersQuery = paginationQuerySchema
     .shape({
       search: yup.string().optional().trim(),

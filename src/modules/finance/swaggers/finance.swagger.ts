@@ -1,5 +1,5 @@
-import { paymentSwaggerPaths } from "./payment.swagger";
+import { paymentProviderSwaggerPaths } from "./payment-provider.swagger";
 
 export const financeSwaggerPaths: Record<string, unknown> = {
-  ...paymentSwaggerPaths,
+  ...paymentProviderSwaggerPaths,
 };

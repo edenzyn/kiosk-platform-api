@@ -1,8 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { env } from "../../../../config/env";
-import { HttpStatusCodes } from "../../../constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../enums/core/error-codes.enum";
-import { AppError } from "../../../errors/app-error";
+import { BadRequestError } from "../../../errors/bad-request-error";
+import { ServiceUnavailableError } from "../../../errors/service-unavailable-error";
 import { hashSha256 } from "../../../utils/core/crypto.helper";
 import { toMinorUnits } from "../../../utils/finance/currency.helper";
 import { PHONEPE_SUPPORTED_CURRENCY_CODES } from "./phonepe.constants";
@@ -33,8 +33,7 @@ export class PhonePeProvider {
         }),
       });
     } catch {
-      throw new AppError("Couldn't reach PhonePe", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Couldn't reach PhonePe", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
@@ -47,8 +46,7 @@ export class PhonePeProvider {
         "message" in body && body.message
           ? body.message
           : "PhonePe rejected the credentials";
-      throw new AppError(`${message}`, {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError(`${message}`, {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
@@ -64,12 +62,8 @@ export class PhonePeProvider {
     input: CreatePhonePeQrPaymentInput,
   ): Promise<CreatePhonePeQrPaymentResult> {
     if (!PHONEPE_SUPPORTED_CURRENCY_CODES.includes(input.currencyCode)) {
-      throw new AppError(
+      throw new BadRequestError(
         `PhonePe doesn't support payments in ${input.currencyCode}`,
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -98,8 +92,7 @@ export class PhonePeProvider {
         body: JSON.stringify(requestPayload),
       });
     } catch {
-      throw new AppError("Couldn't reach PhonePe", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Couldn't reach PhonePe", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }
@@ -112,8 +105,7 @@ export class PhonePeProvider {
         "message" in body && body.message
           ? body.message
           : "PhonePe couldn't create the QR payment";
-      throw new AppError(message, {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError(message, {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
       });
     }

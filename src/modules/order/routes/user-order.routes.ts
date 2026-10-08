@@ -29,4 +29,13 @@ userOrderRouter.get(
   asyncHandler(orderController.getLiveOrderCounts),
 );
 
+userOrderRouter.get(
+  "/:id",
+  accessMiddleware({
+    organization: [...ORGANIZATION_ORDER_READ_PERMS],
+    branch: [...BRANCH_ORDER_READ_WRITE_PERMS],
+  }),
+  asyncHandler(orderController.getOrderDetails),
+);
+
 export { userOrderRouter };

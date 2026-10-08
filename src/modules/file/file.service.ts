@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
 import type { FileRepository } from "./file.repository";
 import type {
@@ -54,16 +53,14 @@ export class FileService {
     );
 
     if (!exists) {
-      throw new AppError("Uploaded image was not found in storage", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Uploaded image was not found in storage", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
     if (contentLength > maxSizeBytes) {
       await this.deleteBrandLogo(logo);
-      throw new AppError("Image is too large", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Image is too large", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -116,16 +113,14 @@ export class FileService {
     );
 
     if (!exists) {
-      throw new AppError("Uploaded image was not found in storage", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Uploaded image was not found in storage", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
     if (contentLength > maxSizeBytes) {
       await this.deleteMenuImage({ type, image });
-      throw new AppError("Image is too large", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Image is too large", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }

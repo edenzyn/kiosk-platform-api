@@ -1,11 +1,13 @@
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { SocketEventEnum } from "../../shared/enums/socket/socket-event.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ConflictError } from "../../shared/errors/conflict-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import type { RealtimeProvider } from "../../shared/providers/realtime/realtime.provider";
 import { formatDateInTimezone } from "../../shared/utils/core/date.helper";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { OrderRepository } from "../order/order.repository";
+import type { ShiftRepository } from "../shift/shift.repository";
 import type { BusinessDayRepository } from "./business-day.repository";
 import type {
   CloseBusinessDayServiceInput,
@@ -32,6 +34,7 @@ export class BusinessDayService {
     private readonly branchRepository: BranchRepository,
     private readonly realtimeProvider: RealtimeProvider,
     private readonly orderRepository: OrderRepository,
+    private readonly shiftRepository: ShiftRepository,
   ) {}
 
   // ========================================
@@ -43,10 +46,9 @@ export class BusinessDayService {
     const { branchId } = input.effectiveTenant;
 
     if (!branchId) {
-      throw new AppError("A branch must be selected to view its business day", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "A branch must be selected to view its business day",
+      );
     }
 
     const settings = await this.branchRepository.getOrCreateSettings(branchId);
@@ -87,10 +89,9 @@ export class BusinessDayService {
     const { organizationId, branchId } = effectiveTenant;
 
     if (!branchId) {
-      throw new AppError("A branch must be selected to open its business day", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "A branch must be selected to open its business day",
+      );
     }
 
     const settings = await this.branchRepository.getOrCreateSettings(branchId);
@@ -102,19 +103,13 @@ export class BusinessDayService {
     const openDay = await this.businessDayRepository.findOpenDay({ branchId });
 
     if (openDay?.businessDate === businessDate) {
-      throw new AppError("The business day is already open", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("The business day is already open");
     }
 
     if (openDay && !dto.closePreviousDay) {
-      throw new AppError(
+      throw new ConflictError(
         `The business day of ${openDay.businessDate} is still open. Close it before opening today.`,
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.PREVIOUS_BUSINESS_DAY_OPEN,
-        },
+        { code: ErrorCodes.PREVIOUS_BUSINESS_DAY_OPEN },
       );
     }
 
@@ -131,6 +126,11 @@ export class BusinessDayService {
         businessDayId: openDay.id,
         reason:
           "The business day was closed before the order was paid at the counter",
+      });
+      await this.shiftRepository.closeBusinessDayShifts({
+        businessDayId: openDay.id,
+        endedBy: user.id,
+        note: "Ended automatically when the business day was closed",
       });
     }
 
@@ -150,12 +150,8 @@ export class BusinessDayService {
     const { branchId } = effectiveTenant;
 
     if (!branchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "A branch must be selected to close its business day",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -168,8 +164,7 @@ export class BusinessDayService {
       : null;
 
     if (!closedDay) {
-      throw new AppError("There is no open business day to close", {
-        statusCode: HttpStatusCodes.CONFLICT,
+      throw new ConflictError("There is no open business day to close", {
         code: ErrorCodes.BAD_REQUEST,
       });
     }
@@ -178,6 +173,11 @@ export class BusinessDayService {
       businessDayId: closedDay.id,
       reason:
         "The business day was closed before the order was paid at the counter",
+    });
+    await this.shiftRepository.closeBusinessDayShifts({
+      businessDayId: closedDay.id,
+      endedBy: user.id,
+      note: "Ended automatically when the business day was closed",
     });
 
     this.realtimeProvider.emitToBranch(
@@ -196,19 +196,14 @@ export class BusinessDayService {
     const { branchId } = effectiveTenant;
 
     if (!branchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "A branch must be selected to pause or resume orders",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
     const openDay = await this.businessDayRepository.findOpenDay({ branchId });
     if (!openDay) {
-      throw new AppError("There is no open business day", {
-        statusCode: HttpStatusCodes.CONFLICT,
+      throw new ConflictError("There is no open business day", {
         code: ErrorCodes.BUSINESS_DAY_CLOSED,
       });
     }
@@ -220,12 +215,9 @@ export class BusinessDayService {
     });
 
     if (!updatedDay) {
-      throw new AppError(
+      throw new ConflictError(
         isPaused ? "Orders are already paused" : "Orders are not paused",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.BAD_REQUEST,
-        },
+        { code: ErrorCodes.BAD_REQUEST },
       );
     }
 
@@ -249,12 +241,8 @@ export class BusinessDayService {
     const limit = filters.limit || 10;
 
     if (!branchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "A branch must be selected to view its business days",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -294,10 +282,7 @@ export class BusinessDayService {
       : null;
 
     if (!day) {
-      throw new AppError("Business day not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Business day not found");
     }
 
     const logs = await this.businessDayRepository.findDayLogs({
@@ -335,15 +320,13 @@ export class BusinessDayService {
     });
 
     if (!openDay) {
-      throw new AppError("The branch is closed for orders right now", {
-        statusCode: HttpStatusCodes.CONFLICT,
+      throw new ConflictError("The branch is closed for orders right now", {
         code: ErrorCodes.BUSINESS_DAY_CLOSED,
       });
     }
 
     if (openDay.isOrderingPaused) {
-      throw new AppError("The branch is not taking orders right now", {
-        statusCode: HttpStatusCodes.CONFLICT,
+      throw new ConflictError("The branch is not taking orders right now", {
         code: ErrorCodes.ORDERS_PAUSED,
       });
     }

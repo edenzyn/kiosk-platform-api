@@ -54,9 +54,7 @@ import type {
   UpdateUserSettingsRepoInput,
   UpdateUserSettingsRepoResult,
 } from "./user.types";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class UserRepository {
@@ -107,12 +105,8 @@ export class UserRepository {
 
       return await user;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -218,12 +212,8 @@ export class UserRepository {
       const rows = await query;
       return await { users: rows as UserResponseDto[], total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_BY_TENANT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -345,12 +335,8 @@ export class UserRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_USERS_BY_ROLE_ID_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -366,12 +352,8 @@ export class UserRepository {
       }
       return await created;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_CREATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -457,12 +439,8 @@ export class UserRepository {
       const resellers = await query;
       return await { resellers, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_RESELLERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -482,12 +460,8 @@ export class UserRepository {
       }
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -539,12 +513,8 @@ export class UserRepository {
 
       return await invitation;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_ONE_INVITATION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -651,12 +621,8 @@ export class UserRepository {
       const rows = await query;
       return await { invitations: rows, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_FIND_INVITATIONS_BY_TENANT_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -674,12 +640,8 @@ export class UserRepository {
       }
       return await created;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_CREATE_INVITATION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -699,12 +661,8 @@ export class UserRepository {
 
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_UPDATE_INVITATION_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -767,12 +725,8 @@ export class UserRepository {
       if (!settings) throw new Error("Failed to get or create user settings");
       return await settings;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_GET_OR_CREATE_SETTINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -793,12 +747,8 @@ export class UserRepository {
       if (!updated) throw new Error("Failed to update user settings");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_UPDATE_SETTINGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -822,12 +772,8 @@ export class UserRepository {
       if (!updated) throw new Error("Failed to update two-factor settings");
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[USER_UPDATE_TWO_FACTOR_AUTH_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

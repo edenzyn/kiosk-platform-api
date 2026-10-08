@@ -1,14 +1,24 @@
+import type { DeviceStaffTokenDto } from "../../shared/dtos/device-staff-token.dto";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
 import type { TenantPaymentMethodEnum } from "../../shared/enums/finance/tenant-payment-method.enum";
+import type { OrderDateFilterEnum } from "../../shared/enums/order/order-date-filter.enum";
 import type { OrderPaymentStatusEnum } from "../../shared/enums/order/order-payment-status.enum";
 import type { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import type {
+  GetLiveOrdersResponseDto,
+  LiveOrderDto,
+} from "./dtos/get-live-orders.dtos";
+import type {
   GetLiveOrderCountsQueryDto,
   GetLiveOrderCountsResponseDto,
 } from "./dtos/get-live-order-counts.dtos";
+import type {
+  GetOrderDetailsResponseDto,
+  OrderDetailsDto,
+} from "./dtos/get-order-details.dtos";
 import type {
   GetOrdersQueryDto,
   GetOrdersResponseDto,
@@ -16,9 +26,19 @@ import type {
 } from "./dtos/get-orders.dtos";
 import type { PhonePeWebhookPayload } from "../../shared/providers/finance/phonepe/phonepe.types";
 import type {
+  ChangeKdsOrderStatusBodyDto,
+  ChangeKdsOrderStatusResponseDto,
+} from "./dtos/change-kds-order-status.dtos";
+import type { CollectPendingPaymentBodyDto } from "./dtos/collect-pending-payment.dtos";
+import type {
   CreateDeviceOrderBodyDto,
   CreateDeviceOrderResponseDto,
 } from "./dtos/create-device-order.dtos";
+import type {
+  GetPendingPaymentOrdersQueryDto,
+  GetPendingPaymentOrdersResponseDto,
+  PendingPaymentOrderDto,
+} from "./dtos/get-pending-payment-orders.dtos";
 import type { CreateOrderItemModifierEntity } from "./schemas/order-item-modifier.schema";
 import type { CreateOrderItemEntity } from "./schemas/order-item.schema";
 import type {
@@ -33,19 +53,77 @@ import type { CreateOrderTaxEntity } from "./schemas/order-tax.schema";
 // ========================================
 export interface CreateDeviceOrderServiceInput {
   device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
   dto: CreateDeviceOrderBodyDto;
 }
 export type CreateDeviceOrderServiceResult = CreateDeviceOrderResponseDto;
 
+export interface AssertPaymentMethodAvailableServiceInput {
+  device: DeviceTokenDto;
+  paymentMethod?: TenantPaymentMethodEnum;
+}
+
+export interface CreateOrderFromCartServiceInput extends CreateDeviceOrderServiceInput {
+  /** The counter shift placing the order; null on a kiosk. */
+  shiftId: string | null;
+}
+
+export interface ProcessOrderPaymentServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  order: OrderEntity;
+  paymentMethod?: TenantPaymentMethodEnum;
+  /** The counter shift taking the payment; null on a kiosk. */
+  shiftId: string | null;
+}
+
+export interface GetPendingPaymentOrdersServiceInput {
+  device: DeviceTokenDto;
+  filters: GetPendingPaymentOrdersQueryDto;
+}
+export type GetPendingPaymentOrdersServiceResult =
+  GetPendingPaymentOrdersResponseDto;
+
+export interface CollectPendingPaymentServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  orderId: string;
+  dto: CollectPendingPaymentBodyDto;
+}
+
+export interface CancelDeviceOrderServiceInput {
+  device: DeviceTokenDto;
+  staff?: DeviceStaffTokenDto;
+  orderId: string;
+}
+
 export interface HandlePhonePeWebhookServiceInput {
   body: PhonePeWebhookPayload;
 }
+
+export interface GetLiveOrdersServiceInput {
+  device: DeviceTokenDto;
+}
+export type GetLiveOrdersServiceResult = GetLiveOrdersResponseDto;
+
+export interface ChangeKdsOrderStatusServiceInput {
+  device: DeviceTokenDto;
+  orderId: string;
+  dto: ChangeKdsOrderStatusBodyDto;
+}
+export type ChangeKdsOrderStatusServiceResult = ChangeKdsOrderStatusResponseDto;
 
 export interface GetOrdersServiceInput {
   effectiveTenant: EffectiveTenant;
   filters: GetOrdersQueryDto;
 }
 export type GetOrdersServiceResult = GetOrdersResponseDto;
+
+export interface GetOrderDetailsServiceInput {
+  effectiveTenant: EffectiveTenant;
+  orderId: string;
+}
+export type GetOrderDetailsServiceResult = GetOrderDetailsResponseDto;
 
 export interface GetLiveOrderCountsServiceInput {
   effectiveTenant: EffectiveTenant;
@@ -61,6 +139,12 @@ export interface FindOrderByIdempotencyKeyRepoInput {
   idempotencyKey: string;
 }
 export type FindOrderByIdempotencyKeyRepoResult = OrderEntity | null;
+
+export interface FindOneOrderRepoInput {
+  id: string;
+  branchId: string;
+}
+export type FindOneOrderRepoResult = OrderEntity | null;
 
 export interface FindLatestOrderPaymentRepoInput {
   orderId: string;
@@ -107,8 +191,8 @@ export type FindOneOrderPaymentRepoResult = OrderPaymentEntity | null;
 
 export interface CompletePendingPaymentRepoInput {
   paymentId: string;
-  providerStatus: string;
-  responsePayload: unknown;
+  providerStatus?: string;
+  responsePayload?: unknown;
   completedAt: Date;
 }
 export interface CompletePendingPaymentRepoResult {
@@ -126,14 +210,27 @@ export interface FailPendingPaymentRepoInput {
 }
 export type FailPendingPaymentRepoResult = OrderPaymentEntity | null;
 
+export interface FindOrderDetailsRepoInput {
+  id: string;
+  organizationId: string;
+  branchId?: string;
+}
+/** The token is the raw number here; the service formats it. Null when the order is not found. */
+export type FindOrderDetailsRepoResult =
+  | (Omit<OrderDetailsDto, "tokenNumber"> & { tokenNumber: number | null })
+  | null;
+
 export interface FindOrdersRepoInput {
   organizationId: string;
   branchId?: string;
   page: number;
   limit: number;
   search?: string;
-  createdFrom?: Date;
-  createdTo?: Date;
+  /** Which date the range applies to; the created time when omitted. */
+  dateField?: OrderDateFilterEnum;
+  /** YYYY-MM-DD for the business date, an ISO date-time for every other field. */
+  dateFrom?: string;
+  dateTo?: string;
   /** When omitted, unpaid (PENDING_PAYMENT) orders are left out. */
   orderStatus?: OrderStatusEnum;
   paymentStatus?: OrderPaymentStatusEnum;
@@ -149,6 +246,27 @@ export interface FindOrdersRepoResult {
   orders: OrderListRow[];
   total: number;
 }
+
+export interface FindPendingCounterOrdersRepoInput {
+  businessDayId: string;
+  search?: string;
+  page: number;
+  limit: number;
+}
+export interface FindPendingCounterOrdersRepoResult {
+  orders: PendingPaymentOrderDto[];
+  total: number;
+}
+
+export interface CancelUnpaidCounterOrderRepoInput {
+  id: string;
+  branchId: string;
+  reason: string;
+  cancelledBy: string | null;
+  /** The counter shift cancelling the order. */
+  shiftId: string;
+}
+export type CancelUnpaidCounterOrderRepoResult = OrderEntity | null;
 
 export interface CancelUnpaidCounterOrdersRepoInput {
   businessDayId: string;
@@ -166,3 +284,26 @@ export type CountBusinessDayOrdersByStatusRepoResult = {
   orderStatus: OrderStatusEnum;
   count: number;
 }[];
+
+export interface FindLiveOrdersRepoInput {
+  businessDayId: string;
+  activeStatuses: OrderStatusEnum[];
+  /** How many of the latest completed orders to return with the active ones; 0 for none. */
+  completedLimit: number;
+}
+export type LiveOrderRow = Omit<LiveOrderDto, "tokenNumber"> & {
+  tokenNumber: number | null;
+};
+export type FindLiveOrdersRepoResult = LiveOrderRow[];
+
+export interface ChangeOrderStatusRepoInput {
+  id: string;
+  fromStatus: OrderStatusEnum;
+  toStatus: OrderStatusEnum;
+  /** The lifecycle timestamp this move sets. */
+  timestamps: Partial<
+    Pick<OrderEntity, "preparingAt" | "readyAt" | "completedAt">
+  >;
+  changedByDeviceId: string;
+}
+export type ChangeOrderStatusRepoResult = OrderEntity | null;

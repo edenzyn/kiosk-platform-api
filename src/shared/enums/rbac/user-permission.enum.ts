@@ -60,7 +60,7 @@ export enum UserPermissions {
 
   ORGANIZATION_DEVICE_READ = "organization:device:read",
   ORGANIZATION_DEVICE_WRITE = "organization:device:write",
-  ORGANIZATION_DEVICE_MANAGE = "organization:device:manage",
+  ORGANIZATION_DEVICE_ADMIN = "organization:device:admin",
 
   ORGANIZATION_MENU_READ = "organization:menu:read",
   ORGANIZATION_MENU_WRITE = "organization:menu:write",
@@ -95,7 +95,8 @@ export enum UserPermissions {
 
   BRANCH_DEVICE_READ = "branch:device:read",
   BRANCH_DEVICE_WRITE = "branch:device:write",
-  BRANCH_DEVICE_MANAGE = "branch:device:manage",
+  BRANCH_DEVICE_ADMIN = "branch:device:admin",
+  BRANCH_DEVICE_STAFF_COUNTER = "branch:device:staff:counter",
 
   BRANCH_MENU_READ = "branch:menu:read",
   BRANCH_MENU_WRITE = "branch:menu:write",
@@ -105,6 +106,9 @@ export enum UserPermissions {
 
   BRANCH_BUSINESS_DAY_READ = "branch:business-day:read",
   BRANCH_BUSINESS_DAY_WRITE = "branch:business-day:write",
+
+  BRANCH_SHIFT_READ = "branch:shift:read",
+  BRANCH_SHIFT_MANAGE = "branch:shift:manage",
 
   // ======================================================
   // Reseller

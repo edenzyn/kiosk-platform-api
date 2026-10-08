@@ -1,12 +1,13 @@
 import dayjs from "dayjs";
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseHistoryEventTypeEnum } from "../../../shared/enums/license/license-history-event-type.enum";
 import { LicenseHistoryTargetEntityTypeEnum } from "../../../shared/enums/license/license-history-target-entity-type.enum";
 import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.enum";
 import { UserTypeEnums } from "../../../shared/enums/user/user-type.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { ConflictError } from "../../../shared/errors/conflict-error";
+import { ForbiddenError } from "../../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import {
   decryptData,
   hashSha256,
@@ -57,9 +58,9 @@ export class LicenseService {
       deviceId,
     });
     if (activeLicense && activeLicense.id !== excludeLicenseId) {
-      throw new AppError("Device already has an active license assigned", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "Device already has an active license assigned",
+      );
     }
   }
 
@@ -109,9 +110,7 @@ export class LicenseService {
   ): Promise<AssignLicenseToBranchServiceResult> {
     const orgId = input.effectiveTenant.organizationId;
     if (!orgId) {
-      throw new AppError("Organization ID is required", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Organization ID is required");
     }
 
     const license = await this.licenseRepository.findOne({
@@ -120,15 +119,11 @@ export class LicenseService {
     });
 
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     if (license.branchId) {
-      throw new AppError("License is already assigned to a branch", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("License is already assigned to a branch");
     }
 
     const updated = await this.licenseRepository.update({
@@ -164,9 +159,7 @@ export class LicenseService {
   ): Promise<AssignLicenseToDeviceServiceResult> {
     const orgId = input.effectiveTenant.organizationId;
     if (!orgId) {
-      throw new AppError("Organization ID is required", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Organization ID is required");
     }
 
     const license = await this.licenseRepository.findOne({
@@ -175,15 +168,11 @@ export class LicenseService {
     });
 
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     if (license.deviceId) {
-      throw new AppError("License is already assigned to a device", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("License is already assigned to a device");
     }
 
     const device = await this.deviceRepository.findOne({
@@ -191,22 +180,18 @@ export class LicenseService {
       organizationId: orgId,
     });
     if (!device) {
-      throw new AppError("Device not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-      });
+      throw new NotFoundError("Device not found");
     }
 
     if (license.branchId && license.branchId !== device.branchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "This license was purchased for a different branch and cannot be assigned to this device.",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
     if (license.deviceType !== device.deviceType) {
-      throw new AppError(
+      throw new BadRequestError(
         "This license was purchased for a different device type and cannot be assigned to this device.",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
@@ -259,10 +244,7 @@ export class LicenseService {
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     const history = await this.licenseRepository.findHistory({
@@ -286,19 +268,14 @@ export class LicenseService {
     });
 
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     if (
       input.effectiveTenant.organizationId &&
       license.organizationId !== input.effectiveTenant.organizationId
     ) {
-      throw new AppError("Access denied to license", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Access denied to license");
     }
 
     const transactions =
@@ -362,10 +339,7 @@ export class LicenseService {
       resellerId,
     });
     if (!isOwned) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
   }
 
@@ -398,10 +372,7 @@ export class LicenseService {
     });
 
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     const transactions =
@@ -531,10 +502,7 @@ export class LicenseService {
       });
 
       if (!license) {
-        throw new AppError("License not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("License not found");
       }
 
       const { updated } = await this._evaluateAndUpdateLicenseStatus(license);
@@ -602,40 +570,28 @@ export class LicenseService {
     });
 
     if (!license) {
-      throw new AppError("Invalid license key. No such license found.", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invalid license key. No such license found.");
     }
 
     if (license.status === LicenseStatusEnum.ACTIVE || license.deviceId) {
-      throw new AppError(
+      throw new ConflictError(
         "This license key is already activated on another device.",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        },
       );
     }
 
     if (license.status === LicenseStatusEnum.REVOKED) {
-      throw new AppError("This license has been revoked.", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("This license has been revoked.");
     }
 
     if (license.branchId && license.branchId !== input.deviceBranchId) {
-      throw new AppError(
+      throw new BadRequestError(
         "This license was purchased for a different branch and cannot be activated on this device.",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
     if (license.deviceType !== input.deviceType) {
-      throw new AppError(
+      throw new BadRequestError(
         "This license was purchased for a different device type and cannot be activated on this device.",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 

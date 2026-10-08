@@ -48,6 +48,35 @@ export const DeviceValidator = {
         .required("Password or PIN is required"),
     })
     .noUnknown(),
+  staffLogin: yup
+    .object({
+      identity: yup
+        .string()
+        .trim()
+        .max(255, "Email or mobile number is too long")
+        .required("Email or mobile number is required"),
+      method: numericEnumValidator(
+        DeviceAdminAuthMethodEnum,
+        "Sign-in method",
+      ).required("Sign-in method is required"),
+      secret: yup
+        .string()
+        .max(255, "Password or PIN is too long")
+        .required("Password or PIN is required"),
+    })
+    .noUnknown(),
+  adminStaffLogin: yup
+    .object({
+      method: numericEnumValidator(
+        DeviceAdminAuthMethodEnum,
+        "Sign-in method",
+      ).required("Sign-in method is required"),
+      secret: yup
+        .string()
+        .max(255, "Password or PIN is too long")
+        .required("Password or PIN is required"),
+    })
+    .noUnknown(),
   mapOwnTerminal: yup
     .object({
       terminalId: yup

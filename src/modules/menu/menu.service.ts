@@ -1,9 +1,10 @@
 import { FILE_UPLOAD_CONFIG } from "../../shared/constants/file-upload.constants";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
 import { MenuImageTypeEnum } from "../../shared/enums/menu/menu-image-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { InternalServerError } from "../../shared/errors/internal-server-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
 import type { BranchRepository } from "../branch/branch.repository";
 import type { BranchEntity } from "../branch/schemas/branch.schema";
 import type { FileService } from "../file/file.service";
@@ -62,10 +63,9 @@ export class MenuService {
     const { data, user, effectiveTenant } = input;
 
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to create a category", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "A branch must be selected to create a category",
+      );
     }
 
     await this.fileService.finalizeMenuImage({
@@ -96,10 +96,7 @@ export class MenuService {
     const { effectiveTenant, filters = {} } = input;
 
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to view categories", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("A branch must be selected to view categories");
     }
 
     const page = filters.page || 1;
@@ -189,10 +186,7 @@ export class MenuService {
     const { data, user, effectiveTenant } = input;
 
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to create an item", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("A branch must be selected to create an item");
     }
 
     const category = await this.menuRepository.findOneCategory({
@@ -202,10 +196,7 @@ export class MenuService {
     });
 
     if (!category) {
-      throw new AppError("Category not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Category not found");
     }
 
     await this.fileService.finalizeMenuImage({
@@ -255,15 +246,13 @@ export class MenuService {
         contentType as (typeof config.acceptedTypes)[number],
       )
     ) {
-      throw new AppError("Unsupported or missing image content type", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Unsupported or missing image content type", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
 
     if (fileSize > config.maxSizeBytes) {
-      throw new AppError("Image is too large", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("Image is too large", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -277,10 +266,7 @@ export class MenuService {
     const { effectiveTenant, filters } = input;
 
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to view items", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("A branch must be selected to view items");
     }
 
     const page = filters.page || 1;
@@ -306,9 +292,7 @@ export class MenuService {
     ]);
 
     if (!market) {
-      throw new AppError("No market is configured for this branch", {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      });
+      throw new InternalServerError("No market is configured for this branch");
     }
 
     return {
@@ -343,10 +327,7 @@ export class MenuService {
     const item = await this.getItem(input);
 
     if (!item.isListed) {
-      throw new AppError("Item not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Item not found");
     }
 
     return item;
@@ -462,9 +443,7 @@ export class MenuService {
     ]);
 
     if (!market) {
-      throw new AppError("No market is configured for this branch", {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-      });
+      throw new InternalServerError("No market is configured for this branch");
     }
 
     return {
@@ -500,12 +479,8 @@ export class MenuService {
     const categories = data.categories.map((picked) => {
       const category = sourceCategories.find((c) => c.id === picked.id);
       if (!category)
-        throw new AppError(
+        throw new BadRequestError(
           "The source menu changed while you were picking. Reload and try again.",
-          {
-            statusCode: HttpStatusCodes.BAD_REQUEST,
-            code: ErrorCodes.BAD_REQUEST,
-          },
         );
 
       return {
@@ -515,12 +490,8 @@ export class MenuService {
         items: picked.items.map((pickedItem, index) => {
           const item = category.items.find((i) => i.id === pickedItem.id);
           if (!item)
-            throw new AppError(
+            throw new BadRequestError(
               "The source menu changed while you were picking. Reload and try again.",
-              {
-                statusCode: HttpStatusCodes.BAD_REQUEST,
-                code: ErrorCodes.BAD_REQUEST,
-              },
             );
 
           const { id: _id, modifiers, ...fields } = item;
@@ -606,10 +577,7 @@ export class MenuService {
     targetBranchId: string,
   ): Promise<BranchEntity> {
     if (sourceBranchId === targetBranchId) {
-      throw new AppError("Pick a different branch to clone from", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Pick a different branch to clone from");
     }
 
     const branch = await this.branchRepository.findOne({
@@ -618,10 +586,7 @@ export class MenuService {
     });
 
     if (!branch) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
     return branch;
   }
@@ -641,10 +606,7 @@ export class MenuService {
 
   private requireBranchId(effectiveTenant: EffectiveTenant): string {
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to manage the menu", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("A branch must be selected to manage the menu");
     }
     return effectiveTenant.branchId;
   }
@@ -660,10 +622,7 @@ export class MenuService {
     });
 
     if (!category) {
-      throw new AppError("Category not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Category not found");
     }
     return category;
   }
@@ -679,10 +638,7 @@ export class MenuService {
     });
 
     if (!item) {
-      throw new AppError("Item not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Item not found");
     }
     return item;
   }
@@ -720,10 +676,10 @@ export class MenuService {
     });
 
     if (invalid) {
-      throw new AppError("Modifier or option does not belong to this item", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.VALIDATION_ERROR,
-      });
+      throw new BadRequestError(
+        "Modifier or option does not belong to this item",
+        { code: ErrorCodes.VALIDATION_ERROR },
+      );
     }
   }
 }

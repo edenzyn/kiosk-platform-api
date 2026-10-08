@@ -28,9 +28,7 @@ import type {
 import { markets } from "./schemas/market.schema";
 import { organizationMarketMapper } from "./schemas/organization-market-mapper.schema";
 import { resellerMarketMapper } from "./schemas/reseller-market-mapper.schema";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 export class MarketRepository {
@@ -48,12 +46,8 @@ export class MarketRepository {
 
       return (await market) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -69,12 +63,8 @@ export class MarketRepository {
         .from(markets)
         .where(eq(markets.isActive, true));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_ACTIVE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -96,14 +86,10 @@ export class MarketRepository {
 
       return await rows.map((row) => row.market);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[MARKET_FIND_MARKETS_MAPPED_TO_ORGANIZATION_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -120,12 +106,8 @@ export class MarketRepository {
 
       return (await row?.market) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_MARKET_BY_BRANCH_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -147,12 +129,8 @@ export class MarketRepository {
 
       return await rows.map((row) => row.market);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_MARKETS_MAPPED_TO_RESELLER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -174,12 +152,8 @@ export class MarketRepository {
 
       return await !!mapping;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_IS_ORGANIZATION_MAPPED_TO_MARKET_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -201,12 +175,8 @@ export class MarketRepository {
 
       return await !!mapping;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_IS_RESELLER_MAPPED_TO_MARKET_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -225,12 +195,8 @@ export class MarketRepository {
         })),
       );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_MAP_RESELLER_TO_MARKETS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -251,12 +217,8 @@ export class MarketRepository {
 
       return (await market) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_ONE_BY_COUNTRY_CODE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -306,12 +268,8 @@ export class MarketRepository {
 
       return await { markets: rows, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_FIND_PAGINATED_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -332,12 +290,8 @@ export class MarketRepository {
       if (!market) throw new Error("Failed to create market");
       return await market;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_CREATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -356,12 +310,8 @@ export class MarketRepository {
       if (!market) throw new Error("Failed to update market");
       return await market;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MARKET_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

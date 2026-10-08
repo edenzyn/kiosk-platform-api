@@ -4,9 +4,8 @@ import {
   validateWebhookSignature,
 } from "razorpay/dist/utils/razorpay-utils";
 import { env } from "../../../../config/env";
-import { HttpStatusCodes } from "../../../constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../enums/core/error-codes.enum";
-import { AppError } from "../../../errors/app-error";
+import { ServiceUnavailableError } from "../../../errors/service-unavailable-error";
 import type {
   CreateRazorpayOrderInput,
   CreateRazorpayOrderResult,
@@ -35,8 +34,7 @@ export class RazorpayProvider {
         receipt: order.receipt,
       };
     } catch (error) {
-      throw new AppError("Failed to create Razorpay order", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to create Razorpay order", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
         details: error,
       });
@@ -55,8 +53,7 @@ export class RazorpayProvider {
         status: order.status,
       };
     } catch (error) {
-      throw new AppError("Failed to fetch order", {
-        statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE,
+      throw new ServiceUnavailableError("Failed to fetch order", {
         code: ErrorCodes.PAYMENT_GATEWAY_ERROR,
         details: error,
       });

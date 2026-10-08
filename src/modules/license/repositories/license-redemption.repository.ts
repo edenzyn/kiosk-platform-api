@@ -53,9 +53,7 @@ import { licenseRedemptionCodes } from "../schemas/license-redemption-code.schem
 import { licenseTerms } from "../schemas/license-terms.schema";
 import { licenseTransactionItems } from "../schemas/license-transaction-item.schema";
 import { licenses, type LicenseEntity } from "../schemas/license.schema";
-import { AppError } from "../../../shared/errors/app-error";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../../shared/errors/database-error";
 import { logger } from "../../../shared/utils/core/logger";
 
 type DbTransaction = Parameters<
@@ -73,14 +71,10 @@ export class LicenseRedemptionRepository {
         AND lrc.status NOT IN (${LicenseRedemptionStatusEnum.REVOKED}, ${LicenseRedemptionStatusEnum.EXPIRED})
     )`;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION__NO_ACTIVE_REDEMPTION_CONDITION_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -98,15 +92,11 @@ export class LicenseRedemptionRepository {
 
       return await updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION__UPDATE_REDEMPTION_CODE_IF_MATCHING_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -141,15 +131,11 @@ export class LicenseRedemptionRepository {
 
       return await Array.from(matched);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_LICENSE_IDS_WITH_ACTIVE_REDEMPTION_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -178,15 +164,11 @@ export class LicenseRedemptionRepository {
 
       return (await row) ?? null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_REDEMPTION_PRICING_FOR_LICENSE_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -252,15 +234,11 @@ export class LicenseRedemptionRepository {
 
       return await { licenses: rows as LicenseWithDetails[], total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_AVAILABLE_LICENSES_FOR_REDEMPTION_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -324,15 +302,11 @@ export class LicenseRedemptionRepository {
         });
       }
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION__CREATE_LICENSE_TERMS_FOR_LICENSES_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -382,14 +356,10 @@ export class LicenseRedemptionRepository {
         return codeWithoutHash;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_CREATE_REDEMPTION_CODE_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -483,14 +453,10 @@ export class LicenseRedemptionRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODES_BY_RESELLER_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -514,14 +480,10 @@ export class LicenseRedemptionRepository {
       const { redeemCodeHash: _redeemCodeHash, ...codeWithoutHash } = code;
       return await codeWithoutHash;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_BY_ID_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -599,15 +561,11 @@ export class LicenseRedemptionRepository {
         })),
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_DETAILS_BY_ID_ERROR] " +
           error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -656,14 +614,10 @@ export class LicenseRedemptionRepository {
         return true;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_VERIFY_REDEMPTION_CODE_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -699,14 +653,10 @@ export class LicenseRedemptionRepository {
         return revoked;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_REVOKE_REDEMPTION_CODE_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -722,14 +672,10 @@ export class LicenseRedemptionRepository {
 
       return (await code) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error(
         "[LICENSE_REDEMPTION_FIND_REDEMPTION_CODE_BY_HASH_ERROR] " + error,
       );
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -816,12 +762,8 @@ export class LicenseRedemptionRepository {
           throw error;
         });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[LICENSE_REDEMPTION_CLAIM_REDEMPTION_CODE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

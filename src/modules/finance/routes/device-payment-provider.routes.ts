@@ -3,18 +3,19 @@ import asyncHandler from "express-async-handler";
 import { container } from "../../../config/container";
 import { accessMiddleware } from "../../../middleware/access.middleware";
 import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
-import type { PaymentController } from "../controllers/payment.controller";
+import type { PaymentProviderController } from "../controllers/payment-provider.controller";
 
-const devicePaymentRouter = Router();
-const paymentController =
-  container.resolve<PaymentController>("paymentController");
+const devicePaymentProviderRouter = Router();
+const paymentProviderController = container.resolve<PaymentProviderController>(
+  "paymentProviderController",
+);
 
-devicePaymentRouter.get(
+devicePaymentProviderRouter.get(
   "/methods",
   accessMiddleware({
     deviceType: [DeviceTypeEnum.KIOSK, DeviceTypeEnum.COUNTER],
   }),
-  asyncHandler(paymentController.getDevicePaymentMethods),
+  asyncHandler(paymentProviderController.getDevicePaymentMethods),
 );
 
-export { devicePaymentRouter };
+export { devicePaymentProviderRouter };

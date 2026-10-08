@@ -85,6 +85,22 @@ const licenseSchema = {
   },
 };
 
+const deviceStaffSessionSchema = {
+  type: "object",
+  properties: {
+    staffToken: { type: "string" },
+    expiresInSeconds: { type: "integer", example: 900 },
+    sessionExpiresAt: { type: "string", format: "date-time" },
+    staff: {
+      type: "object",
+      properties: {
+        id: { type: "string", format: "uuid" },
+        name: { type: "string" },
+      },
+    },
+  },
+};
+
 export const deviceSwaggerPaths: Record<string, unknown> = {
   "/pvt/u/devices/": {
     get: {
@@ -316,6 +332,28 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       },
     },
   },
+  "/pvt/u/devices/{id}/staff-session": {
+    delete: {
+      tags: ["Devices"],
+      summary: "Revoke the staff session on a device",
+      description:
+        "Signs the staff member out of a counter device without signing the device itself out. The device gets a `device.staff-session.revoked` socket event and returns to the staff sign-in. 404 when nobody is signed in.",
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": { description: "Staff session revoked" },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": { $ref: "#/components/responses/NotFound" },
+      },
+    },
+  },
   "/pvt/u/devices/{id}/terminal": {
     patch: {
       tags: ["Devices"],
@@ -477,7 +515,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
                           type: "integer",
                           enum: [1, 2, 3, 4, 5, 6, 7, 8, 9],
                           description:
-                            "DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_SIGNED_IN, 7 = ADMIN_SIGN_IN_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED",
+                            "DeviceLogActionEnum: 1 = SIGNED_IN, 2 = SIGNED_OUT, 3 = SESSION_REVOKED, 4 = ACTIVATED, 5 = DEACTIVATED, 6 = ADMIN_PANEL_ENTERED, 7 = ADMIN_PANEL_ENTRY_FAILED, 8 = TERMINAL_MAPPED, 9 = TERMINAL_UNMAPPED, 10 = STAFF_LOGIN, 11 = STAFF_LOGIN_FAILED, 12 = STAFF_LOGOUT, 13 = STAFF_SESSION_REVOKED",
                         },
                         performedBy: {
                           type: "object",
@@ -513,7 +551,7 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
       tags: ["Devices"],
       summary: "Sign a staff member in to the device's admin pages",
       description:
-        "Called by a signed-in device. The staff member gives their registered email or mobile number plus their password or 4-digit PIN. They must belong to the device's organization (and its branch, for a branch user) and hold the device manage permission. Five wrong attempts for one identity on one device lock it for 15 minutes. Returns a short-lived admin token to send in the X-D-Admin header.",
+        "Called by a signed-in device. The staff member gives their registered email or mobile number plus their password or 4-digit PIN. They must belong to the device's organization (and its branch, for a branch user) and hold the device admin permission. Five wrong attempts for one identity on one device lock it for 15 minutes. Returns a short-lived admin token to send in the X-D-Admin header.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -569,6 +607,104 @@ export const deviceSwaggerPaths: Record<string, unknown> = {
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": { $ref: "#/components/responses/Forbidden" },
         "429": { description: "Too many wrong attempts" },
+      },
+    },
+  },
+  "/pvt/d/devices/admin/staff-login": {
+    post: {
+      tags: ["Devices"],
+      summary: "Open the admin pages as the staff member already signed in",
+      description:
+        "Counter devices. Needs the X-D-Staff header from the staff sign-in, so only the password or PIN is sent; the identity comes from the staff session. Same checks, lockout and 200 response as the admin sign-in. A missing or expired staff token returns 403 DEVICE_STAFF_SESSION_EXPIRED.",
+      security: [{ deviceCookieAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["method", "secret"],
+              properties: {
+                method: { type: "integer", enum: [1, 2] },
+                secret: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Signed in to the admin pages" },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "429": { description: "Too many wrong attempts" },
+      },
+    },
+  },
+  "/pvt/d/devices/staff/login": {
+    post: {
+      tags: ["Devices"],
+      summary: "Sign a staff member in on a counter device",
+      description:
+        "Counter devices only. The staff member gives their registered email or mobile number plus their password or 4-digit PIN, and must hold the branch staff permission (branch:device:staff:counter); an organization-level user needs organization all-write. Replaces another staff member's session already open on the device. A staff member who still has an open session on any device gets 403 SESSION_LIMIT_REACHED until it is revoked from the Devices page or they sign out. Returns a short-lived staff token for the X-D-Staff header and sets a refresh cookie; the session lasts at most 12 hours.",
+      security: [{ deviceCookieAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["identity", "method", "secret"],
+              properties: {
+                identity: { type: "string" },
+                method: { type: "integer", enum: [1, 2] },
+                secret: { type: "string" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Signed in",
+          content: {
+            "application/json": {
+              schema: deviceStaffSessionSchema,
+            },
+          },
+        },
+        "400": { $ref: "#/components/responses/ValidationError" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "429": { description: "Too many wrong attempts" },
+      },
+    },
+  },
+  "/pvt/d/devices/staff/refresh": {
+    post: {
+      tags: ["Devices"],
+      summary: "Refresh the staff session on this device",
+      description:
+        "Uses the staff refresh cookie, rotates it and returns a new staff token. Does not extend the session past its 12 hours. 403 DEVICE_STAFF_SESSION_EXPIRED when there is no open staff session.",
+      security: [{ deviceCookieAuth: [] }],
+      responses: {
+        "200": {
+          description: "Refreshed",
+          content: {
+            "application/json": {
+              schema: deviceStaffSessionSchema,
+            },
+          },
+        },
+        "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/d/devices/staff/logout": {
+    post: {
+      tags: ["Devices"],
+      summary: "Sign the staff member out of this device",
+      security: [{ deviceCookieAuth: [] }],
+      responses: {
+        "204": { description: "Signed out" },
       },
     },
   },

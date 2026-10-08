@@ -109,7 +109,12 @@ export interface UpdateBranchSettingsServiceInput {
   data: Partial<
     Pick<
       BranchSettingsEntity,
-      "logo" | "primaryColor" | "languageCode" | "timezone"
+      | "logo"
+      | "primaryColor"
+      | "languageCode"
+      | "timezone"
+      | "shiftVerifier"
+      | "managerVerificationMethod"
     >
   >;
   effectiveTenant: EffectiveTenant;
@@ -201,6 +206,8 @@ export interface UpdateBranchSettingsRepoInput {
       | "languageCode"
       | "timezone"
       | "isCashPaymentEnabled"
+      | "shiftVerifier"
+      | "managerVerificationMethod"
     >
   >;
 }

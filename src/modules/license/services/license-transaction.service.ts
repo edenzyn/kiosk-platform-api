@@ -1,6 +1,5 @@
 import dayjs from "dayjs";
 import { env } from "../../../config/env";
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { LicenseDiscountRuleTargetEntityTypeEnum } from "../../../shared/enums/license/license-discount-rule-target-entity-type.enum";
 import { LicenseDiscountTypeEnum } from "../../../shared/enums/license/license-discount-type.enum";
@@ -10,7 +9,9 @@ import { LicenseStatusEnum } from "../../../shared/enums/license/license-status.
 import { LicenseTransactionTypeEnum } from "../../../shared/enums/license/license-transaction-type.enum";
 import { PaymentProviderEnum } from "../../../shared/enums/license/payment-provider.enum";
 import { PaymentStatusEnum } from "../../../shared/enums/license/payment-status.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { ConflictError } from "../../../shared/errors/conflict-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import {
   decryptData,
   encryptData,
@@ -21,7 +22,7 @@ import { calculateTaxBreakdown } from "../../../shared/utils/finance/calculate-t
 import { calculateLicensePurchasePricing } from "../../../shared/utils/license/calculate-license-purchase-pricing.helper";
 import { generateReadableLicenseKey } from "../../../shared/utils/license/generate-readable-license-key.helper";
 import type { BranchRepository } from "../../branch/branch.repository";
-import type { PaymentService } from "../../finance/services/payment.service";
+import type { PaymentProviderService } from "../../finance/services/payment-provider.service";
 import type { MarketRepository } from "../../market/market.repository";
 import type { MarketService } from "../../market/market.service";
 import type { BillingInfoDto } from "../dtos/purchase-license.dtos";
@@ -66,7 +67,7 @@ export class LicenseTransactionService {
     private readonly licensePlanRepository: LicensePlanRepository,
     private readonly licenseDiscountRepository: LicenseDiscountRepository,
     private readonly licenseRedemptionRepository: LicenseRedemptionRepository,
-    private readonly paymentService: PaymentService,
+    private readonly paymentProviderService: PaymentProviderService,
     private readonly branchRepository: BranchRepository,
     private readonly marketRepository: MarketRepository,
     private readonly marketService: MarketService,
@@ -80,9 +81,9 @@ export class LicenseTransactionService {
       deviceId,
     });
     if (activeLicense && activeLicense.id !== excludeLicenseId) {
-      throw new AppError("Device already has an active license assigned", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "Device already has an active license assigned",
+      );
     }
   }
 
@@ -96,20 +97,14 @@ export class LicenseTransactionService {
         id: params.branchId,
       });
       if (!branch) {
-        throw new AppError("Branch not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("Branch not found");
       }
       return branch.marketId;
     }
 
     if (!params.dtoMarketId) {
-      throw new AppError(
+      throw new BadRequestError(
         "Market is required for an organization-level purchase",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        },
       );
     }
 
@@ -129,10 +124,10 @@ export class LicenseTransactionService {
       marketId,
     });
     if (!isMapped) {
-      throw new AppError("This market is not available for your organization", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.VALIDATION_ERROR,
-      });
+      throw new BadRequestError(
+        "This market is not available for your organization",
+        { code: ErrorCodes.VALIDATION_ERROR },
+      );
     }
   }
 
@@ -145,8 +140,7 @@ export class LicenseTransactionService {
       marketId: params.marketId,
     });
     if (!isMapped) {
-      throw new AppError("This market is not available for you", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
+      throw new BadRequestError("This market is not available for you", {
         code: ErrorCodes.VALIDATION_ERROR,
       });
     }
@@ -159,12 +153,9 @@ export class LicenseTransactionService {
   ): Promise<void> {
     const market = await this.marketService.getMarketWithTax({ marketId });
     if (market.countryCode !== billingCountry) {
-      throw new AppError(
+      throw new BadRequestError(
         "Billing country must match the selected market's country",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-          code: ErrorCodes.VALIDATION_ERROR,
-        },
+        { code: ErrorCodes.VALIDATION_ERROR },
       );
     }
   }
@@ -188,9 +179,8 @@ export class LicenseTransactionService {
     });
 
     const invalidDiscountError = () =>
-      new AppError(
+      new BadRequestError(
         "Selected discount is no longer valid. Please review and try again.",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
 
     const now = new Date();
@@ -278,9 +268,8 @@ export class LicenseTransactionService {
     const selectedPlan = plans[0];
 
     if (!selectedPlan || selectedPlan.price === null) {
-      throw new AppError(
+      throw new NotFoundError(
         "Selected license plan is not available in this market",
-        { statusCode: HttpStatusCodes.NOT_FOUND },
       );
     }
 
@@ -310,9 +299,8 @@ export class LicenseTransactionService {
         resolved.discountType === LicenseDiscountTypeEnum.FLAT &&
         resolved.marketId !== params.marketId
       ) {
-        throw new AppError(
+        throw new BadRequestError(
           "Selected discount is no longer valid. Please review and try again.",
-          { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
 
@@ -397,7 +385,7 @@ export class LicenseTransactionService {
       billingState: params.billingInfo?.state,
     });
 
-    const order = await this.paymentService.createRazorpayOrder({
+    const order = await this.paymentProviderService.createRazorpayOrder({
       amount: Number(pricing.chargeAmount),
       currency: pricing.currencyCode,
       receipt: generatePrefixedId("rec_lic_"),
@@ -533,12 +521,9 @@ export class LicenseTransactionService {
       });
 
     if (!created) {
-      throw new AppError(
+      throw new ConflictError(
         "This purchase order was not found or has already been processed",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        },
+        { code: ErrorCodes.RESOURCE_NOT_FOUND },
       );
     }
 
@@ -589,7 +574,7 @@ export class LicenseTransactionService {
       billingState: params.billingInfo?.state,
     });
 
-    await this.paymentService.verifyRazorpayPayment({
+    await this.paymentProviderService.verifyRazorpayPayment({
       razorpayOrderId: params.razorpayOrderId,
       razorpayPaymentId: params.razorpayPaymentId,
       razorpaySignature: params.razorpaySignature,
@@ -712,9 +697,8 @@ export class LicenseTransactionService {
 
     if (lockedPricing) {
       if (lockedPricing.lockedPrice === null) {
-        throw new AppError(
+        throw new BadRequestError(
           "This license's redemption sale price has not been verified yet. It cannot be extended until the reseller verifies the sold price.",
-          { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
 
@@ -731,9 +715,7 @@ export class LicenseTransactionService {
       };
     } else {
       if (!licensePlanId) {
-        throw new AppError("License plan is required", {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        });
+        throw new BadRequestError("License plan is required");
       }
 
       const licensePlans = await this.licensePlanRepository.findLicensePlans({
@@ -743,16 +725,12 @@ export class LicenseTransactionService {
       });
       const plan = licensePlans[0];
       if (!plan || plan.price === null) {
-        throw new AppError("License plan not found", {
-          statusCode: HttpStatusCodes.NOT_FOUND,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        });
+        throw new NotFoundError("License plan not found");
       }
 
       if (plan.deviceType !== license.deviceType) {
-        throw new AppError(
+        throw new BadRequestError(
           "This license plan is for a different device type and cannot be used to extend this license.",
-          { statusCode: HttpStatusCodes.BAD_REQUEST },
         );
       }
 
@@ -833,10 +811,7 @@ export class LicenseTransactionService {
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     const { price, currencyCode, durationDays, marketId, tax, chargeAmount } =
@@ -858,7 +833,7 @@ export class LicenseTransactionService {
       totalAmount: amountBeforeTax,
     } = calculateLicensePurchasePricing(price, 1, 0);
 
-    const order = await this.paymentService.createRazorpayOrder({
+    const order = await this.paymentProviderService.createRazorpayOrder({
       amount: Number(chargeAmount),
       currency: currencyCode,
       receipt: generatePrefixedId("rec_lic_"),
@@ -920,10 +895,7 @@ export class LicenseTransactionService {
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     if (license.deviceId) {
@@ -953,7 +925,7 @@ export class LicenseTransactionService {
     const { discountAmount, unitPrice, baseUnitPrice } =
       calculateLicensePurchasePricing(price, 1, 0);
 
-    await this.paymentService.verifyRazorpayPayment({
+    await this.paymentProviderService.verifyRazorpayPayment({
       razorpayOrderId: input.dto.razorpayOrderId,
       razorpayPaymentId: input.dto.razorpayPaymentId,
       razorpaySignature: input.dto.razorpaySignature,
@@ -995,12 +967,9 @@ export class LicenseTransactionService {
       });
 
     if (!updated) {
-      throw new AppError(
+      throw new ConflictError(
         "This extend order was not found or has already been processed",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_NOT_FOUND,
-        },
+        { code: ErrorCodes.RESOURCE_NOT_FOUND },
       );
     }
 
@@ -1021,10 +990,7 @@ export class LicenseTransactionService {
       organizationId: input.effectiveTenant.organizationId as string,
     });
     if (!license) {
-      throw new AppError("License not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License not found");
     }
 
     const lockedPricing =
@@ -1100,10 +1066,7 @@ export class LicenseTransactionService {
       });
 
     if (!result) {
-      throw new AppError("Transaction not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Transaction not found");
     }
 
     return {
@@ -1200,10 +1163,7 @@ export class LicenseTransactionService {
       });
 
     if (!result) {
-      throw new AppError("Transaction not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Transaction not found");
     }
 
     return {

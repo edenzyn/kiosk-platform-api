@@ -55,9 +55,7 @@ import { itemModifierOptions } from "./schemas/item-modifier-option.schema";
 import { itemModifiers } from "./schemas/item-modifier.schema";
 import { menuCategories } from "./schemas/menu-category.schema";
 import { menuItems } from "./schemas/menu-item.schema";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
 import { logger } from "../../shared/utils/core/logger";
 
 type Transaction = Parameters<
@@ -105,12 +103,8 @@ export class MenuRepository {
 
       return (await category) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_ONE_CATEGORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -201,12 +195,8 @@ export class MenuRepository {
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_CATEGORIES_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -235,12 +225,8 @@ export class MenuRepository {
 
       return await category;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_CREATE_CATEGORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -260,12 +246,8 @@ export class MenuRepository {
 
       return await category;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_UPDATE_CATEGORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -287,12 +269,8 @@ export class MenuRepository {
           );
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_DELETE_CATEGORY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -422,12 +400,8 @@ export class MenuRepository {
           })),
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_BRANCH_MENU_TREE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -480,12 +454,8 @@ export class MenuRepository {
         }
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_CLONE_MENU_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -530,12 +500,8 @@ export class MenuRepository {
         );
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_IMPORT_MENU_CSV_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -601,12 +567,8 @@ export class MenuRepository {
 
       return await categoryIdByName;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_OR_CREATE_CATEGORIES_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -641,12 +603,8 @@ export class MenuRepository {
 
       return (await item) || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_ONE_ITEM_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -730,12 +688,8 @@ export class MenuRepository {
 
       return await { items: rows, total };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_ITEMS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -780,12 +734,8 @@ export class MenuRepository {
         return item;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_CREATE_ITEM_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -828,12 +778,8 @@ export class MenuRepository {
         options: options.filter((o) => o.itemModifierId === modifier.id),
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_ITEM_MODIFIERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -904,12 +850,8 @@ export class MenuRepository {
           })),
       }));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_FIND_ORDERABLE_ITEMS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -943,12 +885,8 @@ export class MenuRepository {
         return item;
       });
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_UPDATE_ITEM_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -972,12 +910,8 @@ export class MenuRepository {
 
       return await item;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_UPDATE_ITEM_STATUS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -992,12 +926,8 @@ export class MenuRepository {
         })
         .where(eq(menuItems.id, input.id));
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_DELETE_ITEM_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -1039,12 +969,8 @@ export class MenuRepository {
         })),
       );
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_INSERT_MODIFIER_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -1111,12 +1037,8 @@ export class MenuRepository {
         );
       }
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_SYNC_MODIFIERS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -1169,12 +1091,8 @@ export class MenuRepository {
           .where(eq(itemModifierOptions.id, option.id));
       }
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_SYNC_OPTIONS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -1203,12 +1121,8 @@ export class MenuRepository {
         asc(menuItems.id),
       ];
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[MENU_ITEM_ORDER_BY_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

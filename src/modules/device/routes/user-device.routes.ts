@@ -48,6 +48,15 @@ userDeviceRouter.get(
 );
 
 userDeviceRouter.delete(
+  "/:id/staff-session",
+  accessMiddleware({
+    organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],
+    branch: [UserPermissions.BRANCH_DEVICE_WRITE],
+  }),
+  deviceController.revokeDeviceStaffSession,
+);
+
+userDeviceRouter.delete(
   "/:id/session",
   accessMiddleware({
     organization: [UserPermissions.ORGANIZATION_DEVICE_WRITE],

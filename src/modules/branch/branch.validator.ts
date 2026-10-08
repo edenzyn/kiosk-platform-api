@@ -4,6 +4,9 @@ import { paginationQuerySchema } from "../../shared/validators/pagination.valida
 import validateMobileNumber from "../../shared/validators/phone.validator";
 
 import { SortingOrderEnum } from "../../shared/enums/core/sorting-order.enum";
+import { ManagerVerificationMethodEnum } from "../../shared/enums/shift/manager-verification-method.enum";
+import { ShiftVerifierEnum } from "../../shared/enums/shift/shift-verifier.enum";
+import { numericEnumValidator } from "../../shared/validators/numeric-enum.validator";
 
 export const BranchValidator = {
   create: yup.object({
@@ -102,6 +105,14 @@ export const BranchValidator = {
       languageCode: yup.string().trim().max(10).optional(),
       timezone: yup.string().trim().max(100).optional(),
       logo: yup.string().trim().max(255).nullable().optional(),
+      shiftVerifier: numericEnumValidator(
+        ShiftVerifierEnum,
+        "Shift verifier",
+      ).optional(),
+      managerVerificationMethod: numericEnumValidator(
+        ManagerVerificationMethodEnum,
+        "Manager verification method",
+      ).optional(),
     })
     .noUnknown(),
   requestBrandLogoUpload: yup

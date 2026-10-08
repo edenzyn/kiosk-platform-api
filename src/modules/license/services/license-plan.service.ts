@@ -1,6 +1,4 @@
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import type { MarketService } from "../../market/market.service";
 import type {
   CreateLicensePlanServiceInput,
@@ -98,10 +96,7 @@ export class LicensePlanService {
       id: input.planId,
     });
     if (!existing) {
-      throw new AppError("License plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License plan not found");
     }
 
     const plan = await this.licensePlanRepository.updateLicensePlan({
@@ -119,10 +114,7 @@ export class LicensePlanService {
       id: input.planId,
     });
     if (!existing) {
-      throw new AppError("License plan not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("License plan not found");
     }
 
     const plan = await this.licensePlanRepository.updateLicensePlan({

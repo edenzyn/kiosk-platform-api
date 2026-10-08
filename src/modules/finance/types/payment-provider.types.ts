@@ -173,8 +173,7 @@ export interface PineLabsCardPaymentConfig {
 }
 
 export type TenantPaymentConfigValues =
-  | PhonePeQrPaymentConfig
-  | PineLabsCardPaymentConfig;
+  PhonePeQrPaymentConfig | PineLabsCardPaymentConfig;
 
 // ========================================
 // ? TENANT PAYMENT CONFIGS

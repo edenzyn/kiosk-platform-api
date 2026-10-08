@@ -1,4 +1,3 @@
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import {
   WHATSAPP_TEMPLATES,
   WHATSAPP_TEMPLATE_LANGUAGES,
@@ -6,7 +5,9 @@ import {
 import { NotificationChannelEnum } from "../../../shared/enums/notification/notification-channel.enum";
 import { OneTimeTokenTypeEnum } from "../../../shared/enums/one-time-token/one-time-token-type.enum";
 import { TwoFactorMethodEnums } from "../../../shared/enums/user/two-factor-method.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { InternalServerError } from "../../../shared/errors/internal-server-error";
+import { UnauthorizedError } from "../../../shared/errors/unauthorized-error";
 import { compareHashedData } from "../../../shared/utils/core/bcrypt.helper";
 import { getTwoFactorOtpTemplate } from "../../../shared/utils/emailTemplates/two-factor-otp.template";
 import type { NotificationService } from "../../notification/notification.service";
@@ -68,9 +69,7 @@ export class TwoFactorService {
   ): Promise<{ verificationId: string }> {
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("User not found");
     }
 
     const isEmail = method === TwoFactorMethodEnums.EMAIL;
@@ -80,11 +79,10 @@ export class TwoFactorService {
     const destination = isEmail ? user.email : user.mobile;
 
     if (!destination) {
-      throw new AppError(
+      throw new BadRequestError(
         isEmail
           ? "No email address linked to your account"
           : "No phone number linked to your account",
-        { statusCode: HttpStatusCodes.BAD_REQUEST },
       );
     }
 
@@ -143,16 +141,12 @@ export class TwoFactorService {
   ): Promise<DisableTwoFactorResponseDto> {
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
-      });
+      throw new UnauthorizedError("User not found");
     }
 
     const isMatch = await compareHashedData(password, user.password);
     if (!isMatch) {
-      throw new AppError("Incorrect password", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Incorrect password");
     }
 
     await this.userRepository.updateTwoFactorAuth({
@@ -168,11 +162,8 @@ export class TwoFactorService {
     method: TwoFactorMethodEnums | null,
   ): Promise<RequiresTwoFactorServiceResult> {
     if (!method) {
-      throw new AppError(
+      throw new InternalServerError(
         "Two-factor authentication method is not configured.",
-        {
-          statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        },
       );
     }
 

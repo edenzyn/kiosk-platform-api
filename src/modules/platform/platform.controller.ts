@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { UnauthorizedError } from "../../shared/errors/unauthorized-error";
 import type { PlatformService } from "./platform.service";
 
 export class PlatformController {
@@ -9,8 +8,7 @@ export class PlatformController {
 
   checkAuth = async (req: Request, res: Response): Promise<void> => {
     if (!req.user) {
-      throw new AppError("Unauthorized", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("Unauthorized", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }

@@ -2,8 +2,8 @@ import { NextFunction, Request, Response } from "express";
 import { container } from "../config/container";
 import { env } from "../config/env";
 import { RbacService } from "../modules/rbac/rbac.service";
+import { STAFF_DEVICE_TYPES } from "../shared/constants/device.constants";
 import ERROR_MESSAGES from "../shared/constants/error-messages.constants";
-import { HttpStatusCodes } from "../shared/constants/http-status-codes.constants";
 import { ClientTypeEnum } from "../shared/enums/core/client-type.enum";
 import { DeviceTypeEnum } from "../shared/enums/device/device-type.enum";
 import { CustomRequestHeaders } from "../shared/enums/core/custom-request-headers.enum";
@@ -11,14 +11,18 @@ import { ErrorCodes } from "../shared/enums/core/error-codes.enum";
 import { UserPermissions } from "../shared/enums/rbac/user-permission.enum";
 import { UserScopeTypeEnums } from "../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../shared/enums/user/user-type.enum";
-import { AppError } from "../shared/errors/app-error";
+import { ForbiddenError } from "../shared/errors/forbidden-error";
+import { UnauthorizedError } from "../shared/errors/unauthorized-error";
 import { getUserScope } from "../shared/utils/user/user-scope.helper";
+import { verifyDeviceStaffToken } from "./device-staff.middleware";
 
 const isReadAction = (permission: string): boolean =>
   permission.endsWith(":read");
 
 export interface AccessPermissions {
   deviceType?: DeviceTypeEnum | DeviceTypeEnum[];
+  /** Skips the staff permission check on counter and KDS devices; only for the staff sign-in routes. */
+  allowWithoutStaff?: boolean;
   userType?: UserTypeEnums | UserTypeEnums[];
   platform?: UserPermissions[];
   reseller?: UserPermissions[];
@@ -41,8 +45,7 @@ export const accessMiddleware = (
     try {
       if (req.clientType === ClientTypeEnum.DEVICE_CLIENT) {
         if (!req.device) {
-          throw new AppError("Unauthorized access", {
-            statusCode: HttpStatusCodes.UNAUTHORIZED,
+          throw new UnauthorizedError("Unauthorized access", {
             code: ErrorCodes.UNAUTHORIZED,
           });
         }
@@ -53,11 +56,33 @@ export const accessMiddleware = (
             : [permissions.deviceType];
 
           if (!allowedDeviceTypes.includes(req.device.type)) {
-            throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-              statusCode: HttpStatusCodes.FORBIDDEN,
-              code: ErrorCodes.FORBIDDEN,
-            });
+            throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
           }
+        }
+
+        if (
+          STAFF_DEVICE_TYPES.includes(req.device.type) &&
+          !permissions.allowWithoutStaff
+        ) {
+          const deviceStaff = await verifyDeviceStaffToken(req);
+
+          const hasStaffPermission = await rbacService.hasDeviceStaffPermission(
+            {
+              userId: deviceStaff.userId,
+              organizationId: req.device.organizationId,
+              branchId: deviceStaff.userBranchId,
+              deviceType: req.device.type,
+            },
+          );
+
+          if (!hasStaffPermission) {
+            throw new ForbiddenError(
+              "You don't have permission to use this device",
+              { code: ErrorCodes.DEVICE_STAFF_SESSION_EXPIRED },
+            );
+          }
+
+          req.deviceStaff = deviceStaff;
         }
 
         return next();
@@ -67,8 +92,7 @@ export const accessMiddleware = (
       const userType = req.user?.userType ?? UserTypeEnums.NORMAL;
 
       if (!userId) {
-        throw new AppError("Unauthorized access", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Unauthorized access", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -79,10 +103,7 @@ export const accessMiddleware = (
         : [allowedUserType];
 
       if (!allowedTypes.includes(userType)) {
-        throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-          code: ErrorCodes.FORBIDDEN,
-        });
+        throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
       }
 
       // ====================================================
@@ -125,10 +146,7 @@ export const accessMiddleware = (
         });
 
         if (!hasPermission) {
-          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-            code: ErrorCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
         }
 
         return next();
@@ -163,10 +181,7 @@ export const accessMiddleware = (
         );
 
         if (!hasPermission) {
-          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-            code: ErrorCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
         }
 
         return next();
@@ -179,8 +194,7 @@ export const accessMiddleware = (
       const userBranchId = req.user?.branchId;
 
       if (!userOrgId) {
-        throw new AppError("Unauthorized access", {
-          statusCode: HttpStatusCodes.UNAUTHORIZED,
+        throw new UnauthorizedError("Unauthorized access", {
           code: ErrorCodes.UNAUTHORIZED,
         });
       }
@@ -202,25 +216,16 @@ export const accessMiddleware = (
         validatedBranchId = userBranchId || null;
 
         if (reqOrgId && reqOrgId !== userOrgId) {
-          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-            code: ErrorCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
         }
         if (reqBranchId && reqBranchId !== userBranchId) {
-          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-            code: ErrorCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
         }
       } else {
         // User is Organization Scoped
         validatedOrgId = userOrgId;
         if (reqOrgId && reqOrgId !== userOrgId) {
-          throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-            statusCode: HttpStatusCodes.FORBIDDEN,
-            code: ErrorCodes.FORBIDDEN,
-          });
+          throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
         }
 
         if (reqBranchId) validatedBranchId = reqBranchId;
@@ -282,10 +287,7 @@ export const accessMiddleware = (
       });
 
       if (!hasPermission) {
-        throw new AppError(ERROR_MESSAGES.PERMISSION_DENIED, {
-          statusCode: HttpStatusCodes.FORBIDDEN,
-          code: ErrorCodes.FORBIDDEN,
-        });
+        throw new ForbiddenError(ERROR_MESSAGES.PERMISSION_DENIED);
       }
 
       next();

@@ -17,4 +17,7 @@ export interface BusinessDayDto {
   closedAt: Date | null;
   /** Null while the day is open. */
   closedBy: BusinessDayUserDto | null;
+  shiftCount: number;
+  /** Shifts of this day still open on a counter. */
+  openShiftCount: number;
 }

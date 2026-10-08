@@ -4,36 +4,51 @@ import {
   count,
   desc,
   eq,
+  gt,
   ilike,
   inArray,
+  isNull,
   or,
   type SQL,
 } from "drizzle-orm";
 import type { Database } from "../../config/db";
+import { DEVICE_STAFF_CONSTANTS } from "../../shared/constants/auth-security.constants";
+import { RedisKeys } from "../../shared/constants/redis-keys.constants";
+import { DatabaseError } from "../../shared/errors/database-error";
+import type { RedisProvider } from "../../shared/providers/redis/redis.provider";
+import { logger } from "../../shared/utils/core/logger";
 import { branches } from "../branch/schemas/branch.schema";
 import { users } from "../user/schemas/user.schema";
 import { deviceLogs } from "./device-log.schema";
+import { deviceStaffSessions } from "./device-staff-session.schema";
 import { devices, type DeviceWithBranchEntity } from "./device.schema";
 import type {
   CreateDeviceLogRepoInput,
   CreateDeviceRepoInput,
   CreateDeviceRepoResult,
+  CreateStaffSessionRepoInput,
+  CreateStaffSessionRepoResult,
+  EndStaffSessionsRepoInput,
+  FindActiveStaffSessionRepoInput,
+  FindActiveStaffSessionRepoResult,
   FindDeviceLogsRepoInput,
   FindDeviceLogsRepoResult,
   FindDevicesRepoInput,
   FindDevicesRepoResult,
   FindOneDeviceRepoInput,
   FindOneDeviceRepoResult,
+  FindOpenStaffSessionRepoInput,
+  FindOpenStaffSessionRepoResult,
+  RotateStaffSessionRepoInput,
   UpdateDeviceRepoInput,
   UpdateDeviceRepoResult,
 } from "./device.types";
-import { AppError } from "../../shared/errors/app-error";
-import { ErrorCodes } from "../../shared/enums/core/error-codes.enum";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
-import { logger } from "../../shared/utils/core/logger";
 
 export class DeviceRepository {
-  constructor(private readonly database: Database) {}
+  constructor(
+    private readonly database: Database,
+    private readonly redisProvider: RedisProvider,
+  ) {}
 
   // ========================================
   // ? DEVICE SCHEMA METHODS
@@ -58,7 +73,7 @@ export class DeviceRepository {
       }
 
       if (conditions.length === 0) {
-        return await null;
+        return null;
       }
 
       const [device] = await this.database.client
@@ -67,14 +82,10 @@ export class DeviceRepository {
         .where(and(...conditions))
         .limit(1);
 
-      return (await device) || null;
+      return device || null;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_ONE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -181,17 +192,13 @@ export class DeviceRepository {
       }
 
       const rows = await query;
-      return await {
+      return {
         devices: rows as DeviceWithBranchEntity[],
         total,
       };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -228,14 +235,10 @@ export class DeviceRepository {
         throw new Error("Failed to create device");
       }
 
-      return await device;
+      return device;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_CREATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -268,30 +271,167 @@ export class DeviceRepository {
         throw new Error("Failed to update device");
       }
 
-      return await updated;
+      return updated;
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_UPDATE_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
   // ========================================
   // ? DEVICE LOG SCHEMA METHODS
   // ========================================
+  async createStaffSession(
+    input: CreateStaffSessionRepoInput,
+  ): Promise<CreateStaffSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .insert(deviceStaffSessions)
+        .values(input.data)
+        .returning();
+
+      if (!session) throw new Error("Failed to create the staff session");
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_CREATE_STAFF_SESSION_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findActiveStaffSession(
+    input: FindActiveStaffSessionRepoInput,
+  ): Promise<FindActiveStaffSessionRepoResult> {
+    try {
+      const [session] = await this.database.client
+        .select()
+        .from(deviceStaffSessions)
+        .where(
+          and(
+            eq(deviceStaffSessions.id, input.id),
+            eq(deviceStaffSessions.deviceId, input.deviceId),
+            eq(deviceStaffSessions.tokenHash, input.tokenHash),
+            isNull(deviceStaffSessions.endedAt),
+            gt(deviceStaffSessions.expiresAt, new Date()),
+          ),
+        )
+        .limit(1);
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_FIND_ACTIVE_STAFF_SESSION_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async findOpenStaffSession(
+    input: FindOpenStaffSessionRepoInput,
+  ): Promise<FindOpenStaffSessionRepoResult> {
+    try {
+      if (!input.deviceId && !input.userId) {
+        throw new Error("A device or a staff member is required");
+      }
+
+      const [session] = await this.database.client
+        .select({
+          id: deviceStaffSessions.id,
+          staff: { id: users.id, name: users.name },
+          createdAt: deviceStaffSessions.createdAt,
+          lastUsedAt: deviceStaffSessions.lastUsedAt,
+          expiresAt: deviceStaffSessions.expiresAt,
+        })
+        .from(deviceStaffSessions)
+        .innerJoin(users, eq(deviceStaffSessions.userId, users.id))
+        .where(
+          and(
+            input.deviceId
+              ? eq(deviceStaffSessions.deviceId, input.deviceId)
+              : undefined,
+            input.userId
+              ? eq(deviceStaffSessions.userId, input.userId)
+              : undefined,
+            isNull(deviceStaffSessions.endedAt),
+            gt(deviceStaffSessions.expiresAt, new Date()),
+          ),
+        )
+        .orderBy(desc(deviceStaffSessions.createdAt))
+        .limit(1);
+
+      return session;
+    } catch (error) {
+      logger.error("[DEVICE_FIND_OPEN_STAFF_SESSION_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async rotateStaffSession(
+    input: RotateStaffSessionRepoInput,
+  ): Promise<boolean> {
+    try {
+      const rows = await this.database.client
+        .update(deviceStaffSessions)
+        .set({ tokenHash: input.newTokenHash, lastUsedAt: new Date() })
+        .where(
+          and(
+            eq(deviceStaffSessions.id, input.id),
+            eq(deviceStaffSessions.tokenHash, input.currentTokenHash),
+            isNull(deviceStaffSessions.endedAt),
+          ),
+        )
+        .returning({ id: deviceStaffSessions.id });
+
+      return rows.length > 0;
+    } catch (error) {
+      logger.error("[DEVICE_ROTATE_STAFF_SESSION_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  async endStaffSessions(input: EndStaffSessionsRepoInput): Promise<void> {
+    try {
+      const endedRows = await this.database.client
+        .update(deviceStaffSessions)
+        .set({ endedAt: new Date() })
+        .where(
+          and(
+            eq(deviceStaffSessions.deviceId, input.deviceId),
+            input.id !== undefined
+              ? eq(deviceStaffSessions.id, input.id)
+              : undefined,
+            isNull(deviceStaffSessions.endedAt),
+          ),
+        )
+        .returning({ id: deviceStaffSessions.id });
+
+      await this._denylistStaffSessions(endedRows.map((row) => row.id));
+    } catch (error) {
+      logger.error("[DEVICE_END_STAFF_SESSIONS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  private async _denylistStaffSessions(sessionIds: string[]): Promise<void> {
+    try {
+      await Promise.all(
+        sessionIds.map((sessionId) =>
+          this.redisProvider.set(
+            RedisKeys.authSessionRevoked(sessionId),
+            "1",
+            DEVICE_STAFF_CONSTANTS.ACCESS_EXPIRES_IN_SECONDS,
+          ),
+        ),
+      );
+    } catch (error) {
+      logger.error("[DEVICE__DENYLIST_STAFF_SESSIONS_ERROR] " + error);
+    }
+  }
+
   async createLog(input: CreateDeviceLogRepoInput): Promise<void> {
     try {
       await this.database.client.insert(deviceLogs).values(input.data);
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_CREATE_LOG_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 
@@ -324,12 +464,8 @@ export class DeviceRepository {
 
       return { logs: rows, total: Number(totalRow?.total ?? 0) };
     } catch (error) {
-      if (error instanceof AppError) throw error;
       logger.error("[DEVICE_FIND_LOGS_ERROR] " + error);
-      throw new AppError(`${error}`, {
-        statusCode: HttpStatusCodes.INTERNAL_SERVER_ERROR,
-        code: ErrorCodes.DATABASE_ERROR,
-      });
+      throw new DatabaseError(`${error}`);
     }
   }
 }

@@ -7,7 +7,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "Place a kiosk order and start its payment",
       description:
-        "Prices the cart on the server from the current menu and branch tax profile and saves the order as PENDING_PAYMENT in the open business day. With paymentMethod QR (1) it starts a PhonePe UPI QR payment and returns it; the token number is given once that payment completes, and retrying with the same idempotencyKey returns the same order and its QR while still valid. With isPayAtCounter true the order gets its token straight away, has no payment method yet, stays PENDING_PAYMENT until the counter takes the money, and `payment` is null; it is cancelled if the business day closes before it is paid. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
+        "Prices the cart on the server from the current menu and branch tax profile and saves the order as PENDING_PAYMENT in the open business day. With paymentMethod QR (1) it starts a PhonePe UPI QR payment and returns it; the token number is given once that payment completes, and retrying with the same idempotencyKey returns the same order and its QR while still valid. With paymentMethod CASH (3), on a counter device only, the signed-in staff member takes the money now: the order is saved as PLACED and paid with its token, `payment` is null, and retrying with the same idempotencyKey returns that same order. Counter orders record the staff member in created_by and the payment in collected_by. With isPayAtCounter true the order gets its token straight away, has no payment method yet, stays PENDING_PAYMENT until the counter takes the money, and `payment` is null; it is cancelled if the business day closes before it is paid. 409 BUSINESS_DAY_CLOSED while no business day is open, or ORDERS_PAUSED while new orders are on hold.",
       security: [{ deviceCookieAuth: [] }],
       requestBody: {
         required: true,
@@ -37,7 +37,7 @@ export const orderSwaggerPaths = {
                   type: "integer",
                   enum: [1, 2, 3],
                   description:
-                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; only QR is supported on the device for now",
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD, 3 = CASH. Required unless isPayAtCounter is true; QR on every device and CASH on a counter are supported for now, CARD answers 501 NOT_IMPLEMENTED",
                 },
                 items: {
                   type: "array",
@@ -63,7 +63,8 @@ export const orderSwaggerPaths = {
       },
       responses: {
         "201": {
-          description: "Order created with a pending QR payment",
+          description:
+            "Order created with a pending QR payment, or placed straight away when paid in cash on a counter",
           content: {
             "application/json": {
               schema: {
@@ -126,6 +127,324 @@ export const orderSwaggerPaths = {
     },
   },
 
+  "/pvt/d/orders/pending-payments": {
+    get: {
+      tags: ["Orders"],
+      summary: "List pay-at-counter orders waiting for payment (counter)",
+      description:
+        "Counter devices only, with a signed-in staff member. Returns the pay-at-counter orders of the current business day that are still PENDING_PAYMENT, by token number, a page at a time. `total` is the number of matching orders. Counter devices in the branch get the socket event order.pending-payments.changed, with the order id and its new status, whenever this list changes: a kiosk places a pay-at-counter order, or one is paid or cancelled at a counter.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        { $ref: "#/components/parameters/PageParam" },
+        { $ref: "#/components/parameters/LimitParam" },
+        {
+          name: "search",
+          in: "query",
+          schema: { type: "string" },
+          description: "Order number, or a token number (e.g. 42 or #042)",
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Orders waiting for payment at the counter",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  orders: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        orderNumber: { type: "string" },
+                        tokenNumber: { type: "integer", example: 7 },
+                        orderType: { type: "integer", enum: [1, 2] },
+                        currencyCode: { type: "string", example: "INR" },
+                        totalAmount: { type: "string", example: "354.90" },
+                        itemCount: { type: "integer" },
+                        createdAt: { type: "string", format: "date-time" },
+                      },
+                    },
+                  },
+                  total: { type: "integer" },
+                  page: { type: "integer" },
+                  limit: { type: "integer" },
+                  totalPages: { type: "integer" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/payments": {
+    post: {
+      tags: ["Orders"],
+      summary: "Take the payment for a pay-at-counter order (counter)",
+      description:
+        "Counter devices only. With paymentMethod CASH (3) the signed-in staff member takes the money now: the order becomes PLACED and keeps the token it was given on the kiosk, `payment` is null, and repeating the call returns the same order. With paymentMethod QR (1) it starts a PhonePe UPI QR payment for the order and returns it (the still-valid QR is returned again on a repeat); the order is placed when that payment completes. The staff member is recorded in collected_by. 409 when the order is not a pay-at-counter order waiting for payment.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["paymentMethod"],
+              properties: {
+                paymentMethod: {
+                  type: "integer",
+                  enum: [1, 2, 3],
+                  description:
+                    "TenantPaymentMethodEnum: 1 = QR, 2 = CARD (answers 501 NOT_IMPLEMENTED for now), 3 = CASH",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description:
+            "The order, with the QR payment to show or null when paid in cash (same shape as placing an order)",
+        },
+        "404": {
+          description: "Order not found in this branch",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        "409": {
+          description: "The order was already paid or cancelled",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/cancel": {
+    post: {
+      tags: ["Orders"],
+      summary: "Cancel a pay-at-counter order before it is paid (counter)",
+      description:
+        "Counter devices only. Cancels a pay-at-counter order that is still PENDING_PAYMENT and records the signed-in staff member. 409 when the order was already paid or cancelled.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": { description: "Order cancelled" },
+        "409": {
+          description: "The order can no longer be cancelled",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/live": {
+    get: {
+      tags: ["Orders"],
+      summary: "List the live orders for the KDS and CDS",
+      description:
+        "KDS and CDS devices. Returns the PLACED, PREPARING and READY orders of the current business day with their items and chosen options, oldest first. A KDS also gets the 30 most recently COMPLETED orders and, in completedCount, how many orders the day has completed in all; a CDS gets no completed orders and completedCount 0. KDS and CDS devices in the branch get the socket event order.placed when a paid order arrives and order.status.changed when an order moves.",
+      security: [{ deviceCookieAuth: [] }],
+      responses: {
+        "200": {
+          description: "Live orders",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  orders: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        orderNumber: { type: "string" },
+                        tokenNumber: {
+                          type: "string",
+                          example: "042",
+                          nullable: true,
+                        },
+                        orderType: {
+                          type: "integer",
+                          enum: [1, 2],
+                          description:
+                            "OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY",
+                        },
+                        orderSource: {
+                          type: "integer",
+                          enum: [1, 2],
+                          description:
+                            "OrderSourceEnum: 1 = KIOSK, 2 = COUNTER",
+                        },
+                        orderStatus: {
+                          type: "integer",
+                          enum: [2, 3, 4, 5],
+                          description:
+                            "OrderStatusEnum: 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED",
+                        },
+                        placedAt: { type: "string", format: "date-time" },
+                        preparingAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        readyAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        completedAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        items: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string", format: "uuid" },
+                              itemName: { type: "string" },
+                              quantity: { type: "integer" },
+                              modifiers: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    id: { type: "string", format: "uuid" },
+                                    modifierName: {
+                                      type: "string",
+                                      example: "Size",
+                                    },
+                                    optionName: {
+                                      type: "string",
+                                      example: "Large",
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  completedCount: { type: "integer", example: 42 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/status": {
+    patch: {
+      tags: ["Orders"],
+      summary: "Move an order one step on the KDS",
+      description:
+        "KDS devices only. Moves an order of the current business day one step forward along PLACED, PREPARING, READY, COMPLETED and sets the matching timestamp; every move is written to the order status log with the device. The display holds a tap for a few seconds so a wrong one can be undone before it is sent. 409 when the order is not one step before the requested status, for example because another display already moved it, or when it belongs to an earlier business day.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["orderStatus"],
+              properties: {
+                orderStatus: {
+                  type: "integer",
+                  enum: [3, 4, 5],
+                  description:
+                    "OrderStatusEnum: 3 = PREPARING, 4 = READY, 5 = COMPLETED",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Order moved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  order: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      orderStatus: { type: "integer", example: 3 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        "404": {
+          description: "Order not found in this branch",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        "409": {
+          description: "The order was already moved or is from an earlier day",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
   // ========================================
   // ? USER ORDERS (mounted /pvt/u/orders)
   // ========================================
@@ -151,14 +470,34 @@ export const orderSwaggerPaths = {
           description: "Organization scope only",
         },
         {
-          name: "createdFrom",
+          name: "dateField",
           in: "query",
-          schema: { type: "string", format: "date-time" },
+          schema: {
+            type: "string",
+            enum: [
+              "businessDate",
+              "createdAt",
+              "placedAt",
+              "readyAt",
+              "completedAt",
+              "cancelledAt",
+            ],
+          },
+          description:
+            "Which date dateFrom and dateTo apply to; createdAt when omitted",
         },
         {
-          name: "createdTo",
+          name: "dateFrom",
           in: "query",
-          schema: { type: "string", format: "date-time" },
+          schema: { type: "string" },
+          description:
+            "YYYY-MM-DD for the business date, an ISO date-time for every other field",
+        },
+        {
+          name: "dateTo",
+          in: "query",
+          schema: { type: "string" },
+          description: "Same format as dateFrom; cannot be before it",
         },
         {
           name: "orderStatus",
@@ -248,6 +587,52 @@ export const orderSwaggerPaths = {
         "400": { $ref: "#/components/responses/ValidationError" },
         "401": { $ref: "#/components/responses/Unauthorized" },
         "403": { $ref: "#/components/responses/Forbidden" },
+      },
+    },
+  },
+  "/pvt/u/orders/{id}": {
+    get: {
+      tags: ["Orders"],
+      summary: "One order with its items, bill, payments and timeline",
+      description:
+        "Returns any order of the organization, or of the selected branch when one is selected, whatever its status. Items carry the options chosen, taxes are the snapshot taken at order time, and payments list every attempt with the staff member who took it on a counter.",
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      responses: {
+        "200": {
+          description: "Order details",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  order: {
+                    type: "object",
+                    description:
+                      "Order fields plus items[] (with modifiers[]), taxes[] and payments[]",
+                  },
+                },
+              },
+            },
+          },
+        },
+        "401": { $ref: "#/components/responses/Unauthorized" },
+        "403": { $ref: "#/components/responses/Forbidden" },
+        "404": {
+          description: "Order not found",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
       },
     },
   },

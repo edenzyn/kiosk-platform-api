@@ -1,7 +1,6 @@
-import { HttpStatusCodes } from "../../../shared/constants/http-status-codes.constants";
 import type { EffectiveTenant } from "../../../shared/dtos/effective-tenant.dto";
-import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
-import { AppError } from "../../../shared/errors/app-error";
+import { BadRequestError } from "../../../shared/errors/bad-request-error";
+import { NotFoundError } from "../../../shared/errors/not-found-error";
 import type { BranchRepository } from "../../branch/branch.repository";
 import type { TaxRepository } from "../repositories/tax.repository";
 import type {
@@ -70,10 +69,7 @@ export class TaxService {
     });
 
     if (!profile) {
-      throw new AppError("Tax profile not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Tax profile not found");
     }
 
     return profile;
@@ -102,10 +98,7 @@ export class TaxService {
     targetBranchId: string,
   ) {
     if (sourceBranchId === targetBranchId) {
-      throw new AppError("Pick a different branch to clone from", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Pick a different branch to clone from");
     }
 
     const branch = await this.branchRepository.findOne({
@@ -114,10 +107,7 @@ export class TaxService {
     });
 
     if (!branch) {
-      throw new AppError("Branch not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Branch not found");
     }
 
     return branch;
@@ -125,10 +115,9 @@ export class TaxService {
 
   private requireTaxBranch(effectiveTenant: EffectiveTenant): string {
     if (!effectiveTenant.branchId) {
-      throw new AppError("A branch must be selected to manage tax profiles", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "A branch must be selected to manage tax profiles",
+      );
     }
 
     return effectiveTenant.branchId;

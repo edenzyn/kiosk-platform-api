@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import type { WhatsAppClientConfig } from "../../../config/whatsapp";
-import { HttpStatusCodes } from "../../constants/http-status-codes.constants";
-import { AppError } from "../../errors/app-error";
+import { ServiceUnavailableError } from "../../errors/service-unavailable-error";
 import type {
   SendWhatsAppMessageOptions,
   WhatsAppApiErrorResponse,
@@ -57,10 +56,9 @@ export class WhatsAppProvider {
       });
 
       const details = body?.error?.error_data?.details;
-      throw new AppError(
+      throw new ServiceUnavailableError(
         [body?.error?.message, details].filter(Boolean).join(" — ") ||
           "Failed to send WhatsApp message",
-        { statusCode: HttpStatusCodes.SERVICE_UNAVAILABLE },
       );
     }
   }

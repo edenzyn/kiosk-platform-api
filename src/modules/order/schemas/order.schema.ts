@@ -18,6 +18,7 @@ import { businessDays } from "../../business-day/schemas/business-day.schema";
 import { devices } from "../../device/device.schema";
 import { tenantTaxProfiles } from "../../finance/schemas/tenant-tax-profile.schema";
 import { organizations } from "../../organization/schemas/organization.schema";
+import { staffShifts } from "../../shift/schemas/staff-shift.schema";
 import { users } from "../../user/schemas/user.schema";
 
 // Global counter behind order numbers, so they never repeat across branches.
@@ -36,6 +37,7 @@ export const orders = pgTable(
       .notNull()
       .references((): AnyPgColumn => branches.id),
     deviceId: uuid("device_id").references((): AnyPgColumn => devices.id),
+    shiftId: uuid("shift_id").references((): AnyPgColumn => staffShifts.id), // counter shift that placed, collected or cancelled the order
     businessDayId: uuid("business_day_id")
       .notNull()
       .references((): AnyPgColumn => businessDays.id),
@@ -105,6 +107,7 @@ export const orders = pgTable(
     ),
     index("orders_branch_created_at_idx").on(table.branchId, table.createdAt),
     index("orders_branch_status_idx").on(table.branchId, table.orderStatus),
+    index("orders_shift_idx").on(table.shiftId),
     index("orders_business_day_status_idx").on(
       table.businessDayId,
       table.orderStatus,

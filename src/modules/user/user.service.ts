@@ -1,6 +1,5 @@
 import type jwt from "jsonwebtoken";
 import { env } from "../../config/env";
-import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import {
   WHATSAPP_TEMPLATES,
   WHATSAPP_TEMPLATE_LANGUAGES,
@@ -15,7 +14,11 @@ import type { TwoFactorMethodEnums } from "../../shared/enums/user/two-factor-me
 import { UserInvitationStatusEnum } from "../../shared/enums/user/user-invitation-status.enum";
 import { UserScopeTypeEnums } from "../../shared/enums/user/user-scope-type.enum";
 import { UserTypeEnums } from "../../shared/enums/user/user-type.enum";
-import { AppError } from "../../shared/errors/app-error";
+import { BadRequestError } from "../../shared/errors/bad-request-error";
+import { ConflictError } from "../../shared/errors/conflict-error";
+import { ForbiddenError } from "../../shared/errors/forbidden-error";
+import { NotFoundError } from "../../shared/errors/not-found-error";
+import { UnauthorizedError } from "../../shared/errors/unauthorized-error";
 import { isTenantActiveCheck } from "../../shared/utils/auth/tenant-active-check.helper";
 import {
   compareHashedData,
@@ -185,17 +188,13 @@ export class UserService {
     const user = await this.userRepository.findOne({ id: tokenUser.id });
 
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
     if (!user.isActive) {
-      throw new AppError("Your account has been deactivated", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Your account has been deactivated");
     }
 
     await isTenantActiveCheck(
@@ -333,17 +332,14 @@ export class UserService {
     const user = await this.userRepository.findOne({ id: userId });
 
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
     const isMatch = await compareHashedData(dto.currentPassword, user.password);
     if (!isMatch) {
-      throw new AppError("Current password is incorrect", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Current password is incorrect");
     }
 
     const hashedPassword = await hashData(dto.newPassword);
@@ -362,17 +358,14 @@ export class UserService {
     const user = await this.userRepository.findOne({ id: userId });
 
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
 
     const isMatch = await compareHashedData(dto.password, user.password);
     if (!isMatch) {
-      throw new AppError("Incorrect password", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Incorrect password");
     }
 
     await this.userRepository.update({
@@ -404,9 +397,7 @@ export class UserService {
   ): Promise<void> {
     const isMatch = await compareHashedData(suppliedPassword, hashedPassword);
     if (!isMatch) {
-      throw new AppError("Incorrect password", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Incorrect password");
     }
   }
 
@@ -418,8 +409,7 @@ export class UserService {
 
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -427,20 +417,14 @@ export class UserService {
     await this._assertPassword(user.password, dto.password);
 
     if (newEmail === user.email) {
-      throw new AppError(
+      throw new BadRequestError(
         "New email address cannot be same as current email address",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        },
       );
     }
 
     const existing = await this.userRepository.findOne({ email: newEmail });
     if (existing) {
-      throw new AppError("Email is already in use", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("Email is already in use");
     }
 
     const { verificationId, code } = await this.oneTimeTokenService.issue({
@@ -487,8 +471,7 @@ export class UserService {
 
     const user = await this.userRepository.findOne({ id: userId });
     if (!user) {
-      throw new AppError("User not found", {
-        statusCode: HttpStatusCodes.UNAUTHORIZED,
+      throw new UnauthorizedError("User not found", {
         code: ErrorCodes.UNAUTHORIZED,
       });
     }
@@ -496,20 +479,14 @@ export class UserService {
     await this._assertPassword(user.password, dto.password);
 
     if (newMobile === user.mobile) {
-      throw new AppError(
+      throw new BadRequestError(
         "New mobile number cannot be same as current mobile number",
-        {
-          statusCode: HttpStatusCodes.BAD_REQUEST,
-        },
       );
     }
 
     const existing = await this.userRepository.findOne({ mobile: newMobile });
     if (existing) {
-      throw new AppError("Mobile number is already in use", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("Mobile number is already in use");
     }
 
     const { verificationId, code } = await this.oneTimeTokenService.issue({
@@ -635,10 +612,7 @@ export class UserService {
       email: dto.email,
     });
     if (existingUser) {
-      throw new AppError("User already exists with this email address", {
-        statusCode: HttpStatusCodes.CONFLICT,
-        code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-      });
+      throw new ConflictError("User already exists with this email address");
     }
 
     const existingPendingInvitation =
@@ -647,12 +621,8 @@ export class UserService {
         status: UserInvitationStatusEnum.PENDING,
       });
     if (existingPendingInvitation) {
-      throw new AppError(
+      throw new ConflictError(
         "A pending invitation already exists for this email address",
-        {
-          statusCode: HttpStatusCodes.CONFLICT,
-          code: ErrorCodes.RESOURCE_ALREADY_EXISTS,
-        },
       );
     }
 
@@ -753,10 +723,7 @@ export class UserService {
   ): Promise<RevokeInvitationResponseDto> {
     const invitation = await this.userRepository.findOneInvitation({ id });
     if (!invitation) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     const isOrgMatch =
@@ -764,17 +731,11 @@ export class UserService {
       invitation.organizationId === effectiveTenant.organizationId;
 
     if (!isOrgMatch) {
-      throw new AppError("Forbidden to access this invitation", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Forbidden to access this invitation");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.PENDING) {
-      throw new AppError("Only pending invitations can be revoked", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError("Only pending invitations can be revoked");
     }
 
     await this.userRepository.updateInvitation({
@@ -798,10 +759,7 @@ export class UserService {
   ): Promise<{ message: string; success: boolean }> {
     const invitation = await this.userRepository.findOneInvitation({ id });
     if (!invitation) {
-      throw new AppError("Invitation not found", {
-        statusCode: HttpStatusCodes.NOT_FOUND,
-        code: ErrorCodes.RESOURCE_NOT_FOUND,
-      });
+      throw new NotFoundError("Invitation not found");
     }
 
     const isOrgMatch =
@@ -809,17 +767,13 @@ export class UserService {
       invitation.organizationId === effectiveTenant.organizationId;
 
     if (!isOrgMatch) {
-      throw new AppError("Forbidden to access this invitation", {
-        statusCode: HttpStatusCodes.FORBIDDEN,
-        code: ErrorCodes.FORBIDDEN,
-      });
+      throw new ForbiddenError("Forbidden to access this invitation");
     }
 
     if (invitation.status !== UserInvitationStatusEnum.EXPIRED) {
-      throw new AppError("Only pending or expired invitations can be resent", {
-        statusCode: HttpStatusCodes.BAD_REQUEST,
-        code: ErrorCodes.BAD_REQUEST,
-      });
+      throw new BadRequestError(
+        "Only pending or expired invitations can be resent",
+      );
     }
 
     const token = generateToken(

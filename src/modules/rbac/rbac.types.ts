@@ -1,5 +1,6 @@
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
 import type { UserTokenDto } from "../../shared/dtos/user-token.dto";
+import type { DeviceTypeEnum } from "../../shared/enums/device/device-type.enum";
 import type { UserEntity } from "../user/schemas/user.schema";
 import type {
   AssignPermissionRequestDto,
@@ -120,6 +121,14 @@ export interface GetUserPermissionKeysServiceInput {
   data: GetUserPermissionsRequestDto;
 }
 export type GetUserPermissionKeysServiceResult = Set<string>;
+
+export interface HasDeviceStaffPermissionServiceInput {
+  userId: string;
+  organizationId: string;
+  /** The user's own branch; null for an organization-level user. */
+  branchId: string | null;
+  deviceType: DeviceTypeEnum;
+}
 
 export interface GetRolesByTenantAndScopeServiceInput {
   queryDto: GetRolesRequestDto;

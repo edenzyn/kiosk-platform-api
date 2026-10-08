@@ -33,6 +33,8 @@ export interface OrderListItemDto {
   branchName: string;
   /** Null when the branch has no settings row yet. */
   branchTimezone: string | null;
+  /** YYYY-MM-DD: the business day the order belongs to. */
+  businessDate: string;
   orderType: OrderTypeEnum;
   orderSource: OrderSourceEnum;
   orderStatus: OrderStatusEnum;

@@ -444,6 +444,7 @@ export class OrderRepository {
           branchId: orders.branchId,
           branchName: branches.name,
           branchTimezone: branchSettings.timezone,
+          businessDate: businessDays.businessDate,
           deviceName: devices.name,
           orderType: orders.orderType,
           orderSource: orders.orderSource,
@@ -471,6 +472,7 @@ export class OrderRepository {
         })
         .from(orders)
         .innerJoin(branches, eq(branches.id, orders.branchId))
+        .innerJoin(businessDays, eq(businessDays.id, orders.businessDayId))
         .leftJoin(branchSettings, eq(branchSettings.branchId, orders.branchId))
         .leftJoin(devices, eq(devices.id, orders.deviceId))
         .leftJoin(createdByUser, eq(createdByUser.id, orders.createdBy))
@@ -631,7 +633,9 @@ export class OrderRepository {
           ? orders.orderNumber
           : input.sortBy === "totalAmount"
             ? orders.totalAmount
-            : orders.createdAt;
+            : input.sortBy === "businessDate"
+              ? businessDays.businessDate
+              : orders.createdAt;
 
       const [rows, [totalRow]] = await Promise.all([
         this.database.client
@@ -642,6 +646,7 @@ export class OrderRepository {
             branchId: orders.branchId,
             branchName: branches.name,
             branchTimezone: branchSettings.timezone,
+            businessDate: businessDays.businessDate,
             orderType: orders.orderType,
             orderSource: orders.orderSource,
             orderStatus: orders.orderStatus,
@@ -664,7 +669,11 @@ export class OrderRepository {
             eq(branchSettings.branchId, orders.branchId),
           )
           .where(condition)
-          .orderBy(orderFn(sortColumn), desc(orders.id))
+          .orderBy(
+            orderFn(sortColumn),
+            orderFn(orders.createdAt),
+            desc(orders.id),
+          )
           .limit(input.limit)
           .offset((input.page - 1) * input.limit),
         this.database.client

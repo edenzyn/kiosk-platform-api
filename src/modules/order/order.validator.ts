@@ -149,7 +149,7 @@ export class OrderValidator {
       sortBy: yup
         .string()
         .oneOf(
-          ["createdAt", "orderNumber", "totalAmount"],
+          ["createdAt", "businessDate", "orderNumber", "totalAmount"],
           "Invalid sort field",
         )
         .optional(),

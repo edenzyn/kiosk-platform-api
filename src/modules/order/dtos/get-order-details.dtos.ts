@@ -60,6 +60,8 @@ export interface OrderDetailsDto {
   branchName: string;
   /** Null when the branch has no settings row yet. */
   branchTimezone: string | null;
+  /** YYYY-MM-DD: the business day the order belongs to. */
+  businessDate: string;
   deviceName: string | null;
   orderType: OrderTypeEnum;
   orderSource: OrderSourceEnum;

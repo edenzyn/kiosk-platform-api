@@ -132,7 +132,7 @@ export const orderSwaggerPaths = {
       tags: ["Orders"],
       summary: "List pay-at-counter orders waiting for payment (counter)",
       description:
-        "Counter devices only, with a signed-in staff member. Returns the pay-at-counter orders of the current business day that are still PENDING_PAYMENT, by token number, a page at a time. `total` is the number of matching orders. Counter devices in the branch get the socket event order.pending-payments.changed whenever this list changes: a kiosk places a pay-at-counter order, or one is paid or cancelled at a counter.",
+        "Counter devices only, with a signed-in staff member. Returns the pay-at-counter orders of the current business day that are still PENDING_PAYMENT, by token number, a page at a time. `total` is the number of matching orders. Counter devices in the branch get the socket event order.pending-payments.changed, with the order id and its new status, whenever this list changes: a kiosk places a pay-at-counter order, or one is paid or cancelled at a counter.",
       security: [{ deviceCookieAuth: [] }],
       parameters: [
         { $ref: "#/components/parameters/PageParam" },
@@ -259,6 +259,182 @@ export const orderSwaggerPaths = {
         "200": { description: "Order cancelled" },
         "409": {
           description: "The order can no longer be cancelled",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/kds": {
+    get: {
+      tags: ["Orders"],
+      summary: "List the orders for the KDS board",
+      description:
+        "KDS devices only. Returns the PLACED, PREPARING and READY orders of the current business day with their items and chosen options, oldest first, followed by the 30 most recently COMPLETED ones; completedCount is how many orders the day has completed in all. KDS devices in the branch get the socket event order.placed when a paid order arrives and order.status.changed when an order moves; CDS devices get order.status.changed too.",
+      security: [{ deviceCookieAuth: [] }],
+      responses: {
+        "200": {
+          description: "Orders for the KDS board",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  orders: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string", format: "uuid" },
+                        orderNumber: { type: "string" },
+                        tokenNumber: {
+                          type: "string",
+                          example: "042",
+                          nullable: true,
+                        },
+                        orderType: {
+                          type: "integer",
+                          enum: [1, 2],
+                          description:
+                            "OrderTypeEnum: 1 = DINE_IN, 2 = TAKEAWAY",
+                        },
+                        orderSource: {
+                          type: "integer",
+                          enum: [1, 2],
+                          description:
+                            "OrderSourceEnum: 1 = KIOSK, 2 = COUNTER",
+                        },
+                        orderStatus: {
+                          type: "integer",
+                          enum: [2, 3, 4, 5],
+                          description:
+                            "OrderStatusEnum: 2 = PLACED, 3 = PREPARING, 4 = READY, 5 = COMPLETED",
+                        },
+                        placedAt: { type: "string", format: "date-time" },
+                        preparingAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        readyAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        completedAt: {
+                          type: "string",
+                          format: "date-time",
+                          nullable: true,
+                        },
+                        items: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string", format: "uuid" },
+                              itemName: { type: "string" },
+                              quantity: { type: "integer" },
+                              modifiers: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    id: { type: "string", format: "uuid" },
+                                    modifierName: {
+                                      type: "string",
+                                      example: "Size",
+                                    },
+                                    optionName: {
+                                      type: "string",
+                                      example: "Large",
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  completedCount: { type: "integer", example: 42 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+
+  "/pvt/d/orders/{id}/status": {
+    patch: {
+      tags: ["Orders"],
+      summary: "Move an order one step on the KDS",
+      description:
+        "KDS devices only. Moves an order of the current business day one step forward along PLACED, PREPARING, READY, COMPLETED and sets the matching timestamp; every move is written to the order status log with the device. The display holds a tap for a few seconds so a wrong one can be undone before it is sent. 409 when the order is not one step before the requested status, for example because another display already moved it, or when it belongs to an earlier business day.",
+      security: [{ deviceCookieAuth: [] }],
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["orderStatus"],
+              properties: {
+                orderStatus: {
+                  type: "integer",
+                  enum: [3, 4, 5],
+                  description:
+                    "OrderStatusEnum: 3 = PREPARING, 4 = READY, 5 = COMPLETED",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": {
+          description: "Order moved",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  order: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string", format: "uuid" },
+                      orderStatus: { type: "integer", example: 3 },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        "404": {
+          description: "Order not found in this branch",
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ErrorResponse" },
+            },
+          },
+        },
+        "409": {
+          description: "The order was already moved or is from an earlier day",
           content: {
             "application/json": {
               schema: { $ref: "#/components/schemas/ErrorResponse" },

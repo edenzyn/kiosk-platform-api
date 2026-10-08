@@ -22,6 +22,18 @@ deviceOrderRouter.get(
   asyncHandler(orderController.getPendingPaymentOrders),
 );
 
+deviceOrderRouter.get(
+  "/kds",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.KDS] }),
+  asyncHandler(orderController.getKdsOrders),
+);
+
+deviceOrderRouter.patch(
+  "/:id/status",
+  accessMiddleware({ deviceType: [DeviceTypeEnum.KDS] }),
+  asyncHandler(orderController.changeKdsOrderStatus),
+);
+
 deviceOrderRouter.post(
   "/:id/payments",
   accessMiddleware({ deviceType: [DeviceTypeEnum.COUNTER] }),

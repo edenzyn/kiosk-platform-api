@@ -96,6 +96,18 @@ export class OrderValidator {
     })
     .noUnknown();
 
+  static changeKdsOrderStatus = yup
+    .object({
+      orderStatus: numericEnumValidator(OrderStatusEnum, "Order status", {
+        exclude: [
+          OrderStatusEnum.PENDING_PAYMENT,
+          OrderStatusEnum.PLACED,
+          OrderStatusEnum.CANCELLED,
+        ],
+      }).required("Order status is required"),
+    })
+    .noUnknown();
+
   static getOrdersQuery = paginationQuerySchema
     .shape({
       search: yup.string().trim().max(100).optional(),

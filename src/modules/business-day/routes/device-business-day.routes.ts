@@ -13,7 +13,11 @@ const businessDayController = container.resolve<BusinessDayController>(
 deviceBusinessDayRouter.get(
   "/current",
   accessMiddleware({
-    deviceType: [DeviceTypeEnum.KIOSK, DeviceTypeEnum.COUNTER],
+    deviceType: [
+      DeviceTypeEnum.KIOSK,
+      DeviceTypeEnum.COUNTER,
+      DeviceTypeEnum.KDS,
+    ],
   }),
   asyncHandler(businessDayController.getDeviceBusinessDay),
 );

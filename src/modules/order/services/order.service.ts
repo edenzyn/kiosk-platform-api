@@ -1,3 +1,8 @@
+import {
+  KDS_ACTIVE_STATUSES,
+  KDS_COMPLETED_ORDERS_LIMIT,
+  KDS_STATUS_FLOW,
+} from "../../../shared/constants/order.constants";
 import { ErrorCodes } from "../../../shared/enums/core/error-codes.enum";
 import { DeviceTypeEnum } from "../../../shared/enums/device/device-type.enum";
 import { TaxComponentConditionTypeEnum } from "../../../shared/enums/finance/tax-component-condition-type.enum";
@@ -6,9 +11,11 @@ import { OrderPaymentStatusEnum } from "../../../shared/enums/order/order-paymen
 import { OrderSourceEnum } from "../../../shared/enums/order/order-source.enum";
 import { OrderStatusEnum } from "../../../shared/enums/order/order-status.enum";
 import { OrderTypeEnum } from "../../../shared/enums/order/order-type.enum";
+import { SocketEventEnum } from "../../../shared/enums/socket/socket-event.enum";
 import { BadRequestError } from "../../../shared/errors/bad-request-error";
 import { ConflictError } from "../../../shared/errors/conflict-error";
 import { NotFoundError } from "../../../shared/errors/not-found-error";
+import type { RealtimeProvider } from "../../../shared/providers/realtime/realtime.provider";
 import { formatDateInTimezone } from "../../../shared/utils/core/date.helper";
 import { calculateOrderPricing } from "../../../shared/utils/order/calculate-order-pricing.helper";
 import { formatTokenNumber } from "../../../shared/utils/order/order-number.helper";
@@ -23,10 +30,14 @@ import { OrderMapper } from "../order.mapper";
 import type { OrderRepository } from "../order.repository";
 import type {
   CancelDeviceOrderServiceInput,
+  ChangeKdsOrderStatusServiceInput,
+  ChangeKdsOrderStatusServiceResult,
   CollectPendingPaymentServiceInput,
   CreateDeviceOrderServiceInput,
   CreateOrderFromCartServiceInput,
   CreateDeviceOrderServiceResult,
+  GetKdsOrdersServiceInput,
+  GetKdsOrdersServiceResult,
   GetPendingPaymentOrdersServiceInput,
   GetPendingPaymentOrdersServiceResult,
   GetLiveOrderCountsServiceInput,
@@ -48,6 +59,7 @@ export class OrderService {
     private readonly businessDayService: BusinessDayService,
     private readonly orderPaymentService: OrderPaymentService,
     private readonly shiftService: ShiftService,
+    private readonly realtimeProvider: RealtimeProvider,
   ) {}
 
   // ========================================
@@ -386,6 +398,103 @@ export class OrderService {
     }
 
     this.orderPaymentService.emitPendingPaymentsChanged(cancelledOrder);
+  }
+
+  // ========================================
+  // ? KDS ORDERS
+  // ========================================
+  async getKdsOrders(
+    input: GetKdsOrdersServiceInput,
+  ): Promise<GetKdsOrdersServiceResult> {
+    const businessDayId =
+      await this.businessDayService.findCurrentBusinessDayId({
+        branchId: input.device.branchId,
+      });
+    if (!businessDayId) {
+      return { orders: [], completedCount: 0 };
+    }
+
+    const [orders, completedCounts] = await Promise.all([
+      this.orderRepository.findKdsOrders({
+        businessDayId,
+        activeStatuses: KDS_ACTIVE_STATUSES,
+        completedLimit: KDS_COMPLETED_ORDERS_LIMIT,
+      }),
+      this.orderRepository.countBusinessDayOrdersByStatus({
+        businessDayId,
+        orderStatuses: [OrderStatusEnum.COMPLETED],
+      }),
+    ]);
+
+    return {
+      orders: orders.map((order) => ({
+        ...order,
+        tokenNumber: formatTokenNumber(order.tokenNumber),
+      })),
+      completedCount: completedCounts[0]?.count ?? 0,
+    };
+  }
+
+  async changeKdsOrderStatus(
+    input: ChangeKdsOrderStatusServiceInput,
+  ): Promise<ChangeKdsOrderStatusServiceResult> {
+    const { device, orderId, dto } = input;
+
+    const [order, businessDayId] = await Promise.all([
+      this.orderRepository.findOne({ id: orderId, branchId: device.branchId }),
+      this.businessDayService.findCurrentBusinessDayId({
+        branchId: device.branchId,
+      }),
+    ]);
+    if (!order) {
+      throw new NotFoundError("Order not found");
+    }
+
+    if (order.businessDayId !== businessDayId) {
+      throw new ConflictError("This order is from an earlier business day");
+    }
+
+    const fromIndex = KDS_STATUS_FLOW.indexOf(order.orderStatus);
+    const toIndex = KDS_STATUS_FLOW.indexOf(dto.orderStatus);
+    if (fromIndex === -1 || toIndex - fromIndex !== 1) {
+      throw new ConflictError("This order has already been updated");
+    }
+
+    const changedAt = new Date();
+
+    const updatedOrder = await this.orderRepository.changeOrderStatus({
+      id: order.id,
+      fromStatus: order.orderStatus,
+      toStatus: dto.orderStatus,
+      timestamps: {
+        ...(dto.orderStatus === OrderStatusEnum.PREPARING && {
+          preparingAt: changedAt,
+        }),
+        ...(dto.orderStatus === OrderStatusEnum.READY && {
+          readyAt: changedAt,
+        }),
+        ...(dto.orderStatus === OrderStatusEnum.COMPLETED && {
+          completedAt: changedAt,
+        }),
+      },
+      changedByDeviceId: device.id,
+    });
+    if (!updatedOrder) {
+      throw new ConflictError("This order has already been updated");
+    }
+
+    for (const deviceType of [DeviceTypeEnum.KDS, DeviceTypeEnum.CDS]) {
+      this.realtimeProvider.emitToBranch(
+        updatedOrder.branchId,
+        SocketEventEnum.ORDER_STATUS_CHANGED,
+        { orderId: updatedOrder.id, orderStatus: updatedOrder.orderStatus },
+        deviceType,
+      );
+    }
+
+    return {
+      order: { id: updatedOrder.id, orderStatus: updatedOrder.orderStatus },
+    };
   }
 
   // ========================================

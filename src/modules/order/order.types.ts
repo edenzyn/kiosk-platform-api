@@ -8,6 +8,10 @@ import type { OrderPaymentStatusEnum } from "../../shared/enums/order/order-paym
 import type { OrderStatusEnum } from "../../shared/enums/order/order-status.enum";
 import type { OrderTypeEnum } from "../../shared/enums/order/order-type.enum";
 import type {
+  GetKdsOrdersResponseDto,
+  KdsOrderDto,
+} from "./dtos/get-kds-orders.dtos";
+import type {
   GetLiveOrderCountsQueryDto,
   GetLiveOrderCountsResponseDto,
 } from "./dtos/get-live-order-counts.dtos";
@@ -21,6 +25,10 @@ import type {
   OrderListItemDto,
 } from "./dtos/get-orders.dtos";
 import type { PhonePeWebhookPayload } from "../../shared/providers/finance/phonepe/phonepe.types";
+import type {
+  ChangeKdsOrderStatusBodyDto,
+  ChangeKdsOrderStatusResponseDto,
+} from "./dtos/change-kds-order-status.dtos";
 import type { CollectPendingPaymentBodyDto } from "./dtos/collect-pending-payment.dtos";
 import type {
   CreateDeviceOrderBodyDto,
@@ -92,6 +100,18 @@ export interface CancelDeviceOrderServiceInput {
 export interface HandlePhonePeWebhookServiceInput {
   body: PhonePeWebhookPayload;
 }
+
+export interface GetKdsOrdersServiceInput {
+  device: DeviceTokenDto;
+}
+export type GetKdsOrdersServiceResult = GetKdsOrdersResponseDto;
+
+export interface ChangeKdsOrderStatusServiceInput {
+  device: DeviceTokenDto;
+  orderId: string;
+  dto: ChangeKdsOrderStatusBodyDto;
+}
+export type ChangeKdsOrderStatusServiceResult = ChangeKdsOrderStatusResponseDto;
 
 export interface GetOrdersServiceInput {
   effectiveTenant: EffectiveTenant;
@@ -264,3 +284,26 @@ export type CountBusinessDayOrdersByStatusRepoResult = {
   orderStatus: OrderStatusEnum;
   count: number;
 }[];
+
+export interface FindKdsOrdersRepoInput {
+  businessDayId: string;
+  activeStatuses: OrderStatusEnum[];
+  /** How many of the latest completed orders to return with the active ones. */
+  completedLimit: number;
+}
+export type KdsOrderRow = Omit<KdsOrderDto, "tokenNumber"> & {
+  tokenNumber: number | null;
+};
+export type FindKdsOrdersRepoResult = KdsOrderRow[];
+
+export interface ChangeOrderStatusRepoInput {
+  id: string;
+  fromStatus: OrderStatusEnum;
+  toStatus: OrderStatusEnum;
+  /** The lifecycle timestamp this move sets. */
+  timestamps: Partial<
+    Pick<OrderEntity, "preparingAt" | "readyAt" | "completedAt">
+  >;
+  changedByDeviceId: string;
+}
+export type ChangeOrderStatusRepoResult = OrderEntity | null;

@@ -301,7 +301,7 @@ export const businessDaySwaggerPaths = {
       tags: ["Business Days"],
       summary: "Is the device's branch open for orders",
       description:
-        "Kiosks take orders only while a business day is open and ordering is not paused. Listen for business-day.opened / business-day.closed / business-day.orders-paused / business-day.orders-resumed on the device socket to stay in sync.",
+        "Kiosk, counter and KDS devices. Kiosks take orders only while a business day is open and ordering is not paused. Listen for business-day.opened / business-day.closed / business-day.orders-paused / business-day.orders-resumed on the device socket to stay in sync.",
       security: [{ deviceCookieAuth: [] }],
       responses: {
         "200": {

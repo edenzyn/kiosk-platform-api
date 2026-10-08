@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { HttpStatusCodes } from "../../shared/constants/http-status-codes.constants";
 import type { DeviceTokenDto } from "../../shared/dtos/device-token.dto";
 import type { EffectiveTenant } from "../../shared/dtos/effective-tenant.dto";
+import type { ChangeKdsOrderStatusBodyDto } from "./dtos/change-kds-order-status.dtos";
 import type { CollectPendingPaymentBodyDto } from "./dtos/collect-pending-payment.dtos";
 import type { CreateDeviceOrderBodyDto } from "./dtos/create-device-order.dtos";
 import type { GetLiveOrderCountsQueryDto } from "./dtos/get-live-order-counts.dtos";
@@ -80,6 +81,34 @@ export class OrderController {
       orderId: id,
     });
     res.status(HttpStatusCodes.OK).json({ message: "Order cancelled" });
+  };
+
+  // ========================================
+  // ? KDS ORDER APIS
+  // ========================================
+  getKdsOrders = async (req: Request, res: Response): Promise<void> => {
+    const result = await this.orderService.getKdsOrders({
+      device: req.device as DeviceTokenDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
+  };
+
+  changeKdsOrderStatus = async (req: Request, res: Response): Promise<void> => {
+    const { id } = await OrderValidator.orderIdParams.validate(req.params, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+    const dto = await OrderValidator.changeKdsOrderStatus.validate(req.body, {
+      abortEarly: false,
+      stripUnknown: true,
+    });
+
+    const result = await this.orderService.changeKdsOrderStatus({
+      device: req.device as DeviceTokenDto,
+      orderId: id,
+      dto: dto as ChangeKdsOrderStatusBodyDto,
+    });
+    res.status(HttpStatusCodes.OK).json(result);
   };
 
   // ========================================

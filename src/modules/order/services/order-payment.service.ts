@@ -121,6 +121,7 @@ export class OrderPaymentService {
       throw new ConflictError("This order has already been processed");
     }
 
+    this.emitOrderPlaced(placedOrder);
     if (placedOrder.isPayAtCounter) {
       this.emitPendingPaymentsChanged(placedOrder);
     }
@@ -221,8 +222,17 @@ export class OrderPaymentService {
     this.realtimeProvider.emitToBranch(
       order.branchId,
       SocketEventEnum.ORDER_PENDING_PAYMENTS_CHANGED,
-      { orderId: order.id },
+      { orderId: order.id, orderStatus: order.orderStatus },
       DeviceTypeEnum.COUNTER,
+    );
+  }
+
+  emitOrderPlaced(order: OrderEntity): void {
+    this.realtimeProvider.emitToBranch(
+      order.branchId,
+      SocketEventEnum.ORDER_PLACED,
+      { orderId: order.id, tokenNumber: formatTokenNumber(order.tokenNumber) },
+      DeviceTypeEnum.KDS,
     );
   }
 
@@ -308,6 +318,7 @@ export class OrderPaymentService {
         },
       );
 
+      this.emitOrderPlaced(order);
       if (order.isPayAtCounter) {
         this.emitPendingPaymentsChanged(order);
       }

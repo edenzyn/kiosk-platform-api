@@ -33,6 +33,8 @@ import type {
   CancelUnpaidCounterOrderRepoResult,
   CancelUnpaidCounterOrdersRepoInput,
   CancelUnpaidCounterOrdersRepoResult,
+  ChangeOrderStatusRepoInput,
+  ChangeOrderStatusRepoResult,
   CompletePendingPaymentRepoInput,
   CompletePendingPaymentRepoResult,
   CountBusinessDayOrdersByStatusRepoInput,
@@ -49,6 +51,8 @@ import type {
   FindOneOrderPaymentRepoResult,
   FindOneOrderRepoInput,
   FindOneOrderRepoResult,
+  FindKdsOrdersRepoInput,
+  FindKdsOrdersRepoResult,
   FindOrderByIdempotencyKeyRepoInput,
   FindOrderByIdempotencyKeyRepoResult,
   FindOrderDetailsRepoInput,
@@ -838,6 +842,137 @@ export class OrderRepository {
       });
     } catch (error) {
       logger.error("[ORDER_CANCEL_UNPAID_COUNTER_ORDERS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  // ========================================
+  // ? KDS ORDER METHODS
+  // ========================================
+  async findKdsOrders(
+    input: FindKdsOrdersRepoInput,
+  ): Promise<FindKdsOrdersRepoResult> {
+    try {
+      const fields = {
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        tokenNumber: orders.tokenNumber,
+        orderType: orders.orderType,
+        orderSource: orders.orderSource,
+        orderStatus: orders.orderStatus,
+        placedAt: orders.placedAt,
+        preparingAt: orders.preparingAt,
+        readyAt: orders.readyAt,
+        completedAt: orders.completedAt,
+      };
+
+      const [activeRows, completedRows] = await Promise.all([
+        this.database.client
+          .select(fields)
+          .from(orders)
+          .where(
+            and(
+              eq(orders.businessDayId, input.businessDayId),
+              inArray(orders.orderStatus, input.activeStatuses),
+            ),
+          )
+          .orderBy(asc(orders.placedAt), asc(orders.tokenNumber)),
+        this.database.client
+          .select(fields)
+          .from(orders)
+          .where(
+            and(
+              eq(orders.businessDayId, input.businessDayId),
+              eq(orders.orderStatus, OrderStatusEnum.COMPLETED),
+            ),
+          )
+          .orderBy(desc(orders.completedAt))
+          .limit(input.completedLimit),
+      ]);
+      const rows = [...activeRows, ...completedRows];
+
+      if (rows.length === 0) return [];
+
+      const orderIds = rows.map((row) => row.id);
+
+      const [items, modifiers] = await Promise.all([
+        this.database.client
+          .select({
+            id: orderItems.id,
+            orderId: orderItems.orderId,
+            itemName: orderItems.itemName,
+            quantity: orderItems.quantity,
+          })
+          .from(orderItems)
+          .where(inArray(orderItems.orderId, orderIds))
+          .orderBy(asc(orderItems.displayOrder), asc(orderItems.createdAt)),
+        this.database.client
+          .select({
+            id: orderItemModifiers.id,
+            orderItemId: orderItemModifiers.orderItemId,
+            modifierName: orderItemModifiers.modifierName,
+            optionName: orderItemModifiers.optionName,
+          })
+          .from(orderItemModifiers)
+          .innerJoin(
+            orderItems,
+            eq(orderItems.id, orderItemModifiers.orderItemId),
+          )
+          .where(inArray(orderItems.orderId, orderIds))
+          .orderBy(asc(orderItemModifiers.createdAt)),
+      ]);
+
+      return rows.map((row) => ({
+        ...row,
+        items: items
+          .filter((item) => item.orderId === row.id)
+          .map(({ orderId: _orderId, ...item }) => ({
+            ...item,
+            modifiers: modifiers
+              .filter((modifier) => modifier.orderItemId === item.id)
+              .map(({ orderItemId: _orderItemId, ...modifier }) => modifier),
+          })),
+      }));
+    } catch (error) {
+      logger.error("[ORDER_FIND_KDS_ORDERS_ERROR] " + error);
+      throw new DatabaseError(`${error}`);
+    }
+  }
+
+  /** Moves an order between statuses; null when it was no longer in fromStatus. */
+  async changeOrderStatus(
+    input: ChangeOrderStatusRepoInput,
+  ): Promise<ChangeOrderStatusRepoResult> {
+    try {
+      return await this.database.client.transaction(async (tx) => {
+        const [order] = await tx
+          .update(orders)
+          .set({
+            ...input.timestamps,
+            orderStatus: input.toStatus,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(orders.id, input.id),
+              eq(orders.orderStatus, input.fromStatus),
+            ),
+          )
+          .returning();
+
+        if (!order) return null;
+
+        await tx.insert(orderStatusLogs).values({
+          orderId: order.id,
+          fromStatus: input.fromStatus,
+          toStatus: input.toStatus,
+          changedByDeviceId: input.changedByDeviceId,
+        });
+
+        return order;
+      });
+    } catch (error) {
+      logger.error("[ORDER_CHANGE_ORDER_STATUS_ERROR] " + error);
       throw new DatabaseError(`${error}`);
     }
   }

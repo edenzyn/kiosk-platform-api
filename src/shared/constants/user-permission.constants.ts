@@ -169,3 +169,11 @@ export const BRANCH_BUSINESS_DAY_READ_WRITE_PERMS = [
   UserPermissions.BRANCH_BUSINESS_DAY_READ,
   UserPermissions.BRANCH_BUSINESS_DAY_WRITE,
 ];
+
+//----------------------
+// Shift Module Constants
+//----------------------
+export const BRANCH_SHIFT_READ_MANAGE_PERMS = [
+  UserPermissions.BRANCH_SHIFT_READ,
+  UserPermissions.BRANCH_SHIFT_MANAGE,
+];
